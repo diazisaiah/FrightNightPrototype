@@ -598,7 +598,29 @@ func _drip(label: Label) -> void:
 	tween.tween_callback(drop.queue_free)
 
 
+## The version in the corner: "v0.9.0" on released builds (itch), with "DEV"
+## on the builds from every change (GitHub Pages, the editor).
+func _build_version() -> void:
+	var version := Label.new()
+	var number: String = ProjectSettings.get_setting("application/config/version", "0.0.0")
+	version.text = "v%s" % number if OS.has_feature("release") else "v%s  DEV BUILD" % number
+	version.add_theme_font_size_override("font_size", 14)
+	version.add_theme_color_override("font_color", Color(UiTheme.MUTED, 0.6))
+	version.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	version.anchor_left = 1.0
+	version.anchor_right = 1.0
+	version.anchor_top = 1.0
+	version.anchor_bottom = 1.0
+	version.offset_left = -260
+	version.offset_right = -18
+	version.offset_top = -30
+	version.offset_bottom = -10
+	version.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_ui.add_child(version)
+
+
 func _build_menu() -> void:
+	_build_version()
 	var menu := Control.new()
 	menu.position = Vector2(90, 300)
 	_ui.add_child(menu)

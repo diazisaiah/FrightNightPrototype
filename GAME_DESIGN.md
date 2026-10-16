@@ -948,6 +948,8 @@ Done:
 - **Auto-pause:** clicking or tabbing away mid-fight opens the pause menu (`Hud._notification`), so nothing beats you up while you're gone.
 - **Credits** on the title menu (`credits.gd`): made by, built with Godot and the Anton font, and the license notices the engine (MIT, plus its third-party components) and the font (OFL) require.
 
+- **Versions and releases (2026-10-16):** the version lives in `project.godot` (`config/version`, now 0.9.0) and shows in the title screen's corner. Every change goes to GitHub Pages as the dev build (`deploy_pages.sh`, the `Web` preset, "DEV BUILD" in the corner). itch only gets a build on release: `bash release.sh <version>` exports the `Web Release` preset (the `release` feature tag hides DEV), pushes it to itch with that version, then commits and tags `v<version>` on GitHub.
+
 Still open:
 - Real sound effects and music (placeholders now; the Sound Lab is ready to audition them).
 - Painted upgrade and skill icons (`art/icons/ICON_PROMPTS.md`).
