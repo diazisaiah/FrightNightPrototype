@@ -1,0 +1,29 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://boss.gd" id="1_script"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
+radius = 0.6
+height = 2.8
+
+[node name="Boss" type="CharacterBody3D"]
+collision_layer = 4
+collision_mask = 7
+script = ExtResource("1_script")
+display_name = "The Grave Champion"
+hit_color = Color(0.4, 0.2, 0.45, 1)
+head_height = 1.55
+is_boss = true
+max_hp = 500.0
+move_speed = 2.6
+coin_reward = 75
+xp_reward = 120
+armor_value = 6.0
+armor_bonus_hp = 0.0
+attack_damage = 10.0
+attack_range = 3.0
+preferred_distance = 2.4
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, 0)
+shape = SubResource("CapsuleShape3D_body")

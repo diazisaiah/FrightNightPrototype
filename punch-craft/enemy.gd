@@ -1,0 +1,1027 @@
+class_name Enemy
+extends CharacterBody3D
+## Base for everything that fights back. Handles HP, armor, knockback, stagger,
+## hit flash and death. Subclasses build their body in _build_body(), add armor
+## pieces in _build_armor(), and choose a movement velocity each frame in _think().
+
+signal died(enemy: Enemy)
+
+const FLASH_TIME := 0.08
+const STAGGER_TIME := 0.5
+const KNOCKBACK_DECAY := 12.0
+const TURN_SPEED := 8.0
+const RECOIL_DISTANCE := 0.18
+const RECOIL_RECOVERY := 1.2
+const COIN_COLOR := Color(1.0, 0.8, 0.2)
+const SPARK_COLOR := Color(1.0, 0.7, 0.3)
+const HEAD_MULTIPLIER := 1.3
+const HEAD_COLOR := Color(1.0, 0.85, 0.2)
+const BODY_COLOR := Color(0.65, 0.85, 1.0)
+## Elite enemies (Crypt): tougher, richer, with a trait and a glowing aura.
+const ELITE_HP := 2.0
+const ELITE_REWARD := 3
+const ELITE_COLOR := Color(1.0, 0.6, 0.15)
+## Ironclad elites: flat armor plus a share of every hit shrugged off, so they
+## stay tough however hard the player hits.
+const IRONCLAD_ARMOR := 5.0
+const IRONCLAD_REDUCTION := 0.35
+## Status effects from Crypt items.
+const FROST_COLOR := Color(0.55, 0.85, 1.0)
+const POISON_COLOR := Color(0.45, 0.9, 0.25)
+const BLEED_COLOR := Color(0.85, 0.08, 0.08)
+const MAX_POISON_STACKS := 5
+const POISON_TIME := 4.0
+const MAX_BLEED_STACKS := 5
+const BLEED_TIME := 6.0
+## Walking into something for this long makes an enemy step around it.
+const STUCK_TIME := 0.25
+const DETOUR_TIME := 1.0
+## Each body shot adds this much "body damage" (0-1), which fades over time
+## and slows everything the enemy does, up to MAX_BODY_SLOW.
+const BODY_DAMAGE_PER_HIT := 0.2
+const BODY_DAMAGE_DECAY := 0.15
+const MAX_BODY_SLOW := 0.35
+const WINDED_THRESHOLD := 0.6
+## Every attack flashes this long before it lands: the cue to dodge.
+const TELL_FLASH_TIME := 0.22
+const HEAL_COLOR := Color(0.35, 1.0, 0.45)
+## Attack turns: only a few melee enemies may attack the player at once; the
+## rest hang back at WAIT_DISTANCE, circling, until one finishes its combo
+## and steps out (resting TURN_REST seconds before it may go again).
+## Punching an enemy pulls it into the fight (it takes a turn from another).
+## Bosses and ranged enemies don't take turns.
+const WAIT_DISTANCE := 3.8
+const TURN_REST := Vector2(1.2, 2.4)
+## Seconds a turn lasts if the enemy never gets to attack (stuck, chased off).
+const TURN_TIMEOUT := 4.0
+
+@export var display_name := "Enemy"
+## Color of the chips that fly off when punched.
+@export var hit_color := Color(0.3, 0.45, 0.2)
+## Punches landing above this height (meters from the feet) are head shots.
+@export var head_height := 1.55
+## Bosses take a big chunk from a Counter Master's perfect counter instead of a KO.
+@export var is_boss := false
+@export var max_hp := 20.0
+@export var move_speed := 2.5
+@export var coin_reward := 3
+@export var xp_reward := 4
+## Flat damage blocked from every punch, armored or not.
+@export var base_armor := 0.0
+@export_group("Armored variant")
+## Flat damage blocked from every punch when armored.
+@export var armor_value := 4.0
+@export var armor_bonus_hp := 20.0
+
+var hp := 0.0
+var armor := 0.0
+## Extra flat block on head shots (a helmet, see EnemyGear).
+var head_armor := 0.0
+var armored := false
+## {tier, pieces} from EnemyGear, or empty.
+var gear := {}
+## Tony's Big Mouth: enraged, it comes only for him (ignoring the take-turns
+## rule), deals TAUNT_DEALT x damage and takes TAUNT_TAKEN x from his punches.
+const TAUNT_DEALT := 1.5
+const TAUNT_TAKEN := 2.0
+var _taunt_time := 0.0
+var _taunt_fx: Node3D
+## The hat this enemy wears (Hats.CATALOG id), or "".
+var hat := ""
+var _hat_node: Node3D
+var player: Player
+## Multiplies the damage this enemy's attacks deal. Grows with the wave.
+var damage_multiplier := 1.0
+## The space this enemy fights in (the graveyard, or a Crypt room): enemies
+## that keep their distance stay within arena_limit of arena_center.
+## Share of damage ignored after armor (0-1), e.g. Ironclad elites.
+var damage_reduction := 0.0
+var arena_center := Vector3.ZERO
+var arena_limit := 38.0
+
+var _body: Node3D
+var _hp_label: Label3D
+var _meshes: Array[MeshInstance3D] = []
+var _knockback := Vector3.ZERO
+var _stagger_timer := 0.0
+var _flash_timer := 0.0
+var _dead := false
+var _recoil := 0.0
+var _body_damage := 0.0
+var _burn_per_second := 0.0
+var _burn_time := 0.0
+var _burn_tick := 0.0
+var _scaling := {}
+var _chill_time := 0.0
+var _chill_amount := 0.0
+var _poison_stacks := 0
+var _poison_per_stack := 0.0
+var _poison_time := 0.0
+var _poison_tick := 0.0
+var _bleed_stacks := 0
+var _bleed_per_stack := 0.0
+var _bleed_time := 0.0
+var _stuck_time := 0.0
+## Which way an enemy steps around an obstacle; it keeps going the same way
+## round until that's blocked too.
+var _detour_side := 1.0
+var _detour_time := 0.0
+var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
+## How many melee enemies may attack at once (set by the level: 1 early, 2 later).
+static var max_attackers := 1
+static var _attackers: Array = []
+## False for enemies that fight from range (they never wait their turn).
+var takes_turns := true
+var _turn_rest := 0.0
+## How the killing blow should send the body flying, set by the player just
+## before a punch lands: {type, hand, level (0 plain, 1 counter, 2 clean or
+## perfect), dir, player}. Empty = no launch (burns, poison...).
+var finisher := {}
+var _flying := false
+var _fly_time := 0.0
+var _fly_spin := Vector3.ZERO
+var _fly_level := 0
+var _fly_trail := 0.0
+var _bowled: Array = []
+var _turn_age := 0.0
+
+static var _flash_material: StandardMaterial3D
+
+
+## Call before adding to the tree. scaling holds wave multipliers:
+## "hp", "damage", "speed" and "reward" (all default to 1).
+func setup(target: Player, is_armored: bool, scaling := {}) -> void:
+	player = target
+	armored = is_armored
+	_scaling = scaling
+
+
+func _ready() -> void:
+	add_to_group("enemies")
+	_body = Node3D.new()
+	add_child(_body)
+	_build_body()
+	armor = base_armor
+	# Tiered gear for where on the Climb it spawns (EnemyGear). The old
+	# "armored" spawns now mean at least a helmet and chest plate.
+	var style := _gear_style()
+	if style != "none":
+		gear = _scaling.gear if _scaling.has("gear") else EnemyGear.roll(float(_scaling.get("position", -1.0)), armored, is_boss)
+	if not gear.is_empty():
+		EnemyGear.dress(self, gear, style)
+		armored = gear.pieces.has("chest") or gear.pieces.has("helmet")
+	# Now and then, a hat (Arena and Crypt only).
+	if style != "none" and float(_scaling.get("position", -1.0)) >= 0.0:
+		hat = _scaling.hat if _scaling.has("hat") else Hats.roll(self is Skeleton)
+		if hat != "":
+			_wear_hat()
+	if armored and style != "none" and gear.is_empty():
+		armor += armor_value
+		max_hp += armor_bonus_hp
+		coin_reward *= 2
+		xp_reward = roundi(xp_reward * 1.5)
+		_build_armor()
+	max_hp *= _scaling.get("hp", 1.0)
+	move_speed *= _scaling.get("speed", 1.0)
+	damage_multiplier = _scaling.get("damage", 1.0)
+	coin_reward = roundi(coin_reward * _scaling.get("reward", 1.0))
+	xp_reward = roundi(xp_reward * _scaling.get("reward", 1.0))
+	if not gear.is_empty():
+		# Gear blocks a share of the punch you're expected to throw here.
+		EnemyGear.apply_stats(self, gear, Progression.BASE_DAMAGE * float(_scaling.get("hp", 1.0)))
+	hp = max_hp
+
+	_hp_label = Label3D.new()
+	_hp_label.position.y = 2.35
+	# Same size on screen at any distance, so it never fills the view up close.
+	_hp_label.fixed_size = true
+	_hp_label.pixel_size = 0.0012
+	_hp_label.font_size = 28
+	_hp_label.outline_size = 10
+	_hp_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	_hp_label.no_depth_test = true
+	_hp_label.visible = false
+	add_child(_hp_label)
+	# Once subclasses have added their parts too, rebuild them all as voxels.
+	_voxelize_parts.call_deferred()
+
+
+## Swaps each plain part for its voxel version (see Voxel). Parts keep their
+## nodes, so animation, hit flashes and the elite glow still work.
+func _voxelize_parts() -> void:
+	for part in _meshes:
+		if not is_instance_valid(part) or part.mesh == null or part.has_meta("base_color"):
+			continue
+		var material := part.mesh.surface_get_material(0)
+		var voxels := Voxel.voxelize(part.mesh, material)
+		if voxels == null:
+			continue
+		part.set_meta("base_color", (material as StandardMaterial3D).albedo_color)
+		part.set_meta("base_material", material)
+		part.mesh = voxels
+
+
+func _physics_process(delta: float) -> void:
+	if _flying:
+		_fly(delta)
+		return
+	if not is_on_floor():
+		velocity.y -= _gravity * delta
+
+	var desired := Vector3.ZERO
+	var pace := 1.0
+	if not _dead:
+		_flash_timer -= delta
+		if _flash_timer <= 0.0:
+			_set_flash(false)
+		_stagger_timer -= delta
+		if _taunt_time > 0.0:
+			_taunt_time -= delta
+			if _taunt_time <= 0.0:
+				_end_taunt()
+		# Body damage slows everything: movement, windups, cooldowns.
+		_body_damage = maxf(0.0, _body_damage - BODY_DAMAGE_DECAY * delta)
+		pace = 1.0 - MAX_BODY_SLOW * _body_damage
+		if _chill_time > 0.0:
+			_chill_time -= delta
+			pace *= 1.0 - _chill_amount
+		_update_statuses(delta)
+		_turn_rest -= delta
+		if _attackers.has(self):
+			_turn_age += delta
+			if _turn_age > TURN_TIMEOUT:
+				end_turn()
+		if _stagger_timer <= 0.0 and is_instance_valid(player) and player.active:
+			desired = _steer(_think(delta * pace) * pace, delta)
+
+	if _burn_time > 0.0 and not _dead:
+		_update_burn(delta)
+	_knockback = _knockback.move_toward(Vector3.ZERO, KNOCKBACK_DECAY * delta)
+	velocity.x = desired.x + _knockback.x
+	velocity.z = desired.z + _knockback.z
+	move_and_slide()
+	_check_stuck(desired, delta)
+	# Body snaps back on a hit, then eases forward again.
+	_recoil = move_toward(_recoil, 0.0, RECOIL_RECOVERY * delta)
+	_body.position.z = _recoil
+	if not _dead:
+		_animate(delta * pace, Vector2(desired.x, desired.z).length())
+
+
+## Applies a punch and returns the damage dealt after armor. stagger cancels
+## the enemy's current attack; caption (e.g. "COUNTER!") shows above the number.
+## pierce ignores armor (weak spots).
+## crush also ignores damage reduction (Bone Breaker).
+func take_hit(raw_damage: float, hit_point: Vector3, push: Vector3, stagger: bool, caption := "", pierce := false, crush := false) -> float:
+	if _dead:
+		return 0.0
+	var head_shot := hit_zone(hit_point) == "head"
+	# Brittle (Frost): frozen enemies take more from everything.
+	if _chill_time > 0.0:
+		raw_damage *= 1.0 + GameState.get_effect("brittle")
+	if head_shot:
+		raw_damage *= HEAD_MULTIPLIER + GameState.get_effect("head_bonus")
+	# Wise Up: an enraged monster bleeds easier (Tony's punches only).
+	if is_taunted() and not finisher.is_empty():
+		raw_damage *= TAUNT_TAKEN + GameState.get_effect("wise_up")
+	var worn := armor + (head_armor if head_shot else 0.0)
+	var effective_armor := 0.0 if pierce or crush else worn * (1.0 - GameState.get_armor_pierce())
+	var damage := maxf(0.0, raw_damage - effective_armor) * (1.0 - (0.0 if crush else damage_reduction))
+	if not head_shot and damage > 0.0:
+		var was_winded := _body_damage >= WINDED_THRESHOLD
+		# Liver Shot skill: a body shot on an already-winded enemy doubles it over.
+		if was_winded and GameState.has_effect("liver_shot") and not stagger:
+			stagger = true
+			DamagePopup.spawn(get_parent(), "LIVER SHOT", BODY_COLOR, 48, global_position + Vector3(0, 1.4, 0))
+		_body_damage = minf(1.0, _body_damage + BODY_DAMAGE_PER_HIT * (1.0 + GameState.get_effect("body_bonus")))
+		if not was_winded and _body_damage >= WINDED_THRESHOLD:
+			DamagePopup.spawn(get_parent(), "WINDED", BODY_COLOR, 44, global_position + Vector3(0, 1.2, 0))
+	hp -= damage
+	_knockback = push
+	_recoil = RECOIL_DISTANCE * (2.0 if stagger else 1.0)
+	_set_flash(true)
+	if stagger:
+		_stagger_timer = STAGGER_TIME
+		_on_staggered()
+
+	var parent := get_parent()
+	var toward_player := -push
+	if damage > 0.0:
+		var size := 48 + mini(int(damage * 2), 48) + (8 if head_shot else 0)
+		var text := "%.1f" % damage if caption == "" else "%s\n%.1f" % [caption, damage]
+		var color := (HEAD_COLOR if head_shot else BODY_COLOR) if caption == "" else Color(1, 0.55, 0.15)
+		DamagePopup.spawn(parent, text, color, size, hit_point)
+		HitFx.burst(parent, hit_point, toward_player + Vector3.UP, hit_color, mini(10 + int(damage), 36), 5.0, false, 0.07)
+		# A flash of light at the impact; heavy hits and counters ring out.
+		HitFx.flash(parent, hit_point, Color(1.0, 0.8, 0.55, 0.8) if not head_shot else Color(1.0, 0.92, 0.5, 0.85), clampf(0.25 + damage * 0.01, 0.25, 0.55))
+		if stagger:
+			HitFx.ring(parent, hit_point, Color(1.0, 0.7, 0.35, 0.6) if caption == "" else Color(1.0, 0.55, 0.2, 0.7), 0.7 + minf(damage * 0.01, 0.4))
+	else:
+		DamagePopup.spawn(parent, "BLOCKED", Color(0.7, 0.7, 0.75), 40, hit_point)
+	if armored or (head_shot and head_armor > 0.0):
+		var spark: Color = EnemyGear.tier_info(gear).spark if not gear.is_empty() else SPARK_COLOR
+		HitFx.burst(parent, hit_point, toward_player + Vector3.UP, spark, 8, 6.0, true, 0.025)
+
+	if hp <= 0.0:
+		_die(push)
+	else:
+		_update_label()
+		# Uppercuts knock hats off; rarer hats hold on tighter.
+		if hat != "" and finisher.get("type", "") == "uppercut" and randf() < Hats.POP_CHANCE[Hats.info(hat).rarity]:
+			_pop_hat()
+	return damage
+
+
+func is_dead() -> bool:
+	return _dead
+
+
+## Turns this enemy into an elite with a trait: Swift (faster, shorter
+## windups), Brutal (hits much harder), Ironclad (armor plus 35% damage
+## reduction), Hulking
+## (bigger, much more HP). Call after it's in the tree.
+func make_elite(trait_name: String) -> void:
+	max_hp *= ELITE_HP
+	match trait_name:
+		"Swift":
+			move_speed *= 1.35
+			if "windup_scale" in self:
+				set("windup_scale", get("windup_scale") * 0.85)
+		"Brutal":
+			damage_multiplier *= 1.5
+		"Ironclad":
+			armor += IRONCLAD_ARMOR
+			damage_reduction = IRONCLAD_REDUCTION
+		"Hulking":
+			max_hp *= 1.5
+			_body.scale *= 1.2
+	hp = max_hp
+	coin_reward *= ELITE_REWARD
+	xp_reward *= ELITE_REWARD
+	display_name = "%s %s" % [trait_name, display_name]
+	var aura := OmniLight3D.new()
+	aura.light_color = ELITE_COLOR
+	aura.light_energy = 1.6
+	aura.omni_range = 3.0
+	aura.position.y = 1.2
+	add_child(aura)
+	for mesh in _meshes:
+		var glow := StandardMaterial3D.new()
+		glow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		glow.albedo_color = Color(ELITE_COLOR, 0.12)
+		glow.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mesh.material_overlay = glow
+		mesh.set_meta("elite_overlay", glow)
+	_update_label()
+
+
+## Walking into a wall or block: slide sideways around it for a moment.
+func _steer(desired: Vector3, delta: float) -> Vector3:
+	if _detour_time <= 0.0 or desired.length_squared() < 0.01:
+		return desired
+	_detour_time -= delta
+	var side_step := Vector3(-desired.z, 0, desired.x).normalized() * _detour_side
+	return (desired.normalized() * 0.25 + side_step).normalized() * desired.length()
+
+
+func _check_stuck(desired: Vector3, delta: float) -> void:
+	var wanted := Vector2(desired.x, desired.z).length()
+	if wanted < 0.5:
+		_stuck_time = 0.0
+		return
+	var moved := Vector2(velocity.x, velocity.z).length()
+	_stuck_time = _stuck_time + delta if moved < wanted * 0.35 else 0.0
+	if _stuck_time < STUCK_TIME:
+		return
+	_stuck_time = 0.0
+	if _detour_time > 0.0:
+		# Blocked going this way round too: try the other side.
+		_detour_side = -_detour_side
+	_detour_time = DETOUR_TIME
+
+
+## Slowed for a while (Frost Slip): amount 0-1 of its pace lost.
+func chill(duration: float, amount: float) -> void:
+	if _dead:
+		return
+	_chill_time = maxf(_chill_time, duration)
+	_chill_amount = maxf(_chill_amount, amount)
+	DamagePopup.spawn(get_parent(), "CHILLED", FROST_COLOR, 36, global_position + Vector3(0, 2.0, 0))
+	HitFx.burst(get_parent(), global_position + Vector3(0, 1.2, 0), Vector3.UP, FROST_COLOR, 10, 2.0, true, 0.05)
+
+
+## Adds a stack of poison (Venom): damage per second per stack, ignoring armor.
+func poison(per_stack: float) -> void:
+	if _dead:
+		return
+	_poison_stacks = mini(_poison_stacks + 1, MAX_POISON_STACKS)
+	_poison_per_stack = maxf(_poison_per_stack, per_stack)
+	_poison_time = POISON_TIME
+
+
+## Adds a stack of bleeding (Serrated): every attack this enemy throws hurts it.
+func bleed(per_stack: float) -> void:
+	if _dead:
+		return
+	_bleed_stacks = mini(_bleed_stacks + 1, MAX_BLEED_STACKS)
+	_bleed_per_stack = maxf(_bleed_per_stack, per_stack)
+	_bleed_time = BLEED_TIME
+
+
+## Subclasses call this when they throw an attack: bleeding hurts.
+func _on_attacking() -> void:
+	if _bleed_stacks <= 0 or _dead:
+		return
+	_status_damage(_bleed_stacks * _bleed_per_stack, BLEED_COLOR, "BLEED")
+
+
+func _update_statuses(delta: float) -> void:
+	if _bleed_stacks > 0:
+		_bleed_time -= delta
+		if _bleed_time <= 0.0:
+			_bleed_stacks = 0
+	if _poison_stacks > 0:
+		_poison_time -= delta
+		_poison_tick += delta
+		if _poison_tick >= 0.5:
+			_poison_tick = 0.0
+			_status_damage(_poison_stacks * _poison_per_stack * 0.5, POISON_COLOR)
+		if _poison_time <= 0.0:
+			_poison_stacks = 0
+
+
+## Damage over time and the like: ignores armor, no stagger.
+func _status_damage(amount: float, color: Color, caption := "") -> void:
+	if _dead or amount <= 0.0:
+		return
+	hp -= amount
+	var chest := global_position + Vector3(0, 1.3, 0)
+	var text := "%.1f" % amount if caption == "" else "%s\n%.1f" % [caption, amount]
+	DamagePopup.spawn(get_parent(), text, color, 34, chest)
+	HitFx.burst(get_parent(), chest, Vector3.UP, color, 6, 1.5, true, 0.05)
+	if hp <= 0.0:
+		_die(Vector3.ZERO)
+	else:
+		_update_label()
+
+
+## Sets the enemy burning: damage every half second for duration, ignoring
+## armor. Re-igniting refreshes the burn rather than stacking it.
+func ignite(damage_per_second: float, duration: float) -> void:
+	if _dead:
+		return
+	_burn_per_second = maxf(_burn_per_second, damage_per_second)
+	_burn_time = maxf(_burn_time, duration)
+
+
+func _update_burn(delta: float) -> void:
+	_burn_time -= delta
+	_burn_tick += delta
+	if _burn_tick < 0.5:
+		return
+	_burn_tick = 0.0
+	var damage := _burn_per_second * 0.5
+	hp -= damage
+	var chest := global_position + Vector3(0, 1.2, 0)
+	DamagePopup.spawn(get_parent(), "%.1f" % damage, Powers.FIRE_COLOR, 36, chest)
+	HitFx.burst(get_parent(), chest, Vector3.UP, Powers.FIRE_COLOR, 5, 1.5, true, 0.05)
+	if hp <= 0.0:
+		_die(Vector3.ZERO)
+	else:
+		_update_label()
+	if _burn_time <= 0.0:
+		_burn_per_second = 0.0
+
+
+## "head" or "body", from how high on the enemy the punch landed.
+func hit_zone(hit_point: Vector3) -> String:
+	var height := to_local(hit_point).y / maxf(_body.scale.y, 0.01)
+	return "head" if height >= head_height else "body"
+
+
+## Knocked silly (e.g. by a Combo Master shockwave): can't act for a while.
+func stun(duration: float) -> void:
+	if _dead:
+		return
+	_stagger_timer = maxf(_stagger_timer, duration)
+	_on_staggered()
+	DamagePopup.spawn(get_parent(), "STUNNED", Color(1, 0.8, 0.3), 40, global_position + Vector3(0, 2.0, 0))
+
+
+## Damage a Counter Master's perfect counter deals: enough to finish anything,
+## or a big chunk of a boss.
+func get_knockout_damage() -> float:
+	if is_boss:
+		return max_hp * (0.25 + GameState.get_effect("boss_ko_bonus")) + armor
+	return (hp + armor) + 1.0
+
+
+## Called before a punch lands. Return true to dodge it (no damage).
+func try_evade(_punch_type: String, _hand: String) -> bool:
+	return false
+
+
+## True if a punch passes straight through (a Wraith that isn't open).
+func phased(_punch_type: String, _counter: bool) -> bool:
+	return false
+
+
+## True if a punch is stopped by a shield (a Shieldbearer's front).
+func blocks_punch(_punch_type: String, _counter: bool) -> bool:
+	return false
+
+
+## Damage multiplier for a punch of this type hitting a weak spot (1 = none).
+## Weak-spot hits also ignore armor.
+func weak_spot_multiplier(_punch_type: String) -> float:
+	return 1.0
+
+
+## Restores HP (a Grave Priest's healing). Returns how much was restored.
+func heal(amount: float) -> float:
+	if _dead or hp >= max_hp:
+		return 0.0
+	var restored := minf(amount, max_hp - hp)
+	hp += restored
+	_update_label()
+	var chest := global_position + Vector3(0, 1.2, 0)
+	DamagePopup.spawn(get_parent(), "+%d" % ceili(restored), HEAL_COLOR, 44, chest + Vector3(0, 0.6, 0))
+	HitFx.burst(get_parent(), chest, Vector3.UP, HEAL_COLOR, 12, 2.5, true, 0.05)
+	return restored
+
+
+## The flash that marks an attack as fully wound up: a burst of light in the
+## color of the defense that beats it, plus a sharp "ting".
+func _flash_tell(color: Color, height := 1.5) -> void:
+	var at := global_position + Vector3.UP * height * _body.scale.y
+	var light := OmniLight3D.new()
+	light.light_color = color
+	light.light_energy = 4.0
+	light.omni_range = 3.5
+	add_child(light)
+	light.global_position = at
+	var tween := light.create_tween()
+	tween.tween_property(light, "light_energy", 0.0, TELL_FLASH_TIME + 0.1)
+	tween.tween_callback(light.queue_free)
+	HitFx.burst(get_parent(), at, Vector3.UP, color, 8, 2.0, true, 0.04)
+	Sfx.play_at("tell", at, -2.0)
+
+
+# --- Overridden by subclasses -------------------------------------------------
+
+func _build_body() -> void:
+	pass
+
+
+func _build_armor() -> void:
+	pass
+
+
+## Enraged by Tony for this long: steam, a red glow, and it's coming for him.
+func taunt(seconds: float) -> void:
+	if _dead:
+		return
+	_taunt_time = seconds
+	DamagePopup.spawn(get_parent(), "ENRAGED!", Color(1.0, 0.25, 0.15), 54, global_position + Vector3(0, 2.4 * _body.scale.y, 0))
+	Sfx.play_at("growl", global_position + Vector3.UP * 1.6, 2.0, 0.8)
+	if _taunt_fx == null:
+		_taunt_fx = Node3D.new()
+		_taunt_fx.position.y = 2.0 * _body.scale.y
+		add_child(_taunt_fx)
+		var steam := CPUParticles3D.new()
+		steam.amount = 16
+		steam.lifetime = 0.8
+		steam.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+		steam.emission_sphere_radius = 0.18
+		steam.direction = Vector3.UP
+		steam.spread = 25.0
+		steam.gravity = Vector3(0, 1.5, 0)
+		steam.initial_velocity_min = 0.6
+		steam.initial_velocity_max = 1.2
+		steam.scale_amount_min = 0.6
+		steam.scale_amount_max = 1.4
+		var ramp := Gradient.new()
+		ramp.set_color(0, Color(1.0, 0.3, 0.2, 0.9))
+		ramp.set_color(1, Color(1.0, 0.9, 0.9, 0.0))
+		steam.color_ramp = ramp
+		var puff := BoxMesh.new()
+		puff.size = Vector3.ONE * 0.09
+		var material := StandardMaterial3D.new()
+		material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		material.vertex_color_use_as_albedo = true
+		material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		puff.material = material
+		steam.mesh = puff
+		_taunt_fx.add_child(steam)
+		var glow := OmniLight3D.new()
+		glow.light_color = Color(1.0, 0.2, 0.1)
+		glow.light_energy = 1.6
+		glow.omni_range = 2.5
+		glow.position.y = -0.8
+		_taunt_fx.add_child(glow)
+
+
+func is_taunted() -> bool:
+	return _taunt_time > 0.0 and not _dead
+
+
+func _end_taunt() -> void:
+	_taunt_time = 0.0
+	if _taunt_fx:
+		_taunt_fx.queue_free()
+		_taunt_fx = null
+
+
+## Puts the hat on the head (on top of any helmet).
+func _wear_hat() -> void:
+	var head: Dictionary = EnemyGear._body_map(self).get("head", {})
+	if head.is_empty():
+		hat = ""
+		return
+	var part: MeshInstance3D = head.part
+	var size: Vector3 = (part.mesh as BoxMesh).size
+	var lift := size.y * (0.56 if gear.get("pieces", []).has("helmet") else 0.5)
+	# Hats run big: they should read across the room, and look silly.
+	_hat_node = Hats.build(hat, maxf(size.x, 0.26) * Hats.SIZE * (Hats.FRUIT_SIZE if hat == "fruit_hat" else 1.0))
+	_hat_node.transform = part.transform * Transform3D(Basis.IDENTITY, Vector3(0, lift, 0))
+	part.get_parent().add_child(_hat_node)
+	var spin := _hat_node.get_node_or_null("Spin")
+	if spin:
+		spin.create_tween().set_loops().tween_property(spin, "rotation:y", TAU, 0.6).from(0.0)
+	if Hats.info(hat).rarity == "legendary":
+		Hats.sparkles(_hat_node, Hats.color(hat), 0.3)
+
+
+## The hat flies off spinning, then the game pauses for the popup.
+func _pop_hat() -> void:
+	var id := hat
+	hat = ""
+	if _hat_node == null or not is_instance_valid(_hat_node):
+		HatPopup.open(get_tree(), id)
+		return
+	var flying := _hat_node
+	_hat_node = null
+	var world := get_parent()
+	var at := flying.global_transform
+	flying.get_parent().remove_child(flying)
+	world.add_child(flying)
+	flying.global_transform = at
+	Hats.sparkles(flying, Hats.color(id), 0.35)
+	DamagePopup.spawn(world, "HAT!", Hats.color(id), 60, at.origin + Vector3.UP * 0.6)
+	Sfx.play("coin", 0.0, 1.4)
+	var tween := flying.create_tween().set_parallel()
+	tween.tween_property(flying, "global_position", at.origin + Vector3(randf_range(-0.6, 0.6), 1.8, 0), 0.45).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.tween_property(flying, "rotation", flying.rotation + Vector3(TAU, PI, 0.6), 0.45)
+	tween.chain().tween_callback(func() -> void:
+		if is_instance_valid(flying):
+			flying.queue_free()
+		HatPopup.open(world.get_tree(), id))
+
+
+## A non-uppercut KO: the hat's gone in a puff.
+func _lose_hat() -> void:
+	hat = ""
+	if _hat_node and is_instance_valid(_hat_node):
+		HitFx.burst(get_parent(), _hat_node.global_position, Vector3.UP, Color(0.8, 0.8, 0.85), 18, 3.0, false, 0.05)
+		DamagePopup.spawn(get_parent(), "poof", Color(0.75, 0.75, 0.8), 36, _hat_node.global_position + Vector3.UP * 0.3)
+		_hat_node.queue_free()
+	_hat_node = null
+
+
+## How EnemyGear dresses this enemy: "plate", "robe", "suit" or "none".
+func _gear_style() -> String:
+	return "plate"
+
+
+## Nodes whose farthest box part is a hand (for gauntlets).
+func _hand_nodes() -> Array:
+	return []
+
+
+## Parts of a held weapon (recolored to the gear tier instead of gauntlets).
+func _weapon_parts() -> Array:
+	return []
+
+
+## Returns the horizontal velocity the enemy wants this frame.
+func _think(_delta: float) -> Vector3:
+	return Vector3.ZERO
+
+
+func _animate(_delta: float, _speed: float) -> void:
+	pass
+
+
+## Called when a heavy punch staggers this enemy; cancel attacks here.
+func _on_staggered() -> void:
+	pass
+
+
+# --- Helpers for subclasses ----------------------------------------------------
+
+## Flat direction and distance to the player.
+func _to_player() -> Vector3:
+	var offset := player.global_position - global_position
+	offset.y = 0.0
+	return offset
+
+
+func _turn_toward(direction: Vector3, delta: float) -> void:
+	if direction.length_squared() < 0.0001:
+		return
+	var target_yaw := atan2(-direction.x, -direction.z)
+	rotation.y = lerp_angle(rotation.y, target_yaw, minf(1.0, TURN_SPEED * delta))
+
+
+func _pivot(parent: Node3D, pos: Vector3) -> Node3D:
+	var pivot := Node3D.new()
+	pivot.position = pos
+	parent.add_child(pivot)
+	return pivot
+
+
+func _part(parent: Node3D, mesh: PrimitiveMesh, material: Material, pos: Vector3, rot := Vector3.ZERO) -> MeshInstance3D:
+	mesh.material = material
+	var part := MeshInstance3D.new()
+	part.mesh = mesh
+	part.position = pos
+	part.rotation = rot
+	parent.add_child(part)
+	_meshes.append(part)
+	return part
+
+
+static func _box(size: Vector3) -> BoxMesh:
+	var mesh := BoxMesh.new()
+	mesh.size = size
+	return mesh
+
+
+static func _cylinder(radius: float, height: float) -> CylinderMesh:
+	var mesh := CylinderMesh.new()
+	mesh.top_radius = radius
+	mesh.bottom_radius = radius
+	mesh.height = height
+	mesh.radial_segments = 8
+	mesh.rings = 1
+	return mesh
+
+
+## Every block in the game uses this: textured with the shared voxel grain.
+static func _material(color: Color, metallic := 0.0) -> StandardMaterial3D:
+	return Look.block_material(color, metallic)
+
+
+static func _glow_material(color: Color) -> StandardMaterial3D:
+	var material := StandardMaterial3D.new()
+	material.albedo_color = color
+	material.emission_enabled = true
+	material.emission = color
+	material.emission_energy_multiplier = 4.0
+	return material
+
+
+# --- Internals -------------------------------------------------------------------
+
+func _update_label() -> void:
+	var text := "%s\n%d / %d" % [display_name, ceili(hp), int(max_hp)]
+	if armor > 0.0:
+		text += "\nArmor %d" % int(armor)
+	if damage_reduction > 0.0:
+		text += "  -%d%%" % roundi(damage_reduction * 100)
+	_hp_label.text = text
+	_hp_label.visible = true
+
+
+func _set_flash(on: bool) -> void:
+	if on:
+		_flash_timer = FLASH_TIME
+	if _flash_material == null:
+		_flash_material = StandardMaterial3D.new()
+		_flash_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		_flash_material.albedo_color = Color(1, 1, 1, 0.3)
+		_flash_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	for mesh in _meshes:
+		if on:
+			mesh.material_overlay = _flash_material
+		else:
+			mesh.material_overlay = mesh.get_meta("elite_overlay") if mesh.has_meta("elite_overlay") else null
+
+
+# --- Attack turns ---------------------------------------------------------------
+
+## The attack this enemy is winding up or throwing at the player ("" if none).
+func incoming_attack() -> String:
+	return ""
+
+
+## Seconds until that attack lands (lower = more urgent).
+func attack_eta() -> float:
+	return INF
+
+
+## True if this enemy may attack now. Claims a free turn when it has rested.
+func has_turn() -> bool:
+	if not takes_turns or is_boss or is_taunted():
+		return true
+	_attackers = _attackers.filter(func(e) -> bool: return is_instance_valid(e) and not e._dead)
+	if _attackers.has(self):
+		return true
+	if _turn_rest > 0.0 or _attackers.size() >= max_attackers:
+		return false
+	_attackers.append(self)
+	_turn_age = 0.0
+	return true
+
+
+## Holding a turn right now (without trying to claim one).
+func in_turn() -> bool:
+	return not takes_turns or is_boss or _attackers.has(self)
+
+
+## Done attacking: step back out and let another enemy in.
+func end_turn() -> void:
+	if _attackers.has(self):
+		_attackers.erase(self)
+		_turn_rest = randf_range(TURN_REST.x, TURN_REST.y)
+
+
+## The player punched this enemy: it fights now, taking the turn of whoever
+## has been attacking longest.
+func take_turn() -> void:
+	if not takes_turns or is_boss or _dead or _attackers.has(self):
+		return
+	_attackers = _attackers.filter(func(e) -> bool: return is_instance_valid(e) and not e._dead)
+	if _attackers.size() >= max_attackers:
+		var other: Enemy = _attackers.pop_front()
+		other._turn_rest = 0.6
+	_attackers.append(self)
+	_turn_age = 0.0
+	_turn_rest = 0.0
+
+
+## Waiting for a turn: keep about WAIT_DISTANCE away, circling slowly.
+func _wait_move(offset: Vector3, delta: float, speed: float) -> Vector3:
+	var distance := offset.length()
+	var direction := offset.normalized()
+	if distance > WAIT_DISTANCE + 0.8:
+		return direction * speed
+	if distance < WAIT_DISTANCE - 0.6:
+		return -direction * speed * 0.8
+	_wait_circle -= delta
+	if _wait_circle <= 0.0:
+		_wait_circle = randf_range(1.0, 2.5)
+		_wait_sign = [-1.0, 1.0].pick_random()
+	return direction.cross(Vector3.UP) * _wait_sign * speed * 0.35
+
+
+var _wait_circle := 0.0
+var _wait_sign := 1.0
+
+
+func _die(push: Vector3) -> void:
+	_dead = true
+	end_turn()
+	# Finish a hatted enemy with an uppercut and the hat is always yours;
+	# any other KO and it's gone in a puff.
+	if hat != "":
+		if finisher.get("type", "") == "uppercut":
+			_pop_hat()
+		else:
+			_lose_hat()
+	# Sigil capstones: burning enemies explode (Pyre), frozen ones shatter.
+	if _burn_time > 0.0 and GameState.has_effect("pyre"):
+		Powers.pyre(self)
+	if _chill_time > 0.0 and GameState.has_effect("frost_shatter"):
+		Powers.frost_burst(self)
+	_set_flash(false)
+	_hp_label.visible = false
+	collision_layer = 0
+	collision_mask = 1
+	# Fling the body away from the punch and scatter coins.
+	_knockback = push * 2.5
+	velocity.y = 3.0
+	var chest := global_position + Vector3(0, 1.2, 0)
+	HitFx.burst(get_parent(), chest, Vector3.UP, COIN_COLOR, 6 + coin_reward, 5.0, true, 0.07)
+	HitFx.burst(get_parent(), chest, push + Vector3.UP, hit_color, 25, 5.0)
+	Sfx.play_at("death", chest)
+	Sfx.play("coin", -8.0)
+	died.emit(self)
+	if not finisher.is_empty():
+		_launch(finisher)
+		return
+	# Crumple back, then break apart into cubes.
+	var tween := create_tween()
+	tween.tween_property(_body, "rotation:x", PI / 2, 0.35).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tween.tween_callback(func() -> void:
+		HitFx.shatter(get_parent(), _meshes, push, Color(0.55, 0.8, 1.0))
+		_body.visible = false)
+	tween.tween_interval(1.6)
+	tween.tween_callback(queue_free)
+
+
+# --- Finishing blows: the body flies ---------------------------------------------
+
+## Launch strength by finisher level: plain, counter, clean / perfect counter.
+const LAUNCH_POWER := [1.0, 1.8, 3.4]
+const LAUNCH_MAX_TIME := 1.6
+
+
+## Sends the body flying the way the killing punch went: uppercuts straight up,
+## hooks sideways, straights and haymakers back. Counters exaggerate it; a clean
+## or perfect counter is ridiculous (slow motion, spin, and it bowls through
+## anything it hits).
+func _launch(blow: Dictionary) -> void:
+	var dir: Vector3 = blow.get("dir", -global_basis.z)
+	dir.y = 0.0
+	dir = dir.normalized() if dir.length() > 0.01 else Vector3.FORWARD
+	var right := dir.cross(Vector3.UP)
+	var level: int = blow.get("level", 0)
+	var power: float = LAUNCH_POWER[level]
+	var launch := Vector3.ZERO
+	match blow.get("type", "jab"):
+		"uppercut":
+			launch = dir * 1.2 + Vector3.UP * 8.5
+			_fly_spin = Vector3(-7.0, 0, randf_range(-2, 2))
+		"hook":
+			# A left hook swings left to right, so the body goes to the player's right.
+			var across := right * (1.0 if blow.get("hand", "left") == "left" else -1.0)
+			launch = across * 7.5 + dir * 2.0 + Vector3.UP * 3.0
+			_fly_spin = Vector3(0, 9.0, 4.0) * (1.0 if blow.get("hand", "left") == "left" else -1.0)
+		"haymaker":
+			launch = dir * 13.0 + Vector3.UP * 4.5
+			_fly_spin = Vector3(-9.0, randf_range(-3, 3), 0)
+		"spear":
+			launch = dir * 10.0 + Vector3.UP * 1.5
+			_fly_spin = Vector3(-3.0, 0, 0)
+		_:
+			launch = dir * 6.0 + Vector3.UP * 2.8
+			_fly_spin = Vector3(-5.0, 0, randf_range(-1.5, 1.5))
+	launch.x *= power
+	launch.z *= power
+	launch.y *= lerpf(1.0, power, 0.7)
+	_fly_spin *= power
+	if is_boss:
+		launch *= 0.55
+	velocity = launch
+	_knockback = Vector3.ZERO
+	_flying = true
+	_fly_time = 0.0
+	_fly_level = level
+	_bowled.clear()
+	var at := global_position + Vector3(0, 1.2, 0)
+	var who: Node3D = blow.get("player")
+	match level:
+		1:
+			TimeFx.slowmo(0.75, 0.12)
+			HitFx.ring(get_parent(), at, Color(1.0, 0.85, 0.4), 1.2)
+			DamagePopup.spawn(get_parent(), "K.O.!", Color(1.0, 0.85, 0.35), 64, at + Vector3(0, 1.0, 0))
+			if who and "_shake" in who:
+				who._shake = maxf(who._shake, 0.1)
+		2:
+			TimeFx.slowmo(0.45, 0.25)
+			HitFx.flash(get_parent(), at, Color(1.0, 0.95, 0.8), 0.9)
+			HitFx.ring(get_parent(), at, Color(1.0, 0.6, 0.2), 1.8)
+			HitFx.burst(get_parent(), at, launch.normalized(), Color(1.0, 0.8, 0.3), 40, 9.0, true, 0.06)
+			DamagePopup.spawn(get_parent(), ["OBLITERATED!", "SENT TO THE MOON!", "GOODNIGHT!", "FATALITY!"].pick_random(),
+					Color(1.0, 0.45, 0.2), 86, at + Vector3(0, 1.4, 0))
+			Sfx.play_at("quake", at, 2.0, 1.4)
+			Sfx.play("counter", 2.0, 0.7)
+			if who and "_shake" in who:
+				who._shake = maxf(who._shake, 0.22)
+
+
+func _fly(delta: float) -> void:
+	_fly_time += delta
+	velocity.y -= _gravity * 0.85 * delta
+	move_and_slide()
+	_body.rotation += _fly_spin * delta
+	# Clean / perfect counters: a spark trail, and it bowls through anything in its way.
+	if _fly_level >= 2:
+		_fly_trail -= delta
+		if _fly_trail <= 0.0:
+			_fly_trail = 0.05
+			HitFx.burst(get_parent(), global_position + Vector3(0, 1.0, 0), Vector3.UP, Color(1.0, 0.7, 0.3), 3, 1.5, true, 0.05)
+		for node in get_tree().get_nodes_in_group("enemies"):
+			var enemy := node as Enemy
+			if enemy == null or enemy == self or enemy.is_dead() or _bowled.has(enemy):
+				continue
+			if enemy.global_position.distance_to(global_position) < 1.4:
+				_bowled.append(enemy)
+				var shove := velocity
+				shove.y = 0.0
+				enemy.finisher = {"type": "jab", "hand": "left", "level": 1, "dir": shove.normalized(), "player": finisher.get("player")}
+				enemy.take_hit(GameState.get_damage() * 3.0, enemy.global_position + Vector3(0, 1.2, 0), shove.normalized() * 8.0, true, "STRIKE!")
+				if not enemy.is_dead():
+					enemy.finisher = {}
+	var landed := _fly_time > 0.2 and (is_on_floor() or is_on_wall())
+	if landed or _fly_time > LAUNCH_MAX_TIME:
+		_flying = false
+		set_physics_process(false)
+		var at := global_position + Vector3(0, 0.4, 0)
+		HitFx.burst(get_parent(), at, Vector3.UP, Color(0.5, 0.45, 0.4), 10 + 10 * _fly_level, 3.0 + _fly_level, false, 0.06)
+		if _fly_level >= 1:
+			Sfx.play_at("death", at, 0.0, 0.7)
+		HitFx.shatter(get_parent(), _meshes, velocity * 0.2, Color(0.55, 0.8, 1.0))
+		_body.visible = false
+		get_tree().create_timer(1.6, false).timeout.connect(queue_free)

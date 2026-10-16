@@ -1,0 +1,716 @@
+class_name Fists
+extends Node3D
+## First-person arms, built as voxel models (thousands of small cubes, drawn
+## with one MultiMesh per material) and animated with tweens. Each arm pivots
+## at the elbow, so poses rotate the whole forearm. Every fighter has their own
+## hands (see _paint_*): gloves, finger and forearm wraps, sleeves, skin. When
+## the ultimate is ready their hands glow with the fighter's effect.
+## The player calls play_punch(), set_hurt() and set_power_state().
+
+const HURT_COLOR := Color(0.7, 0.1, 0.08)
+## Size of one voxel, in meters.
+const VOXEL := 0.0085
+## The hands render on their own layer, lit by their own soft light (the
+## player's lantern sits right beside them and would wash them out).
+const HAND_LAYER := 2
+## Where the fist sits along the arm (local), for effects.
+const FIST_POINT := Vector3(0, 0.0, -0.34)
+const SKIN := {
+	"berserker": Color(0.56, 0.42, 0.35), "combo_master": Color(0.8, 0.6, 0.45),
+	"counter_master": Color(0.55, 0.38, 0.29), "free_runner": Color(0.5, 0.34, 0.24),
+	"wise_guy": Color(0.86, 0.64, 0.5),
+}
+const DEFAULT_SKIN := Color(0.85, 0.62, 0.48)
+const ACCENT := {
+	"berserker": Color(1.0, 0.42, 0.12), "combo_master": Color(0.6, 0.4, 1.0),
+	"counter_master": Color(0.35, 0.75, 1.0), "free_runner": Color(0.3, 1.0, 0.45),
+	"wise_guy": Color(1.0, 0.75, 0.2),
+}
+
+## Elbow position and rotation of the right arm at rest. The left arm mirrors it.
+## Rotation is (pitch, yaw, roll): pitch tilts the forearm up, yaw swings it
+## inward, roll twists the fist around the forearm.
+const REST_POS := Vector3(0.24, -0.36, -0.1)
+const REST_ROT := Vector3(0.5, 0.18, -0.5)
+
+# Offsets from rest for the right arm (left arm uses the mirrored pose).
+const POSES := {
+	"jab": {
+		"windup_pos": Vector3(0, -0.01, 0.05), "windup_rot": Vector3.ZERO,
+		"strike_pos": Vector3(-0.12, 0.26, -0.32), "strike_rot": Vector3(-0.4, 0.15, 0.5),
+	},
+	"cross": {
+		"windup_pos": Vector3(0.02, -0.02, 0.07), "windup_rot": Vector3(0, -0.1, 0),
+		"strike_pos": Vector3(-0.16, 0.26, -0.34), "strike_rot": Vector3(-0.4, 0.25, 0.5),
+	},
+	# Elbow comes up and out, forearm sweeps across horizontally.
+	"hook": {
+		"windup_pos": Vector3(0.1, 0.04, 0.08), "windup_rot": Vector3(-0.1, -0.35, 0.2),
+		"strike_pos": Vector3(0.04, 0.26, -0.3), "strike_rot": Vector3(-0.45, 1.3, -0.1),
+	},
+	# Elbow drops so the forearm points straight up, then the fist drives upward.
+	"uppercut": {
+		"windup_pos": Vector3(-0.02, -0.16, -0.12), "windup_rot": Vector3(0.6, 0.1, -1.1),
+		"strike_pos": Vector3(-0.12, 0.12, -0.38), "strike_rot": Vector3(0.6, 0.2, -1.1),
+	},
+}
+
+## 0 = standing still, 1 = sprinting. Drives the idle/walk bob.
+var move_amount := 0.0
+## Whose hands these are (a class id). Empty: the current class.
+var fighter := ""
+
+var _bob_time := 0.0
+var _flinch_offset := Vector3.ZERO
+## How far the arms have dropped out of view (a knockout).
+var drop := 0.0
+var _arms := {}
+var _tweens := {}
+var _accent := Color.WHITE
+var _skin_color := DEFAULT_SKIN
+## Voxels being painted for the arm under construction: Vector3i -> [Color, group].
+var _grid := {}
+## Shared materials: "skin" takes the hurt tint, "rim" glows when the
+## ultimate is ready, "gear" is everything else.
+var _materials := {}
+## Per hand: glow effects (particles, light, animated bits).
+var _fx := {}
+var _ability_ready := false
+var _ult_ready := false
+var _hot_hand := ""
+var _time := 0.0
+var _bolt_timer := 0.0
+
+
+func _ready() -> void:
+	if fighter == "":
+		fighter = GameState.player_class
+	_accent = ACCENT.get(fighter, Color(1.0, 0.8, 0.4))
+	_skin_color = SKIN.get(fighter, DEFAULT_SKIN)
+	for group in ["skin", "gear", "rim"]:
+		var material := StandardMaterial3D.new()
+		material.vertex_color_use_as_albedo = true
+		material.vertex_color_is_srgb = true
+		material.roughness = 0.8
+		if group == "rim":
+			material.emission_enabled = true
+			material.emission = _accent
+			material.emission_energy_multiplier = 0.0
+		_materials[group] = material
+	_arms["left"] = _build_arm(-1.0)
+	_arms["right"] = _build_arm(1.0)
+	var fill := OmniLight3D.new()
+	fill.light_cull_mask = HAND_LAYER
+	fill.light_color = Color(1.0, 0.92, 0.85)
+	fill.light_energy = 0.8
+	fill.omni_range = 2.0
+	fill.position = Vector3(0, 0.45, -0.35)
+	add_child(fill)
+	set_hurt(0.0)
+
+
+func _process(delta: float) -> void:
+	_time += delta
+	_bob_time += delta * lerpf(1.5, 10.0, move_amount)
+	var amplitude := lerpf(0.004, 0.02, move_amount)
+	_flinch_offset = _flinch_offset.move_toward(Vector3.ZERO, 0.6 * delta)
+	position = Vector3(cos(_bob_time * 0.5) * amplitude, sin(_bob_time) * amplitude, 0) + _flinch_offset + Vector3(0, -drop, drop * 0.3)
+	_update_effects(delta)
+
+
+## Knocks both fists down and back when the player takes a clean hit.
+func flinch() -> void:
+	_flinch_offset = Vector3(0, -0.08, 0.1)
+
+
+## What the fighter's hands should show. ult: the meter is full (the hands
+## glow). ability and hot_hand ("left", "right", "any": a counter is ready)
+## add small touches.
+func set_power_state(ability: bool, ult: bool, hot_hand := "") -> void:
+	_ability_ready = ability
+	_ult_ready = ult
+	_hot_hand = hot_hand
+
+
+func play_punch(type: String, hand: String, impact_time: float, total_time: float) -> void:
+	var arm: Node3D = _arms[hand]
+	var mirror := -1.0 if hand == "left" else 1.0
+	var pose: Dictionary = POSES[type]
+	var rest_pos := _mirror_pos(REST_POS, mirror)
+	var rest_rot := _mirror_rot(REST_ROT, mirror)
+
+	if _tweens.has(hand):
+		(_tweens[hand] as Tween).kill()
+
+	var windup_time := impact_time * 0.35
+	var strike_time := impact_time - windup_time
+	var recover_time := maxf(total_time - impact_time, 0.08)
+
+	var tween := create_tween()
+	tween.tween_property(arm, "position", rest_pos + _mirror_pos(pose.windup_pos, mirror), windup_time) \
+			.set_trans(Tween.TRANS_SINE)
+	tween.parallel().tween_property(arm, "rotation", rest_rot + _mirror_rot(pose.windup_rot, mirror), windup_time)
+	tween.tween_property(arm, "position", rest_pos + _mirror_pos(pose.strike_pos, mirror), strike_time) \
+			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tween.parallel().tween_property(arm, "rotation", rest_rot + _mirror_rot(pose.strike_rot, mirror), strike_time)
+	tween.tween_property(arm, "position", rest_pos, recover_time) \
+			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tween.parallel().tween_property(arm, "rotation", rest_rot, recover_time)
+	_tweens[hand] = tween
+	# The Blur's punches leave violet afterimages along the way.
+	if fighter == "combo_master":
+		for i in 3:
+			get_tree().create_timer(windup_time + strike_time * (0.3 + i * 0.3), false).timeout.connect(_afterimage.bind(arm))
+
+
+## 0 = healthy, 1 = knuckles about to break: bare skin reddens.
+func set_hurt(amount: float) -> void:
+	amount = clampf(amount, 0.0, 1.0)
+	(_materials.skin as StandardMaterial3D).albedo_color = Color.WHITE.lerp(Color(1.0, 0.45, 0.4), amount * 0.8)
+
+
+# --- Building the voxel arm --------------------------------------------------------
+
+## Paints one arm into a voxel grid (in right-arm coordinates; the thumb is on
+## -X, the inner side), then turns its visible surface into cubes. side is 1
+## for the right arm, -1 for the left.
+func _build_arm(side: float) -> Node3D:
+	var arm := Node3D.new()
+	arm.position = _mirror_pos(REST_POS, side)
+	arm.rotation = _mirror_rot(REST_ROT, side)
+	add_child(arm)
+	_grid.clear()
+	match fighter:
+		"berserker":
+			_paint_mauler()
+		"combo_master":
+			_paint_blur()
+		"counter_master":
+			_paint_answer()
+		"free_runner":
+			_paint_stray(side < 0.0)
+		"wise_guy":
+			_paint_tony(side < 0.0)
+		_:
+			_paint_forearm(_skin_fn(), "skin")
+			_paint_fist(_skin_fn(), _skin_fn())
+	_bake(arm, side)
+	_build_effect(arm, side)
+	return arm
+
+
+## Fills every voxel whose center is inside the box (meters) with color(p) in a
+## group. soft: how much of each edge to shave off, for padded shapes.
+func _fill(from: Vector3, to: Vector3, color: Callable, group := "gear", soft := 0.0) -> void:
+	var lo := Vector3i((from / VOXEL).floor())
+	var hi := Vector3i((to / VOXEL).ceil())
+	var center := (from + to) / 2.0
+	var half := (to - from) / 2.0
+	for x in range(lo.x, hi.x):
+		for y in range(lo.y, hi.y):
+			for z in range(lo.z, hi.z):
+				var p := (Vector3(x, y, z) + Vector3(0.5, 0.5, 0.5)) * VOXEL
+				if p.x < from.x or p.x > to.x or p.y < from.y or p.y > to.y or p.z < from.z or p.z > to.z:
+					continue
+				if soft > 0.0:
+					# Shave the edges and corners, like a padded box.
+					var d := ((p - center).abs() - (half - Vector3.ONE * soft)).max(Vector3.ZERO)
+					if d.length() > soft:
+						continue
+				_grid[Vector3i(x, y, z)] = [color.call(p), group]
+
+
+## A box tapering along Z from half-size a (at z0) to b (at z1), centered on y_mid.
+func _fill_taper(z0: float, z1: float, a: Vector2, b: Vector2, y_mid: float, color: Callable, group := "gear") -> void:
+	var steps := maxi(1, int((z1 - z0) / VOXEL))
+	for i in steps:
+		var z := z0 + i * VOXEL
+		var t := float(i) / steps
+		var h := a.lerp(b, t)
+		_fill(Vector3(-h.x, y_mid - h.y, z), Vector3(h.x, y_mid + h.y, z + VOXEL * 1.01), color, group)
+
+
+## Turns the painted grid into cubes: only voxels with an open side are kept,
+## one MultiMesh per material group.
+func _bake(arm: Node3D, side: float) -> void:
+	var neighbours := [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, -1, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]
+	var by_group := {}
+	for cell in _grid:
+		var hidden := true
+		for n in neighbours:
+			if not _grid.has(cell + n):
+				hidden = false
+				break
+		if hidden:
+			continue
+		var entry: Array = _grid[cell]
+		if not by_group.has(entry[1]):
+			by_group[entry[1]] = []
+		by_group[entry[1]].append([cell, entry[0]])
+	var cube := BoxMesh.new()
+	cube.size = Vector3.ONE * VOXEL * 1.02
+	for group in by_group:
+		var cells: Array = by_group[group]
+		var multimesh := MultiMesh.new()
+		multimesh.transform_format = MultiMesh.TRANSFORM_3D
+		multimesh.use_colors = true
+		multimesh.mesh = cube
+		multimesh.instance_count = cells.size()
+		for i in cells.size():
+			var cell: Vector3i = cells[i][0]
+			var p := (Vector3(cell) + Vector3(0.5, 0.5, 0.5)) * VOXEL
+			multimesh.set_instance_transform(i, Transform3D(Basis.IDENTITY, _mirror_pos(p, side)))
+			multimesh.set_instance_color(i, cells[i][1])
+		var instance := MultiMeshInstance3D.new()
+		instance.multimesh = multimesh
+		instance.material_override = _materials[group]
+		instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		instance.layers = HAND_LAYER
+		arm.add_child(instance)
+
+
+# --- Color helpers ----------------------------------------------------------------
+
+## A little per-voxel variation so surfaces read as textured blocks.
+func _vary(color: Color, p: Vector3, amount := 0.06) -> Color:
+	var h := absf(sin(p.x * 1271.3 + p.y * 3117.7 + p.z * 1771.1) * 43758.5453)
+	h -= floorf(h)
+	return color.darkened(h * amount) if h > 0.5 else color.lightened((0.5 - h) * amount)
+
+
+func _solid(color: Color, amount := 0.06) -> Callable:
+	return func(p: Vector3) -> Color: return _vary(color, p, amount)
+
+
+func _skin_fn() -> Callable:
+	return func(p: Vector3) -> Color:
+		var c := _skin_color
+		# Creases between the fingers and across the finger joints.
+		if p.z < -0.346:
+			var gap := fposmod(p.x + 0.0455, 0.0227)
+			if gap < VOXEL * 0.9 or (absf(p.y - 0.0) < VOXEL * 0.6 and p.z < -0.385):
+				c = c.darkened(0.25)
+		return _vary(c, p, 0.05)
+
+
+## Bands along the arm: colors repeat every len(colors) * width meters of z.
+func _bands(colors: Array, width: float, edge := Color.TRANSPARENT) -> Callable:
+	return func(p: Vector3) -> Color:
+		var i := int(floorf(p.z / width)) % colors.size()
+		var c: Color = colors[i if i >= 0 else i + colors.size()]
+		if edge.a > 0.0 and fposmod(p.z, width) < VOXEL:
+			c = edge
+		return _vary(c, p, 0.08)
+
+
+# --- The parts every hand shares ---------------------------------------------------
+
+## Forearm from just behind the wrist back past the elbow.
+func _paint_forearm(color: Callable, group := "skin", scale := 1.0, z0 := -0.24, z1 := 0.32) -> void:
+	_fill_taper(z0, z1, Vector2(0.036, 0.032) * scale, Vector2(0.047, 0.042) * scale, 0.0, color, group)
+
+
+func _paint_wrist(color: Callable, group := "skin", grow := 0.0) -> void:
+	_fill(Vector3(-0.042 - grow, -0.037 - grow, -0.29), Vector3(0.042 + grow, 0.037 + grow, -0.235), color, group)
+
+
+## A bare fist: block of the hand, four curled fingers with knuckle bumps, and
+## the thumb across the front. hand/fingers: colors; fingers_group for the
+## fingers' material.
+func _paint_fist(hand: Callable, fingers: Callable, hand_group := "skin", fingers_group := "skin") -> void:
+	_fill(Vector3(-0.047, -0.038, -0.35), Vector3(0.047, 0.036, -0.285), hand, hand_group, 0.006)
+	for i in 4:
+		var x := -0.034 + i * 0.0227
+		_fill(Vector3(x - 0.011, -0.04, -0.395), Vector3(x + 0.011, 0.03, -0.344), fingers, fingers_group, 0.004)
+		# Knuckle bump on top.
+		_fill(Vector3(x - 0.009, 0.026, -0.372), Vector3(x + 0.009, 0.042, -0.342), fingers, fingers_group, 0.003)
+	# Thumb: the base on the inner side, then laid across the front of the fingers.
+	_fill(Vector3(-0.06, -0.04, -0.37), Vector3(-0.036, -0.012, -0.3), hand, hand_group, 0.004)
+	_fill(Vector3(-0.045, -0.05, -0.405), Vector3(-0.004, -0.026, -0.368), hand, hand_group, 0.004)
+
+
+# --- The fighters ------------------------------------------------------------------
+
+## The Mauler: big padded red boxing gloves with seams, a white taped cuff with
+## red laces, and heavy bare forearms. When the ultimate is ready, cracks in
+## the leather glow orange.
+func _paint_mauler() -> void:
+	var red := Color(0.66, 0.07, 0.06)
+	_paint_forearm(_skin_fn(), "skin", 1.25)
+	# Cuff: white tape in bands, laced up the palm side.
+	_fill_taper(-0.3, -0.2, Vector2(0.06, 0.054), Vector2(0.056, 0.05), 0.0, func(p: Vector3) -> Color:
+		var tape := Color(0.92, 0.89, 0.82)
+		if fposmod(p.z, 0.017) < VOXEL:
+			tape = tape.darkened(0.2)
+		if p.y < -0.044 and absf(fposmod(p.z + p.x * 1.5, 0.026) - 0.013) < VOXEL:
+			tape = red.darkened(0.2)
+		return _vary(tape, p, 0.06))
+	var leather := func(p: Vector3) -> Color:
+		var c := red
+		# Seam down the back of the glove and around the thumb.
+		if absf(p.x) < VOXEL * 0.8 and p.y > 0.03:
+			c = red.darkened(0.4)
+		# Padded knuckles a shade lighter.
+		if p.y > 0.035 and p.z < -0.37:
+			c = red.lightened(0.15)
+		# Scuffs.
+		var h := absf(sin(p.x * 913.1 + p.y * 2111.3 + p.z * 731.7) * 9137.31)
+		if h - floorf(h) > 0.975:
+			c = Color(0.85, 0.75, 0.7)
+		return _vary(c, p, 0.08)
+	_fill(Vector3(-0.066, -0.058, -0.435), Vector3(0.066, 0.064, -0.28), leather, "gear", 0.022)
+	_fill(Vector3(-0.084, -0.05, -0.4), Vector3(-0.05, 0.004, -0.3), leather, "gear", 0.012)
+	# Cracks in the leather: dark now, glowing when the Inferno is ready.
+	for cell in _grid.keys():
+		var entry: Array = _grid[cell]
+		var p := (Vector3(cell) + Vector3(0.5, 0.5, 0.5)) * VOXEL
+		if p.z < -0.29 and entry[1] == "gear" and p.y > -0.02:
+			var h := absf(sin(p.x * 377.7 + p.z * 1711.3) * 4371.9)
+			if h - floorf(h) > 0.9:
+				_grid[cell] = [Color(0.95, 0.4, 0.08), "rim"]
+
+
+## The Blur: bare hands with purple wraps around every finger, over the
+## knuckles and around the palm, a purple wrist wrap, and a dark sleeve with a
+## glowing violet cuff.
+func _paint_blur() -> void:
+	var purple := Color(0.5, 0.3, 0.88)
+	var wrap := func(p: Vector3) -> Color:
+		# Strands of tape crossing diagonally.
+		var strand := fposmod(p.y * 1.2 + p.z, 0.017)
+		var c := purple.darkened(0.25) if strand < VOXEL else purple
+		return _vary(c, p, 0.08)
+	_fill_taper(-0.2, 0.32, Vector2(0.05, 0.046), Vector2(0.056, 0.052), 0.0, func(p: Vector3) -> Color:
+		var c := Color(0.12, 0.1, 0.16)
+		if fposmod(p.z, 0.06) < VOXEL * 1.5:
+			c = c.darkened(0.35)
+		return _vary(c, p, 0.05))
+	_fill_taper(-0.215, -0.198, Vector2(0.052, 0.048), Vector2(0.052, 0.048), 0.0, _solid(Color(0.66, 0.5, 1.0)), "rim")
+	_paint_forearm(_skin_fn(), "skin", 1.0, -0.24, -0.2)
+	_paint_wrist(wrap, "gear", 0.003)
+	_paint_fist(_skin_fn(), wrap, "skin", "gear")
+	# The wrap carries on around the hand, below the knuckles.
+	_fill(Vector3(-0.049, -0.04, -0.336), Vector3(0.049, 0.038, -0.318), wrap, "gear")
+
+
+## The Answer: black gloves taped white across the knuckles, and thick blue
+## wraps from the wrist up the forearm in bands. The white bands glow blue
+## when the ultimate is ready.
+func _paint_answer() -> void:
+	var blue := Color(0.16, 0.38, 0.88)
+	var navy := Color(0.06, 0.1, 0.22)
+	var white := Color(0.88, 0.88, 0.9)
+	var black := Color(0.08, 0.08, 0.1)
+	# Coat sleeve beyond the wraps.
+	_fill_taper(0.12, 0.32, Vector2(0.056, 0.052), Vector2(0.06, 0.056), 0.0, _solid(Color(0.07, 0.07, 0.09)))
+	# Forearm wraps: wide blue bands, thin navy ones, a white stripe now and then.
+	_fill_taper(-0.29, 0.12, Vector2(0.046, 0.042), Vector2(0.053, 0.049), 0.0, func(p: Vector3) -> Color:
+		var k := int(floorf((p.z + 0.29) / VOXEL)) % 9
+		var c := blue if k < 5 else navy if k < 8 else white
+		return _vary(c, p, 0.08))
+	for z in [-0.255, -0.18, -0.105, -0.03, 0.045]:
+		_fill_taper(z, z + VOXEL * 1.2, Vector2(0.049, 0.045), Vector2(0.05, 0.046), 0.0, _solid(white, 0.05), "rim")
+	var glove := func(p: Vector3) -> Color:
+		var c := black
+		# White tape across the knuckles and around the hand.
+		if (p.y > 0.024 and p.z < -0.345 and p.z > -0.375) or (p.z > -0.322 and p.z < -0.305):
+			c = white
+		elif p.z < -0.346 and fposmod(p.x + 0.0455, 0.0227) < VOXEL * 0.9:
+			c = Color(0.03, 0.03, 0.04)
+		return _vary(c, p, 0.07)
+	_paint_fist(glove, glove, "gear", "gear")
+
+
+## The Stray: green fingerless gloves (the fingers stick out bare), white tape
+## wraps up the forearm, a red bandana tied on the left one, and a dark hoodie
+## sleeve with green trim.
+func _paint_stray(left: bool) -> void:
+	var green := Color(0.12, 0.48, 0.22)
+	var tape := Color(0.82, 0.8, 0.76)
+	_fill_taper(0.06, 0.32, Vector2(0.056, 0.052), Vector2(0.06, 0.056), 0.0, _solid(Color(0.13, 0.13, 0.15)))
+	_fill_taper(0.05, 0.062, Vector2(0.058, 0.054), Vector2(0.058, 0.054), 0.0, _solid(Color(0.3, 0.95, 0.45)), "rim")
+	# Tape wraps: overlapping turns with darker edges, slightly ragged.
+	_fill_taper(-0.29, 0.06, Vector2(0.044, 0.04), Vector2(0.05, 0.046), 0.0, func(p: Vector3) -> Color:
+		var c := tape
+		var turn := fposmod(p.z + p.y * 0.4, 0.021)
+		if turn < VOXEL:
+			c = tape.darkened(0.3)
+		elif fposmod(p.z * 3.1 + p.x * 7.0, 0.05) < 0.004:
+			c = tape.darkened(0.12)
+		return _vary(c, p, 0.07))
+	if left:
+		var red := Color(0.72, 0.08, 0.08)
+		_fill_taper(-0.2, -0.155, Vector2(0.052, 0.048), Vector2(0.053, 0.049), 0.0, _solid(red, 0.1))
+		# Knot and two tails hanging off the outer side.
+		_fill(Vector3(0.048, -0.02, -0.19), Vector3(0.066, 0.016, -0.165), _solid(red.darkened(0.15), 0.1))
+		_fill(Vector3(0.058, -0.075, -0.19), Vector3(0.07, -0.02, -0.176), _solid(red, 0.1))
+		_fill(Vector3(0.062, -0.065, -0.172), Vector3(0.074, -0.018, -0.16), _solid(red.darkened(0.1), 0.1))
+	var glove := func(p: Vector3) -> Color:
+		var c := green
+		# Black edging around the finger holes and down the back.
+		if (p.z < -0.338 and p.z > -0.35) or absf(p.x) < VOXEL * 0.7:
+			c = Color(0.04, 0.06, 0.05)
+		return _vary(c, p, 0.08)
+	_paint_fist(glove, _skin_fn(), "gear", "skin")
+	# The finger holes leave the fingers' first segments bare; the glove covers the rest.
+	_fill(Vector3(-0.049, -0.04, -0.35), Vector3(0.049, 0.038, -0.337), glove, "gear")
+
+
+## Tony: a black tracksuit sleeve with two white stripes, white tape wound
+## around the wrist and over the knuckles, and a gold pinky ring.
+func _paint_tony(_left: bool) -> void:
+	var black := Color(0.07, 0.07, 0.08)
+	var stripe := Color(0.92, 0.92, 0.9)
+	_fill_taper(-0.22, 0.32, Vector2(0.05, 0.046), Vector2(0.06, 0.055), 0.0, func(p: Vector3) -> Color:
+		# Two white stripes running down the top of the sleeve.
+		if p.y > 0.03 and (absf(p.x - 0.012) < VOXEL * 0.8 or absf(p.x + 0.012) < VOXEL * 0.8):
+			return _vary(stripe, p, 0.04)
+		return _vary(black, p, 0.08))
+	# Ribbed cuff.
+	_fill_taper(-0.24, -0.205, Vector2(0.052, 0.048), Vector2(0.052, 0.048), 0.0, _solid(Color(0.12, 0.12, 0.13)), "gear")
+	var tape := Color(0.9, 0.88, 0.84)
+	var taped := func(p: Vector3) -> Color:
+		var c := tape
+		if fposmod(p.z + p.y * 0.35, 0.02) < VOXEL:
+			c = tape.darkened(0.25)
+		return _vary(c, p, 0.06)
+	_paint_wrist(taped, "gear", 0.004)
+	_paint_fist(taped, _skin_fn(), "gear", "skin")
+	# Tape over the knuckles too, fingertips bare.
+	for i in 4:
+		var x := -0.034 + i * 0.0227
+		_fill(Vector3(x - 0.012, 0.0, -0.375), Vector3(x + 0.012, 0.044, -0.34), taped, "gear", 0.003)
+	# A gold pinky ring on each hand: Tony's got two.
+	var gold := Color(1.0, 0.78, 0.22)
+	_fill(Vector3(0.021, -0.045, -0.36), Vector3(0.048, 0.035, -0.351), _solid(gold, 0.05), "rim")
+
+
+# --- Ultimate-ready glow -----------------------------------------------------------
+
+## Builds each hand's glow (hidden until the ultimate is ready): a light, plus
+## embers (Mauler), violet speed streaks and a wrist ring (Blur), lightning
+## (Answer) or green energy ribbons (Stray).
+func _build_effect(arm: Node3D, side: float) -> void:
+	var hand := "left" if side < 0.0 else "right"
+	var fx := {}
+	var light := OmniLight3D.new()
+	light.light_cull_mask = HAND_LAYER
+	light.light_color = _accent
+	light.light_energy = 0.0
+	light.omni_range = 0.6
+	light.position = _mirror_pos(Vector3(0.0, 0.08, -0.3), side)
+	arm.add_child(light)
+	fx.light = light
+	var particles := CPUParticles3D.new()
+	particles.local_coords = false
+	particles.position = _mirror_pos(FIST_POINT, side)
+	particles.emitting = false
+	particles.layers = HAND_LAYER
+	var bit := BoxMesh.new()
+	bit.size = Vector3.ONE * 0.007
+	bit.material = _glow(_accent, 1.4)
+	particles.mesh = bit
+	particles.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+	particles.emission_sphere_radius = 0.07
+	match fighter:
+		"berserker":  # Embers and sparks rising off the gloves.
+			particles.amount = 28
+			particles.lifetime = 0.9
+			particles.direction = Vector3(0, 1, 0)
+			particles.spread = 40.0
+			particles.gravity = Vector3(0, 0.3, 0)
+			particles.initial_velocity_min = 0.05
+			particles.initial_velocity_max = 0.3
+			particles.scale_amount_min = 0.6
+			particles.scale_amount_max = 1.8
+		"combo_master":  # Speed streaks trailing back along the arm.
+			var streak := BoxMesh.new()
+			streak.size = Vector3(0.003, 0.003, 0.06)
+			streak.material = _glow(_accent, 2.0)
+			particles.mesh = streak
+			particles.amount = 22
+			particles.lifetime = 0.3
+			particles.direction = Vector3(0, 0, 1)
+			particles.spread = 15.0
+			particles.gravity = Vector3.ZERO
+			particles.initial_velocity_min = 0.4
+			particles.initial_velocity_max = 0.9
+			var ring := MeshInstance3D.new()
+			var torus := TorusMesh.new()
+			torus.inner_radius = 0.062
+			torus.outer_radius = 0.07
+			torus.rings = 24
+			torus.ring_segments = 4
+			torus.material = _glow(_accent, 1.5)
+			ring.mesh = torus
+			ring.position = _mirror_pos(Vector3(0, 0, -0.255), side)
+			ring.rotation = Vector3(PI / 2, 0, 0)
+			ring.visible = false
+			ring.layers = HAND_LAYER
+			arm.add_child(ring)
+			fx.ring = ring
+		"counter_master":  # Sparks; the lightning itself is rebuilt every few frames.
+			particles.amount = 20
+			particles.lifetime = 0.25
+			particles.spread = 180.0
+			particles.gravity = Vector3.ZERO
+			particles.initial_velocity_min = 0.2
+			particles.initial_velocity_max = 0.6
+			var bolts := Node3D.new()
+			bolts.visible = false
+			arm.add_child(bolts)
+			var segments: Array[MeshInstance3D] = []
+			var bolt_material := _glow(Color(0.75, 0.9, 1.0), 6.0)
+			for i in 14:
+				var segment := MeshInstance3D.new()
+				var box := BoxMesh.new()
+				box.size = Vector3(0.004, 0.004, 1.0)
+				box.material = bolt_material
+				segment.mesh = box
+				segment.layers = HAND_LAYER
+				bolts.add_child(segment)
+				segments.append(segment)
+			fx.bolts = bolts
+			fx.segments = segments
+			fx.side = side
+		"wise_guy":  # Gold bling: sparkles drifting off the knuckles.
+			particles.amount = 22
+			particles.lifetime = 0.7
+			particles.direction = Vector3.UP
+			particles.spread = 60.0
+			particles.gravity = Vector3(0, -0.4, 0)
+			particles.initial_velocity_min = 0.1
+			particles.initial_velocity_max = 0.35
+		"free_runner":  # Green energy ribbons spinning around the forearm.
+			particles.amount = 14
+			particles.lifetime = 0.35
+			particles.direction = Vector3(0, 0, 1)
+			particles.spread = 25.0
+			particles.gravity = Vector3.ZERO
+			particles.initial_velocity_min = 0.3
+			particles.initial_velocity_max = 0.7
+			var ribbons := Node3D.new()
+			ribbons.visible = false
+			arm.add_child(ribbons)
+			var ribbon_material := _glow(_accent.darkened(0.25), 1.2)
+			var spinners: Array[Node3D] = []
+			for r in 3:
+				var spinner := Node3D.new()
+				spinner.position = Vector3(0, 0, -0.27 + r * 0.09)
+				spinner.rotation.z = r * 2.1
+				ribbons.add_child(spinner)
+				for k in 14:
+					var piece := MeshInstance3D.new()
+					var box := BoxMesh.new()
+					box.size = Vector3(0.009, 0.009, 0.034)
+					box.material = ribbon_material
+					piece.mesh = box
+					piece.layers = HAND_LAYER
+					var angle := k * 0.2
+					var radius := 0.07 + r * 0.01
+					piece.position = Vector3(cos(angle) * radius, sin(angle) * radius, -k * 0.01)
+					piece.rotation = Vector3(0, 0, angle)
+					spinner.add_child(piece)
+				spinners.append(spinner)
+			fx.ribbons = ribbons
+			fx.spinners = spinners
+	arm.add_child(particles)
+	fx.particles = particles
+	_fx[hand] = fx
+
+
+func _update_effects(delta: float) -> void:
+	var pulse := 0.5 + 0.5 * sin(_time * 7.0)
+	var rim: StandardMaterial3D = _materials.rim
+	rim.emission_energy_multiplier = (0.6 + pulse * 0.9) if _ult_ready else 0.0
+	_bolt_timer -= delta
+	var rebuild_bolts := _bolt_timer <= 0.0
+	if rebuild_bolts:
+		_bolt_timer = 0.06
+	for hand in _fx:
+		var fx: Dictionary = _fx[hand]
+		(fx.light as OmniLight3D).light_energy = (0.3 + pulse * 0.3) if _ult_ready else 0.0
+		var particles: CPUParticles3D = fx.particles
+		particles.emitting = _ult_ready
+		match fighter:
+			"combo_master":
+				(fx.ring as MeshInstance3D).visible = _ult_ready
+				(fx.ring as MeshInstance3D).rotation.y = _time * 3.0
+			"counter_master":
+				# Lightning on the ultimate; just sparks on a hand that's ready to counter.
+				particles.emitting = _ult_ready or _hot_hand == hand or _hot_hand == "any"
+				(fx.bolts as Node3D).visible = _ult_ready
+				if _ult_ready and rebuild_bolts:
+					_crackle(fx)
+			"free_runner":
+				(fx.ribbons as Node3D).visible = _ult_ready
+				var spinners: Array = fx.spinners
+				for i in spinners.size():
+					(spinners[i] as Node3D).rotation.z += delta * (7.0 + i * 2.5) * (1.0 if i % 2 == 0 else -1.0)
+
+
+## Two jagged bolts crawling along the arm's surface, rebuilt each flicker.
+func _crackle(fx: Dictionary) -> void:
+	var segments: Array = fx.segments
+	var side: float = fx.side
+	var used := 0
+	for bolt in 2:
+		var angle := randf() * TAU
+		var point := Vector3(cos(angle) * 0.055, sin(angle) * 0.05, -0.4)
+		for step in 7:
+			if used >= segments.size():
+				return
+			angle += randf_range(-0.9, 0.9)
+			var next := Vector3(cos(angle) * randf_range(0.05, 0.07), sin(angle) * randf_range(0.045, 0.065), point.z + randf_range(0.03, 0.06))
+			var segment: MeshInstance3D = segments[used]
+			var a := _mirror_pos(point, side)
+			var b := _mirror_pos(next, side)
+			segment.position = (a + b) / 2.0
+			if not a.is_equal_approx(b):
+				segment.basis = Basis.looking_at(b - a, Vector3.UP)
+				segment.scale = Vector3(1, 1, a.distance_to(b))
+			segment.visible = true
+			point = next
+			used += 1
+	for i in range(used, segments.size()):
+		(segments[i] as MeshInstance3D).visible = false
+
+
+## A violet ghost of the fist where the arm is right now, fading fast.
+func _afterimage(arm: Node3D) -> void:
+	if not is_inside_tree():
+		return
+	var ghost := MeshInstance3D.new()
+	var box := BoxMesh.new()
+	box.size = Vector3(0.1, 0.08, 0.11)
+	var material := StandardMaterial3D.new()
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	material.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	material.albedo_color = Color(_accent, 0.4)
+	box.material = material
+	ghost.mesh = box
+	ghost.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	ghost.layers = HAND_LAYER
+	add_child(ghost)
+	ghost.transform = arm.transform * Transform3D(Basis.IDENTITY, FIST_POINT)
+	var tween := ghost.create_tween()
+	tween.tween_property(material, "albedo_color:a", 0.0, 0.2)
+	tween.tween_callback(ghost.queue_free)
+
+
+func _glow(color: Color, energy: float) -> StandardMaterial3D:
+	var material := StandardMaterial3D.new()
+	material.albedo_color = color
+	material.emission_enabled = true
+	material.emission = color
+	material.emission_energy_multiplier = energy
+	return material
+
+
+func _mirror_pos(offset: Vector3, mirror: float) -> Vector3:
+	return Vector3(offset.x * mirror, offset.y, offset.z)
+
+
+func _mirror_rot(offset: Vector3, mirror: float) -> Vector3:
+	return Vector3(offset.x, offset.y * mirror, offset.z * mirror)

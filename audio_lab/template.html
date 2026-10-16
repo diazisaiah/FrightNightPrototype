@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fright Night Audio Lab</title>
+<style>
+:root {
+  --bg: #0d0a14; --panel: #17121f; --panel2: #201929; --line: #34293f;
+  --text: #ece6f2; --muted: #9a8fa8; --gold: #f2c14e; --red: #e5484d; --good: #6fd08c;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.4 system-ui, sans-serif; }
+header { position: sticky; top: 0; z-index: 5; background: linear-gradient(#0d0a14, #0d0a14ee); border-bottom: 1px solid var(--line); padding: 14px 16px 10px; }
+h1 { margin: 0 0 2px; font-size: 22px; letter-spacing: 2px; color: var(--gold); }
+.sub { color: var(--muted); font-size: 13px; }
+.bar { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; margin-top: 10px; }
+.tabs { display: flex; gap: 6px; }
+.tab { background: var(--panel); border: 1px solid var(--line); color: var(--muted); padding: 6px 14px; border-radius: 999px; cursor: pointer; font-weight: 600; }
+.tab.on { background: var(--gold); color: #1a1208; border-color: var(--gold); }
+label.ctl { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 13px; }
+input[type=range] { accent-color: var(--gold); width: 110px; }
+input[type=checkbox] { accent-color: var(--gold); }
+button.act { background: var(--panel2); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; cursor: pointer; }
+button.act:hover { border-color: var(--gold); }
+main { padding: 16px; max-width: 1200px; margin: 0 auto; }
+.slot { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; display: grid; grid-template-columns: 200px 1fr; gap: 12px; align-items: start; }
+.slot h3 { margin: 0; font-size: 16px; letter-spacing: 1px; text-transform: uppercase; }
+.slot .use { color: var(--muted); font-size: 12px; }
+.slot .chosen { margin-top: 6px; font-size: 12px; color: var(--good); min-height: 16px; word-break: break-all; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { display: inline-flex; align-items: stretch; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--panel2); }
+.chip.cur { border-color: #6b5a86; }
+.chip.cur .play { color: #c8b5ea; }
+.chip.picked { border-color: var(--good); box-shadow: 0 0 0 1px var(--good) inset; }
+.chip.playing { border-color: var(--gold); }
+.play { background: none; border: 0; color: var(--text); padding: 6px 10px; cursor: pointer; font-size: 13px; }
+.play:hover { background: #2b2236; }
+.star { background: none; border: 0; border-left: 1px solid var(--line); color: var(--muted); cursor: pointer; padding: 0 8px; font-size: 14px; }
+.star:hover, .picked .star { color: var(--good); }
+.none { color: var(--muted); font-size: 13px; font-style: italic; padding: 6px 0; }
+.rapid { margin-left: 4px; font-size: 12px; }
+.lib-pack { margin-bottom: 18px; }
+.lib-pack h2 { font-size: 14px; color: var(--gold); letter-spacing: 1px; text-transform: uppercase; margin: 0 0 8px; }
+input.search { background: var(--panel); border: 1px solid var(--line); color: var(--text); border-radius: 8px; padding: 7px 10px; width: 220px; }
+.note { background: var(--panel); border: 1px dashed var(--line); border-radius: 10px; padding: 10px 14px; color: var(--muted); font-size: 13px; margin-bottom: 14px; }
+.toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: var(--good); color: #0d1a10; padding: 8px 16px; border-radius: 8px; font-weight: 600; opacity: 0; transition: opacity .2s; pointer-events: none; }
+.toast.on { opacity: 1; }
+@media (max-width: 700px) { .slot { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>FRIGHT NIGHT · AUDIO LAB</h1>
+  <div class="sub">Purple chip = the game's sound now. Others = Kenney CC0 candidates. ★ to pick a winner per slot.</div>
+  <div class="bar">
+    <div class="tabs">
+      <button class="tab on" data-tab="slots">Game sounds</button>
+      <button class="tab" data-tab="announcer">Announcer</button>
+      <button class="tab" data-tab="library">Full library</button>
+    </div>
+    <label class="ctl">Volume <input id="vol" type="range" min="0" max="1" step="0.01" value="0.8"></label>
+    <label class="ctl">Pitch <input id="pitch" type="range" min="0.5" max="1.6" step="0.01" value="1"><span id="pitchv">1.00</span></label>
+    <label class="ctl"><input id="vary" type="checkbox" checked> Random pitch like the game</label>
+    <button class="act" id="copy">Copy my picks</button>
+    <button class="act" id="clear">Clear picks</button>
+  </div>
+</header>
+<main>
+  <section id="slots"></section>
+  <section id="announcer" hidden></section>
+  <section id="library" hidden></section>
+</main>
+<div class="toast" id="toast"></div>
+<script>
+const DATA = /*DATA*/null;
+const KEY = "fn-audio-picks";
+let picks = {};
+try { picks = JSON.parse(localStorage.getItem(KEY) || "{}"); } catch (e) {}
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(picks)); } catch (e) {} };
+const short = p => p.split("/").pop().replace(/\.(ogg|wav)$/, "");
+const $ = s => document.querySelector(s);
+
+let lastChip = null;
+function play(src, chip) {
+  const a = new Audio(src);
+  a.volume = +$("#vol").value;
+  let rate = +$("#pitch").value;
+  if ($("#vary").checked) rate *= 0.92 + Math.random() * 0.16;
+  a.preservesPitch = false; a.mozPreservesPitch = false; a.webkitPreservesPitch = false;
+  a.playbackRate = rate;
+  a.play();
+  if (lastChip) lastChip.classList.remove("playing");
+  if (chip) { chip.classList.add("playing"); lastChip = chip; }
+}
+function rapid(srcs) {
+  // A combo: four hits a beat apart, cycling through the slot's sounds.
+  for (let i = 0; i < 4; i++) setTimeout(() => play(srcs[i % srcs.length]), i * 170);
+}
+
+function chip(src, label, opts = {}) {
+  const el = document.createElement("span");
+  el.className = "chip" + (opts.current ? " cur" : "");
+  const b = document.createElement("button");
+  b.className = "play"; b.textContent = "▶ " + label;
+  b.onclick = () => play(src, el);
+  el.append(b);
+  if (opts.slot) {
+    const s = document.createElement("button");
+    s.className = "star"; s.textContent = "★"; s.title = "Pick this one";
+    s.onclick = () => {
+      picks[opts.slot] = picks[opts.slot] === src ? undefined : src;
+      if (!picks[opts.slot]) delete picks[opts.slot];
+      save(); renderSlots(); renderAnnouncer();
+    };
+    el.append(s);
+    if (picks[opts.slot] === src) el.classList.add("picked");
+  }
+  return el;
+}
+
+function renderSlots() {
+  const root = $("#slots"); root.innerHTML = "";
+  for (const s of DATA.slots) {
+    const row = document.createElement("div"); row.className = "slot";
+    const left = document.createElement("div");
+    left.innerHTML = `<h3>${s.id}</h3><div class="use">${s.use}</div>`;
+    const chosen = document.createElement("div"); chosen.className = "chosen";
+    chosen.textContent = picks[s.id] ? "✓ " + short(picks[s.id]) : "";
+    left.append(chosen);
+    const chips = document.createElement("div"); chips.className = "chips";
+    chips.append(chip(s.current, "current", { current: true, slot: s.id }));
+    if (s.picks.length) {
+      s.picks.forEach(p => chips.append(chip(p, short(p), { slot: s.id })));
+      const r = document.createElement("button"); r.className = "act rapid"; r.textContent = "combo ×4";
+      r.title = "Plays four in a row, like a flurry"; r.onclick = () => rapid(s.picks);
+      chips.append(r);
+    } else {
+      const n = document.createElement("span"); n.className = "none";
+      n.textContent = "Nothing in these packs fits. Keep the current one, or find one in the full library."; chips.append(n);
+    }
+    row.append(left, chips); root.append(row);
+  }
+}
+
+function renderAnnouncer() {
+  const root = $("#announcer");
+  root.innerHTML = `<div class="note">Kenney's fighter announcer. Could voice ROUND 1 / FIGHT on the VS intro, the KO count, and the win/lose screens. Star one to note you want it.</div>`;
+  const chips = document.createElement("div"); chips.className = "chips";
+  DATA.announcer.forEach(p => chips.append(chip(p, short(p).replace(/_/g, " "), { slot: "announcer:" + short(p) })));
+  root.append(chips);
+}
+
+function renderLibrary() {
+  const root = $("#library"); root.innerHTML = "";
+  const search = document.createElement("input"); search.className = "search"; search.placeholder = "Filter, e.g. punch, bell, cloth";
+  const note = document.createElement("div"); note.className = "note";
+  note.textContent = "Every sound in the four packs. Hear something for a slot? Tell me the name.";
+  root.append(note, search);
+  const body = document.createElement("div"); body.style.marginTop = "12px"; root.append(body);
+  const draw = () => {
+    body.innerHTML = "";
+    const q = search.value.toLowerCase();
+    for (const [pack, files] of Object.entries(DATA.library)) {
+      const hits = files.filter(f => short(f).toLowerCase().includes(q));
+      if (!hits.length) continue;
+      const box = document.createElement("div"); box.className = "lib-pack";
+      box.innerHTML = `<h2>${pack.replace(/-/g, " ")} · ${hits.length}</h2>`;
+      const chips = document.createElement("div"); chips.className = "chips";
+      hits.forEach(f => chips.append(chip(f, short(f))));
+      box.append(chips); body.append(box);
+    }
+  };
+  search.oninput = draw; draw();
+}
+
+document.querySelectorAll(".tab").forEach(t => t.onclick = () => {
+  document.querySelectorAll(".tab").forEach(x => x.classList.toggle("on", x === t));
+  for (const id of ["slots", "announcer", "library"]) $("#" + id).hidden = id !== t.dataset.tab;
+});
+$("#pitch").oninput = e => $("#pitchv").textContent = (+e.target.value).toFixed(2);
+function toast(msg) { const t = $("#toast"); t.textContent = msg; t.classList.add("on"); setTimeout(() => t.classList.remove("on"), 1600); }
+$("#copy").onclick = () => {
+  const lines = Object.entries(picks).map(([k, v]) => `${k}: ${short(v)}`);
+  const text = lines.length ? lines.join("\n") : "(no picks yet)";
+  (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(() => toast("Copied — paste it to Claude"), () => prompt("Copy this:", text));
+};
+$("#clear").onclick = () => { if (confirm("Clear all picks?")) { picks = {}; save(); renderSlots(); renderAnnouncer(); } };
+renderSlots(); renderAnnouncer(); renderLibrary();
+</script>
+</body>
+</html>

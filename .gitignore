@@ -1,0 +1,29 @@
+# Godot's import cache and editor state (rebuilt on open)
+.godot/
+*.translation
+export_credentials.cfg
+*.tmp
+
+# Built game (exported to builds/web and pushed to itch with butler)
+builds/
+
+# Big local-only folders
+recordings/
+unused_assets/
+downloads/
+
+# Audio lab: downloaded packs and generated files (rebuild with build.py)
+audio_lab/packs/
+audio_lab/current/
+audio_lab/drop/
+audio_lab/index.html
+audio_lab/picks.json
+
+# Test scratch
+punch-craft/zz_test.gd
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+desktop.ini
+.claude/settings.local.json

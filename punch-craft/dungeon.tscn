@@ -1,0 +1,32 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://dungeon.gd" id="1_dungeon"]
+[ext_resource type="PackedScene" uid="uid://ieulq2umu5j7" path="res://player.tscn" id="2_player"]
+[ext_resource type="PackedScene" path="res://hud.tscn" id="3_hud"]
+
+[sub_resource type="Environment" id="Environment_crypt"]
+background_mode = 1
+background_color = Color(0, 0, 0, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.3, 0.28, 0.4, 1)
+ambient_light_energy = 0.3
+tonemap_mode = 2
+glow_enabled = true
+glow_intensity = 1.1
+glow_bloom = 0.08
+fog_enabled = true
+fog_light_color = Color(0.05, 0.04, 0.06, 1)
+fog_density = 0.03
+
+[node name="Dungeon" type="Node3D"]
+script = ExtResource("1_dungeon")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_crypt")
+
+[node name="Enemies" type="Node3D" parent="."]
+
+[node name="Player" parent="." instance=ExtResource("2_player")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, 0)
+
+[node name="HUD" parent="." instance=ExtResource("3_hud")]

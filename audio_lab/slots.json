@@ -1,0 +1,160 @@
+{
+ "hit": [
+  "packs/impact-sounds/impactPunch_medium_000.ogg",
+  "packs/impact-sounds/impactPunch_medium_001.ogg",
+  "packs/impact-sounds/impactPunch_medium_002.ogg",
+  "packs/impact-sounds/impactPunch_medium_003.ogg",
+  "packs/impact-sounds/impactPunch_medium_004.ogg"
+ ],
+ "heavy": [
+  "packs/impact-sounds/impactPunch_heavy_000.ogg",
+  "packs/impact-sounds/impactPunch_heavy_001.ogg",
+  "packs/impact-sounds/impactPunch_heavy_002.ogg",
+  "packs/impact-sounds/impactPunch_heavy_003.ogg",
+  "packs/impact-sounds/impactPunch_heavy_004.ogg"
+ ],
+ "counter": [
+  "packs/impact-sounds/impactPunch_heavy_000.ogg",
+  "packs/impact-sounds/impactPunch_heavy_001.ogg",
+  "packs/impact-sounds/impactPunch_heavy_002.ogg",
+  "packs/impact-sounds/impactSoft_heavy_000.ogg",
+  "packs/impact-sounds/impactSoft_heavy_001.ogg"
+ ],
+ "block": [
+  "packs/impact-sounds/impactPlate_medium_000.ogg",
+  "packs/impact-sounds/impactPlate_medium_001.ogg",
+  "packs/impact-sounds/impactPlate_medium_002.ogg",
+  "packs/impact-sounds/impactSoft_medium_000.ogg",
+  "packs/impact-sounds/impactSoft_medium_001.ogg",
+  "packs/impact-sounds/impactSoft_medium_002.ogg"
+ ],
+ "whoosh": [
+  "packs/rpg-audio/cloth1.ogg",
+  "packs/rpg-audio/cloth2.ogg",
+  "packs/rpg-audio/cloth3.ogg",
+  "packs/rpg-audio/cloth4.ogg",
+  "packs/rpg-audio/clothBelt.ogg",
+  "packs/rpg-audio/clothBelt2.ogg"
+ ],
+ "slip": [
+  "packs/rpg-audio/cloth1.ogg",
+  "packs/rpg-audio/cloth2.ogg",
+  "packs/rpg-audio/cloth3.ogg",
+  "packs/rpg-audio/cloth4.ogg",
+  "packs/rpg-audio/knifeSlice.ogg"
+ ],
+ "hurt": [
+  "packs/impact-sounds/impactSoft_medium_000.ogg",
+  "packs/impact-sounds/impactSoft_medium_001.ogg",
+  "packs/impact-sounds/impactSoft_medium_002.ogg",
+  "packs/impact-sounds/impactSoft_medium_003.ogg",
+  "packs/impact-sounds/impactSoft_medium_004.ogg",
+  "packs/impact-sounds/impactPunch_medium_000.ogg",
+  "packs/impact-sounds/impactPunch_medium_001.ogg"
+ ],
+ "death": [
+  "packs/impact-sounds/impactSoft_heavy_000.ogg",
+  "packs/impact-sounds/impactSoft_heavy_001.ogg",
+  "packs/impact-sounds/impactSoft_heavy_002.ogg",
+  "packs/impact-sounds/impactWood_heavy_000.ogg",
+  "packs/impact-sounds/impactWood_heavy_001.ogg",
+  "packs/impact-sounds/impactWood_heavy_002.ogg"
+ ],
+ "growl": [],
+ "draw": [
+  "packs/rpg-audio/creak1.ogg",
+  "packs/rpg-audio/creak2.ogg",
+  "packs/rpg-audio/creak3.ogg",
+  "packs/rpg-audio/drawKnife1.ogg",
+  "packs/rpg-audio/drawKnife2.ogg",
+  "packs/rpg-audio/drawKnife3.ogg"
+ ],
+ "twang": [
+  "packs/interface-sounds/pluck_001.ogg",
+  "packs/interface-sounds/pluck_002.ogg",
+  "packs/rpg-audio/metalClick.ogg"
+ ],
+ "coin": [
+  "packs/rpg-audio/handleCoins.ogg",
+  "packs/rpg-audio/handleCoins2.ogg",
+  "packs/impact-sounds/impactGlass_light_000.ogg",
+  "packs/impact-sounds/impactGlass_light_001.ogg",
+  "packs/impact-sounds/impactGlass_light_002.ogg"
+ ],
+ "wave": [
+  "packs/impact-sounds/impactBell_heavy_000.ogg",
+  "packs/impact-sounds/impactBell_heavy_001.ogg",
+  "packs/impact-sounds/impactBell_heavy_002.ogg",
+  "packs/impact-sounds/impactBell_heavy_003.ogg",
+  "packs/impact-sounds/impactBell_heavy_004.ogg"
+ ],
+ "clear": [
+  "packs/interface-sounds/confirmation_001.ogg",
+  "packs/interface-sounds/confirmation_002.ogg",
+  "packs/interface-sounds/confirmation_003.ogg",
+  "packs/interface-sounds/confirmation_004.ogg"
+ ],
+ "fire": [],
+ "zap": [
+  "packs/interface-sounds/glitch_001.ogg",
+  "packs/interface-sounds/glitch_002.ogg",
+  "packs/interface-sounds/glitch_003.ogg",
+  "packs/interface-sounds/glitch_004.ogg"
+ ],
+ "quake": [
+  "packs/impact-sounds/impactWood_heavy_000.ogg",
+  "packs/impact-sounds/impactWood_heavy_001.ogg",
+  "packs/impact-sounds/impactWood_heavy_002.ogg",
+  "packs/impact-sounds/impactMining_000.ogg",
+  "packs/impact-sounds/impactMining_001.ogg",
+  "packs/impact-sounds/impactMining_002.ogg"
+ ],
+ "tell": [
+  "packs/impact-sounds/impactBell_heavy_000.ogg",
+  "packs/impact-sounds/impactBell_heavy_001.ogg",
+  "packs/impact-sounds/impactBell_heavy_002.ogg",
+  "packs/impact-sounds/impactMetal_light_000.ogg",
+  "packs/impact-sounds/impactMetal_light_001.ogg",
+  "packs/impact-sounds/impactMetal_light_002.ogg"
+ ],
+ "heal": [],
+ "tick": [
+  "packs/interface-sounds/tick_001.ogg",
+  "packs/interface-sounds/tick_002.ogg",
+  "packs/interface-sounds/tick_004.ogg",
+  "packs/interface-sounds/click_001.ogg",
+  "packs/interface-sounds/click_002.ogg",
+  "packs/interface-sounds/click_003.ogg",
+  "packs/interface-sounds/click_004.ogg",
+  "packs/interface-sounds/click_005.ogg"
+ ],
+ "unlock": [
+  "packs/interface-sounds/maximize_001.ogg",
+  "packs/interface-sounds/maximize_002.ogg",
+  "packs/interface-sounds/maximize_003.ogg",
+  "packs/interface-sounds/maximize_004.ogg",
+  "packs/interface-sounds/maximize_005.ogg",
+  "packs/interface-sounds/maximize_006.ogg",
+  "packs/interface-sounds/confirmation_002.ogg",
+  "packs/interface-sounds/confirmation_004.ogg"
+ ],
+ "deny": [
+  "packs/interface-sounds/error_001.ogg",
+  "packs/interface-sounds/error_002.ogg",
+  "packs/interface-sounds/error_003.ogg",
+  "packs/interface-sounds/error_004.ogg",
+  "packs/interface-sounds/error_005.ogg",
+  "packs/interface-sounds/error_006.ogg",
+  "packs/interface-sounds/error_007.ogg",
+  "packs/interface-sounds/error_008.ogg"
+ ],
+ "bell": [
+  "packs/impact-sounds/impactBell_heavy_000.ogg",
+  "packs/impact-sounds/impactBell_heavy_001.ogg",
+  "packs/impact-sounds/impactBell_heavy_002.ogg",
+  "packs/impact-sounds/impactBell_heavy_003.ogg",
+  "packs/impact-sounds/impactBell_heavy_004.ogg"
+ ],
+ "bleep": [],
+ "wind": []
+}

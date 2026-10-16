@@ -1,0 +1,96 @@
+[gd_scene load_steps=12 format=3]
+
+[ext_resource type="Script" path="res://world.gd" id="1_world"]
+[ext_resource type="PackedScene" uid="uid://ieulq2umu5j7" path="res://player.tscn" id="2_player"]
+[ext_resource type="PackedScene" path="res://hud.tscn" id="3_hud"]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_night"]
+sky_top_color = Color(0.01, 0.015, 0.04, 1)
+sky_horizon_color = Color(0.05, 0.06, 0.1, 1)
+ground_bottom_color = Color(0.01, 0.01, 0.02, 1)
+ground_horizon_color = Color(0.05, 0.06, 0.1, 1)
+sun_angle_max = 6.0
+sun_curve = 0.3
+
+[sub_resource type="Sky" id="Sky_night"]
+sky_material = SubResource("ProceduralSkyMaterial_night")
+
+[sub_resource type="Environment" id="Environment_night"]
+background_mode = 2
+sky = SubResource("Sky_night")
+ambient_light_source = 2
+ambient_light_color = Color(0.25, 0.3, 0.45, 1)
+ambient_light_energy = 0.35
+tonemap_mode = 2
+glow_enabled = true
+glow_intensity = 1.2
+glow_bloom = 0.1
+fog_enabled = true
+fog_light_color = Color(0.06, 0.07, 0.11, 1)
+fog_density = 0.045
+fog_sky_affect = 0.6
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_ground"]
+size = Vector3(120, 1, 120)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ground"]
+albedo_color = Color(0.13, 0.16, 0.12, 1)
+roughness = 1.0
+
+[sub_resource type="BoxMesh" id="BoxMesh_ground"]
+material = SubResource("StandardMaterial3D_ground")
+size = Vector3(120, 1, 120)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_wall_x"]
+size = Vector3(100, 8, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_wall_z"]
+size = Vector3(1, 8, 100)
+
+[node name="World" type="Node3D"]
+script = ExtResource("1_world")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_night")
+
+[node name="Moon" type="DirectionalLight3D" parent="."]
+transform = Transform3D(-0.866025, -0.433013, 0.25, 0, 0.5, 0.866025, -0.5, 0.75, -0.433013, 0, 10, 0)
+light_color = Color(0.55, 0.65, 0.95, 1)
+light_energy = 0.35
+shadow_enabled = true
+
+[node name="Ground" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Ground"]
+shape = SubResource("BoxShape3D_ground")
+
+[node name="Mesh" type="MeshInstance3D" parent="Ground"]
+mesh = SubResource("BoxMesh_ground")
+
+[node name="Walls" type="StaticBody3D" parent="."]
+
+[node name="North" type="CollisionShape3D" parent="Walls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4, -50)
+shape = SubResource("BoxShape3D_wall_x")
+
+[node name="South" type="CollisionShape3D" parent="Walls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4, 50)
+shape = SubResource("BoxShape3D_wall_x")
+
+[node name="East" type="CollisionShape3D" parent="Walls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 50, 4, 0)
+shape = SubResource("BoxShape3D_wall_z")
+
+[node name="West" type="CollisionShape3D" parent="Walls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -50, 4, 0)
+shape = SubResource("BoxShape3D_wall_z")
+
+[node name="Decorations" type="Node3D" parent="."]
+
+[node name="Enemies" type="Node3D" parent="."]
+
+[node name="Player" parent="." instance=ExtResource("2_player")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, 0)
+
+[node name="HUD" parent="." instance=ExtResource("3_hud")]

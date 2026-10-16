@@ -1,0 +1,35 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://lich.gd" id="1_script"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
+radius = 0.6
+height = 2.8
+
+[node name="LichKing" type="CharacterBody3D"]
+collision_layer = 4
+collision_mask = 7
+script = ExtResource("1_script")
+display_name = "The Lich King"
+hit_color = Color(0.82, 0.8, 0.72, 1)
+head_height = 1.6
+is_boss = true
+max_hp = 600.0
+move_speed = 2.6
+coin_reward = 150
+xp_reward = 120
+base_armor = 4.0
+armor_value = 0.0
+armor_bonus_hp = 0.0
+is_king = true
+bolt_damage = 10.0
+bolts = 5
+min_range = 7.0
+max_range = 15.0
+cast_time = 1.0
+cast_cooldown = 2.4
+summon_interval = 12.0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, 0)
+shape = SubResource("CapsuleShape3D_body")

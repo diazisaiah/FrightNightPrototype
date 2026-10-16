@@ -1,0 +1,29 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://colossus.gd" id="1_script"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
+radius = 0.9
+height = 4.2
+
+[node name="Colossus" type="CharacterBody3D"]
+collision_layer = 4
+collision_mask = 7
+script = ExtResource("1_script")
+display_name = "The Bone Colossus"
+hit_color = Color(0.78, 0.75, 0.66, 1)
+head_height = 1.55
+is_boss = true
+max_hp = 650.0
+move_speed = 2.2
+coin_reward = 90
+xp_reward = 140
+armor_value = 6.0
+armor_bonus_hp = 0.0
+attack_damage = 13.0
+attack_range = 3.8
+preferred_distance = 3.2
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.1, 0)
+shape = SubResource("CapsuleShape3D_body")

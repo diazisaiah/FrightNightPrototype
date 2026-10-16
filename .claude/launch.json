@@ -1,0 +1,29 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "web-build",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8060",
+        "--directory",
+        "builds/web"
+      ],
+      "port": 8060
+    },
+    {
+      "name": "audio-lab",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8070",
+        "--directory",
+        "audio_lab"
+      ],
+      "port": 8070
+    }
+  ]
+}
