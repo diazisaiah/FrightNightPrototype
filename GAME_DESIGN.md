@@ -261,6 +261,8 @@ Classes change how you fight, so each one is a different technique to learn.
 
 ### Ultimates [Built, 2026-10-10]
 
+- **The Mauler's meter never drains from hits** (2026-10-16). Super armor only soaks one punch, and the rest of a combo used to cost 10% each, emptying the meter right when Inferno needed the hit. Every other class still loses 10% per clean hit.
+
 Every class has an ultimate charged by an **ultimate meter** (0-100, bottom center of the HUD; it glows gold when full). Playing well charges it; mashing barely does:
 
 | Event | Meter |

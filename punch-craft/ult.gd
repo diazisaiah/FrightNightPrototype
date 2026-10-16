@@ -172,7 +172,12 @@ func on_dodge(clean: bool) -> void:
 	add(GAIN["clean_dodge" if clean else "dodge"] * player.get_combo_multiplier())
 
 
+## A clean hit drains the meter, except the Mauler's: he's built to take
+## hits (Inferno even needs one), and the rest of a combo after his super
+## armor shouldn't empty it.
 func on_hit() -> void:
+	if GameState.is_player_class("berserker"):
+		return
 	add(-HIT_LOSS)
 
 
