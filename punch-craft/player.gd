@@ -81,6 +81,8 @@ const PUNCH_HEAD := {
 	"uppercut": [Vector3(-0.05, -0.12, 0.03), 0.05, Vector3(0.04, 0.04, -0.06), -0.05],
 }
 ## What double tapping each movement key does.
+## Moves with a key of their own (Controls): rolls, the back step and the dash.
+const DEDICATED_MOVES := {"roll_left_key": "roll_left", "roll_right_key": "roll_right", "back_step_key": "back_step", "dash_key": "forward_dash"}
 const DOUBLE_TAPS := {"move_forward": "forward_dash"}
 ## The "Double-tap A / D / S" dodge scheme adds these.
 const DOUBLE_TAP_DODGES := {"move_left": "roll_left", "move_right": "roll_right", "move_back": "back_step"}
@@ -297,8 +299,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		# Clicking back into the window after alt-tabbing recaptures the mouse.
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 		get_viewport().set_input_as_handled()
-	elif Controls.direct_punches() and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
-		# Hook/uppercut buttons (scroll wheel or side buttons, by scheme).
+	elif Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+		# Hook/uppercut buttons (scroll wheel or side buttons by scheme, or
+		# your own keys; empty in the Shift/Ctrl + click scheme otherwise).
 		for type in ["hook", "uppercut"]:
 			if event.is_action_pressed("punch_" + type):
 				if ult.mode == "time_stop":
@@ -670,13 +673,10 @@ func is_counter_ready() -> bool:
 func _check_movement_moves() -> void:
 	_forward_dash_cooldown -= get_process_delta_time()
 	var scheme := Controls.dodges()
-	if scheme == "keys":
-		# Rolls on their own keys (Tab / R).
-		if Input.is_action_just_pressed("roll_left_key"):
-			_do_move("roll_left")
-			return
-		if Input.is_action_just_pressed("roll_right_key"):
-			_do_move("roll_right")
+	# Dedicated keys (the Tab / R scheme, or your own bindings) work in any scheme.
+	for key in DEDICATED_MOVES:
+		if Input.is_action_just_pressed(key):
+			_do_move(DEDICATED_MOVES[key])
 			return
 	if scheme != "double_tap" and Input.is_action_pressed("dodge_modifier"):
 		var moves := CTRL_DODGES.duplicate()

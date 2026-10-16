@@ -57,6 +57,15 @@ Playtesting said there were too many controls. **Settings → Controls → Mode*
 
 **Default dodge scheme is now Space + A / D / S / W** (playtesters liked it best; jump is on C). Settings saved before this change switch to it once.
 
+#### Key bindings [Built 2026-10-16]
+- **Weenie Hut Junior Mode jumps with Space.** Q / E do every dodge there, so there's no dodge modifier. Dash is a double-tap of W, or its own key.
+- **Every action can be rebound** in Settings → Controls → Key bindings: move, sprint (also the hook modifier), jump, jab, cross, hook, uppercut, dodge/slip left and right, and dash. Pro Gamer Mode adds the dodge modifier, roll left/right and back step. Plus ultimate, use and map. Click a key, press the new key or mouse button, and Esc cancels.
+- **Conflicts swap.** Taking another action's key gives that action yours. "Reset keys" clears them all. Rebound keys show in gold.
+- **The hints follow.** Every hint (HUD line, pause Controls tab, tutorial keycaps, dummy cues, Temporal Break prompts) uses `Controls.key_name`.
+- Dedicated roll, back step and dash keys work in any scheme. A hook or uppercut key works even in the Shift/Ctrl + click scheme, alongside the clicks.
+- Saved in Settings as `bindings` ({action: "k:<physical key>" | "m:<mouse button>"}).
+- The tutorial's coach card sits under the pause menu and Settings, instead of covering them.
+
 #### Control schemes [Testing, 2026-10-11]
 
 Settings → Controls has three dropdowns, so layouts can be mixed and tried before choosing the default. The code is in `controls.gd`, which rewrites the InputMap. The HUD controls line, tutorial hints, Temporal Break prompts and demo reel captions all follow the chosen scheme.

@@ -24,6 +24,8 @@ const DEFAULTS := {
 	# 3D resolution: "auto" (browser: fits the screen, drops if the frame rate
 	# does), "full" or "low".
 	"render_scale": "auto",
+	# Your own key bindings (Controls.bind): {action: "k:<key>" | "m:<button>"}.
+	"bindings": {},
 }
 
 var values := DEFAULTS.duplicate()

@@ -412,6 +412,8 @@ func _side_card() -> PanelContainer:
 	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	card.add_theme_stylebox_override("panel", UiTheme.card(18.0))
 	_hud.add_child(card)
+	# Under the rest of the HUD, so the pause menu and Settings cover it.
+	_hud.move_child(card, 0)
 	return card
 
 

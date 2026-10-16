@@ -202,9 +202,8 @@ func _process(delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	# The map key: Tab, or M when Tab is a roll (Controls); M always works.
-	var map_key: bool = event is InputEventKey and (event.physical_keycode == KEY_M or (event.physical_keycode == KEY_TAB and Controls.dodges() != "keys"))
-	if map_key and event.pressed and not event.echo:
+	# The map key (Controls: M, and Tab unless Tab is a roll, or your own).
+	if event.is_action_pressed("map") and not event.is_echo():
 		_minimap.set_expanded(not _minimap.expanded)
 
 

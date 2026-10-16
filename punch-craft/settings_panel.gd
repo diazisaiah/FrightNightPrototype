@@ -51,6 +51,11 @@ var _reset_armed := false
 var _reset_timer: SceneTreeTimer
 ## Only shows when two control choices collide.
 var _scheme_note: Label
+## Key bindings: the list of rows (rebuilt when the mode changes), the
+## action waiting for a key, and its button.
+var _bind_list: VBoxContainer
+var _listening := ""
+var _listen_button: Button
 static var _knob: ImageTexture
 
 
@@ -148,6 +153,7 @@ func _ready() -> void:
 	_scheme_note = _label("", 14, UiTheme.BAD)
 	_scheme_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	controls.add_child(_scheme_note)
+	_build_bindings(controls)
 
 	var display := _page(pages, "DISPLAY")
 	_slider(display, "screen_shake", "quake", "Screen shake", "Shake on big hits", 0.0, 1.0, 0.05, "%d%%", 100.0)
@@ -170,6 +176,24 @@ func _ready() -> void:
 	_refresh()
 
 
+## While a binding is listening, the next key or mouse button is the new
+## binding (Esc cancels).
+func _input(event: InputEvent) -> void:
+	if _listening == "" or not visible:
+		return
+	var pressed: bool = (event is InputEventKey and event.pressed and not event.echo) or (event is InputEventMouseButton and event.pressed)
+	if not pressed:
+		return
+	get_viewport().set_input_as_handled()
+	if event is InputEventKey and event.physical_keycode == KEY_ESCAPE:
+		_stop_listening()
+		return
+	Controls.bind(_listening, event)
+	Sfx.play("tick", -6.0, 1.2)
+	_stop_listening()
+	_refresh()
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if visible and event.is_action_pressed("ui_cancel"):
 		get_viewport().set_input_as_handled()
@@ -177,6 +201,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _close() -> void:
+	_stop_listening()
 	Sfx.play("whoosh", -8.0, 1.3)
 	closed.emit()
 
@@ -439,7 +464,73 @@ func _tile(title: String, detail: String, group: ButtonGroup) -> Button:
 	return tile
 
 
+# --- Key bindings -------------------------------------------------------------------
+
+func _build_bindings(page: Control) -> void:
+	var card := _card(page)
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 10)
+	card.add_child(column)
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 14)
+	column.add_child(head)
+	_row_head(head, "fist", "Key bindings", "Click a key, then press the new key or mouse button. Esc cancels.", UiTheme.GOLD)
+	var reset := Button.new()
+	reset.text = "Reset keys"
+	reset.focus_mode = Control.FOCUS_NONE
+	reset.custom_minimum_size = Vector2(130, 38)
+	reset.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	reset.pressed.connect(func() -> void:
+		_stop_listening()
+		Controls.reset_bindings()
+		Sfx.play("tick", -8.0)
+		_refresh())
+	head.add_child(reset)
+	_bind_list = VBoxContainer.new()
+	_bind_list.add_theme_constant_override("separation", 4)
+	column.add_child(_bind_list)
+
+
+func _fill_bindings() -> void:
+	if _bind_list == null:
+		return
+	for child in _bind_list.get_children():
+		child.queue_free()
+	var custom := Controls.bindings()
+	for entry in Controls.bindable_rows():
+		var action: String = entry[0]
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 12)
+		var name_label := _label(entry[1], 16, UiTheme.TEXT)
+		name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(name_label)
+		var key := Button.new()
+		var shown := Controls.key_name(action)
+		if shown == "-":
+			# Nothing of its own: say how it's done instead.
+			shown = {"punch_hook": Controls.text("hook"), "punch_uppercut": Controls.text("uppercut")}.get(action, "Not set")
+		key.text = "Press a key..." if action == _listening else shown
+		key.focus_mode = Control.FOCUS_NONE
+		key.custom_minimum_size = Vector2(190, 34)
+		key.add_theme_font_size_override("font_size", 16)
+		key.add_theme_color_override("font_color", UiTheme.GOLD.lightened(0.3) if custom.has(action) else UiTheme.TEXT)
+		key.add_theme_stylebox_override("normal", UiTheme.box(Color(0, 0, 0, 0.35), Color(1, 1, 1, 0.12), 1, 6))
+		key.add_theme_stylebox_override("hover", UiTheme.box(Color(1, 1, 1, 0.06), Color(UiTheme.GOLD, 0.5), 1, 6))
+		key.pressed.connect(func() -> void:
+			_listening = action
+			_listen_button = key
+			key.text = "Press a key...")
+		row.add_child(key)
+		_bind_list.add_child(row)
+
+
+func _stop_listening() -> void:
+	_listening = ""
+	_listen_button = null
+
+
 func _refresh() -> void:
+	_fill_bindings()
 	if _scheme_note:
 		var clash: bool = Settings.get_value("punch_mode") == "side_buttons" and Settings.get_value("slip_mode") == "qe_side"
 		_scheme_note.text = "Side buttons are on hooks and uppercuts, so slips stay on Q / E." if clash else ""

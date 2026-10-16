@@ -54,6 +54,22 @@ func _keys(action: String) -> Array[Key]:
 
 func _test_control_preset() -> void:
 	var old_dodge = Settings.values.dodge_mode
+	var old_assist = Settings.values.assist_mode
+	var old_bindings = Settings.values.get("bindings", {})
+	Settings.values.bindings = {}
+	# Weenie Hut Junior Mode: Q / E dodge, so Space jumps and no modifier is held.
+	Settings.values.assist_mode = "junior"
+	Settings.values.dodge_mode = "space"
+	Controls.apply()
+	_check(_keys("jump") == [KEY_SPACE], "Weenie Hut Junior Mode jumps with Space")
+	_check(_keys("dodge_modifier").is_empty(), "Weenie Hut Junior Mode has no dodge modifier")
+	# Bindings: taking another action's key swaps them.
+	var q := InputEventKey.new()
+	q.physical_keycode = KEY_Q
+	Controls.bind("jump", q)
+	_check(_keys("jump") == [KEY_Q] and _keys("slip_left") == [KEY_SPACE], "Binding a used key swaps the two actions")
+	Settings.values.bindings = {}
+	Settings.values.assist_mode = "pro"
 	Settings.values.dodge_mode = "keys"
 	Controls.apply()
 	_check(_keys("roll_left_key") == [KEY_TAB], "Tab must be the dedicated left roll key")
@@ -64,6 +80,8 @@ func _test_control_preset() -> void:
 	_check(Controls.text("map") == "M", "The dedicated roll preset must move the Crypt map to M")
 	_check(Controls.summary().contains("T ultimate"), "The HUD summary must show T for ultimate")
 	Settings.values.dodge_mode = old_dodge
+	Settings.values.assist_mode = old_assist
+	Settings.values.bindings = old_bindings
 	Controls.apply()
 
 
