@@ -10,6 +10,10 @@ const DUNGEON := preload("res://dungeon.gd")
 const DETAIL_WIDTH := 340.0
 
 var _xp_bar: ProgressBar
+var _backdrop: CampBackdrop
+## The menus (everything but the backdrop), hidden while the Crypt rises.
+var _menus: Control
+var _crypt_button: Button
 var _level_label: Label
 var _xp_label: Label
 ## Resource pills in the header: coins, souls, skill and stat points.
@@ -34,10 +38,57 @@ func _ready() -> void:
 	GameState.changed.connect(_refresh)
 	_show_page("Upgrades")
 	_refresh()
+	if GameState.crypt_reveal_pending:
+		await _play_crypt_reveal()
 	if GameState.upgrade_notice != "":
 		GameDialog.open(self, "A NEW CLIMB", GameState.upgrade_notice, ["Let's go"])
 		GameState.upgrade_notice = ""
 		GameState.save_game()
+
+
+## Back from breaking the Bellman's seal: the menus fall away, the camera
+## turns to the graveyard and the Crypt rises out of it. Plays once.
+func _play_crypt_reveal() -> void:
+	var blocker := Control.new()
+	blocker.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	blocker.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(blocker)
+	_menus.modulate.a = 0.0
+	await get_tree().create_timer(0.6).timeout
+	await _backdrop.play_crypt_reveal()
+	var words := VBoxContainer.new()
+	words.anchor_left = 0.0
+	words.anchor_right = 1.0
+	words.anchor_top = 0.68
+	words.anchor_bottom = 0.68
+	words.add_theme_constant_override("separation", 4)
+	words.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(words)
+	var title := UiTheme.title_label("THE CRYPT HAS OPENED", 64, CryptDoor.GLOW.lightened(0.45))
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_constant_override("outline_size", 14)
+	words.add_child(title)
+	var line := UiTheme.title_label("The Bellman's last toll cracked the graveyard open. What you find down there, you keep.", 22, UiTheme.TEXT)
+	line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	words.add_child(line)
+	words.modulate.a = 0.0
+	var show := words.create_tween()
+	show.tween_property(words, "modulate:a", 1.0, 0.4)
+	show.tween_interval(2.6)
+	show.tween_property(words, "modulate:a", 0.0, 0.5)
+	await show.finished
+	words.queue_free()
+	_backdrop.end_crypt_reveal()
+	GameState.crypt_reveal_pending = false
+	GameState.save_game()
+	await create_tween().tween_property(_menus, "modulate:a", 1.0, 0.5).finished
+	blocker.queue_free()
+	# The new button gets a nudge.
+	if _crypt_button:
+		_crypt_button.pivot_offset = _crypt_button.size / 2.0
+		var nudge := _crypt_button.create_tween()
+		nudge.tween_property(_crypt_button, "scale", Vector2(1.15, 1.15), 0.18)
+		nudge.tween_property(_crypt_button, "scale", Vector2.ONE, 0.25).set_trans(Tween.TRANS_BACK)
 
 
 func _build_ui() -> void:
@@ -45,6 +96,7 @@ func _build_ui() -> void:
 	var backdrop := CampBackdrop.new()
 	backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(backdrop)
+	_backdrop = backdrop
 	var shade := TextureRect.new()
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -65,6 +117,7 @@ func _build_ui() -> void:
 	for side in ["left", "top", "right", "bottom"]:
 		margin.add_theme_constant_override("margin_" + side, 20)
 	add_child(margin)
+	_menus = margin
 
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 10)
@@ -179,10 +232,37 @@ func _build_tabs() -> Control:
 		start.add_theme_font_size_override("font_size", 19)
 		start.pressed.connect(mode[1])
 		tabs.add_child(start)
-		# Locked things stay hidden: the Crypt appears once it's found in the Arena.
-		if mode[0] == "Crypt" and not GameState.crypt_unlocked:
-			start.visible = false
+		# Locked things stay hidden: the Crypt appears with the Bellman's seal,
+		# wearing a NEW badge until the first descent.
+		if mode[0] == "Crypt":
+			_crypt_button = start
+			start.visible = GameState.crypt_unlocked
+			if GameState.crypt_new:
+				start.add_child(_new_badge())
 	return tabs
+
+
+## A small pulsing "NEW" tag on a button's corner.
+func _new_badge() -> Control:
+	var badge := PanelContainer.new()
+	badge.add_theme_stylebox_override("panel", UiTheme.box(CryptDoor.GLOW, Color.TRANSPARENT, 0, 8, 3.0))
+	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var label := Label.new()
+	label.text = "NEW"
+	label.add_theme_font_override("font", UiTheme.display_font())
+	label.add_theme_font_size_override("font_size", 13)
+	label.add_theme_color_override("font_color", Color.WHITE)
+	badge.add_child(label)
+	badge.anchor_left = 1.0
+	badge.anchor_right = 1.0
+	badge.offset_left = -34
+	badge.offset_right = 4
+	badge.offset_top = -12
+	badge.offset_bottom = 8
+	var pulse := badge.create_tween().set_loops()
+	pulse.tween_property(badge, "modulate:a", 0.55, 0.6).set_trans(Tween.TRANS_SINE)
+	pulse.tween_property(badge, "modulate:a", 1.0, 0.6).set_trans(Tween.TRANS_SINE)
+	return badge
 
 
 func _add_page(area: Control, page_name: String, page: Control) -> void:
@@ -639,6 +719,7 @@ func _start_run() -> void:
 
 
 func _start_crypt() -> void:
+	GameState.crypt_new = false
 	GameState.save_game()
 	Loading.go("res://dungeon.tscn")
 

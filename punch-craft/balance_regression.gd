@@ -27,6 +27,7 @@ func _run() -> void:
 	_test_hats_and_tony()
 	_test_web_optimization_structure()
 	_test_browser_audio_guard()
+	_test_crypt_unlock()
 	_test_class_balance()
 	if _failures.is_empty():
 		print("BALANCE REGRESSION: PASS")
@@ -433,6 +434,25 @@ func _test_hats_and_tony() -> void:
 	_check(GameState.add_hat("no_yonker_no_brim") == "duplicate", "Tony only unlocks once")
 	_check(GameState.SKILL_TREES.has("wise_guy") and GameState.SKILL_TREES.wise_guy.size() == GameState.SKILL_TREES.berserker.size(), "Tony has a full skill web")
 	GameState._reset_fields()
+
+
+## The Crypt opens with the Bellman's seal (not by wandering the Arena), and
+## the Bellman is tuned to a fighter with no gear, since gear comes from it.
+func _test_crypt_unlock() -> void:
+	var state = load("res://game_state.gd").new()
+	state._reset_fields()
+	state.save_path = "user://test_save_crypt.json"
+	_check(not state.crypt_unlocked, "A fresh save starts with the Crypt sealed")
+	state.record_dead_league_result("headless", "B", 1000)
+	_check(not state.crypt_unlocked, "Only the Bellman's seal opens the Crypt")
+	state.record_dead_league_result("bellman", "B", 1000)
+	_check(state.crypt_unlocked and state.crypt_reveal_pending and state.crypt_new, "Beating the Bellman opens the Crypt and queues the camp reveal")
+	state.free()
+	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://test_save_crypt.json"))
+	var gear: Dictionary = Progression._par_gear(1)
+	_check(gear.damage == 0.0 and gear.knuckles == 0.0, "The Bellman's par has no gear: the Crypt isn't open yet")
+	_check(not FileAccess.file_exists("res://world.gd") or FileAccess.get_file_as_string("res://world.gd").find("_raise_crypt_entrance") == -1,
+			"The Arena no longer raises a crypt mid-bout")
 
 
 ## Every class at par (its level's skills, par upgrades and gear) should rate

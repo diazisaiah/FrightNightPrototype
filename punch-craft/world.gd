@@ -47,13 +47,6 @@ const FIRST_NIGHT := {
 	"types": ["zombie", "skeleton", "runner", "hulk", "brawler"],
 	"boss_hp": 0.3, "boss_damage": 0.7, "escorts": ["skeleton"],
 }
-## The Crypt is found here: from this night on, until it has been found, its
-## entrance rises out of the ground once the bar is this full.
-const CRYPT_NIGHT := 2
-const CRYPT_REVEAL_AT := 0.3
-const CRYPT_DISTANCE := Vector2(14.0, 20.0)
-const CRYPT_REACH := 3.0
-const CRYPT_GLOW := Color(0.6, 0.3, 1.0)
 const LATE_NIGHT := 0.75
 ## Enemies on the field at once, growing as the bar fills.
 const MIN_ALIVE := 3
@@ -123,11 +116,6 @@ var _run_souls := 0
 ## Run tallies when this bout started, so the results show just this bout.
 var _bout_start := [0, 0, 0]
 var _nights_cleared_this_run := 0
-## The Crypt entrance, once it has risen this run.
-var _crypt_entrance: Node3D
-var _crypt_gate: Node3D
-var _crypt_light: OmniLight3D
-var _crypt_found_now := false
 
 @onready var _player: Player = $Player
 @onready var _hud: Hud = $HUD
@@ -176,7 +164,6 @@ func _ready() -> void:
 	_update_night_hud()
 	_hud.announce(_bout_title())
 	_hud.say("", Progression.announcer_line(), Color(1.0, 0.8, 0.45))
-	_hint_crypt()
 
 
 func _first_night() -> bool:
@@ -243,7 +230,6 @@ func _kills_needed() -> int:
 
 func _process(delta: float) -> void:
 	_flicker_torches(delta)
-	_update_crypt_entrance()
 	if _run_over or _boss_spawned:
 		return
 	_spawn_timer -= delta
@@ -428,8 +414,6 @@ func _on_enemy_died(enemy: Enemy) -> void:
 		while _milestone < MILESTONES - 1 and _progress() >= float(_milestone + 1) / MILESTONES:
 			_milestone += 1
 			_on_milestone(_milestone)
-		if _crypt_waiting() and _progress() >= CRYPT_REVEAL_AT:
-			_raise_crypt_entrance()
 		if _progress() >= 1.0:
 			_start_boss()
 	_update_night_hud()
@@ -481,8 +465,6 @@ func _win_night() -> void:
 	var notes: Array[String] = []
 	if top and not bool(GameState.dead_league_clears.get(Progression.TIERS[_division - 1].contender, false)):
 		notes.append("%s AWAITS IN THE DEAD LEAGUE" % DeadLeagueRules.boss(_division - 1).name)
-	if _crypt_found_now:
-		notes.append("A CRYPT HAS RISEN")
 	_hud.show_results({
 		"title": "BOUT %d WON" % _night,
 		"subtitle": "%s DIVISION" % Progression.TIERS[_division - 1].division.to_upper(),
@@ -490,7 +472,7 @@ func _win_night() -> void:
 		"medals": _medals(_style.clean, _style.counters, _style.types.size(), _style.hits),
 		"rewards": {"coins": _run_coins - _bout_start[0], "xp": _run_xp - _bout_start[1], "souls": _run_souls - _bout_start[2]},
 		"note": "\n".join(notes),
-		"note_color": CRYPT_GLOW.lightened(0.4) if _crypt_found_now and notes.size() == 1 else UiTheme.GOLD,
+		"note_color": UiTheme.GOLD,
 	}, "Fight on" if top else "Next bout", GameState.crypt_unlocked)
 
 
@@ -505,7 +487,6 @@ func _continue_to_next_night() -> void:
 	_spawn_timer = FIRST_SPAWN_DELAY
 	_apply_first_night()
 	_player.start_fresh()
-	_hint_crypt()
 	_hud.resume_after_summary()
 	_hud.announce(_bout_title())
 	_hud.say("", Progression.announcer_line(), Color(1.0, 0.8, 0.45))
@@ -546,130 +527,9 @@ func _end_run(title: String, slow := true) -> void:
 	}, "", false, "Back to camp")
 
 
-# --- The Crypt's entrance -----------------------------------------------------------
+# --- Leaving -----------------------------------------------------------------------
 
-## True on nights the entrance can still rise (Night 2 on, not found, not up yet).
-func _crypt_waiting() -> bool:
-	return (_division > 1 or _night >= CRYPT_NIGHT) and not GameState.crypt_unlocked and _crypt_entrance == null
-
-
-func _hint_crypt() -> void:
-	if (_division > 1 or _night >= CRYPT_NIGHT) and not GameState.crypt_unlocked:
-		_hud.add_feed("Strange purple lights have been seen among the graves...", CRYPT_GLOW.lightened(0.3))
-
-
-## An old crypt door pushes up out of the earth somewhere in the fog, with a
-## beam of purple light above it that can be seen from anywhere.
-func _raise_crypt_entrance() -> void:
-	var spot := Vector2(_player.global_position.x, _player.global_position.z)
-	spot += Vector2.from_angle(randf() * TAU) * randf_range(CRYPT_DISTANCE.x, CRYPT_DISTANCE.y)
-	spot = spot.limit_length(ARENA_RADIUS - 6.0)
-	_crypt_entrance = _build_crypt_entrance()
-	_crypt_entrance.position = Vector3(spot.x, -3.2, spot.y)
-	# The door faces the player.
-	_crypt_entrance.rotation.y = atan2(_player.global_position.x - spot.x, _player.global_position.z - spot.y)
-	_decorations.add_child(_crypt_entrance)
-	var tween := _crypt_entrance.create_tween()
-	tween.tween_property(_crypt_entrance, "position:y", 0.0, 3.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	Sfx.play("quake", 0.0, 0.5)
-	Sfx.play_at("growl", _crypt_entrance.position + Vector3(0, 1, 0), 0.0, 0.5)
-	for i in 6:
-		HitFx.burst(self, Vector3(spot.x, 0.3, spot.y) + Vector3(randf_range(-2, 2), 0, randf_range(-2, 2)), Vector3.UP, Color(0.3, 0.26, 0.2), 14, 4.0, false, 0.1)
-	_player._shake = maxf(_player._shake, 0.06)
-	_hud.announce_small("The ground splits open...", CRYPT_GLOW.lightened(0.3))
-	_hud.add_feed("A crypt has risen...", CRYPT_GLOW.lightened(0.3))
-
-
-func _build_crypt_entrance() -> Node3D:
-	var root := Node3D.new()
-	var stone := Enemy._material(Color(0.3, 0.29, 0.33))
-	var dark := Enemy._material(Color(0.15, 0.14, 0.17))
-	_crypt_part(root, Enemy._box(Vector3(4.2, 0.3, 3.2)), dark, Vector3(0, 0.15, 0))
-	_crypt_part(root, Enemy._box(Vector3(3.6, 2.8, 2.4)), stone, Vector3(0, 1.7, -0.2))
-	for x in [-1.45, 1.45]:
-		_crypt_part(root, Enemy._cylinder(0.22, 3.0), stone, Vector3(x, 1.8, 1.15))
-	_crypt_part(root, Enemy._box(Vector3(3.8, 0.35, 0.8)), stone, Vector3(0, 3.45, 1.05))
-	var roof := PrismMesh.new()
-	roof.size = Vector3(4.0, 1.1, 3.0)
-	_crypt_part(root, roof, dark, Vector3(0, 4.15, -0.1))
-	_crypt_part(root, Enemy._box(Vector3(0.16, 0.9, 0.16)), stone, Vector3(0, 5.0, 0.9))
-	_crypt_part(root, Enemy._box(Vector3(0.55, 0.16, 0.16)), stone, Vector3(0, 5.2, 0.9))
-	# The doorway glows; an iron gate covers it until it's found.
-	_crypt_part(root, Enemy._box(Vector3(1.6, 2.3, 0.05)), Enemy._glow_material(CRYPT_GLOW), Vector3(0, 1.45, 1.0))
-	_crypt_gate = Node3D.new()
-	root.add_child(_crypt_gate)
-	var iron := Enemy._material(Color(0.08, 0.08, 0.09), 0.7)
-	for i in 6:
-		_crypt_part(_crypt_gate, Enemy._box(Vector3(0.06, 2.3, 0.06)), iron, Vector3(-0.65 + i * 0.26, 1.45, 1.08))
-	_crypt_part(_crypt_gate, Enemy._box(Vector3(1.7, 0.08, 0.08)), iron, Vector3(0, 2.2, 1.08))
-	_crypt_part(_crypt_gate, Enemy._box(Vector3(1.7, 0.08, 0.08)), iron, Vector3(0, 0.7, 1.08))
-	_crypt_light = OmniLight3D.new()
-	_crypt_light.light_color = CRYPT_GLOW
-	_crypt_light.light_energy = 3.0
-	_crypt_light.omni_range = 9.0
-	_crypt_light.position = Vector3(0, 1.6, 2.2)
-	root.add_child(_crypt_light)
-	# A beam of light into the sky that shows through the fog.
-	var beam := CylinderMesh.new()
-	beam.top_radius = 1.4
-	beam.bottom_radius = 0.7
-	beam.height = 60.0
-	var beam_material := StandardMaterial3D.new()
-	beam_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	beam_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	beam_material.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-	beam_material.albedo_color = Color(CRYPT_GLOW, 0.14)
-	beam_material.set("disable_fog", true)
-	var beam_node := _crypt_part(root, beam, beam_material, Vector3(0, 30.0, 0))
-	beam_node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	var body := StaticBody3D.new()
-	var shape := CollisionShape3D.new()
-	var box := BoxShape3D.new()
-	box.size = Vector3(3.8, 3.4, 2.6)
-	shape.shape = box
-	shape.position = Vector3(0, 1.7, -0.1)
-	body.add_child(shape)
-	root.add_child(body)
-	return root
-
-
-func _crypt_part(parent: Node3D, mesh: PrimitiveMesh, material: Material, pos: Vector3) -> MeshInstance3D:
-	mesh.material = material
-	var part := MeshInstance3D.new()
-	part.mesh = mesh
-	part.position = pos
-	parent.add_child(part)
-	return part
-
-
-## Walk up to the gate and press F to find the Crypt.
-func _update_crypt_entrance() -> void:
-	if _crypt_entrance == null or _run_over:
-		return
-	_crypt_light.light_energy = 3.0 + sin(Time.get_ticks_msec() / 300.0) * 0.8
-	if GameState.crypt_unlocked:
-		return
-	var door := _crypt_entrance.to_global(Vector3(0, 0, 2.2))
-	var near := _player.global_position.distance_to(door) <= CRYPT_REACH
-	_hud.set_prompt("F  Pry open the crypt gate" if near else "")
-	if near and Input.is_action_just_pressed("interact"):
-		_discover_crypt()
-
-
-func _discover_crypt() -> void:
-	GameState.unlock_crypt()
-	_crypt_found_now = true
-	_hud.set_prompt("")
-	var tween := _crypt_gate.create_tween()
-	tween.tween_property(_crypt_gate, "position:y", 2.4, 1.2).set_trans(Tween.TRANS_SINE)
-	_crypt_light.omni_range = 14.0
-	Sfx.play("clear", 0.0, 0.7)
-	Sfx.play("draw", -2.0, 0.6)
-	HitFx.burst(self, _crypt_entrance.to_global(Vector3(0, 1.5, 1.4)), Vector3.UP, CRYPT_GLOW, 40, 4.0, true, 0.06)
-	_hud.announce("THE CRYPT")
-	_hud.add_feed("THE CRYPT is open", CRYPT_GLOW.lightened(0.4))
-
-
+## The bout-end screen's "Descend into the Crypt" (once the Crypt is open).
 func _descend_into_crypt() -> void:
 	GameState.save_game()
 	get_tree().paused = false

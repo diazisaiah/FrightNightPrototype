@@ -217,6 +217,8 @@ func _seal_broken_text(index: int) -> String:
 	if tier.power != "":
 		parts.append(tier.power)
 	parts.append(String(GameState.UPGRADES[tier.trophy].name).to_upper())
+	if DeadLeagueRules.boss(index).id == GameState.CRYPT_SEAL:
+		parts.append("THE CRYPT")
 	return "SEAL BROKEN\n%s\nNEXT:  %s" % ["   ·   ".join(parts), DeadLeagueRules.boss(index + 1).name]
 
 

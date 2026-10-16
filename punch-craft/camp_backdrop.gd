@@ -3,10 +3,15 @@ extends SubViewportContainer
 ## The live scene behind the camp menus: a campfire in a clearing at the edge
 ## of the graveyard, with a tent, log seats, crates and a lantern, the
 ## training dummy, graves and dead trees in the fog, and the stars. The camera
-## drifts slowly around the fire.
+## drifts slowly around the fire. Once the Bellman's seal is broken, the
+## Crypt's entrance stands in the graveyard beyond (play_crypt_reveal() shows
+## it rising, once).
 
 const FIRE := Vector3(0, 0, 0)
 const CAMERA_HOME := Vector3(4.6, 2.3, 6.2)
+const LOOK_AT := Vector3(-1.2, 1.0, 0)
+## Where the Crypt's entrance stands, out past the tent, facing the fire.
+const CRYPT_SPOT := Vector3(-5.5, 0, -11.0)
 
 var _viewport: SubViewport
 var _world: Node3D
@@ -14,6 +19,10 @@ var _camera: Camera3D
 var _fire_light: OmniLight3D
 var _time := 0.0
 var _skip := false
+var _crypt: CryptDoor
+## 0-1: how far the camera has turned from the fire to the Crypt.
+var _crypt_focus := 0.0
+var _shake := 0.0
 
 
 func _ready() -> void:
@@ -37,9 +46,36 @@ func _process(delta: float) -> void:
 		_skip = not _skip
 		_viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED if _skip else SubViewport.UPDATE_ALWAYS
 	_fire_light.light_energy = 3.2 + sin(_time * 9.0) * 0.35 + sin(_time * 23.0) * 0.2
-	var angle := sin(_time * 0.05) * 0.35
+	var angle := sin(_time * 0.05) * 0.35 * (1.0 - _crypt_focus)
 	_camera.position = FIRE + CAMERA_HOME.rotated(Vector3.UP, angle) + Vector3(0, sin(_time * 0.2) * 0.1, 0)
-	_camera.look_at(FIRE + Vector3(-1.2, 1.0, 0))
+	_camera.look_at(FIRE + LOOK_AT.lerp(CRYPT_SPOT + Vector3(0, 2.2, 0), _crypt_focus))
+	if _shake > 0.0:
+		_camera.position += Vector3(randf_range(-1, 1), randf_range(-1, 1), 0) * _shake * 0.06
+		_camera.fov = 55.0 - 6.0 * _crypt_focus
+
+
+## The Crypt rising behind camp: the camera turns to the graveyard, the earth
+## shakes, the crypt pushes up, its gate lifts and the beam lights the fog.
+func play_crypt_reveal() -> void:
+	if _crypt == null:
+		return
+	var turn := create_tween()
+	turn.tween_property(self, "_crypt_focus", 1.0, 1.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	await turn.finished
+	Sfx.play("quake", 0.0, 0.6)
+	Sfx.play("growl", -4.0, 0.45)
+	_shake = 1.0
+	await _crypt.rise(2.6).finished
+	_shake = 0.0
+	Sfx.play("draw", -2.0, 0.6)
+	await _crypt.open().finished
+	Sfx.play("clear", 0.0, 0.7)
+
+
+## Turns back to the fire after the reveal.
+func end_crypt_reveal() -> void:
+	_camera.fov = 55.0
+	create_tween().tween_property(self, "_crypt_focus", 0.0, 1.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 
 
 func _build() -> void:
@@ -177,4 +213,13 @@ func _build() -> void:
 	run.position = Vector3(-8.0, 0, -9.0)
 	run.rotation.y = 0.2
 	Scenery.mist(_world, Vector3(0, 0.4, -4.0), Vector3(16, 0.3, 12), 28)
+	if GameState.crypt_unlocked:
+		_crypt = CryptDoor.new()
+		_crypt.position = CRYPT_SPOT
+		_crypt.rotation.y = atan2(CAMERA_HOME.x - CRYPT_SPOT.x, CAMERA_HOME.z - CRYPT_SPOT.z)
+		_world.add_child(_crypt)
+		if GameState.crypt_reveal_pending:
+			_crypt.hide_sunk()
+		else:
+			_crypt.show_open()
 	Scenery.wisps(_world, Vector3(0, 1.5, -6.0), Vector3(12, 1.0, 8), Color(0.45, 1.0, 0.75), 16)

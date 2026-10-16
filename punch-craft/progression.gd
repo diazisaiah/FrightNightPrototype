@@ -156,8 +156,10 @@ static func _is_power(node: Dictionary) -> bool:
 	return false
 
 
+## No gear before the Bellman: the Crypt (where gear comes from) only opens
+## with his seal, so he and Division 1 are tuned to an empty-handed fighter.
 static func _par_gear(tier: int) -> Dictionary:
-	if tier <= 0:
+	if tier <= 1:
 		return {"damage": 0.0, "knuckles": 0.0, "defense": 0.0}
 	var floor_number := tier * FLOORS_PER_TIER
 	var growth := 1.0 + Items.FLOOR_GROWTH * (floor_number - 1)

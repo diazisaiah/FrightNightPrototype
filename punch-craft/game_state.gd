@@ -1002,8 +1002,12 @@ var tutorial_done := false
 var upgrade_notice := ""
 ## Has been through the first-time start (class pick, tutorial offer).
 var onboarded := false
-## The Crypt mode is found in the graveyard (from Night 2) before it can be played.
+## The Crypt opens when the Bellman's seal breaks (his first defeat).
 var crypt_unlocked := false
+## Camp still has to play the Crypt rising behind it (once).
+var crypt_reveal_pending := false
+## The camp's Crypt button wears a NEW badge until the first descent.
+var crypt_new := false
 ## Dead League progression. Results persist; the active flag and selected bout
 ## are session-only so entering the ring never mutates the player's build.
 var dead_league_best := {}
@@ -1293,9 +1297,14 @@ func add_souls(amount: int) -> void:
 	_commit()
 
 
-## Found the Crypt's entrance in the graveyard: the mode opens.
+## The Bellman's seal breaks: the Crypt opens, and camp shows it rising.
+const CRYPT_SEAL := "bellman"
+
+
 func unlock_crypt() -> void:
 	crypt_unlocked = true
+	crypt_reveal_pending = true
+	crypt_new = true
 	_commit()
 
 
@@ -1424,6 +1433,8 @@ func record_dead_league_result(boss_id: String, grade: String, score: int) -> bo
 	var first_clear := not bool(dead_league_clears.get(boss_id, false))
 	if first_clear:
 		dead_league_clears[boss_id] = true
+		if boss_id == CRYPT_SEAL and not crypt_unlocked:
+			unlock_crypt()
 	var previous: Dictionary = dead_league_best.get(boss_id, {})
 	if previous.is_empty() or score > int(previous.get("score", -1)):
 		dead_league_best[boss_id] = {"grade": grade, "score": score}
@@ -1582,6 +1593,8 @@ func save_game() -> void:
 		"tutorial_done": tutorial_done,
 		"onboarded": onboarded,
 		"crypt_unlocked": crypt_unlocked,
+		"crypt_reveal_pending": crypt_reveal_pending,
+		"crypt_new": crypt_new,
 		"dead_league_best": dead_league_best,
 		"dead_league_clears": dead_league_clears,
 		"souls": souls,
@@ -1634,8 +1647,16 @@ func load_game() -> void:
 	tutorial_done = bool(data.get("tutorial_done", false))
 	onboarded = bool(data.get("onboarded", true))  # Older saves: already playing.
 	crypt_unlocked = bool(data.get("crypt_unlocked", crypt_floors_cleared > 0 or crypt_wins > 0))
+	crypt_reveal_pending = bool(data.get("crypt_reveal_pending", false))
+	crypt_new = bool(data.get("crypt_new", false))
 	dead_league_best = data.get("dead_league_best", {}).duplicate(true) if data.get("dead_league_best", {}) is Dictionary else {}
 	dead_league_clears = data.get("dead_league_clears", {}).duplicate(true) if data.get("dead_league_clears", {}) is Dictionary else {}
+	# The Crypt now opens with the Bellman's seal: saves that beat him before
+	# finding it get it now (and see it rise at camp).
+	if bool(dead_league_clears.get(CRYPT_SEAL, false)) and not crypt_unlocked:
+		crypt_unlocked = true
+		crypt_reveal_pending = true
+		crypt_new = true
 	souls = int(data.get("souls", 0))
 	armory = data.get("armory", []).duplicate(true) if data.get("armory", []) is Array else []
 	_next_uid = int(data.get("next_uid", 1))
@@ -1860,6 +1881,8 @@ func _reset_fields() -> void:
 	tutorial_done = false
 	onboarded = false
 	crypt_unlocked = false
+	crypt_reveal_pending = false
+	crypt_new = false
 	nights_cleared = 0
 	crypt_floors_cleared = 0
 	crypt_wins = 0
