@@ -3,15 +3,18 @@ extends CanvasLayer
 ## The fourth Yonker: the screen goes black, a deli bell dings, and Tony
 ## steps out. "TONY WANTS HIS SANDWICH." He's playable from now on.
 
+signal closed
+
 var _was_paused := false
 var _mouse_mode := Input.MOUSE_MODE_VISIBLE
 
 
-static func open(tree: SceneTree) -> void:
+static func open(tree: SceneTree) -> TonyUnlock:
 	var screen := TonyUnlock.new()
 	screen.layer = 96
 	screen.process_mode = Node.PROCESS_MODE_ALWAYS
 	(tree.current_scene if tree.current_scene else tree.root).add_child(screen)
+	return screen
 
 
 func _ready() -> void:
@@ -81,4 +84,5 @@ func _close() -> void:
 	Sfx.play("unlock", 0.0, 1.0)
 	get_tree().paused = _was_paused
 	Input.mouse_mode = _mouse_mode
+	closed.emit()
 	queue_free()

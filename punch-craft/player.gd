@@ -82,6 +82,10 @@ const PUNCH_HEAD := {
 }
 ## What double tapping each movement key does.
 ## Moves with a key of their own (Controls): rolls, the back step and the dash.
+## After this many sloppy heavies in a row, a tip says how to set them up
+## (at most once every SLOPPY_TIP_EVERY seconds).
+const SLOPPY_TIP_AFTER := 3
+const SLOPPY_TIP_EVERY := 25.0
 ## Right-stick look speed at full tilt (radians a second, before Settings).
 const STICK_LOOK_SPEED := 3.4
 const DEDICATED_MOVES := {"roll_left_key": "roll_left", "roll_right_key": "roll_right", "back_step_key": "back_step", "dash_key": "forward_dash"}
@@ -197,6 +201,13 @@ var _assist_side := ""
 ## "spear" / "haymaker" while the Stray's dash punch is landing.
 var _dash_style := ""
 var _last_type := ""
+## Sloppy (not set up) hooks and uppercuts in a row, and when the tip last showed.
+var _sloppy_run := 0
+var _sloppy_tip_time := -100.0
+## The last punch was a set-up heavy (a set-up hook sets up an uppercut).
+var _last_set_up := false
+## Jabs in a row from the same hand (a double jab keeps the combo).
+var _jab_run := 0
 var _combo_timer := 0.0
 var _cooldown := 0.0
 var _buffered_hand := ""
@@ -1012,10 +1023,13 @@ func _land_punch(type: String, hand: String, _dashing := false, airborne := fals
 
 	var punch: Dictionary = PUNCHES[type]
 	# Heavy punches only get their multiplier and stagger when they follow a
-	# jab or cross from the other hand (jab -> right uppercut, jab-cross-hook...).
-	# The Berserker's heavy punches don't need a setup.
+	# jab or cross from the other hand (jab -> right uppercut, jab-cross-hook...),
+	# and a set-up hook sets up an uppercut from the other hand (jab, cross,
+	# hook, uppercut). The Berserker's heavy punches don't need a setup.
+	var after_straight := _last_type in ["jab", "cross"]
+	var after_hook := type == "uppercut" and _last_type == "hook" and _last_set_up
 	var set_up: bool = punch.heavy and (GameState.is_player_class("berserker") \
-			or (combo > 0 and hand != _last_hand and _last_type in ["jab", "cross"]))
+			or (combo > 0 and hand != _last_hand and (after_straight or after_hook)))
 	# A counter only counts with the hand on the side you dodged to.
 	var counter := is_counter_ready() and (_counter_side == "any" or _counter_side == hand)
 	var retaliation := counter and _counter_from_armor
@@ -1028,13 +1042,17 @@ func _land_punch(type: String, hand: String, _dashing := false, airborne := fals
 	var target_was_low := target.hp < target.max_hp * FINISHER_HP_FRACTION
 	var target_was_fresh := target.hp >= target.max_hp
 
-	# Alternating hands builds the combo; the same hand twice starts it over
-	# (except jab, jab with the Double Jab skill).
-	var double_jab: bool = type == "jab" and _last_type == "jab" and GameState.has_effect("double_jab")
-	if hand == _last_hand and not double_jab:
+	# Alternating hands builds the combo; the same hand twice starts it over,
+	# except a double jab (jab, jab), after which the other hand must come
+	# next. Triple Jab (Blur skill) allows a third jab.
+	var jab_repeat := type == "jab" and _last_type == "jab" and hand == _last_hand
+	_jab_run = _jab_run + 1 if jab_repeat else (1 if type == "jab" else 0)
+	var jabs_allowed := 2 + int(GameState.get_effect("double_jab"))
+	if hand == _last_hand and not (jab_repeat and _jab_run <= jabs_allowed):
 		combo = 0
 	_last_hand = hand
 	_last_type = type
+	_last_set_up = set_up
 	_combo_timer = GameState.get_combo_window()
 	var plain := type in ["jab", "cross"] and not counter and not dash_jab and is_on_floor()
 	_straight_run = _straight_run + 1 if plain else 0
@@ -1113,6 +1131,19 @@ func _land_punch(type: String, hand: String, _dashing := false, airborne := fals
 	if weak > 1.0:
 		raw_damage *= weak
 		caption = "WEAK SPOT!" if caption == "" else caption + "\nWEAK SPOT"
+
+	# A hook or uppercut with nothing setting it up does jab damage for 2-3x
+	# the knuckle cost. Say so, and after a few in a row, say how to fix it.
+	if punch.heavy and not set_up and not counter and caption == "" and forced == null:
+		caption = "SLOPPY"
+		_sloppy_run += 1
+		var now := Time.get_ticks_msec() / 1000.0
+		if _sloppy_run >= SLOPPY_TIP_AFTER and now - _sloppy_tip_time > SLOPPY_TIP_EVERY:
+			_sloppy_tip_time = now
+			_sloppy_run = 0
+			class_event.emit("SET IT UP  -  %s or %s first, then the hook or uppercut" % [Controls.text("jab"), Controls.text("cross")])
+	elif punch.heavy:
+		_sloppy_run = 0
 
 	raw_damage *= bonus
 	if forced_caption != "":

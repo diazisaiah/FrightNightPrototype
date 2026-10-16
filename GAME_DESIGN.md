@@ -149,6 +149,10 @@ Where you aim decides it — no extra keys. A punch landing above the enemy's ne
 - **Body shots:** normal damage (light blue numbers), but each one adds body damage that slows *everything* the enemy does — movement, windups, cooldowns — up to 35% slower. It fades over time. "WINDED" pops when it gets high. Work the body to make enemies easier to read, then go upstairs to finish.
 
 ### Combos
+- **Combo rules (2026-10-16):**
+  - A set-up hook sets up an uppercut from the other hand, so jab, cross, hook, uppercut is fully set up.
+  - Jab, jab keeps the combo for everyone (a double jab). The other hand has to come next; a third same-hand punch starts it over. The Blur's Triple Jab skill allows a third jab.
+  - A hook or uppercut that isn't set up shows SLOPPY (jab damage at 2-3x the knuckle cost). After 3 in a row, a tip says to throw a jab or cross first (at most every 25s).
 
 - Alternating left and right punches builds a combo, which adds a damage multiplier.
 - The combo drops if you punch the same hand twice in a row or stop landing hits for too long.
@@ -394,8 +398,13 @@ Reached from the **Training** button at camp (labelled **Tutorial** until the tu
 
 ### Tutorial [Built]
 
+**Set-ups and combos (2026-10-16).** "Hook and Uppercut" became two steps:
+- **SET IT UP:** explains the cost of each punch (jab and cross 1 knuckle HP, hook 2, uppercut 3) and that a hook or uppercut only hits hard straight after a jab or cross from the other hand. Thrown cold it's SLOPPY: weak and expensive. You land 3 set-up heavies on a still dummy, and each punch's cost floats off the knuckle bar.
+- **COMBOS:** four drills shown as punch chips that light up in order: jab, cross, hook / cross, hook, cross / jab, jab, cross / jab, cross, hook, uppercut. Heavies must be set up and the combo has to stay alive; a wrong or sloppy punch shakes the chips and starts the drill over.
+
+
 The first time a player opens Training it runs a guided tutorial; **T** skips it, or restarts it later from free practice. A coach panel down the left side shows the step, what to do, and progress toward its goals; a step completes when every goal is met, shows NICE! and moves on. If the player gets hit, the panel says what the attack was and which dodge answers it (e.g. "Hit by a left hook - next time: Ctrl+D roll right"). Finishing or skipping saves `tutorial_done`.
-- **Coach card (2026-10-15):** the shared gold-edged card on the left shows "STEP 4 / 11", the move's name in the display face, one short line, the keys as keycap chips (filled with your control scheme, e.g. `Q / E` Slip), a swatch of the glove color the step teaches (blue straights, orange hooks, red uppercuts and slams), and goal pips that fill. Finishing a step flashes NICE!; getting hit shows a short "LEFT HOOK -> Ctrl+D roll right". T skips. Free practice shows a PRACTICE card with keycaps for the dummy level (1-4), telegraph (Up / Down) and the tutorial (T).
+- **Coach card (2026-10-15):** the shared gold-edged card on the left shows "STEP 4 / 11", the move's name in the display face, one short line, the keys as keycap chips (filled with your control scheme, e.g. `Q / E` Slip), a swatch of the glove color the step teaches (blue straights, orange hooks, red uppercuts and slams), and goal pips that fill. Finishing a step flashes NICE!; getting hit shows a short "LEFT HOOK -> <your roll right>" in your own controls (bindings, scheme, keyboard or controller). T skips. Free practice shows a PRACTICE card with keycaps for the dummy level (1-4), telegraph (Up / Down) and the tutorial (T).
 
 | # | Step | Goal | Dummy |
 |---|---|---|---|
@@ -589,6 +598,7 @@ Each tier is the same climb: **earn** in the Underworld Arena, **loot** in the C
 ### Crypt gear you can keep (the Enchanted Cave idea)
 - **Ten floors**, two per tier, then endless. The camp's **Crypt** button picks a starting pair (floors 1-2, 3-4 and so on); a pair opens once its tier is reached.
 - Enemies climb to 40% of the way to the tier's contender on the pair's first floor and 80% on the second.
+- **Souls show on the Crypt HUD** (top right, beside silver) and count up as bosses drop them, since the altars spend them.
 - **Your worn gear comes in with you.** Anything found this run is **bound** to the Crypt.
 - **Gilding altar:** in every floor's first room. Gilding a find costs Souls plus silver by rarity:
   - Souls: common 1, uncommon 1, rare 2, epic 3, legendary 5, cursed 3.
@@ -964,6 +974,8 @@ Why: skill webs couldn't be finished (28 points by the Coffin King against 57-73
 **Caps:** dodge windows +25% at most from everything you own (class bonus on top), counter time +0.5s at most, armor ignored 75% at most.
 
 **Icons:** `art/icons/<icon>.png` replaces a vector icon everywhere; prompts for every icon in use are in `art/icons/ICON_PROMPTS.md`.
+
+**Secret:** typing FUGGEDABOUDIT anywhere in Settings unlocks Tony (with his unlock screen; the title reloads so he's in the picker).
 
 **Old saves:** upgrade web version 5 refunds every coin spent at the version-4 prices (`V4_PRICES`); skill web version 2 clears every class's skills and returns all its points (level - 1). Kept Piercing gear converts to the new percent. Camp says so once.
 

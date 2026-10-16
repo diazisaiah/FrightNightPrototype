@@ -58,6 +58,8 @@ var _listening := ""
 var _listen_button: Button
 ## True while the waiting binding is a controller one.
 var _listen_pad := false
+## The last letters typed (for TONY_CODE).
+var _typed := ""
 static var _knob: ImageTexture
 
 
@@ -184,6 +186,8 @@ func _ready() -> void:
 ## While a binding is listening, the next key or mouse button is the new
 ## binding (Esc cancels).
 func _input(event: InputEvent) -> void:
+	if visible and _listening == "" and event is InputEventKey and event.pressed and not event.echo:
+		_type_secret(event)
 	if _listening == "" or not visible:
 		return
 	var pressed: bool
@@ -215,6 +219,25 @@ func _input(event: InputEvent) -> void:
 	Sfx.play("tick", -6.0, 1.2)
 	_stop_listening()
 	_refresh()
+
+
+## A secret: typing FUGGEDABOUDIT anywhere in Settings unlocks Tony.
+const TONY_CODE := "fuggedaboudit"
+
+
+func _type_secret(event: InputEventKey) -> void:
+	var letter := String.chr(event.unicode).to_lower() if event.unicode > 0 else ""
+	if letter.length() != 1 or letter < "a" or letter > "z":
+		return
+	_typed = (_typed + letter).right(TONY_CODE.length())
+	if _typed == TONY_CODE and not GameState.tony_unlocked:
+		_typed = ""
+		GameState.unlock_tony()
+		var screen := TonyUnlock.open(get_tree())
+		# The title's fighter picker was built without him: rebuild it.
+		var scene := get_tree().current_scene
+		if scene and scene.scene_file_path.ends_with("title.tscn"):
+			screen.closed.connect(Loading.reload)
 
 
 func _unhandled_input(event: InputEvent) -> void:

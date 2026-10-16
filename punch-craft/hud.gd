@@ -863,12 +863,25 @@ func _build_resource_row() -> void:
 	row.add_theme_constant_override("separation", 10)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(row)
-	for id in ["silver", "coins"]:
+	for id in ["souls", "silver", "coins"]:
 		var chip := ResourceChip.make(id, 28.0, 21)
 		chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		chip.visible = id == "coins"
 		row.add_child(chip)
 		_resource_chips[id] = chip
+
+
+## Crypt runs: your Souls (spent on gilding at the altars) beside the silver,
+## kept up to date as bosses drop them.
+func show_souls() -> void:
+	var chip: ResourceChip = _resource_chips.souls
+	if chip.visible:
+		return
+	chip.visible = true
+	chip.set_amount(GameState.souls, false)
+	var update := func() -> void: chip.set_amount(GameState.souls, true)
+	GameState.changed.connect(update)
+	tree_exiting.connect(func() -> void: GameState.changed.disconnect(update))
 
 
 ## Crypt runs: shows the run's silver next to the coins.

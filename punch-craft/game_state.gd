@@ -594,8 +594,8 @@ const SKILL_TREES := {
 			"max_level": 2, "cost": 1, "cost_growth": 1.0, "effects": {"combo_step": 0.02},
 		},
 		"double_jab": {
-			"name": "Double Jab", "icon": "double_fist", "pos": Vector2(3, 0), "requires": ["flow"],
-			"desc": "Jab, jab keeps the combo going, and every punch hits a bit harder.",
+			"name": "Triple Jab", "icon": "double_fist", "pos": Vector2(3, 0), "requires": ["flow"],
+			"desc": "Jab, jab, jab keeps the combo going, and every punch hits a bit harder.",
 			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"double_jab": 1, "damage_percent": 0.03},
 		},
 		"thousand_fists": {
@@ -835,7 +835,7 @@ const EFFECT_FORMATS := {
 	"body_bonus": "+%s%% body shot slowdown",
 	"liver_shot": "Body shots stagger WINDED enemies",
 	"combo_window": "+%ss combo time",
-	"double_jab": "Jab, jab keeps the combo",
+	"double_jab": "A third jab in a row keeps the combo too",
 	"free_punch_chance": "%s%% chance a punch costs no knuckle HP",
 	"wave_heal": "Restore %s%% knuckle HP every tenth of the bout (and every Crypt room)",
 	"finisher_bonus": "+%s%% damage to enemies under 30%% HP",
@@ -1104,6 +1104,12 @@ func get_effect(effect: String) -> float:
 		if Hats.CATALOG.has(id):
 			total += float(Hats.CATALOG[id].effects.get(effect, 0.0))
 	return total
+
+
+## Tony joins the roster (the fourth Yonker, or the secret code in Settings).
+func unlock_tony() -> void:
+	tony_unlocked = true
+	_commit()
 
 
 ## Collects a popped hat. Returns "new", "duplicate" (turned into Souls) or

@@ -770,6 +770,7 @@ func _descend() -> void:
 func _update_info() -> void:
 	_hud.set_info(("FLOOR %d" % _floor) if _floor <= FINAL_FLOOR else ("FLOOR %d  ·  ENDLESS" % _floor))
 	_hud.set_silver(_silver)
+	_hud.show_souls()
 
 
 # --- Chests, items and stairs -----------------------------------------------

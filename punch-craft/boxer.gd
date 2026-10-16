@@ -33,6 +33,8 @@ const FIRST_WINDUP := {
 const SLIP_COLOR := Color(0.3, 0.6, 1.0)
 const ROLL_COLOR := Color(1.0, 0.55, 0.1)
 const BACK_STEP_COLOR := Color(1.0, 0.15, 0.1)
+## Colors per attack. The "hint" text is the old fixed-key wording; what
+## players see comes from Controls.cue_hint() (their own controls).
 const CUES := {
 	"slam": {"hint": "SLAM  -  Ctrl+S back step", "color": BACK_STEP_COLOR},
 	"jab": {"hint": "JAB  -  E slip right", "color": SLIP_COLOR},

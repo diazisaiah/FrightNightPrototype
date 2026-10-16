@@ -33,9 +33,13 @@ const STEPS := [
 	{"title": "JAB AND CROSS", "goals": {"jab": 2, "cross": 2}, "dummy": "passive",
 		"text": "Walk up and hit the dummy.",
 		"keys": [["<jab>", "Jab"], ["<cross>", "Cross"]]},
-	{"title": "HOOK AND UPPERCUT", "goals": {"hook": 1, "uppercut": 1}, "dummy": "passive",
-		"text": "They hit hardest right after a jab or cross.",
-		"keys": [["<hook>", "Hook"], ["<uppercut>", "Uppercut"]]},
+	{"title": "SET IT UP", "goals": {"setup": 3}, "dummy": "passive", "costs": true,
+		"text": "Every punch costs knuckle HP: jabs and crosses 1, hooks 2, uppercuts 3. A hook or uppercut only hits hard right after a jab or cross from the other hand. Thrown cold it's SLOPPY: weak and expensive.",
+		"keys": [["<jab> / <cross>", "Set up"], ["<hook>", "Hook"], ["<uppercut>", "Uppercut"]]},
+	{"title": "COMBOS", "goals": {"drill": 4}, "dummy": "passive", "costs": true,
+		"text": "Weak punches set up strong ones. Strong ones finish. Throw each combo in order.",
+		"drills": [["jab", "cross", "hook"], ["cross", "hook", "cross"], ["jab", "jab", "cross"], ["jab", "cross", "hook", "uppercut"]],
+		"keys": [["<jab>", "Jab"], ["<cross>", "Cross"], ["<hook>", "Hook"], ["<uppercut>", "Uppercut"]]},
 	{"title": "SLIP", "goals": {"slip": 3}, "cue": "blue",
 		"text": "A blue glove is a straight. Slip it just before it lands.",
 		"keys": [["<slip>", "Slip"]],
@@ -94,6 +98,10 @@ var _practice: PanelContainer
 var _practice_rows: VBoxContainer
 var _warning_tween: Tween
 var _skip_cap: PanelContainer
+## Combo drills: the chip row, which drill, and how far into it.
+var _drill_row: HFlowContainer
+var _drill := 0
+var _drill_at := 0
 
 @onready var _player: Player = $Player
 @onready var _hud: Hud = $HUD
@@ -232,6 +240,9 @@ func _start_step(index: int) -> void:
 	if step.has("ult"):
 		_player.ult.fill()
 	_coach_warning.text = " "
+	_drill_row.visible = false
+	if step.has("drills"):
+		_start_drill(0)
 	_update_goals()
 
 
@@ -307,6 +318,10 @@ func _goal_name(goal: String) -> String:
 			return "Ultimates"
 		"cross":
 			return "Crosses"
+		"setup":
+			return "Set-up heavies"
+		"drill":
+			return "Combos"
 	return goal.capitalize() + "s"
 
 
@@ -363,6 +378,96 @@ func _on_punch_connected(type: String, kind: String) -> void:
 	_add_progress(type)
 	if kind == "counter":
 		_add_progress("counter")
+	if kind == "setup":
+		_add_progress("setup")
+	if _step >= 0 and STEPS[_step].get("costs", false):
+		_show_cost(Player.PUNCHES[type].knuckle_cost, Player.PUNCHES[type].heavy and kind != "setup")
+	if _step >= 0 and STEPS[_step].has("drills") and not _step_done:
+		_drill_punch(type, kind)
+
+
+# --- Combo drills ------------------------------------------------------------------
+
+## The combo being drilled: punch chips that light up as each one lands in
+## order (hooks and uppercuts must be set up). A wrong or sloppy punch, or a
+## broken combo, starts it over.
+func _start_drill(index: int) -> void:
+	var drills: Array = STEPS[_step].drills
+	_drill = index % drills.size()
+	_drill_at = 0
+	_fill_drill()
+
+
+func _fill_drill() -> void:
+	for child in _drill_row.get_children():
+		child.queue_free()
+	var drills: Array = STEPS[_step].get("drills", [])
+	_drill_row.visible = not drills.is_empty()
+	if drills.is_empty():
+		return
+	var combo: Array = drills[_drill]
+	for i in combo.size():
+		if i > 0:
+			var arrow := _coach_label(18, UiTheme.MUTED)
+			arrow.text = "->"
+			arrow.autowrap_mode = TextServer.AUTOWRAP_OFF
+			arrow.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			_drill_row.add_child(arrow)
+		var chip := PanelContainer.new()
+		var done := i < _drill_at
+		var next := i == _drill_at
+		var color := DONE_COLOR if done else (GOAL_COLOR if next else Color(1, 1, 1, 0.25))
+		chip.add_theme_stylebox_override("panel", UiTheme.box(Color(color, 0.22) if done or next else Color(0, 0, 0, 0.4), color, 2, 6, 6.0))
+		var label := UiTheme.title_label(String(combo[i]).to_upper(), 18, color.lightened(0.2) if done or next else UiTheme.MUTED)
+		chip.add_child(label)
+		_drill_row.add_child(chip)
+
+
+func _drill_punch(type: String, kind: String) -> void:
+	var combo: Array = STEPS[_step].drills[_drill]
+	var heavy: bool = Player.PUNCHES[type].heavy
+	var right: bool = type == combo[_drill_at] and (not heavy or kind == "setup") and _player.combo == _drill_at + 1
+	if not right:
+		# A fresh start can begin right away with this punch.
+		var restart: bool = type == combo[0] and _player.combo <= 1
+		_drill_at = 1 if restart else 0
+		_coach_warning.text = "SLOPPY: set it up first" if heavy and kind != "setup" and type == combo[_drill_at] else "Start over: %s first" % String(combo[0]).to_upper()
+		_coach_warning.add_theme_color_override("font_color", Color(1, 0.55, 0.4))
+		_coach_warning.modulate.a = 1.0
+		_fill_drill()
+		_shake_node(_drill_row)
+		return
+	_drill_at += 1
+	if _drill_at >= combo.size():
+		Sfx.play("coin", -4.0, 1.4)
+		_coach_warning.text = "NICE!"
+		_coach_warning.add_theme_color_override("font_color", DONE_COLOR)
+		_coach_warning.modulate.a = 1.0
+		_add_progress("drill")
+		if not _step_done:
+			_start_drill(_drill + 1)
+		return
+	_fill_drill()
+
+
+func _shake_node(node: Control) -> void:
+	var tween := node.create_tween()
+	for i in 4:
+		tween.tween_property(node, "position:x", node.position.x + (6.0 if i % 2 == 0 else -6.0), 0.04)
+	tween.tween_property(node, "position:x", node.position.x, 0.04)
+
+
+## A punch's knuckle cost floating off the knuckle bar (SET IT UP, COMBOS).
+func _show_cost(cost: float, sloppy: bool) -> void:
+	var label := UiTheme.title_label("-%d" % roundi(cost), 26, Color(1, 0.4, 0.35) if sloppy else Color(1, 0.85, 0.75))
+	label.add_theme_constant_override("outline_size", 8)
+	label.position = Vector2(310 + randf_range(-6, 6), 18)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_hud.add_child(label)
+	var tween := label.create_tween().set_parallel()
+	tween.tween_property(label, "position:y", label.position.y + 34.0, 0.7).set_ease(Tween.EASE_OUT)
+	tween.tween_property(label, "modulate:a", 0.0, 0.7).set_delay(0.25)
+	tween.chain().tween_callback(label.queue_free)
 
 
 func _on_combo_done(dodged_all: bool, length: int) -> void:
@@ -377,8 +482,10 @@ func _on_attacked() -> void:
 	var cue: Dictionary = Boxer.CUES.get(_dummy._attack, {})
 	if cue.is_empty():
 		return
-	var parts: PackedStringArray = cue.hint.split("  -  ")
-	_coach_warning.text = "%s  ->  %s" % [parts[0], parts[1]] if parts.size() == 2 else cue.hint
+	# The answer in your controls (bindings, scheme, keyboard or controller).
+	var hint := Controls.cue_hint(_dummy._attack)
+	var parts: PackedStringArray = hint.split("  -  ")
+	_coach_warning.text = "%s  ->  %s" % [parts[0], parts[1]] if parts.size() == 2 else hint
 	_coach_warning.add_theme_color_override("font_color", cue.color.lightened(0.35))
 	_coach_warning.modulate.a = 1.0
 	if _warning_tween:
@@ -405,6 +512,11 @@ func _build_coach() -> void:
 	_coach_keys.add_theme_constant_override("h_separation", 10)
 	_coach_keys.add_theme_constant_override("v_separation", 8)
 	box.add_child(_coach_keys)
+	_drill_row = HFlowContainer.new()
+	_drill_row.add_theme_constant_override("h_separation", 6)
+	_drill_row.add_theme_constant_override("v_separation", 6)
+	_drill_row.visible = false
+	box.add_child(_drill_row)
 	_coach_goals = VBoxContainer.new()
 	_coach_goals.add_theme_constant_override("separation", 6)
 	box.add_child(_coach_goals)
