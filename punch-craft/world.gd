@@ -75,9 +75,8 @@ const BOSS_SPAWN_DISTANCE := 14.0
 ## The Underworld Arena's purse for winning a bout, before the tier's pay
 ## and the style grade multiply it.
 const ARENA_PURSE := 180.0
-## Harder bouts pay more (kills, milestones and the purse), so replaying an
-## easier bout is the safe, slower way to earn.
-const BOUT_PAY := [1.0, 1.3, 1.6]
+## Harder bouts pay more: each bout 1.5x the last (Progression.pay, the pay
+## ladder), so replaying an easier bout is the safe, slower way to earn.
 ## The first win of each bout pays a one-time bonus (x the tier's pay).
 const FIRST_WIN_BONUS := [150, 250, 400]
 ## Knocked out: a share of the purse for how far through the bout you got.
@@ -184,11 +183,6 @@ func _first_night() -> bool:
 ## "GRAVEDIGGER DIVISION  ·  BOUT 2"
 func _bout_title() -> String:
 	return "%s DIVISION  ·  BOUT %d" % [Progression.TIERS[_division - 1].division.to_upper(), _night]
-
-
-## Pay for the bout being fought (BOUT_PAY).
-func _bout_pay() -> float:
-	return BOUT_PAY[clampi(_night, 1, BOUT_PAY.size()) - 1]
 
 
 func _position(bout := -1) -> float:
@@ -324,7 +318,8 @@ func _spawn_scaling() -> Dictionary:
 		"hp": (1.0 + HP_GROWTH * progress) * night.hp,
 		"damage": (1.0 + DAMAGE_GROWTH * progress) * night.damage,
 		"speed": 1.0 + SPEED_GROWTH * progress,
-		"reward": (1.0 + REWARD_GROWTH * progress) * night.reward * _bout_pay(),
+		"reward": (1.0 + REWARD_GROWTH * progress) * night.reward,
+		"xp": (1.0 + REWARD_GROWTH * progress) * night.xp,
 		"position": night.position,
 	}
 
@@ -438,7 +433,7 @@ func _on_enemy_died(enemy: Enemy) -> void:
 ## Every tenth of the bar: a coin bonus that grows through the night, plus
 ## upgrade heals.
 func _on_milestone(milestone: int) -> void:
-	var bonus := roundi(milestone * MILESTONE_COINS * Progression.pay(_position()) * _bout_pay() * GameState.get_wave_bonus_multiplier())
+	var bonus := roundi(milestone * MILESTONE_COINS * Progression.pay(_position()) * GameState.get_wave_bonus_multiplier())
 	_run_coins += bonus
 	GameState.add_resource("coins", bonus)
 	_hud.announce_small("%d%% through the night   +%d {coins}" % [milestone * 100 / MILESTONES, bonus], Color(1, 0.85, 0.4))
@@ -468,7 +463,7 @@ func _win_night() -> void:
 	_player.invulnerable = false
 	# The purse: the tier's pay times your style grade.
 	var grade := _grade()
-	var bonus := roundi(ARENA_PURSE * Progression.pay(_position()) * _bout_pay() * grade[2] * (1.0 + GameState.get_effect("dawn_bonus")))
+	var bonus := roundi(ARENA_PURSE * Progression.pay(_position()) * grade[2] * (1.0 + GameState.get_effect("dawn_bonus")))
 	var first_time := GameState.clear_arena_bout(_division, _night)  # Also saves.
 	var first_bonus := 0
 	if first_time:
@@ -542,7 +537,7 @@ func _end_run(title: String, slow := true) -> void:
 		TimeFx.slowmo(0.3, 0.8)
 	# Knocked out mid-bout: a share of the purse for how far you got.
 	if title == "KNOCKED OUT" and not _night_won:
-		var consolation := roundi(ARENA_PURSE * Progression.pay(_position()) * _bout_pay() * KNOCKOUT_PURSE * _progress())
+		var consolation := roundi(ARENA_PURSE * Progression.pay(_position()) * KNOCKOUT_PURSE * _progress())
 		_run_coins += consolation
 		GameState.add_resource("coins", consolation)
 	GameState.save_game()

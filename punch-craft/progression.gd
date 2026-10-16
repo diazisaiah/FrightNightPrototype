@@ -32,9 +32,17 @@ const BASE_DAMAGE := 2.0
 const BASE_KNUCKLES := 50.0
 ## Upgrade prices multiply by their ring (pay grows by tier to match).
 const RING_COST := {1: 1.0, 2: 1.25, 3: 1.6, 4: 3.0, 5: 7.0, 6: 15.0}
-## Coin pay by content tier (1-5); beyond tier 5 it keeps growing. Tier 1
-## pays 1.5x (2026-10-16): the first upgrades have to come quickly.
+## XP pay by content tier (1-5); beyond tier 5 it keeps growing. (Coins use
+## the pay ladder below; XP stays on this gentler curve so levels don't run
+## away: PAR_LEVEL assumes it.)
 const PAY := [1.5, 2.85, 4.9, 7.3, 11.2]
+## The coin pay ladder (2026-10-16): each Arena bout pays PAY_STEP times the
+## one before, and each new division jumps two steps past the last bout of
+## the one before (division d, bout b: step 4(d - 1) + b - 1, so Division 3
+## bout 3 is 1.5^10). The Crypt sits on the same ladder by climb position.
+const PAY_STEP := 1.5
+const PAY_STEPS_PER_TIER := 4.0
+const PAY_BASE := 1.5
 const PAY_PAST_TOP := 1.35
 
 const TIERS := [
@@ -190,11 +198,20 @@ static func par_at(x: float) -> Dictionary:
 ## take as many punches) and damage with par knuckle HP (hits hurt as much).
 static func enemy_scaling(x: float) -> Dictionary:
 	var at := par_at(x)
-	return {"hp": at.damage / BASE_DAMAGE, "damage": at.ehp / BASE_KNUCKLES, "speed": 1.0, "reward": pay(x), "position": x}
+	return {"hp": at.damage / BASE_DAMAGE, "damage": at.ehp / BASE_KNUCKLES, "speed": 1.0, "reward": pay(x), "xp": xp_pay(x), "position": x}
 
 
 ## Coin multiplier for content at climb position x.
+## Coin multiplier at climb position x (Arena bouts sit at d - 1 + (b - 1) / 3).
 static func pay(x: float) -> float:
+	x = maxf(x, 0.0)
+	var whole := floorf(x)
+	var steps := PAY_STEPS_PER_TIER * whole + BOUTS_PER_DIVISION * (x - whole)
+	return PAY_BASE * pow(PAY_STEP, steps)
+
+
+## XP multiplier at climb position x (the old, gentler pay curve).
+static func xp_pay(x: float) -> float:
 	var tier := clampi(ceili(maxf(x, 0.01)), 1, 99)
 	var base: float = PAY[mini(tier, TIER_COUNT) - 1]
 	if tier > TIER_COUNT:

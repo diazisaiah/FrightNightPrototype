@@ -185,7 +185,7 @@ func _ready() -> void:
 	move_speed *= _scaling.get("speed", 1.0)
 	damage_multiplier = _scaling.get("damage", 1.0)
 	coin_reward = roundi(coin_reward * _scaling.get("reward", 1.0))
-	xp_reward = roundi(xp_reward * _scaling.get("reward", 1.0))
+	xp_reward = roundi(xp_reward * _scaling.get("xp", _scaling.get("reward", 1.0)))
 	if not gear.is_empty():
 		# Gear blocks a share of the punch you're expected to throw here.
 		EnemyGear.apply_stats(self, gear, Progression.BASE_DAMAGE * float(_scaling.get("hp", 1.0)))

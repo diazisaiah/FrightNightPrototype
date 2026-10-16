@@ -22,9 +22,10 @@ SPOKE_GROWTH = 1.45
 # Side nodes: price of level 1 by ring.
 SIDE_BASE = {1: 30, 2: 160, 3: 420, 4: 950, 5: 2300, 6: 9000}
 SIDE_GROWTH = 1.6
-# Every price in a ring is scaled so each ring costs about 4-5 good bouts of
-# that tier's pay (checked by balance_regression).
-PRICE_SCALE = {1: 2.2, 2: 0.8, 3: 0.45, 4: 0.32, 5: 0.3, 6: 0.22}
+# Every price in a ring is scaled so each ring costs about 4-6 good bouts of
+# that tier's pay (ring 1 about 2.5), on the pay ladder where each division
+# pays ~5x the last (checked by balance_regression).
+PRICE_SCALE = {1: 3.78, 2: 3.75, 3: 5.93, 4: 14.1, 5: 44.1, 6: 83.8}
 
 NODES = []
 

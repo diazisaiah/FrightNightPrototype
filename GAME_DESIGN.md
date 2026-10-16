@@ -998,14 +998,20 @@ Why: skill webs couldn't be finished (28 points by the Coffin King against 57-73
   - Money: XP, sprint, punch speed, combo build, milestone and purse bonuses.
 - **Powers are straight lines off the spokes:** FIRE off damage tier 2, STORM off damage tier 4, FROST off defense tier 3, BLOOD off health tier 5. Each opens with its contender's seal and ends in a Coffin King capstone (Pyre, Thunderhead, Shatter, Bloodbath).
 - **The Trophies** hang off the defense spoke's west side, one per seal.
-- **Prices:** each ring costs about what it did before (about 3.2k, 9.3k, 19k, 33k, 54k and 113k coins). Ring 1 takes about 2.5 good bouts, the rest about 4-6.
+- **Prices:** see the pay ladder below; each ring takes about 4-6 good bouts of its division's pay (ring 1 about 2.5).
 - **Respec:** upgrade web version 6 refunds version-5 saves at their old prices (`V5_PRICES`), and version-4 saves at version-4 prices.
 
 **Skill webs:** same shape, but deeper is stronger per point (x0.8, 1.1, 1.35 along a branch, x1.15 for the capstone). A full web is still worth about the same for every class (x1.69-1.82 POWER).
 
 **Early money:**
 - **Pick your bout:** after the division, choose any bout you've won (to farm it) or the next one.
-- **Harder bouts pay more:** kills, milestones and the purse are x1.0 / 1.3 / 1.6 for bouts 1 / 2 / 3.
+- **The pay ladder (revised 2026-10-16):** every coin source (kills, milestones, purses, Crypt rooms, salvage) climbs a ladder. Each bout pays 1.5x the one before, and each new division jumps two steps past the last bout of the one before:
+  - Division d, bout b is step 4(d - 1) + (b - 1).
+  - Pay is 1.5 x 1.5^step, so Division 3 bout 3 is 1.5^10 and a division pays about 5x the last.
+  - The Crypt sits on the same ladder by climb position (`Progression.pay`).
+  - XP stays on the old, gentler curve (`Progression.xp_pay`), so levels don't run away.
+- **Ring prices scale with it.** About 5.4k, 44k, 255k, 1.45M, 7.9M and 43M coins. Ring 1 takes about 2.5 good bouts, rings 2-5 about 4-5.6 (averaged over a division's bouts).
+- **Old refunds** (saves from before the Climb) use version-4 prices, rings and levels (`V4_PRICES`, `V4_RINGS`, `V4_LEVELS`), not today's.
 - **First win of each bout:** a one-time bonus of 150 / 250 / 400 coins x the tier's pay.
 - **Knocked out:** you still get 35% of the purse times how far through the bout you got.
 - **Tier 1 pays 1.5x** (`Progression.PAY`).

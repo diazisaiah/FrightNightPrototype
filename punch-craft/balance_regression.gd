@@ -163,9 +163,9 @@ func _test_progression_webs() -> void:
 	# A maxed version-3 web comes back at its old (pre-ring) prices, about 43k,
 	# not today's ring prices; its Champion Sigils become Souls.
 	var old_max := {}
-	for id in GameState.UPGRADES:
+	for id in GameState.V4_LEVELS:
 		if not id in ["bellmans_bell", "headless_helm", "southpaws_rosary", "plague_censer", "coffin_crown"]:
-			old_max[id] = GameState.UPGRADES[id].max_level
+			old_max[id] = GameState.V4_LEVELS[id]
 	var migrated = load("res://game_state.gd").new()
 	migrated._reset_fields()
 	migrated._respec_for_rings(old_max, 2)
@@ -315,10 +315,12 @@ func _test_climb_economy() -> void:
 		for id in GameState.UPGRADES:
 			if int(GameState.UPGRADES[id].get("ring", 1)) == tier:
 				ring_cost += _node_cost(GameState.UPGRADES[id])
-		# A B-grade bout at the top of the division: purse, kills, milestones.
-		var x := Progression.arena_position(tier, Progression.BOUTS_PER_DIVISION)
-		var per_bout: float = world.ARENA_PURSE * Progression.pay(x) * 1.3 \
-				+ world.KILLS_TO_BOSS * 5.0 * Progression.pay(x) * 1.25 + 225.0 * Progression.pay(x)
+		# A B-grade bout, averaged over the division's bouts (each pays 1.5x the
+		# last): purse, kills, milestones.
+		var per_bout := 0.0
+		for bout in range(1, Progression.BOUTS_PER_DIVISION + 1):
+			var x := Progression.arena_position(tier, bout)
+			per_bout += (world.ARENA_PURSE * 1.3 + world.KILLS_TO_BOSS * 5.0 * 1.25 + 225.0) * Progression.pay(x) / Progression.BOUTS_PER_DIVISION
 		var bouts := ring_cost * Progression.PAR_SHARE / per_bout
 		print("Tier %d: par %.1f dmg / %.0f ehp, ring %d coins, ~%.1f good bouts to reach par" % [tier, par.damage, par.ehp, ring_cost, bouts])
 		# Tier 1 is meant to be quick (the first upgrades must come fast).

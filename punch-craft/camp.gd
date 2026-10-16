@@ -630,11 +630,11 @@ func _pick_bout(division: int) -> void:
 		GameState.arena_bout_pick = 1
 		_start_run()
 		return
-	var world := load("res://world.gd")
 	var options := []
+	var base := Progression.pay(Progression.arena_position(division, 1))
 	for bout in range(1, mini(won + 1, Progression.BOUTS_PER_DIVISION) + 1):
 		options.append({"name": "BOUT %d" % bout, "number": "%d" % bout, "tier": division, "open": true, "value": bout,
-			"detail": ("WON" if bout <= won else "NEXT") + "   ·   x%.1f pay" % world.BOUT_PAY[bout - 1]})
+			"detail": ("WON" if bout <= won else "NEXT") + "   ·   x%s pay" % String.num(Progression.pay(Progression.arena_position(division, bout)) / base, 2)})
 	_pick("%s DIVISION" % Progression.TIERS[division - 1].division.to_upper(), options, func(bout: int) -> void:
 		GameState.arena_bout_pick = bout
 		_start_run())
