@@ -5,10 +5,11 @@ class_name Hats
 ## four unlock Tony. Hats are built from blocks, sized to the wearer's head.
 
 ## Share of enemies that spawn wearing a hat.
-const HAT_CHANCE := 0.01
+const HAT_CHANCE := 0.02
 ## Legendary share of hats: starts here and grows with every hat that spawns
 ## without being one (bad-luck protection), resetting when one does. Always a
-## legendary you're missing. ~22 hats per legendary, ~250 bouts for all four.
+## legendary you're missing. ~22 hats per legendary; at a 2% hat rate
+## (2026-10-16) about 125 bouts for all four.
 const LEGENDARY_BASE := 0.01
 const LEGENDARY_STEP := 0.0025
 const RARITY_WEIGHTS := {"common": 60.0, "uncommon": 25.0, "rare": 11.0, "epic": 4.0}

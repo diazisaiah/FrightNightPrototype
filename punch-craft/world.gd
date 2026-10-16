@@ -130,6 +130,7 @@ var _nights_cleared_this_run := 0
 
 
 func _ready() -> void:
+	Sfx.play_music("arena")
 	# Your kept gear comes with you (GameState.equipped).
 	_division = clampi(GameState.arena_division, 1, Progression.current_tier())
 	_night = clampi(int(GameState.arena_bouts.get(str(_division), 0)) + 1, 1, Progression.BOUTS_PER_DIVISION)

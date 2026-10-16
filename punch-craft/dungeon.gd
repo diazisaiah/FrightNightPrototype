@@ -153,6 +153,7 @@ var _minimap: Minimap
 
 
 func _ready() -> void:
+	Sfx.play_music("crypt")
 	# You bring your kept gear in; what you find is bound to the Crypt until
 	# it's gilded at an altar and carried out by the exit stairs.
 	_start_floor = Progression.crypt_start_floor(clampi(GameState.crypt_tier, 1, Progression.current_tier()))

@@ -37,6 +37,7 @@ func _enter_tree() -> void:
 
 
 func _ready() -> void:
+	Sfx.play_music("league")
 	Enemy.max_attackers = 1
 	$Moon.shadow_enabled = Settings.get_value("shadows") and not Settings.use_web_profile()
 	Look.tune_environment($WorldEnvironment.environment, "ring")

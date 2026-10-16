@@ -368,7 +368,14 @@ The camera drifts slowly and follows the mouse a little. Lightning strikes every
 
 Audio buses (Effects and Ambience) are created at startup; all sound effects play on Effects. Ambience is a synthesized looping night wind: louder on the title, quiet in the Graveyard, low and muffled in the Crypt, off in camp and training.
 
-**Music (placeholder, 2026-10-15):** one looping track on a Music bus (default 60%) under everything, starting with the first click (browsers block audio before that). It's `music/placeholder_spooky.wav`, a 43s spooky boom-bap loop (90 BPM, D harmonic minor: music box over a detuned organ pad, 808 slides, swung hats, vinyl crackle) synthesized by `audio_lab/make_track.py`. To be replaced by the real track.
+**Music (placeholder, 2026-10-16):** a looping track per place on the Music bus (default 60%), starting with the first click (browsers block audio before that) and crossfading over 1.4s as you move (`Sfx.play_music`). All synthesized by `audio_lab/make_tracks.py`, 16 bars each, mono 24 kHz:
+- **title** (78 BPM, A minor): music box and choir over a slow heartbeat. Title screen.
+- **camp** (72 BPM, E minor): lo-fi campfire, soft drums, warm keys, crackle. Camp and training.
+- **arena** (90 BPM, D minor): the spooky boom-bap. Underworld Arena.
+- **crypt** (66 BPM, C# phrygian): a drone, tolling bells, sparse heavy drums. The Crypt.
+- **league** (104 BPM, D minor): driving drums, choir stabs, big 808. Dead League menu and bouts.
+
+To be replaced by real tracks.
 
 **Sound Lab (dev tool, not shipped):** `audio_lab/Sound Lab.bat` opens `sound_lab.tscn`: the training ring with a panel (F1) to swap any game sound live and trim its volume, from the Kenney CC0 pack suggestions (`audio_lab/slots.json`) or any file dropped in `audio_lab/drop/`. Picks save to `audio_lab/picks.json`. `audio_lab/index.html` is the browser version of the same comparison. Excluded from the web export.
 
@@ -917,7 +924,7 @@ Enemies wear tiered armor and weapons (`enemy_gear.gd`), so you can see you're f
 The humor pillar: a hat collection and a secret character.
 
 ### Hats
-- **Spawning:** any Arena or Crypt enemy has a 1% chance to wear a hat (never Dead League contenders, the dummy or the mimic). Rarity: common 60%, uncommon 25%, rare 11%, epic 4%. Legendary starts at 1% of hats, +0.25% for every hat that spawns without being legendary (resets on a legendary), and a legendary is always one you're missing. That's about 22 hats per legendary and about 88 hats (~250 bouts) for all four. The step is the tuning knob.
+- **Spawning:** any Arena or Crypt enemy has a 2% chance to wear a hat (raised from 1% on 2026-10-16) (never Dead League contenders, the dummy or the mimic). Rarity: common 60%, uncommon 25%, rare 11%, epic 4%. Legendary starts at 1% of hats, +0.25% for every hat that spawns without being legendary (resets on a legendary), and a legendary is always one you're missing. That's about 22 hats per legendary and about 88 hats (~125 bouts) for all four. The step is the tuning knob.
 - **Taking it:** each uppercut has a chance to pop the hat off (common 60%, uncommon 45%, rare 30%, epic 20%, legendary 12%). Finishing a hatted enemy with an uppercut always gets the hat. Any other KO and the hat tumbles off and vanishes in a puff.
 - **Popup:** the game pauses; the hat turns slowly with sparkles in its rarity color; then its name, a one-line joke, its boost, and one button: **GIMME THAT**. It's collected and the game resumes.
 - **Duplicates** become Souls, with a smaller "Already got one, ya greedy ghoul" popup.
@@ -928,7 +935,7 @@ The humor pillar: a hat collection and a secret character.
   - Uncommons: Bowler, Chef's Toque, Viking Helmet, Pirate Tricorn.
   - Rares: Top Hat (bunny inside), Tinfoil Hat, Hard Hat.
   - Epics: Paper Crown, Witch's Hat, Grim Reaper's Hood, and the **Fruit Hat**: a towering voxel fruit basket (pineapple leaves, oranges, a banana, grapes, cherries, strawberries) on a ruffled hot-pink brim with pink and yellow ruffles trailing down. "Five servings a day. Too late for this guy." +4% max knuckle HP and +1 heal on kill.
-  - **Skeletons love the Fruit Hat:** when a skeleton (including skeleton mages and archers) rolls a hat, 1 in 4 times it's the Fruit Hat. The overall 1% hat rate is unchanged; on other enemies it's as rare as any epic.
+  - **Skeletons love the Fruit Hat:** when a skeleton (including skeleton mages and archers) rolls a hat, 1 in 4 times it's the Fruit Hat. The overall 2% hat rate is unchanged; on other enemies it's as rare as any epic.
 - **Legendaries** (generic navy caps with a stitched "Y", no real logo): **Yonker with Brim, Yonker with No Brim, Brim with No Yonker, No Yonker with No Brim** (an empty spot with legendary sparkles). Each does nothing ("Does nothing. Yet."). All four unlock Tony.
 
 ### Tony (secret character)

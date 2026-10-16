@@ -31,6 +31,7 @@ var _stats_title: Label
 
 
 func _ready() -> void:
+	Sfx.play_music("camp")
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	Sfx.stop_ambience()
 	theme = UiTheme.make()

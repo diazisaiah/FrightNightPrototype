@@ -16,8 +16,23 @@ var _next := 0
 var _next_3d := 0
 var _ambience: AudioStreamPlayer
 ## The soundtrack: one looping track under everything, from the first click on.
-const MUSIC := "res://music/placeholder_spooky.wav"
+## The soundtrack: one looping track per place (audio_lab/make_tracks.py),
+## crossfading as you move between them. [path, volume_db].
+const MUSIC := {
+	"title": ["res://music/title.wav", -1.0],
+	"camp": ["res://music/camp.wav", 2.0],
+	"arena": ["res://music/arena.wav", 0.0],
+	"crypt": ["res://music/crypt.wav", -1.0],
+	"league": ["res://music/league.wav", -2.0],
+}
+const MUSIC_FADE := 1.4
+## Two players so tracks can crossfade.
 var _music: AudioStreamPlayer
+var _music_b: AudioStreamPlayer
+var _music_track := ""
+var _music_fade: Tween
+## The track asked for before the browser allowed sound (first click).
+var _wanted_track := "title"
 var _ambience_tween: Tween
 var _audio_unlocked := not OS.has_feature("web")
 var _pending_ambience := {}
@@ -63,6 +78,9 @@ func _ready() -> void:
 	_music = AudioStreamPlayer.new()
 	_music.bus = "Music"
 	add_child(_music)
+	_music_b = AudioStreamPlayer.new()
+	_music_b.bus = "Music"
+	add_child(_music_b)
 	if _audio_unlocked:
 		_start_music()
 	for i in POOL_SIZE:
@@ -99,10 +117,35 @@ func _is_unlock_event(event: InputEvent) -> bool:
 
 
 func _start_music() -> void:
-	if _music.playing or not ResourceLoader.exists(MUSIC):
+	play_music(_wanted_track)
+
+
+## Switches the soundtrack to a place's track ("title", "camp", "arena",
+## "crypt", "league"), crossfading. The same track keeps playing.
+func play_music(track: String) -> void:
+	_wanted_track = track
+	if not _audio_unlocked or track == _music_track or not MUSIC.has(track):
 		return
-	_music.stream = load(MUSIC)
+	var path: String = MUSIC[track][0]
+	if not ResourceLoader.exists(path):
+		return
+	_music_track = track
+	var old := _music
+	_music = _music_b
+	_music_b = old
+	_music.stream = load(path)
+	_music.volume_db = -40.0
 	_music.play()
+	# A new switch takes over from a crossfade still running.
+	if _music_fade:
+		_music_fade.kill()
+	_music_fade = create_tween().set_parallel()
+	_music_fade.tween_property(_music, "volume_db", float(MUSIC[track][1]), MUSIC_FADE)
+	if old.playing:
+		_music_fade.tween_property(old, "volume_db", -40.0, MUSIC_FADE)
+		_music_fade.chain().tween_callback(func() -> void:
+			if old != _music:
+				old.stop())
 
 
 ## Plays a sound with no position. Pitch varies slightly so repeats don't sound identical.

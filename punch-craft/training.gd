@@ -108,6 +108,7 @@ var _drill_at := 0
 
 
 func _ready() -> void:
+	Sfx.play_music("camp")
 	Enemy.max_attackers = 1
 	$Moon.shadow_enabled = Settings.get_value("shadows") and not Settings.use_web_profile()
 	Look.tune_environment($WorldEnvironment.environment, "ring")

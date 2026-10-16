@@ -91,6 +91,7 @@ var _onboarding := false
 func _ready() -> void:
 	if WebBench.start_if_requested(get_tree()):
 		return
+	Sfx.play_music("title")
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	Controls.watch(self, func() -> void:
 		if _detail_ult_tag:

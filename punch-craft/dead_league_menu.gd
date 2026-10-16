@@ -21,6 +21,7 @@ var _power_color := Color.WHITE
 
 
 func _ready() -> void:
+	Sfx.play_music("league")
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	Sfx.stop_ambience()
 	theme = UiTheme.make()
