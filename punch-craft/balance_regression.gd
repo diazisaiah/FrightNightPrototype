@@ -454,7 +454,8 @@ func _test_hats_and_tony() -> void:
 	for i in 100000:
 		if Hats.roll(false) != "":
 			hatted += 1
-	_check(hatted > 800 and hatted < 1200, "About 1%% of enemies should wear a hat (got %d in 100k)" % hatted)
+	var expected := Hats.HAT_CHANCE * 100000.0
+	_check(absf(hatted - expected) < expected * 0.2, "About %d%% of enemies should wear a hat (got %d in 100k)" % [roundi(Hats.HAT_CHANCE * 100), hatted])
 	# Hats per legendary, from a fresh collection.
 	GameState._reset_fields()
 	var hats := 0
