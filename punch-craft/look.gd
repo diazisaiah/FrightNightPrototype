@@ -67,7 +67,7 @@ static func block_material(color: Color, metallic := 0.0) -> StandardMaterial3D:
 static func tune_environment(env: Environment, kind := "night") -> void:
 	var web := Settings.use_web_profile()
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	env.tonemap_exposure = 1.15 if kind != "crypt" else 1.25
+	env.tonemap_exposure = 1.15 if kind != "crypt" else 1.35
 	env.tonemap_white = 5.0
 	# Glow and SSAO are expensive or unsupported in WebGL. The browser build
 	# keeps the color grade but drops those passes so combat timing stays crisp.
@@ -83,7 +83,10 @@ static func tune_environment(env: Environment, kind := "night") -> void:
 	env.adjustment_enabled = true
 	env.adjustment_contrast = 1.06
 	env.adjustment_saturation = 1.1
-	env.adjustment_brightness = 1.0
+	# The browser drops glow, which darkens everything; lift it back.
+	env.adjustment_brightness = 1.16 if web else 1.0
+	if web:
+		env.ambient_light_energy *= 1.25
 	# Ambient occlusion where the renderer supports it (desktop).
 	env.ssao_enabled = not web and RenderingServer.get_current_rendering_method() != "gl_compatibility"
 	env.ssao_radius = 0.8

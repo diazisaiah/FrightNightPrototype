@@ -1018,6 +1018,12 @@ Why: skill webs couldn't be finished (28 points by the Coffin King against 57-73
 
 **The Mauler (2026-10-16):** Inferno Uppercut fires any time the meter is full. It goes at the last enemy to hit his super armor if it's in reach, otherwise the nearest one. No super-armor hit is needed first. His meter fills 30% faster and never drains from hits.
 
+## Brighter Arena and Crypt [Built 2026-10-16]
+- **Arena:** a brighter moon (0.75), more ambient light (0.8, cooler), and moonlit mist instead of black (fog color 0.12/0.13/0.2, density 0.032), so you can see farther.
+- **Crypt:** more ambient between torches (0.7), warmer dust in the air (fog 0.1/0.08/0.09, density 0.024), torches 2.4 bright with a 13m reach, and exposure 1.35.
+- **The fighter's lantern:** 1.1 bright, 10m reach.
+- **Browser builds** (no glow) get +16% brightness and +25% ambient to make up for it (`Look.tune_environment`).
+
 ## Launch readiness [In progress, 2026-10-15]
 
 Checked: every main scene (title, camp, Arena, Crypt, training, Dead League menu and arena) runs 400 frames headless with no script errors, and the web build loads with no console errors (38 MB wasm + 15 MB pck; itch serves them compressed).

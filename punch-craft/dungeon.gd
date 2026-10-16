@@ -1523,7 +1523,7 @@ func _torch(at: Vector3, on_wall := false) -> void:
 	if not on_wall:
 		_level.add_child(_mesh(Enemy._cylinder(0.05, 1.7), _material("wood", Color(0.35, 0.22, 0.12)), at + Vector3(0, 0.85, 0)))
 	Look.flame(_level, at + Vector3(0, 1.78 if not on_wall else 2.6, 0))
-	var light := Look.fire_light(Color(1.0, 0.6, 0.28), 2.2, 10.0)
+	var light := Look.fire_light(Color(1.0, 0.6, 0.28), 2.4, 13.0)
 	light.position = at + Vector3(0, 2.0 if not on_wall else 2.8, 0)
 	_level.add_child(light)
 	_torches.append(light)

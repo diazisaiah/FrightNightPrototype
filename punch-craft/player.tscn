@@ -28,8 +28,8 @@ collision_mask = 4
 [node name="Lantern" type="OmniLight3D" parent="Camera3D"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.3, 0.1, 0.2)
 light_color = Color(1, 0.75, 0.45, 1)
-light_energy = 0.8
-omni_range = 8.0
+light_energy = 1.1
+omni_range = 10.0
 omni_attenuation = 1.4
 
 [node name="Fists" type="Node3D" parent="Camera3D"]

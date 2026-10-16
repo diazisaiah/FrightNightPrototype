@@ -8,15 +8,15 @@
 background_mode = 1
 background_color = Color(0, 0, 0, 1)
 ambient_light_source = 2
-ambient_light_color = Color(0.3, 0.28, 0.4, 1)
-ambient_light_energy = 0.3
+ambient_light_color = Color(0.4, 0.35, 0.45, 1)
+ambient_light_energy = 0.7
 tonemap_mode = 2
 glow_enabled = true
 glow_intensity = 1.1
 glow_bloom = 0.08
 fog_enabled = true
-fog_light_color = Color(0.05, 0.04, 0.06, 1)
-fog_density = 0.03
+fog_light_color = Color(0.1, 0.08, 0.09, 1)
+fog_density = 0.024
 
 [node name="Dungeon" type="Node3D"]
 script = ExtResource("1_dungeon")

@@ -19,15 +19,15 @@ sky_material = SubResource("ProceduralSkyMaterial_night")
 background_mode = 2
 sky = SubResource("Sky_night")
 ambient_light_source = 2
-ambient_light_color = Color(0.25, 0.3, 0.45, 1)
-ambient_light_energy = 0.35
+ambient_light_color = Color(0.34, 0.38, 0.55, 1)
+ambient_light_energy = 0.8
 tonemap_mode = 2
 glow_enabled = true
 glow_intensity = 1.2
 glow_bloom = 0.1
 fog_enabled = true
-fog_light_color = Color(0.06, 0.07, 0.11, 1)
-fog_density = 0.045
+fog_light_color = Color(0.12, 0.13, 0.2, 1)
+fog_density = 0.032
 fog_sky_affect = 0.6
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_ground"]
@@ -55,8 +55,8 @@ environment = SubResource("Environment_night")
 
 [node name="Moon" type="DirectionalLight3D" parent="."]
 transform = Transform3D(-0.866025, -0.433013, 0.25, 0, 0.5, 0.866025, -0.5, 0.75, -0.433013, 0, 10, 0)
-light_color = Color(0.55, 0.65, 0.95, 1)
-light_energy = 0.35
+light_color = Color(0.6, 0.7, 1.0, 1)
+light_energy = 0.75
 shadow_enabled = true
 
 [node name="Ground" type="StaticBody3D" parent="."]
