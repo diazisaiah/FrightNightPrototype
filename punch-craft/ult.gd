@@ -3,9 +3,10 @@ extends Node
 ## Class ultimates and the meter that charges them. Reading the fight fills it
 ## fastest (dodges, counters, set-up heavies, combos); wild jabs barely do and
 ## getting hit drains it. The configured ultimate action fires it when full:
-##   Berserker       Inferno Uppercut: with a full meter super armor's counter
-##                   window is longer; using the ultimate in that window throws a flaming
-##                   uppercut that launches the enemy and sets it alight.
+##   Berserker       Inferno Uppercut: any time the meter is full, a flaming
+##                   uppercut that launches the nearest enemy (the last one to
+##                   hit your super armor, if it's in reach) and sets it alight.
+##                   His meter fills faster (INFERNO_GAIN) and hits never drain it.
 ##   Combo Master    Temporal Break: enemies freeze, punch prompts appear; each right
 ##                   one lands a hit, grows the combo and buys back some time,
 ##                   but the clock runs faster and faster.
@@ -43,7 +44,7 @@ const NAMES := {
 }
 ## One line each, for the class picker.
 const DESCRIPTIONS := {
-	"berserker": "With a full meter, take a hit on super armor, then use your ultimate: a flaming uppercut that launches the enemy and sets it alight.",
+	"berserker": "With a full meter, use your ultimate: a flaming uppercut that launches the nearest enemy and sets it alight.",
 	"combo_master": "Stop time. Throw the punches shown as fast as you can: each one lands, grows your combo and buys a little more time.",
 	"counter_master": "Riposte Stance: for 4 seconds every attack is slipped for you and answered with a counter hook.",
 	"free_runner": "Streak like lightning from enemy to enemy in view, punching each, and finish with a leaping haymaker.",
@@ -53,9 +54,10 @@ const FIRE_COLOR := Color(1.0, 0.3, 0.05)
 const LIGHTNING_COLOR := Color(0.6, 0.85, 1.0)
 
 # Berserker
-const INFERNO_WINDOW_SCALE := 2.0
 const INFERNO_DAMAGE := 3.0
 const INFERNO_RANGE := 3.5
+## The Mauler's meter fills this much faster.
+const INFERNO_GAIN := 1.3
 const INFERNO_LAUNCH := 7.0
 const INFERNO_STUN := 1.6
 const INFERNO_BURN_TIME := 4.0
@@ -136,6 +138,8 @@ func add(amount: float) -> void:
 		amount *= 1.0 + GameState.get_effect("ult_gain")  # Ultimate Surge.
 		if GameState.is_player_class("wise_guy"):
 			amount *= MOUTH_GAIN
+		elif GameState.is_player_class("berserker"):
+			amount *= INFERNO_GAIN
 	meter = clampf(meter + amount, 0.0, MAX_METER)
 	meter_changed.emit(meter, is_full())
 	if is_full() and not was_full:
@@ -326,22 +330,15 @@ func _wait(seconds: float) -> void:
 
 # --- Berserker: Inferno Uppercut ----------------------------------------------------
 
-## Super armor just took a hit: with a full meter, the counter window doubles.
+## Super armor just took a hit: that attacker is the Inferno's first pick.
 func on_super_armor(attacker: Node3D) -> void:
-	if not GameState.is_player_class("berserker") or not is_full():
-		return
-	_inferno_attacker = attacker as Enemy
-	player._counter_timer *= INFERNO_WINDOW_SCALE
-	HitFx.burst(player.get_parent(), player.global_position + Vector3(0, 1.2, 0), Vector3.UP, FIRE_COLOR, 24, 3.0, true, 0.06)
-	var key := Controls.text("ultimate")
-	player.class_event.emit("INFERNO!  Press " + key)
-	_set_status("INFERNO READY  -  press " + key, player._counter_timer)
+	if GameState.is_player_class("berserker"):
+		_inferno_attacker = attacker as Enemy
 
 
+## Fires whenever the meter is full: at the last super-armor attacker if it's
+## in reach, otherwise the nearest enemy.
 func _try_inferno() -> void:
-	if not (player.is_counter_ready() and player._counter_from_armor):
-		_set_status("Take a hit on super armor, then press " + Controls.text("ultimate"), 2.0)
-		return
 	var target := _inferno_attacker
 	if not is_instance_valid(target) or target.is_dead() \
 			or target.global_position.distance_to(player.global_position) > INFERNO_RANGE * (1.0 + 0.4 * _power()):

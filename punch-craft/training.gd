@@ -70,7 +70,7 @@ const STEPS := [
 ]
 ## The ultimate step, by class: [line, what the key does]. The meter starts full.
 const ULT_TIPS := {
-	"berserker": ["Let the dummy hit your super armor, then:", "Inferno Uppercut"],
+	"berserker": ["Walk up to the dummy, then:", "Inferno Uppercut"],
 	"combo_master": ["Then throw the punches shown, fast.", "Temporal Break"],
 	"counter_master": ["Every attack gets slipped and countered for you.", "Riposte Stance"],
 	"free_runner": ["Look at the dummy, then:", "Highlight Reel"],

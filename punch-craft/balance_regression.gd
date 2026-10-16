@@ -156,7 +156,8 @@ func _test_progression_webs() -> void:
 		if tier.ring_power != "":
 			_check(int(GameState.UPGRADES[tier.ring_power].ring) == i + 2, "%s must open with contender %d's seal" % [tier.ring_power, i + 1])
 		_check(int(GameState.UPGRADES[tier.trophy].ring) == i + 2, "Trophy %s must sit in ring %d" % [tier.trophy, i + 2])
-	_check(GameState.UPGRADE_VERSION == 5 and GameState.V4_PRICES.size() > 50, "The upgrade revamp must refund version-4 saves at their old prices")
+	_check(GameState.UPGRADE_VERSION == 6 and GameState.V5_PRICES.size() > 50 and GameState.V4_PRICES.size() > 50,
+			"The spoke web must refund version-4 and version-5 saves at their old prices")
 	_check(GameState.SKILL_VERSION == 2, "Skill web v2 must refund every older skill point")
 
 	# A maxed version-3 web comes back at its old (pre-ring) prices, about 43k,
@@ -193,20 +194,20 @@ func _test_upgrade_reveal_gates() -> void:
 	var state = load("res://game_state.gd").new()
 	state._reset_fields()
 	state.resources.coins = 999999
-	_check(state.node_state("upgrade", "calluses") == "hidden",
+	_check(state.node_state("upgrade", "gold_1") == "hidden",
 			"An upgrade must stay hidden until its parent is maxed")
 	state.upgrade_levels.wrapped_knuckles = 1
-	_check(state.node_state("upgrade", "calluses") == "available",
+	_check(state.node_state("upgrade", "gold_1") == "available",
 			"Maxing an upgrade must reveal its immediate children")
-	state.upgrade_levels.calluses = 1
-	_check(state.node_state("upgrade", "iron_fists") == "hidden",
+	state.upgrade_levels.gold_1 = 1
+	_check(state.node_state("upgrade", "sparring_partner") == "hidden",
 			"One rank in a multi-rank upgrade must not reveal the next node")
-	_check(not state.can_buy_node("upgrade", "iron_fists"),
+	_check(not state.can_buy_node("upgrade", "sparring_partner"),
 			"A hidden upgrade must not be buyable through code")
-	state.upgrade_levels.calluses = GameState.UPGRADES.calluses.max_level
-	_check(state.node_state("upgrade", "iron_fists") == "available",
+	state.upgrade_levels.gold_1 = GameState.UPGRADES.gold_1.max_level
+	_check(state.node_state("upgrade", "sparring_partner") == "available",
 			"The next upgrade must appear when its parent reaches max rank")
-	_check(state.can_buy_node("upgrade", "iron_fists"),
+	_check(state.can_buy_node("upgrade", "sparring_partner"),
 			"A revealed upgrade with enough coins must be buyable")
 	state.free()
 
@@ -320,7 +321,8 @@ func _test_climb_economy() -> void:
 				+ world.KILLS_TO_BOSS * 5.0 * Progression.pay(x) * 1.25 + 225.0 * Progression.pay(x)
 		var bouts := ring_cost * Progression.PAR_SHARE / per_bout
 		print("Tier %d: par %.1f dmg / %.0f ehp, ring %d coins, ~%.1f good bouts to reach par" % [tier, par.damage, par.ehp, ring_cost, bouts])
-		_check(bouts >= 3.0 and bouts <= 14.0, "Tier %d should take a handful of good bouts to reach par, got %.1f" % [tier, bouts])
+		# Tier 1 is meant to be quick (the first upgrades must come fast).
+		_check(bouts >= (2.0 if tier == 1 else 3.0) and bouts <= 14.0, "Tier %d should take a handful of good bouts to reach par, got %.1f" % [tier, bouts])
 	# Under par: the same tier's numbers with only 60% of the upgrades.
 	var full := Progression.par(3)
 	var under := _par_with_share(3, 0.6)

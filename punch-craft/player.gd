@@ -82,6 +82,9 @@ const PUNCH_HEAD := {
 }
 ## What double tapping each movement key does.
 ## Moves with a key of their own (Controls): rolls, the back step and the dash.
+## Critical hits: x1.5 damage (plus crit_damage), at most a 50% chance.
+const CRIT_MULTIPLIER := 1.5
+const MAX_CRIT_CHANCE := 0.5
 ## After this many sloppy heavies in a row, a tip says how to set them up
 ## (at most once every SLOPPY_TIP_EVERY seconds).
 const SLOPPY_TIP_AFTER := 3
@@ -1144,6 +1147,10 @@ func _land_punch(type: String, hand: String, _dashing := false, airborne := fals
 			class_event.emit("SET IT UP  -  %s or %s first, then the hook or uppercut" % [Controls.text("jab"), Controls.text("cross")])
 	elif punch.heavy:
 		_sloppy_run = 0
+	# Critical hits (Lucky Shot, Dirty Shot; Glass Breaker hits harder).
+	if forced == null and randf() < minf(GameState.get_effect("crit_chance"), MAX_CRIT_CHANCE):
+		raw_damage *= CRIT_MULTIPLIER + GameState.get_effect("crit_damage")
+		caption = "CRIT!" if caption == "" or caption == "SLOPPY" else caption + "\nCRIT!"
 
 	raw_damage *= bonus
 	if forced_caption != "":

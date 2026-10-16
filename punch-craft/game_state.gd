@@ -108,320 +108,421 @@ const STATS := {
 const UPGRADES := {
 	"wrapped_knuckles": {
 		"name": "Taped Up", "icon": "wraps", "pos": Vector2(0, 0), "requires": [], "ring": 1,
-		"desc": "Tape and cloth. The first thing every fighter learns.",
-		"max_level": 1, "cost": 15, "cost_growth": 1.0, "effects": {"damage": 1, "defense": 1},
+		"desc": "Tape and cloth. Every road out of here starts with your hands.",
+		"max_level": 1, "cost": 33, "cost_growth": 1.0, "effects": {"damage": 1, "max_knuckles": 5},
 	},
-	"calluses": {
-		"name": "Leather Knuckles", "icon": "glove", "pos": Vector2(1, 0), "requires": ["wrapped_knuckles"], "ring": 1,
-		"desc": "Tougher skin over the knuckles. Every punch costs knuckle HP, so this is how you last longer.",
-		"max_level": 5, "cost": 20, "cost_growth": 1.7, "effects": {"max_knuckles": 6},
+	"dmg_1": {
+		"name": "Bricks for Hands", "icon": "fist", "pos": Vector2(1, 0), "requires": ["wrapped_knuckles"], "ring": 1,
+		"desc": "Every punch hits harder.",
+		"max_level": 5, "cost": 44, "cost_growth": 1.45, "effects": {"damage": 1},
 	},
-	"iron_fists": {
-		"name": "Bricks for Hands", "icon": "fist", "pos": Vector2(2, 0), "requires": ["calluses"], "ring": 1,
-		"desc": "Harder hands hit harder.",
-		"max_level": 5, "cost": 20, "cost_growth": 1.8, "effects": {"damage": 1},
+	"dmg_2": {
+		"name": "Iron Fists", "icon": "fist", "pos": Vector2(2, 0), "requires": ["dmg_1"], "ring": 2,
+		"desc": "Every punch hits harder.",
+		"max_level": 5, "cost": 96, "cost_growth": 1.45, "effects": {"damage": 1.2},
 	},
-	"pickpocket": {
-		"name": "Grave Tax", "icon": "bag", "pos": Vector2(2, -1), "requires": ["iron_fists"], "ring": 2,
-		"desc": "The dead don't need their coins.",
-		"max_level": 3, "cost": 55, "cost_growth": 1.8, "effects": {"coin_bonus": 0.08},
+	"dmg_3": {
+		"name": "Sledge Fists", "icon": "hammer", "pos": Vector2(3, 0), "requires": ["dmg_2"], "ring": 3,
+		"desc": "Every punch hits harder.",
+		"max_level": 5, "cost": 148, "cost_growth": 1.45, "effects": {"damage": 2},
 	},
-	"running_shoes": {
-		"name": "Cemetery Sprint", "icon": "wing_boot", "pos": Vector2(2, -2), "requires": ["pickpocket"], "ring": 3,
-		"desc": "Faster sprinting.",
-		"max_level": 2, "cost": 140, "cost_growth": 2.0, "effects": {"sprint_bonus": 0.1},
+	"dmg_4": {
+		"name": "Wrecking Fists", "icon": "hammer", "pos": Vector2(4, 0), "requires": ["dmg_3"], "ring": 4,
+		"desc": "Every punch hits harder.",
+		"max_level": 5, "cost": 256, "cost_growth": 1.45, "effects": {"damage": 3},
 	},
-	"thick_skin": {
-		"name": "Rawhide", "icon": "heart_plus", "pos": Vector2(2, 1), "requires": ["iron_fists"], "ring": 2,
-		"desc": "Knuckles like an old saddle.",
-		"max_level": 3, "cost": 125, "cost_growth": 2.0, "effects": {"max_knuckles": 12},
+	"dmg_5": {
+		"name": "Anvil Hands", "icon": "anvil", "pos": Vector2(5, 0), "requires": ["dmg_4"], "ring": 5,
+		"desc": "Every punch hits harder.",
+		"max_level": 5, "cost": 600, "cost_growth": 1.45, "effects": {"damage": 4},
 	},
-	"quick_wraps": {
-		"name": "Snap Wraps", "icon": "fast_fist", "pos": Vector2(2, 2), "requires": ["thick_skin"], "ring": 3,
-		"desc": "Lighter wraps for faster hands.",
-		"max_level": 3, "cost": 160, "cost_growth": 1.9, "effects": {"punch_speed": 0.04},
+	"dmg_6": {
+		"name": "Hands of the Damned", "icon": "anvil", "pos": Vector2(6, 0), "requires": ["dmg_5"], "ring": 6,
+		"desc": "Every punch hits harder.",
+		"max_level": 5, "cost": 1144, "cost_growth": 1.45, "effects": {"damage": 6},
+	},
+	"hp_1": {
+		"name": "Leather Knuckles", "icon": "heart", "pos": Vector2(-1, 0), "requires": ["wrapped_knuckles"], "ring": 1,
+		"desc": "More knuckle HP: every punch and hit costs some.",
+		"max_level": 5, "cost": 44, "cost_growth": 1.45, "effects": {"max_knuckles": 6},
+	},
+	"hp_2": {
+		"name": "Rawhide", "icon": "heart_plus", "pos": Vector2(-2, 0), "requires": ["hp_1"], "ring": 2,
+		"desc": "More knuckle HP: every punch and hit costs some.",
+		"max_level": 5, "cost": 96, "cost_growth": 1.45, "effects": {"max_knuckles": 9},
+	},
+	"hp_3": {
+		"name": "Thick Skin", "icon": "heart", "pos": Vector2(-3, 0), "requires": ["hp_2"], "ring": 3,
+		"desc": "More knuckle HP: every punch and hit costs some.",
+		"max_level": 5, "cost": 148, "cost_growth": 1.45, "effects": {"max_knuckles": 13},
+	},
+	"hp_4": {
+		"name": "Iron Knuckles", "icon": "heart_plus", "pos": Vector2(-4, 0), "requires": ["hp_3"], "ring": 4,
+		"desc": "More knuckle HP: every punch and hit costs some.",
+		"max_level": 5, "cost": 256, "cost_growth": 1.45, "effects": {"max_knuckles": 19},
+	},
+	"hp_5": {
+		"name": "Grave Hide", "icon": "heartbeat", "pos": Vector2(-5, 0), "requires": ["hp_4"], "ring": 5,
+		"desc": "More knuckle HP: every punch and hit costs some.",
+		"max_level": 5, "cost": 600, "cost_growth": 1.45, "effects": {"max_knuckles": 27},
+	},
+	"hp_6": {
+		"name": "Undying Hide", "icon": "heartbeat", "pos": Vector2(-6, 0), "requires": ["hp_5"], "ring": 6,
+		"desc": "More knuckle HP: every punch and hit costs some.",
+		"max_level": 5, "cost": 1144, "cost_growth": 1.45, "effects": {"max_knuckles": 38},
+	},
+	"def_1": {
+		"name": "Mouthguard", "icon": "tooth", "pos": Vector2(0, 1), "requires": ["wrapped_knuckles"], "ring": 1,
+		"desc": "Hits take less knuckle HP.",
+		"max_level": 5, "cost": 66, "cost_growth": 1.45, "effects": {"defense": 0.6},
+	},
+	"def_2": {
+		"name": "High Guard", "icon": "shield", "pos": Vector2(0, 2), "requires": ["def_1"], "ring": 2,
+		"desc": "Hits take less knuckle HP.",
+		"max_level": 5, "cost": 144, "cost_growth": 1.45, "effects": {"defense": 0.8},
+	},
+	"def_3": {
+		"name": "Ribcage Armor", "icon": "bones", "pos": Vector2(0, 3), "requires": ["def_2"], "ring": 3,
+		"desc": "Hits take less knuckle HP.",
+		"max_level": 5, "cost": 223, "cost_growth": 1.45, "effects": {"defense": 1.2},
+	},
+	"def_4": {
+		"name": "Bone Plating", "icon": "chestplate", "pos": Vector2(0, 4), "requires": ["def_3"], "ring": 4,
+		"desc": "Hits take less knuckle HP.",
+		"max_level": 5, "cost": 384, "cost_growth": 1.45, "effects": {"defense": 1.7},
+	},
+	"def_5": {
+		"name": "Tombstone Chin", "icon": "helmet", "pos": Vector2(0, 5), "requires": ["def_4"], "ring": 5,
+		"desc": "Hits take less knuckle HP.",
+		"max_level": 5, "cost": 900, "cost_growth": 1.45, "effects": {"defense": 2.4},
+	},
+	"def_6": {
+		"name": "Iron Coffin", "icon": "shield", "pos": Vector2(0, 6), "requires": ["def_5"], "ring": 6,
+		"desc": "Hits take less knuckle HP.",
+		"max_level": 5, "cost": 1716, "cost_growth": 1.45, "effects": {"defense": 3.2},
+	},
+	"gold_1": {
+		"name": "Grave Robber", "icon": "shovel", "pos": Vector2(0, -1), "requires": ["wrapped_knuckles"], "ring": 1,
+		"desc": "More coins from every kill.",
+		"max_level": 3, "cost": 57, "cost_growth": 1.45, "effects": {"coin_bonus": 0.05},
+	},
+	"gold_2": {
+		"name": "Grave Tax", "icon": "bag", "pos": Vector2(0, -2), "requires": ["gold_1"], "ring": 2,
+		"desc": "More coins from every kill.",
+		"max_level": 3, "cost": 125, "cost_growth": 1.45, "effects": {"coin_bonus": 0.06},
+	},
+	"gold_3": {
+		"name": "Grave Gold", "icon": "chest", "pos": Vector2(0, -3), "requires": ["gold_2"], "ring": 3,
+		"desc": "More coins from every kill.",
+		"max_level": 3, "cost": 193, "cost_growth": 1.45, "effects": {"coin_bonus": 0.07},
+	},
+	"gold_4": {
+		"name": "Loan Shark", "icon": "bag", "pos": Vector2(0, -4), "requires": ["gold_3"], "ring": 4,
+		"desc": "More coins from every kill.",
+		"max_level": 3, "cost": 333, "cost_growth": 1.45, "effects": {"coin_bonus": 0.08},
+	},
+	"gold_5": {
+		"name": "Undertaker's Cut", "icon": "chest", "pos": Vector2(0, -5), "requires": ["gold_4"], "ring": 5,
+		"desc": "More coins from every kill.",
+		"max_level": 3, "cost": 780, "cost_growth": 1.45, "effects": {"coin_bonus": 0.09},
+	},
+	"gold_6": {
+		"name": "King's Ransom", "icon": "crown", "pos": Vector2(0, -6), "requires": ["gold_5"], "ring": 6,
+		"desc": "More coins from every kill.",
+		"max_level": 3, "cost": 1487, "cost_growth": 1.45, "effects": {"coin_bonus": 0.12},
 	},
 	"heavy_hitter": {
-		"name": "Haymaker", "icon": "hammer", "pos": Vector2(3, 0), "requires": ["iron_fists"], "ring": 2,
+		"name": "Haymaker", "icon": "hammer", "pos": Vector2(2, 1), "requires": ["dmg_2"], "ring": 2,
 		"desc": "Set-up hooks and uppercuts hit harder.",
-		"max_level": 3, "cost": 140, "cost_growth": 1.9, "effects": {"heavy_bonus": 0.1},
-	},
-	"armor_breaker": {
-		"name": "Can Opener", "icon": "broken_shield", "pos": Vector2(3, 1), "requires": ["heavy_hitter"], "ring": 3,
-		"desc": "Punch straight through enemy armor.",
-		"max_level": 3, "cost": 140, "cost_growth": 2.0, "effects": {"armor_pierce": 0.15},
-	},
-	"guard": {
-		"name": "High Guard", "icon": "shield", "pos": Vector2(3, -1), "requires": ["heavy_hitter"], "ring": 3,
-		"desc": "Gloves up, chin down.",
-		"max_level": 3, "cost": 210, "cost_growth": 1.9, "effects": {"defense": 1.5},
-	},
-	"giant_killer": {
-		"name": "Bigger They Fall", "icon": "crown", "pos": Vector2(3, -2), "requires": ["guard"], "ring": 4,
-		"desc": "Bosses and champions take extra damage.",
-		"max_level": 3, "cost": 790, "cost_growth": 2.0, "effects": {"boss_damage": 0.15},
-	},
-	"sigil_blood": {
-		"name": "Blood Moon", "icon": "drop", "pos": Vector2(4, -2), "requires": ["giant_killer"], "ring": 5, "medallion": true,
-		"desc": "Awakens BLOOD: every kill heals you.",
-		"max_level": 1, "cost": 2310, "cost_growth": 1.0, "effects": {"heal_on_kill": 1},
-	},
-	"vampiric_knuckles": {
-		"name": "Bloodsucker", "icon": "fang", "pos": Vector2(5, -2), "requires": ["sigil_blood"], "ring": 5,
-		"desc": "Kills heal more.",
-		"max_level": 3, "cost": 1540, "cost_growth": 1.9, "effects": {"heal_on_kill": 0.5},
-	},
-	"bloodletting": {
-		"name": "Bloodletting", "icon": "heartbeat", "pos": Vector2(4, -3), "requires": ["sigil_blood"], "ring": 5,
-		"desc": "Counters heal you.",
-		"max_level": 3, "cost": 1540, "cost_growth": 1.9, "effects": {"counter_heal": 0.5},
-	},
-	"blood_rage": {
-		"name": "Seeing Red", "icon": "blood_burst", "pos": Vector2(5, -3), "requires": ["vampiric_knuckles"], "ring": 5,
-		"desc": "The closer you are to dropping, the harder you hit.",
-		"max_level": 3, "cost": 1850, "cost_growth": 2.0, "effects": {"last_stand": 0.15},
-	},
-	"sigil_fire": {
-		"name": "Hellfire", "icon": "flame", "pos": Vector2(4, 0), "requires": ["heavy_hitter"], "ring": 2, "medallion": true,
-		"desc": "Awakens FIRE: set-up heavies and counters burst into flame.",
-		"max_level": 1, "cost": 275, "cost_growth": 1.0, "effects": {"fire_punch": 0.3, "burn": 0.25},
-	},
-	"hotter_flames": {
-		"name": "Brimstone", "icon": "thermometer", "pos": Vector2(5, 0), "requires": ["sigil_fire"], "ring": 2,
-		"desc": "Bigger fire bursts.",
-		"max_level": 3, "cost": 250, "cost_growth": 1.9, "effects": {"fire_punch": 0.2},
-	},
-	"wildfire": {
-		"name": "Wildfire", "icon": "ripple", "pos": Vector2(6, 0), "requires": ["hotter_flames"], "ring": 2,
-		"desc": "Fire: the burst reaches farther.",
-		"max_level": 2, "cost": 220, "cost_growth": 2.0, "effects": {"fire_radius": 1.0},
-	},
-	"lingering_flames": {
-		"name": "Slow Burn", "icon": "clock", "pos": Vector2(5, 1), "requires": ["sigil_fire"], "ring": 2,
-		"desc": "Burns last longer.",
-		"max_level": 3, "cost": 220, "cost_growth": 1.9, "effects": {"burn_time": 1.5},
-	},
-	"searing": {
-		"name": "Scorch", "icon": "burst", "pos": Vector2(6, 1), "requires": ["lingering_flames"], "ring": 2,
-		"desc": "Burns hurt more.",
-		"max_level": 3, "cost": 275, "cost_growth": 1.9, "effects": {"burn": 0.2},
-	},
-	"kindling": {
-		"name": "Firestarter", "icon": "match", "pos": Vector2(5, -1), "requires": ["sigil_fire"], "ring": 2,
-		"desc": "Any punch can burst into flame.",
-		"max_level": 3, "cost": 330, "cost_growth": 2.0, "effects": {"fire_chance": 0.06},
-	},
-	"brass_tape": {
-		"name": "Brass Knuckles", "icon": "brass", "pos": Vector2(-1, 0), "requires": ["wrapped_knuckles"], "ring": 1,
-		"desc": "A little metal under the tape.",
-		"max_level": 3, "cost": 30, "cost_growth": 1.8, "effects": {"damage": 0.5},
-	},
-	"light_feet": {
-		"name": "Twinkle Toes", "icon": "chevrons", "pos": Vector2(-2, 0), "requires": ["brass_tape"], "ring": 1,
-		"desc": "Faster on your feet.",
-		"max_level": 2, "cost": 30, "cost_growth": 2.2, "effects": {"move_speed": 0.1},
-	},
-	"rhythm": {
-		"name": "Speed Bag", "icon": "note", "pos": Vector2(-2, -1), "requires": ["light_feet"], "ring": 2,
-		"desc": "Combos build faster.",
-		"max_level": 3, "cost": 65, "cost_growth": 1.9, "effects": {"combo_step": 0.05},
-	},
-	"ice_bath": {
-		"name": "Ice Bath", "icon": "bucket", "pos": Vector2(-2, -2), "requires": ["rhythm"], "ring": 3,
-		"desc": "Recover a little every tenth of the bout.",
-		"max_level": 2, "cost": 245, "cost_growth": 2.0, "effects": {"wave_heal": 1},
-	},
-	"night_owl": {
-		"name": "Film Study", "icon": "moon", "pos": Vector2(-3, -2), "requires": ["ice_bath"], "ring": 4,
-		"desc": "Learn from every fight: more XP.",
-		"max_level": 3, "cost": 395, "cost_growth": 1.9, "effects": {"xp_bonus": 0.15},
-	},
-	"iron_will": {
-		"name": "Chin Check", "icon": "anchor", "pos": Vector2(-2, 1), "requires": ["light_feet"], "ring": 2,
-		"desc": "Shake off clean hits faster.",
-		"max_level": 2, "cost": 140, "cost_growth": 2.0, "effects": {"flinch_reduction": 0.15},
-	},
-	"bounty": {
-		"name": "Crowd Pleaser", "icon": "wanted", "pos": Vector2(-2, 2), "requires": ["iron_will"], "ring": 3,
-		"desc": "Bigger milestone bonuses in the Arena.",
-		"max_level": 2, "cost": 245, "cost_growth": 2.2, "effects": {"wave_bonus": 0.5},
-	},
-	"weighted_wraps": {
-		"name": "Lead Tape", "icon": "dumbbell", "pos": Vector2(-3, 2), "requires": ["bounty"], "ring": 4,
-		"desc": "Hooks and uppercuts cost less knuckle HP.",
-		"max_level": 1, "cost": 990, "cost_growth": 1.0, "effects": {"heavy_cost_cut": 1},
-	},
-	"dawn_patrol": {
-		"name": "Prize Fighter", "icon": "sun", "pos": Vector2(-4, 2), "requires": ["weighted_wraps"], "ring": 5,
-		"desc": "Bigger Arena purses.",
-		"max_level": 2, "cost": 1540, "cost_growth": 2.2, "effects": {"dawn_bonus": 0.5},
-	},
-	"sigil_storm": {
-		"name": "Thunderclap", "icon": "bolt", "pos": Vector2(-3, 0), "requires": ["light_feet"], "ring": 4, "medallion": true,
-		"desc": "Awakens STORM: combos arc lightning.",
-		"max_level": 1, "cost": 660, "cost_growth": 1.0, "effects": {"chain_lightning": 2},
-	},
-	"forked": {
-		"name": "Forked Lightning", "icon": "fork", "pos": Vector2(-4, 0), "requires": ["sigil_storm"], "ring": 4,
-		"desc": "Lightning jumps to one more enemy.",
-		"max_level": 2, "cost": 595, "cost_growth": 1.9, "effects": {"chain_lightning": 1},
-	},
-	"storm": {
-		"name": "Perfect Storm", "icon": "storm", "pos": Vector2(-5, 0), "requires": ["forked"], "ring": 4,
-		"desc": "Lightning comes every 4th combo hit.",
-		"max_level": 1, "cost": 1650, "cost_growth": 1.0, "effects": {"chain_every_cut": 1},
-	},
-	"overcharge": {
-		"name": "Overcharge", "icon": "battery", "pos": Vector2(-4, -1), "requires": ["sigil_storm"], "ring": 4,
-		"desc": "Storm: each jump hits harder.",
-		"max_level": 3, "cost": 660, "cost_growth": 1.9, "effects": {"chain_damage": 0.15},
-	},
-	"conductor": {
-		"name": "Lightning Rod", "icon": "magnet", "pos": Vector2(-5, -1), "requires": ["overcharge"], "ring": 4,
-		"desc": "Every counter arcs lightning.",
-		"max_level": 1, "cost": 1320, "cost_growth": 1.0, "effects": {"chain_on_counter": 1},
-	},
-	"static_shock": {
-		"name": "Static Shock", "icon": "spark", "pos": Vector2(-4, 1), "requires": ["sigil_storm"], "ring": 4,
-		"desc": "Storm: lightning staggers whatever it hits.",
-		"max_level": 1, "cost": 1320, "cost_growth": 1.0, "effects": {"chain_stun": 1},
-	},
-	"mouthguard": {
-		"name": "Mouthguard", "icon": "tooth", "pos": Vector2(0, -1), "requires": ["wrapped_knuckles"], "ring": 1,
-		"desc": "Bite down and take it.",
-		"max_level": 3, "cost": 40, "cost_growth": 1.8, "effects": {"defense": 1},
-	},
-	"grave_robber": {
-		"name": "Grave Robber", "icon": "shovel", "pos": Vector2(1, -1), "requires": ["mouthguard"], "ring": 1,
-		"desc": "Check the pockets of everything you put down.",
-		"max_level": 3, "cost": 50, "cost_growth": 1.8, "effects": {"coin_bonus": 0.05},
-	},
-	"cornerman": {
-		"name": "Cornerman", "icon": "medkit", "pos": Vector2(-1, -1), "requires": ["mouthguard"], "ring": 1,
-		"desc": "Recover a little every tenth of the bout.",
-		"max_level": 3, "cost": 90, "cost_growth": 1.8, "effects": {"wave_heal": 1},
-	},
-	"skull_cracker": {
-		"name": "Sap Gloves", "icon": "glove", "pos": Vector2(0, -2), "requires": ["mouthguard"], "ring": 1,
-		"desc": "A little lead in the padding.",
-		"max_level": 2, "cost": 200, "cost_growth": 2.0, "effects": {"damage": 0.75},
-	},
-	"sigil_frost": {
-		"name": "Deathchill", "icon": "snowflake", "pos": Vector2(0, -3), "requires": ["skull_cracker"], "ring": 3, "medallion": true,
-		"desc": "Awakens FROST: set-up heavies and counters freeze.",
-		"max_level": 1, "cost": 350, "cost_growth": 1.0, "effects": {"frost_punch": 0.4},
-	},
-	"deep_freeze": {
-		"name": "Deep Freeze", "icon": "shard", "pos": Vector2(0, -4), "requires": ["sigil_frost"], "ring": 3,
-		"desc": "Frost: frozen enemies are slowed even more.",
-		"max_level": 3, "cost": 315, "cost_growth": 1.9, "effects": {"frost_punch": 0.1},
-	},
-	"permafrost": {
-		"name": "Permafrost", "icon": "hourglass", "pos": Vector2(1, -4), "requires": ["sigil_frost"], "ring": 3,
-		"desc": "Frost: the freeze lasts longer.",
-		"max_level": 3, "cost": 280, "cost_growth": 1.9, "effects": {"frost_time": 1.0},
-	},
-	"frost_nova": {
-		"name": "Frost Nova", "icon": "nova", "pos": Vector2(-1, -4), "requires": ["sigil_frost"], "ring": 3,
-		"desc": "Frost: the freeze reaches farther.",
-		"max_level": 2, "cost": 280, "cost_growth": 2.0, "effects": {"frost_radius": 1.0},
-	},
-	"brittle": {
-		"name": "Brittle Bones", "icon": "broken_shield", "pos": Vector2(0, -5), "requires": ["deep_freeze"], "ring": 3,
-		"desc": "Frozen enemies take extra damage from everything.",
-		"max_level": 3, "cost": 420, "cost_growth": 2.0, "effects": {"brittle": 0.1},
-	},
-	"cold_snap": {
-		"name": "Cold Snap", "icon": "icicle", "pos": Vector2(1, -5), "requires": ["permafrost"], "ring": 3,
-		"desc": "Frost: any punch that lands has a chance to freeze, not just heavies and counters.",
-		"max_level": 3, "cost": 385, "cost_growth": 2.0, "effects": {"frost_chance": 0.08},
-	},
-	"road_work": {
-		"name": "Road Work", "icon": "road", "pos": Vector2(0, 1), "requires": ["wrapped_knuckles"], "ring": 1,
-		"desc": "Morning runs before the night falls.",
-		"max_level": 3, "cost": 40, "cost_growth": 1.8, "effects": {"max_knuckles": 4},
-	},
-	"footwork_drills": {
-		"name": "Jump Rope", "icon": "footprints", "pos": Vector2(1, 1), "requires": ["road_work"], "ring": 1,
-		"desc": "A touch more time to dodge.",
-		"max_level": 2, "cost": 130, "cost_growth": 2.0, "effects": {"dodge_window": 0.04},
+		"max_level": 3, "cost": 128, "cost_growth": 1.6, "effects": {"heavy_bonus": 0.08},
 	},
 	"heavy_bag": {
-		"name": "Heavy Bag", "icon": "heavy_bag", "pos": Vector2(-1, 1), "requires": ["road_work"], "ring": 1,
-		"desc": "Hours on the bag behind every hook.",
-		"max_level": 2, "cost": 130, "cost_growth": 2.0, "effects": {"heavy_bonus": 0.05},
+		"name": "Rib Shot", "icon": "gut", "pos": Vector2(2, 2), "requires": ["heavy_hitter"], "ring": 3,
+		"desc": "Set-up heavies cave things in.",
+		"max_level": 3, "cost": 189, "cost_growth": 1.6, "effects": {"heavy_bonus": 0.12},
 	},
-	"sparring_partner": {
-		"name": "Sparring Partner", "icon": "crossed_gloves", "pos": Vector2(0, 2), "requires": ["road_work"], "ring": 1,
-		"desc": "Learn from someone who hits back.",
-		"max_level": 3, "cost": 110, "cost_growth": 1.9, "effects": {"xp_bonus": 0.1},
+	"counterpuncher": {
+		"name": "Counterpuncher", "icon": "counter_arrow", "pos": Vector2(3, 1), "requires": ["dmg_3"], "ring": 3,
+		"desc": "Counters hit harder.",
+		"max_level": 3, "cost": 189, "cost_growth": 1.6, "effects": {"counter_bonus": 0.2},
 	},
-	"champions_belt": {
-		"name": "Champion's Belt", "icon": "belt", "pos": Vector2(0, 3), "requires": ["sparring_partner"], "ring": 3,
-		"desc": "Proof you've beaten the Champion. Worn with pride.",
-		"max_level": 3, "cost": 530, "cost_growth": 2.0, "effects": {"damage": 2, "max_knuckles": 10},
+	"return_fire": {
+		"name": "Return Fire", "icon": "counter_arrow", "pos": Vector2(3, 2), "requires": ["counterpuncher"], "ring": 4,
+		"desc": "Counters hit much harder.",
+		"max_level": 3, "cost": 304, "cost_growth": 1.6, "effects": {"counter_bonus": 0.3},
 	},
-	"bone_plating": {
-		"name": "Ribcage Armor", "icon": "bones", "pos": Vector2(1, 3), "requires": ["champions_belt"], "ring": 4,
-		"desc": "Bones on the outside.",
-		"max_level": 3, "cost": 925, "cost_growth": 1.9, "effects": {"defense": 2},
+	"armor_breaker": {
+		"name": "Can Opener", "icon": "broken_shield", "pos": Vector2(4, 1), "requires": ["dmg_4"], "ring": 4,
+		"desc": "Punch straight through enemy armor.",
+		"max_level": 3, "cost": 304, "cost_growth": 1.6, "effects": {"armor_pierce": 0.15},
 	},
-	"grave_gold": {
-		"name": "Grave Gold", "icon": "chest", "pos": Vector2(-1, 3), "requires": ["champions_belt"], "ring": 4,
-		"desc": "The Champion's hoard.",
-		"max_level": 2, "cost": 790, "cost_growth": 2.0, "effects": {"coin_bonus": 0.1},
+	"giant_killer": {
+		"name": "Bigger They Fall", "icon": "crown", "pos": Vector2(4, 2), "requires": ["armor_breaker"], "ring": 5,
+		"desc": "Bosses and champions take extra damage.",
+		"max_level": 3, "cost": 690, "cost_growth": 1.6, "effects": {"boss_damage": 0.15},
 	},
-	# Capstones: sealed until you beat the Coffin King.
+	"weighted_wraps": {
+		"name": "Lead Tape", "icon": "dumbbell", "pos": Vector2(5, 1), "requires": ["dmg_5"], "ring": 5,
+		"desc": "Hooks and uppercuts cost less knuckle HP.",
+		"max_level": 1, "cost": 690, "cost_growth": 1.0, "effects": {"heavy_cost_cut": 1},
+	},
+	"lucky_shot": {
+		"name": "Lucky Shot", "icon": "star", "pos": Vector2(3, -1), "requires": ["dmg_3"], "ring": 3,
+		"desc": "Some punches land just right: critical hits.",
+		"max_level": 3, "cost": 189, "cost_growth": 1.6, "effects": {"crit_chance": 0.04},
+	},
+	"dirty_shot": {
+		"name": "Dirty Shot", "icon": "slash", "pos": Vector2(3, -2), "requires": ["lucky_shot"], "ring": 4,
+		"desc": "Even more critical hits.",
+		"max_level": 2, "cost": 304, "cost_growth": 1.6, "effects": {"crit_chance": 0.04},
+	},
+	"glass_breaker": {
+		"name": "Glass Breaker", "icon": "burst", "pos": Vector2(3, -3), "requires": ["dirty_shot"], "ring": 4,
+		"desc": "Critical hits hit even harder.",
+		"max_level": 3, "cost": 304, "cost_growth": 1.6, "effects": {"crit_damage": 0.25},
+	},
+	"sigil_fire": {
+		"name": "Hellfire", "icon": "flame", "pos": Vector2(2, -1), "requires": ["dmg_2"], "ring": 2, "medallion": true,
+		"desc": "Awakens FIRE: set-up heavies and counters burst into flame.",
+		"max_level": 1, "cost": 320, "cost_growth": 1.0, "effects": {"fire_punch": 0.3, "burn": 0.25},
+	},
+	"hotter_flames": {
+		"name": "Brimstone", "icon": "thermometer", "pos": Vector2(2, -2), "requires": ["sigil_fire"], "ring": 2,
+		"desc": "Bigger fire bursts.",
+		"max_level": 3, "cost": 128, "cost_growth": 1.6, "effects": {"fire_punch": 0.2},
+	},
+	"lingering_flames": {
+		"name": "Slow Burn", "icon": "clock", "pos": Vector2(2, -3), "requires": ["hotter_flames"], "ring": 3,
+		"desc": "Burns last longer.",
+		"max_level": 3, "cost": 189, "cost_growth": 1.6, "effects": {"burn_time": 1.5},
+	},
+	"searing": {
+		"name": "Scorch", "icon": "burst", "pos": Vector2(2, -4), "requires": ["lingering_flames"], "ring": 3,
+		"desc": "Burns hurt more.",
+		"max_level": 3, "cost": 189, "cost_growth": 1.6, "effects": {"burn": 0.2},
+	},
+	"kindling": {
+		"name": "Firestarter", "icon": "match", "pos": Vector2(2, -5), "requires": ["searing"], "ring": 4,
+		"desc": "Any punch can burst into flame.",
+		"max_level": 3, "cost": 304, "cost_growth": 1.6, "effects": {"fire_chance": 0.06},
+	},
+	"wildfire": {
+		"name": "Wildfire", "icon": "ripple", "pos": Vector2(2, -6), "requires": ["kindling"], "ring": 4,
+		"desc": "Fire spreads farther.",
+		"max_level": 2, "cost": 304, "cost_growth": 1.6, "effects": {"fire_radius": 1.0},
+	},
 	"pyre": {
-		"name": "Pyre", "icon": "pyre", "pos": Vector2(7, 0), "requires": ["wildfire"], "ring": 6, "medallion": true,
-		"desc": "Fire capstone: enemies that die burning explode, setting everything nearby alight.",
-		"max_level": 1, "cost": 9000, "cost_growth": 1.0, "effects": {"pyre": 1},
+		"name": "Pyre", "icon": "pyre", "pos": Vector2(2, -7), "requires": ["wildfire"], "ring": 6, "medallion": true,
+		"desc": "Burning enemies explode when they die.",
+		"max_level": 1, "cost": 1980, "cost_growth": 1.0, "effects": {"pyre": 1},
+	},
+	"sigil_storm": {
+		"name": "Thunderclap", "icon": "bolt", "pos": Vector2(4, -1), "requires": ["dmg_4"], "ring": 4, "medallion": true,
+		"desc": "Awakens STORM: combos arc lightning.",
+		"max_level": 1, "cost": 608, "cost_growth": 1.0, "effects": {"chain_lightning": 2},
+	},
+	"forked": {
+		"name": "Forked Lightning", "icon": "fork", "pos": Vector2(4, -2), "requires": ["sigil_storm"], "ring": 4,
+		"desc": "Lightning jumps to one more enemy.",
+		"max_level": 2, "cost": 304, "cost_growth": 1.6, "effects": {"chain_lightning": 1},
+	},
+	"overcharge": {
+		"name": "Overcharge", "icon": "battery", "pos": Vector2(4, -3), "requires": ["forked"], "ring": 4,
+		"desc": "Lightning hits harder.",
+		"max_level": 3, "cost": 304, "cost_growth": 1.6, "effects": {"chain_damage": 0.15},
+	},
+	"static_shock": {
+		"name": "Static Shock", "icon": "spark", "pos": Vector2(4, -4), "requires": ["overcharge"], "ring": 4,
+		"desc": "Lightning staggers.",
+		"max_level": 1, "cost": 304, "cost_growth": 1.0, "effects": {"chain_stun": 1},
+	},
+	"conductor": {
+		"name": "Lightning Rod", "icon": "magnet", "pos": Vector2(4, -5), "requires": ["static_shock"], "ring": 5,
+		"desc": "Every counter arcs lightning.",
+		"max_level": 1, "cost": 690, "cost_growth": 1.0, "effects": {"chain_on_counter": 1},
+	},
+	"storm": {
+		"name": "Perfect Storm", "icon": "storm", "pos": Vector2(4, -6), "requires": ["conductor"], "ring": 5,
+		"desc": "Lightning comes every 4th combo hit.",
+		"max_level": 1, "cost": 690, "cost_growth": 1.0, "effects": {"chain_every_cut": 1},
 	},
 	"thunderhead": {
-		"name": "Thunderhead", "icon": "thunderhead", "pos": Vector2(-6, 0), "requires": ["storm"], "ring": 6, "medallion": true,
-		"desc": "Storm capstone: a clean dodge calls lightning down on whoever swung at you, and it arcs on.",
-		"max_level": 1, "cost": 9000, "cost_growth": 1.0, "effects": {"thunderhead": 1},
+		"name": "Thunderhead", "icon": "thunderhead", "pos": Vector2(4, -7), "requires": ["storm"], "ring": 6, "medallion": true,
+		"desc": "Clean dodges call lightning on the attacker.",
+		"max_level": 1, "cost": 1980, "cost_growth": 1.0, "effects": {"thunderhead": 1},
 	},
-	"frost_shatter": {
-		"name": "Shatter", "icon": "shatter", "pos": Vector2(0, -6), "requires": ["brittle"], "ring": 6, "medallion": true,
-		"desc": "Frost capstone: frozen enemies burst when they die, freezing everything around them.",
-		"max_level": 1, "cost": 9000, "cost_growth": 1.0, "effects": {"frost_shatter": 1},
+	"ice_bath": {
+		"name": "Ice Bath", "icon": "bucket", "pos": Vector2(-2, -1), "requires": ["hp_2"], "ring": 2,
+		"desc": "Recover a little every tenth of the bout.",
+		"max_level": 2, "cost": 128, "cost_growth": 1.6, "effects": {"wave_heal": 1},
+	},
+	"iron_will": {
+		"name": "Chin Check", "icon": "anchor", "pos": Vector2(-2, 1), "requires": ["hp_2"], "ring": 2,
+		"desc": "Shake off clean hits faster.",
+		"max_level": 2, "cost": 128, "cost_growth": 1.6, "effects": {"flinch_reduction": 0.15},
+	},
+	"calloused": {
+		"name": "Calloused", "icon": "tape", "pos": Vector2(-3, -1), "requires": ["hp_3"], "ring": 3,
+		"desc": "Some punches don't hurt your hands at all.",
+		"max_level": 3, "cost": 189, "cost_growth": 1.6, "effects": {"free_punch_chance": 0.05},
+	},
+	"thick_skull": {
+		"name": "Thick Skull", "icon": "helmet", "pos": Vector2(-3, 1), "requires": ["hp_3"], "ring": 3,
+		"desc": "Grazes (right timing, wrong dodge) hurt less.",
+		"max_level": 2, "cost": 189, "cost_growth": 1.6, "effects": {"graze_reduction": 0.15},
+	},
+	"second_wind": {
+		"name": "Second Wind", "icon": "wind", "pos": Vector2(-4, -1), "requires": ["hp_4"], "ring": 4,
+		"desc": "Recover more every tenth of the bout.",
+		"max_level": 2, "cost": 304, "cost_growth": 1.6, "effects": {"wave_heal": 1},
+	},
+	"sigil_blood": {
+		"name": "Blood Moon", "icon": "drop", "pos": Vector2(-5, -1), "requires": ["hp_5"], "ring": 5, "medallion": true,
+		"desc": "Awakens BLOOD: every kill heals you.",
+		"max_level": 1, "cost": 1380, "cost_growth": 1.0, "effects": {"heal_on_kill": 1},
+	},
+	"vampiric_knuckles": {
+		"name": "Bloodsucker", "icon": "fang", "pos": Vector2(-5, -2), "requires": ["sigil_blood"], "ring": 5,
+		"desc": "Kills heal more.",
+		"max_level": 3, "cost": 690, "cost_growth": 1.6, "effects": {"heal_on_kill": 0.5},
+	},
+	"bloodletting": {
+		"name": "Bloodletting", "icon": "heartbeat", "pos": Vector2(-5, -3), "requires": ["vampiric_knuckles"], "ring": 5,
+		"desc": "Counters heal you.",
+		"max_level": 3, "cost": 690, "cost_growth": 1.6, "effects": {"counter_heal": 0.5},
+	},
+	"blood_rage": {
+		"name": "Seeing Red", "icon": "blood_burst", "pos": Vector2(-5, -4), "requires": ["bloodletting"], "ring": 5,
+		"desc": "The closer you are to dropping, the harder you hit.",
+		"max_level": 3, "cost": 690, "cost_growth": 1.6, "effects": {"last_stand": 0.15},
 	},
 	"bloodbath": {
-		"name": "Bloodbath", "icon": "bloodbath", "pos": Vector2(6, -3), "requires": ["blood_rage"], "ring": 6, "medallion": true,
-		"desc": "Blood capstone: all healing is doubled while you're under half knuckle HP.",
-		"max_level": 1, "cost": 9000, "cost_growth": 1.0, "effects": {"bloodbath": 1},
+		"name": "Bloodbath", "icon": "bloodbath", "pos": Vector2(-5, -5), "requires": ["blood_rage"], "ring": 6, "medallion": true,
+		"desc": "Healing doubled under half knuckle HP.",
+		"max_level": 1, "cost": 1980, "cost_growth": 1.0, "effects": {"bloodbath": 1},
 	},
-	# Trophies: one per broken seal, a big step up in raw power.
+	"cornerman": {
+		"name": "Cornerman", "icon": "medkit", "pos": Vector2(-1, 1), "requires": ["def_1"], "ring": 1,
+		"desc": "Recover a little every tenth of the bout.",
+		"max_level": 3, "cost": 66, "cost_growth": 1.6, "effects": {"wave_heal": 1},
+	},
+	"footwork_drills": {
+		"name": "Jump Rope", "icon": "footprints", "pos": Vector2(1, 1), "requires": ["def_1"], "ring": 1,
+		"desc": "A touch more time to dodge.",
+		"max_level": 2, "cost": 66, "cost_growth": 1.6, "effects": {"dodge_window": 0.04},
+	},
+	"bob_and_weave": {
+		"name": "Bob and Weave", "icon": "slip", "pos": Vector2(1, 2), "requires": ["def_2"], "ring": 2,
+		"desc": "A little longer to land a counter.",
+		"max_level": 2, "cost": 128, "cost_growth": 1.6, "effects": {"counter_window": 0.1},
+	},
+	"rope_a_dope": {
+		"name": "Rope-a-Dope", "icon": "anchor", "pos": Vector2(1, 4), "requires": ["def_4"], "ring": 4,
+		"desc": "Grazes hurt less.",
+		"max_level": 3, "cost": 304, "cost_growth": 1.6, "effects": {"graze_reduction": 0.1},
+	},
+	"sigil_frost": {
+		"name": "Deathchill", "icon": "snowflake", "pos": Vector2(1, 3), "requires": ["def_3"], "ring": 3, "medallion": true,
+		"desc": "Awakens FROST: set-up heavies and counters freeze.",
+		"max_level": 1, "cost": 378, "cost_growth": 1.0, "effects": {"frost_punch": 0.4},
+	},
+	"deep_freeze": {
+		"name": "Deep Freeze", "icon": "shard", "pos": Vector2(2, 3), "requires": ["sigil_frost"], "ring": 3,
+		"desc": "Frozen enemies are slower.",
+		"max_level": 3, "cost": 189, "cost_growth": 1.6, "effects": {"frost_punch": 0.1},
+	},
+	"permafrost": {
+		"name": "Permafrost", "icon": "hourglass", "pos": Vector2(3, 3), "requires": ["deep_freeze"], "ring": 3,
+		"desc": "Freezes last longer.",
+		"max_level": 3, "cost": 189, "cost_growth": 1.6, "effects": {"frost_time": 1.0},
+	},
+	"frost_nova": {
+		"name": "Frost Nova", "icon": "nova", "pos": Vector2(4, 3), "requires": ["permafrost"], "ring": 3,
+		"desc": "Freezes reach farther.",
+		"max_level": 2, "cost": 189, "cost_growth": 1.6, "effects": {"frost_radius": 1.0},
+	},
+	"brittle": {
+		"name": "Brittle Bones", "icon": "broken_shield", "pos": Vector2(5, 3), "requires": ["frost_nova"], "ring": 4,
+		"desc": "Frozen enemies take extra damage from everything.",
+		"max_level": 3, "cost": 304, "cost_growth": 1.6, "effects": {"brittle": 0.1},
+	},
+	"cold_snap": {
+		"name": "Cold Snap", "icon": "icicle", "pos": Vector2(6, 3), "requires": ["brittle"], "ring": 4,
+		"desc": "Any punch can freeze.",
+		"max_level": 3, "cost": 304, "cost_growth": 1.6, "effects": {"frost_chance": 0.08},
+	},
+	"frost_shatter": {
+		"name": "Shatter", "icon": "shatter", "pos": Vector2(7, 3), "requires": ["cold_snap"], "ring": 6, "medallion": true,
+		"desc": "Frozen enemies burst into frost when they die.",
+		"max_level": 1, "cost": 1980, "cost_growth": 1.0, "effects": {"frost_shatter": 1},
+	},
 	"bellmans_bell": {
-		"name": "The Bellman's Bell", "icon": "belt", "pos": Vector2(3, 2), "requires": ["thick_skin"], "ring": 2, "medallion": true,
-		"desc": "Trophy: rung over your head until you rang his. Raw power for Ring 2.",
-		"max_level": 3, "cost": 375, "cost_growth": 1.6, "effects": {"damage": 2.5, "max_knuckles": 15},
+		"name": "The Bellman's Bell", "icon": "belt", "pos": Vector2(-1, 2), "requires": ["def_2"], "ring": 2, "medallion": true,
+		"desc": "Trophy: it still rings when you hit things.",
+		"max_level": 3, "cost": 205, "cost_growth": 1.6, "effects": {"damage": 1.5, "max_knuckles": 10},
 	},
 	"headless_helm": {
-		"name": "Headless Helm", "icon": "helmet", "pos": Vector2(0, 4), "requires": ["champions_belt"], "ring": 3, "medallion": true,
-		"desc": "Trophy: he wasn't using it. Raw power for Ring 3.",
-		"max_level": 3, "cost": 480, "cost_growth": 1.6, "effects": {"damage": 2.5, "max_knuckles": 20, "defense": 1},
+		"name": "Headless Helm", "icon": "helmet", "pos": Vector2(-1, 3), "requires": ["def_3"], "ring": 3, "medallion": true,
+		"desc": "Trophy: no head, no problem.",
+		"max_level": 3, "cost": 302, "cost_growth": 1.6, "effects": {"damage": 2, "max_knuckles": 15, "defense": 1},
 	},
 	"southpaws_rosary": {
-		"name": "Southpaw's Veil", "icon": "medal", "pos": Vector2(-3, -3), "requires": ["night_owl"], "ring": 4, "medallion": true,
-		"desc": "Trophy: count the beads between rounds. Raw power for Ring 4.",
-		"max_level": 3, "cost": 900, "cost_growth": 1.6, "effects": {"damage": 4, "max_knuckles": 25, "defense": 1.5},
+		"name": "Southpaw's Veil", "icon": "medal", "pos": Vector2(-1, 4), "requires": ["def_4"], "ring": 4, "medallion": true,
+		"desc": "Trophy: a little of her left hand, now yours.",
+		"max_level": 3, "cost": 486, "cost_growth": 1.6, "effects": {"damage": 3, "max_knuckles": 20, "defense": 1.5},
 	},
 	"plague_censer": {
-		"name": "Plague Censer", "icon": "bucket", "pos": Vector2(-5, 2), "requires": ["dawn_patrol"], "ring": 5, "medallion": true,
-		"desc": "Trophy: the cure was a counterpunch all along. Raw power for Ring 5.",
-		"max_level": 3, "cost": 2100, "cost_growth": 1.6, "effects": {"damage": 7, "max_knuckles": 50, "defense": 2.5},
+		"name": "Plague Censer", "icon": "bucket", "pos": Vector2(-1, 5), "requires": ["def_5"], "ring": 5, "medallion": true,
+		"desc": "Trophy: the cure smells terrible.",
+		"max_level": 3, "cost": 1104, "cost_growth": 1.6, "effects": {"damage": 4, "max_knuckles": 30, "defense": 2},
 	},
 	"coffin_crown": {
-		"name": "The Coffin Crown", "icon": "crown", "pos": Vector2(5, -4), "requires": ["blood_rage"], "ring": 6, "medallion": true,
+		"name": "The Coffin Crown", "icon": "crown", "pos": Vector2(-1, 6), "requires": ["def_6"], "ring": 6, "medallion": true,
 		"desc": "Trophy: heavy is the head. Raw power for the endless dark.",
-		"max_level": 5, "cost": 4500, "cost_growth": 1.6, "effects": {"damage": 5, "max_knuckles": 40, "defense": 3},
+		"max_level": 5, "cost": 3168, "cost_growth": 1.6, "effects": {"damage": 5, "max_knuckles": 40, "defense": 3},
+	},
+	"sparring_partner": {
+		"name": "Sparring Partner", "icon": "crossed_gloves", "pos": Vector2(1, -1), "requires": ["gold_1"], "ring": 1,
+		"desc": "Learn faster: more XP.",
+		"max_level": 3, "cost": 66, "cost_growth": 1.6, "effects": {"xp_bonus": 0.1},
+	},
+	"light_feet": {
+		"name": "Twinkle Toes", "icon": "chevrons", "pos": Vector2(-1, -1), "requires": ["gold_1"], "ring": 1,
+		"desc": "Faster on your feet.",
+		"max_level": 2, "cost": 66, "cost_growth": 1.6, "effects": {"move_speed": 0.05},
+	},
+	"running_shoes": {
+		"name": "Cemetery Sprint", "icon": "wing_boot", "pos": Vector2(1, -2), "requires": ["gold_2"], "ring": 2,
+		"desc": "Faster sprinting.",
+		"max_level": 2, "cost": 128, "cost_growth": 1.6, "effects": {"sprint_bonus": 0.1},
+	},
+	"quick_wraps": {
+		"name": "Snap Wraps", "icon": "fast_fist", "pos": Vector2(-1, -2), "requires": ["gold_2"], "ring": 2,
+		"desc": "Lighter wraps for faster hands.",
+		"max_level": 3, "cost": 128, "cost_growth": 1.6, "effects": {"punch_speed": 0.04},
+	},
+	"bounty": {
+		"name": "Crowd Pleaser", "icon": "wanted", "pos": Vector2(1, -3), "requires": ["gold_3"], "ring": 3,
+		"desc": "Bigger milestone bonuses in the Arena.",
+		"max_level": 2, "cost": 189, "cost_growth": 1.6, "effects": {"wave_bonus": 0.25},
+	},
+	"rhythm": {
+		"name": "Speed Bag", "icon": "note", "pos": Vector2(-1, -3), "requires": ["gold_3"], "ring": 3,
+		"desc": "Combos build faster.",
+		"max_level": 3, "cost": 189, "cost_growth": 1.6, "effects": {"combo_step": 0.05},
+	},
+	"night_owl": {
+		"name": "Film Study", "icon": "moon", "pos": Vector2(1, -4), "requires": ["gold_4"], "ring": 4,
+		"desc": "Learn from every fight: more XP.",
+		"max_level": 3, "cost": 304, "cost_growth": 1.6, "effects": {"xp_bonus": 0.15},
+	},
+	"dawn_patrol": {
+		"name": "Prize Fighter", "icon": "sun", "pos": Vector2(1, -5), "requires": ["gold_5"], "ring": 5,
+		"desc": "Bigger Arena purses.",
+		"max_level": 2, "cost": 690, "cost_growth": 1.6, "effects": {"dawn_bonus": 0.25},
 	},
 }
 
-# Each class has its own skill web (and its own level, XP, stat and skill
-# points). Webs mix that class's special and stat nodes with general technique.
 const SKILL_TREES := {
 	"berserker": {
 		"fury": {
@@ -432,47 +533,47 @@ const SKILL_TREES := {
 		"sledgehammer": {
 			"name": "Sledgehammer", "icon": "hammer", "pos": Vector2(1, 0), "requires": ["fury"],
 			"desc": "Everything you throw lands heavier.",
-			"max_level": 3, "cost": 1, "cost_growth": 1.0, "effects": {"damage_percent": 0.03},
+			"max_level": 3, "cost": 1, "cost_growth": 1.0, "effects": {"damage_percent": 0.02},
 		},
 		"rib_breaker": {
 			"name": "Rib Breaker", "icon": "gut", "pos": Vector2(2, 0), "requires": ["sledgehammer"],
 			"desc": "Hooks and uppercuts cave things in.",
-			"max_level": 2, "cost": 1, "cost_growth": 1.0, "effects": {"heavy_bonus": 0.07},
+			"max_level": 2, "cost": 1, "cost_growth": 1.0, "effects": {"heavy_bonus": 0.08},
 		},
 		"lights_out": {
 			"name": "Lights Out", "icon": "skull", "pos": Vector2(3, 0), "requires": ["rib_breaker"],
 			"desc": "Hurt things die faster around you.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"finisher_bonus": 0.18},
+			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"finisher_bonus": 0.24},
 		},
 		"wrecking_ball": {
 			"name": "Wrecking Ball", "icon": "anvil", "pos": Vector2(4, 0), "requires": ["lights_out"], "ring": 2, "medallion": true,
 			"desc": "Hooks and uppercuts hit like a falling piano.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"heavy_bonus": 0.15, "damage_percent": 0.03},
+			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"heavy_bonus": 0.17, "damage_percent": 0.03},
 		},
 		"thick_hide": {
 			"name": "Thick Hide", "icon": "heart", "pos": Vector2(-1, 0), "requires": ["fury"],
 			"desc": "More meat between you and the floor.",
-			"max_level": 3, "cost": 1, "cost_growth": 1.0, "effects": {"knuckles_percent": 0.04},
+			"max_level": 3, "cost": 1, "cost_growth": 1.0, "effects": {"knuckles_percent": 0.03},
 		},
 		"iron_jaw": {
 			"name": "Iron Jaw", "icon": "tooth", "pos": Vector2(-2, 0), "requires": ["thick_hide"],
 			"desc": "Clean hits barely move you.",
-			"max_level": 2, "cost": 1, "cost_growth": 1.0, "effects": {"flinch_reduction": 0.15},
+			"max_level": 2, "cost": 1, "cost_growth": 1.0, "effects": {"flinch_reduction": 0.16},
 		},
 		"bloodthirst": {
 			"name": "Bloodthirst", "icon": "fang", "pos": Vector2(-3, 0), "requires": ["iron_jaw"],
 			"desc": "Every kill patches you up.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"heal_on_kill": 0.5},
+			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"heal_on_kill": 0.75},
 		},
 		"juggernaut": {
 			"name": "Juggernaut", "icon": "chestplate", "pos": Vector2(-4, 0), "requires": ["bloodthirst"], "ring": 4, "medallion": true,
 			"desc": "Super armor holds an extra hit, and hits it soaks hurt half as much.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"armor_charges": 1, "armor_absorb_reduction": 0.3},
+			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"armor_charges": 1, "armor_absorb_reduction": 0.34},
 		},
 		"short_fuse": {
 			"name": "Short Fuse", "icon": "clock", "pos": Vector2(0, -1), "requires": ["fury"],
 			"desc": "Super armor comes back sooner.",
-			"max_level": 3, "cost": 1, "cost_growth": 1.0, "effects": {"armor_recharge_cut": 1.0},
+			"max_level": 3, "cost": 1, "cost_growth": 1.0, "effects": {"armor_recharge_cut": 0.5},
 		},
 		"unbreakable": {
 			"name": "Unbreakable", "icon": "shield", "pos": Vector2(0, -2), "requires": ["short_fuse"],
@@ -482,12 +583,12 @@ const SKILL_TREES := {
 		"payback": {
 			"name": "Payback", "icon": "counter_arrow", "pos": Vector2(0, -3), "requires": ["unbreakable"],
 			"desc": "Hit back harder after super armor eats a punch.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"retaliation_bonus": 0.45},
+			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"retaliation_bonus": 0.61},
 		},
 		"berserk": {
 			"name": "Berserk", "icon": "rage", "pos": Vector2(0, -4), "requires": ["payback"], "ring": 6, "medallion": true,
 			"desc": "The closer you are to dropping, the harder you hit.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"last_stand": 0.18},
+			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"last_stand": 0.21},
 		},
 		"fury_surge": {
 			"name": "Ultimate Surge", "icon": "spark", "pos": Vector2(1, 1), "requires": ["fury"], "ring": 3, "medallion": true,
@@ -509,7 +610,7 @@ const SKILL_TREES := {
 		"counterpunch": {
 			"name": "Counterpunch", "icon": "counter_arrow", "pos": Vector2(1, 0), "requires": ["read_the_fight"],
 			"desc": "Counters hit harder.",
-			"max_level": 3, "cost": 1, "cost_growth": 1.0, "effects": {"counter_bonus": 0.24},
+			"max_level": 3, "cost": 1, "cost_growth": 1.0, "effects": {"counter_bonus": 0.19},
 		},
 		"cold_blood": {
 			"name": "Cold Blood", "icon": "snowflake", "pos": Vector2(2, 0), "requires": ["counterpunch"],
@@ -524,27 +625,27 @@ const SKILL_TREES := {
 		"executioner": {
 			"name": "Executioner", "icon": "axe", "pos": Vector2(4, 0), "requires": ["precision_strike"], "ring": 2, "medallion": true,
 			"desc": "Perfect counters cut a big chunk out of bosses.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"boss_ko_bonus": 0.09},
+			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"boss_ko_bonus": 0.1},
 		},
 		"ghost": {
 			"name": "Ghost", "icon": "ghost", "pos": Vector2(-1, 0), "requires": ["read_the_fight"],
 			"desc": "A little more time to get out of the way.",
-			"max_level": 3, "cost": 1, "cost_growth": 1.0, "effects": {"dodge_window": 0.03},
+			"max_level": 3, "cost": 1, "cost_growth": 1.0, "effects": {"dodge_window": 0.02},
 		},
 		"thick_skull": {
 			"name": "Thick Skull", "icon": "helmet", "pos": Vector2(-2, 0), "requires": ["ghost"],
 			"desc": "Grazes (right timing, wrong dodge) hurt less.",
-			"max_level": 2, "cost": 1, "cost_growth": 1.0, "effects": {"graze_reduction": 0.18},
+			"max_level": 2, "cost": 1, "cost_growth": 1.0, "effects": {"graze_reduction": 0.2},
 		},
 		"iron_chin": {
 			"name": "Iron Chin", "icon": "heart", "pos": Vector2(-3, 0), "requires": ["thick_skull"],
 			"desc": "More knuckle HP.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"knuckles_percent": 0.07},
+			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"knuckles_percent": 0.1},
 		},
 		"free_flow": {
 			"name": "Free Flow", "icon": "flow", "pos": Vector2(-4, 0), "requires": ["iron_chin"], "ring": 4, "medallion": true,
 			"desc": "Counters often cost no knuckle HP, and you can take more.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"counter_free_bonus": 0.3, "knuckles_percent": 0.06},
+			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"counter_free_bonus": 0.34, "knuckles_percent": 0.07},
 		},
 		"perfect_timing": {
 			"name": "Perfect Timing", "icon": "stopwatch", "pos": Vector2(0, -1), "requires": ["read_the_fight"],
@@ -554,17 +655,17 @@ const SKILL_TREES := {
 		"patience": {
 			"name": "Patience", "icon": "hourglass", "pos": Vector2(0, -2), "requires": ["perfect_timing"],
 			"desc": "A little longer to land your counter after a dodge.",
-			"max_level": 2, "cost": 1, "cost_growth": 1.0, "effects": {"counter_window": 0.1},
+			"max_level": 2, "cost": 1, "cost_growth": 1.0, "effects": {"counter_window": 0.15},
 		},
 		"snap_back": {
 			"name": "Snap Back", "icon": "fast_fist", "pos": Vector2(0, -3), "requires": ["patience"],
 			"desc": "Faster hands to punish with.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"punch_speed": 0.05},
+			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"punch_speed": 0.06},
 		},
 		"checkmate": {
 			"name": "Checkmate", "icon": "crown", "pos": Vector2(0, -4), "requires": ["snap_back"], "ring": 6, "medallion": true,
 			"desc": "Counters become the whole fight.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"counter_bonus": 0.6, "damage_percent": 0.05},
+			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"counter_bonus": 0.69, "damage_percent": 0.06},
 		},
 		"read_the_fight_surge": {
 			"name": "Ultimate Surge", "icon": "spark", "pos": Vector2(1, 1), "requires": ["read_the_fight"], "ring": 3, "medallion": true,
@@ -586,42 +687,42 @@ const SKILL_TREES := {
 		"fast_hands": {
 			"name": "Fast Hands", "icon": "fast_fist", "pos": Vector2(1, 0), "requires": ["flow_state"],
 			"desc": "Faster punches.",
-			"max_level": 3, "cost": 1, "cost_growth": 1.0, "effects": {"punch_speed": 0.03},
+			"max_level": 3, "cost": 1, "cost_growth": 1.0, "effects": {"punch_speed": 0.02},
 		},
 		"flow": {
 			"name": "Build-Up", "icon": "chevrons", "pos": Vector2(2, 0), "requires": ["fast_hands"],
 			"desc": "Combos build faster.",
-			"max_level": 2, "cost": 1, "cost_growth": 1.0, "effects": {"combo_step": 0.02},
+			"max_level": 2, "cost": 1, "cost_growth": 1.0, "effects": {"combo_step": 0.03},
 		},
 		"double_jab": {
 			"name": "Triple Jab", "icon": "double_fist", "pos": Vector2(3, 0), "requires": ["flow"],
 			"desc": "Jab, jab, jab keeps the combo going, and every punch hits a bit harder.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"double_jab": 1, "damage_percent": 0.03},
+			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"double_jab": 1, "damage_percent": 0.04},
 		},
 		"thousand_fists": {
 			"name": "Thousand Fists", "icon": "infinity", "pos": Vector2(4, 0), "requires": ["double_jab"], "ring": 2, "medallion": true,
 			"desc": "Even faster hands, and combos climb even quicker.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"punch_speed": 0.06, "combo_step": 0.03},
+			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"punch_speed": 0.07, "combo_step": 0.03},
 		},
 		"endurance": {
 			"name": "Endurance", "icon": "heartbeat", "pos": Vector2(-1, 0), "requires": ["flow_state"],
 			"desc": "More knuckle HP.",
-			"max_level": 3, "cost": 1, "cost_growth": 1.0, "effects": {"knuckles_percent": 0.04},
+			"max_level": 3, "cost": 1, "cost_growth": 1.0, "effects": {"knuckles_percent": 0.03},
 		},
 		"hard_knuckles": {
-			"name": "Hard Knuckles", "icon": "tape", "pos": Vector2(-2, 0), "requires": ["endurance"],
+			"name": "Hard Knuckles", "icon": "brass", "pos": Vector2(-2, 0), "requires": ["endurance"],
 			"desc": "Some punches don't hurt your hands at all.",
-			"max_level": 2, "cost": 1, "cost_growth": 1.0, "effects": {"free_punch_chance": 0.07},
+			"max_level": 2, "cost": 1, "cost_growth": 1.0, "effects": {"free_punch_chance": 0.08},
 		},
 		"iron_jaw": {
 			"name": "Iron Jaw", "icon": "tooth", "pos": Vector2(-3, 0), "requires": ["hard_knuckles"],
 			"desc": "Clean hits barely slow you down.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"flinch_reduction": 0.24},
+			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"flinch_reduction": 0.32},
 		},
 		"second_wind": {
 			"name": "Second Wind", "icon": "wind", "pos": Vector2(-4, 0), "requires": ["iron_jaw"], "ring": 4, "medallion": true,
 			"desc": "Catch your breath as the bout goes on, and take more.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"wave_heal": 2.0, "knuckles_percent": 0.06},
+			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"wave_heal": 2.0, "knuckles_percent": 0.07},
 		},
 		"wide_wave": {
 			"name": "Wide Wave", "icon": "ripple", "pos": Vector2(0, -1), "requires": ["flow_state"],
@@ -631,7 +732,7 @@ const SKILL_TREES := {
 		"rolling_thunder": {
 			"name": "Rolling Thunder", "icon": "quake", "pos": Vector2(0, -2), "requires": ["wide_wave"],
 			"desc": "Shockwaves hit everything they stun.",
-			"max_level": 2, "cost": 1, "cost_growth": 1.0, "effects": {"shockwave_damage": 0.5},
+			"max_level": 2, "cost": 1, "cost_growth": 1.0, "effects": {"shockwave_damage": 0.75},
 		},
 		"aftershock": {
 			"name": "Aftershock", "icon": "spiral", "pos": Vector2(0, -3), "requires": ["rolling_thunder"],
@@ -641,7 +742,7 @@ const SKILL_TREES := {
 		"flurry": {
 			"name": "Flurry", "icon": "storm", "pos": Vector2(0, -4), "requires": ["aftershock"], "ring": 6, "medallion": true,
 			"desc": "A shockwave every 4th combo hit instead of every 5th, and they hit harder.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"shockwave_every_cut": 1, "shockwave_damage": 0.5},
+			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"shockwave_every_cut": 1, "shockwave_damage": 0.75},
 		},
 		"flow_state_surge": {
 			"name": "Ultimate Surge", "icon": "spark", "pos": Vector2(1, 1), "requires": ["flow_state"], "ring": 3, "medallion": true,
@@ -663,27 +764,27 @@ const SKILL_TREES := {
 		"momentum": {
 			"name": "Momentum", "icon": "chevrons", "pos": Vector2(1, 0), "requires": ["light_step"],
 			"desc": "Dash punches (Spear Jab and Haymaker) hit even harder.",
-			"max_level": 3, "cost": 1, "cost_growth": 1.0, "effects": {"opener_bonus": 0.24},
+			"max_level": 3, "cost": 1, "cost_growth": 1.0, "effects": {"opener_bonus": 0.19},
 		},
 		"opportunist": {
 			"name": "Opportunist", "icon": "target", "pos": Vector2(2, 0), "requires": ["momentum"],
 			"desc": "Hurt things die faster around you.",
-			"max_level": 2, "cost": 1, "cost_growth": 1.0, "effects": {"finisher_bonus": 0.09},
+			"max_level": 2, "cost": 1, "cost_growth": 1.0, "effects": {"finisher_bonus": 0.1},
 		},
 		"cheap_shot": {
 			"name": "Cheap Shot", "icon": "slash", "pos": Vector2(3, 0), "requires": ["opportunist"],
 			"desc": "Fight dirty. Everything hits harder.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"damage_percent": 0.06},
+			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"damage_percent": 0.08},
 		},
 		"blindside": {
 			"name": "Blindside", "icon": "dive", "pos": Vector2(4, 0), "requires": ["cheap_shot"], "ring": 2, "medallion": true,
 			"desc": "Dash punches land like a truck, and so does everything else.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"opener_bonus": 0.3, "damage_percent": 0.06},
+			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"opener_bonus": 0.34, "damage_percent": 0.07},
 		},
 		"rubber_legs": {
 			"name": "Rubber Legs", "icon": "heart", "pos": Vector2(-1, 0), "requires": ["light_step"],
 			"desc": "More knuckle HP.",
-			"max_level": 3, "cost": 1, "cost_growth": 1.0, "effects": {"knuckles_percent": 0.04},
+			"max_level": 3, "cost": 1, "cost_growth": 1.0, "effects": {"knuckles_percent": 0.03},
 		},
 		"slick": {
 			"name": "Slick", "icon": "slip", "pos": Vector2(-2, 0), "requires": ["rubber_legs"],
@@ -691,34 +792,34 @@ const SKILL_TREES := {
 			"max_level": 2, "cost": 1, "cost_growth": 1.0, "effects": {"dodge_window": 0.03},
 		},
 		"hard_knuckles": {
-			"name": "Hard Knuckles", "icon": "tape", "pos": Vector2(-3, 0), "requires": ["slick"],
+			"name": "Hard Knuckles", "icon": "brass", "pos": Vector2(-3, 0), "requires": ["slick"],
 			"desc": "Some punches don't hurt your hands at all.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"free_punch_chance": 0.09},
+			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"free_punch_chance": 0.12},
 		},
 		"ghost_step": {
 			"name": "Ghost Step", "icon": "ghost", "pos": Vector2(-4, 0), "requires": ["hard_knuckles"], "ring": 4, "medallion": true,
 			"desc": "Grazes barely touch you, and you can take more.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"graze_reduction": 0.3, "knuckles_percent": 0.06},
+			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"graze_reduction": 0.34, "knuckles_percent": 0.07},
 		},
 		"stride": {
 			"name": "Stride", "icon": "wing_boot", "pos": Vector2(0, -1), "requires": ["light_step"],
 			"desc": "Faster on your feet, faster sprinting.",
-			"max_level": 3, "cost": 1, "cost_growth": 1.0, "effects": {"sprint_bonus": 0.05, "move_speed": 0.02},
+			"max_level": 3, "cost": 1, "cost_growth": 1.0, "effects": {"sprint_bonus": 0.04, "move_speed": 0.01},
 		},
 		"acrobat": {
 			"name": "Acrobat", "icon": "wing", "pos": Vector2(0, -2), "requires": ["stride"],
 			"desc": "Higher jumps: more time for jump punches.",
-			"max_level": 2, "cost": 1, "cost_growth": 1.0, "effects": {"jump_bonus": 0.09},
+			"max_level": 2, "cost": 1, "cost_growth": 1.0, "effects": {"jump_bonus": 0.1},
 		},
 		"high_ground": {
 			"name": "High Ground", "icon": "mountain", "pos": Vector2(0, -3), "requires": ["acrobat"],
 			"desc": "Jump punch finishers work on healthier enemies.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"finisher_threshold": 0.09},
+			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"finisher_threshold": 0.12},
 		},
 		"dive_kick": {
 			"name": "Dive Kick", "icon": "dive", "pos": Vector2(0, -4), "requires": ["high_ground"], "ring": 6, "medallion": true,
 			"desc": "Jump punches stagger whatever they hit, and everything hits harder.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"dive_kick": 1, "damage_percent": 0.06},
+			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"dive_kick": 1, "damage_percent": 0.07},
 		},
 		"light_step_surge": {
 			"name": "Ultimate Surge", "icon": "spark", "pos": Vector2(1, 1), "requires": ["light_step"], "ring": 3, "medallion": true,
@@ -740,7 +841,7 @@ const SKILL_TREES := {
 		"heavy_hands": {
 			"name": "Heavy Hands", "icon": "fist", "pos": Vector2(1, 0), "requires": ["wise_guy"],
 			"desc": "Hooks and uppercuts hit harder.",
-			"max_level": 3, "cost": 1, "cost_growth": 1.0, "effects": {"heavy_bonus": 0.07},
+			"max_level": 3, "cost": 1, "cost_growth": 1.0, "effects": {"heavy_bonus": 0.06},
 		},
 		"knuckle_sandwich": {
 			"name": "Knuckle Sandwich", "icon": "burst", "pos": Vector2(2, 0), "requires": ["heavy_hands"],
@@ -750,32 +851,32 @@ const SKILL_TREES := {
 		"last_word": {
 			"name": "Last Word", "icon": "skull", "pos": Vector2(3, 0), "requires": ["knuckle_sandwich"],
 			"desc": "Hurt things die faster around you.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"finisher_bonus": 0.18},
+			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"finisher_bonus": 0.24},
 		},
 		"bada_bing": {
 			"name": "Bada Bing", "icon": "hammer", "pos": Vector2(4, 0), "requires": ["last_word"], "ring": 2, "medallion": true,
 			"desc": "Hooks and uppercuts land like a cement shoe.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"heavy_bonus": 0.15, "damage_percent": 0.03},
+			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"heavy_bonus": 0.17, "damage_percent": 0.03},
 		},
 		"tough_guy": {
 			"name": "Tough Guy", "icon": "heart", "pos": Vector2(-1, 0), "requires": ["wise_guy"],
 			"desc": "More knuckle HP.",
-			"max_level": 3, "cost": 1, "cost_growth": 1.0, "effects": {"knuckles_percent": 0.04},
+			"max_level": 3, "cost": 1, "cost_growth": 1.0, "effects": {"knuckles_percent": 0.03},
 		},
 		"shrug_it_off": {
 			"name": "Shrug It Off", "icon": "shield", "pos": Vector2(-2, 0), "requires": ["tough_guy"],
 			"desc": "Fuggedaboudit comes back faster.",
-			"max_level": 2, "cost": 1, "cost_growth": 1.0, "effects": {"fugget_cut": 1.0},
+			"max_level": 2, "cost": 1, "cost_growth": 1.0, "effects": {"fugget_cut": 1.5},
 		},
 		"deli_run": {
 			"name": "Deli Run", "icon": "medkit", "pos": Vector2(-3, 0), "requires": ["shrug_it_off"],
 			"desc": "Every KO, a little sandwich.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"heal_on_kill": 0.5},
+			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"heal_on_kill": 0.75},
 		},
 		"made_man": {
 			"name": "Made Man", "icon": "crown", "pos": Vector2(-4, 0), "requires": ["deli_run"], "ring": 4, "medallion": true,
 			"desc": "Fuggedaboudit patches you up, and you can take more.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"fugget_heal": 0.06, "knuckles_percent": 0.06},
+			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"fugget_heal": 0.07, "knuckles_percent": 0.07},
 		},
 		"trash_talk": {
 			"name": "Trash Talk", "icon": "note", "pos": Vector2(0, -1), "requires": ["wise_guy"],
@@ -785,17 +886,17 @@ const SKILL_TREES := {
 		"below_the_belt": {
 			"name": "Below the Belt", "icon": "gut", "pos": Vector2(0, -2), "requires": ["trash_talk"],
 			"desc": "Hit insulted monsters even harder.",
-			"max_level": 2, "cost": 1, "cost_growth": 1.0, "effects": {"wise_up": 0.12},
+			"max_level": 2, "cost": 1, "cost_growth": 1.0, "effects": {"wise_up": 0.13},
 		},
 		"hustle": {
 			"name": "Hustle", "icon": "bag", "pos": Vector2(0, -3), "requires": ["below_the_belt"],
 			"desc": "Insulted monsters pay out more coins.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"hustle": 0.6},
+			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"hustle": 0.81},
 		},
 		"say_it_to_my_face": {
 			"name": "Say It To My Face", "icon": "counter_arrow", "pos": Vector2(0, -4), "requires": ["hustle"], "ring": 6, "medallion": true,
 			"desc": "Insulted monsters take a beating, and so does anyone you counter.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"wise_up": 0.24, "counter_bonus": 0.3},
+			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"wise_up": 0.28, "counter_bonus": 0.34},
 		},
 		"wise_guy_surge": {
 			"name": "Ultimate Surge", "icon": "spark", "pos": Vector2(1, 1), "requires": ["wise_guy"], "ring": 3, "medallion": true,
@@ -822,6 +923,8 @@ const EFFECT_FORMATS := {
 	"max_knuckles": "+%s max knuckle HP",
 	"move_speed": "+%s%% move speed",
 	"armor_pierce": "Ignore %s%% of enemy armor",
+	"crit_chance": "%s%% chance of a critical hit (x1.5 damage)",
+	"crit_damage": "+%s%% critical hit damage",
 	"combo_step": "+%s combo multiplier per hit",
 	"coin_bonus": "+%s%% coins from kills",
 	"heavy_bonus": "+%s%% set-up hook & uppercut damage",
@@ -917,7 +1020,7 @@ const EFFECT_FORMATS := {
 }
 const PERCENT_EFFECTS := [
 	"wise_up", "fugget_heal", "hustle",
-	"armor_pierce", "move_speed", "coin_bonus", "heavy_bonus", "wave_bonus", "boss_damage", "dawn_bonus", "punch_speed",
+	"armor_pierce", "crit_chance", "crit_damage", "move_speed", "coin_bonus", "heavy_bonus", "wave_bonus", "boss_damage", "dawn_bonus", "punch_speed",
 	"body_bonus", "free_punch_chance", "finisher_bonus", "dodge_window", "flinch_reduction", "graze_reduction",
 	"retaliation_bonus", "counter_free_bonus", "boss_ko_bonus", "finisher_threshold", "sprint_bonus",
 	"fire_punch", "xp_bonus", "chain_damage", "fire_chance", "frost_punch", "frost_chance", "brittle",
@@ -934,7 +1037,10 @@ const FLAG_EFFECTS := [
 
 ## The upgrade web's layout version. Saves from an older one get everything
 ## they spent on upgrades back (coins and sigils) to rebuy in the new web.
-const UPGRADE_VERSION := 5
+const UPGRADE_VERSION := 6
+## Version 5 prices ([cost, growth] per node), for the version-6 respec
+## (the spoke web, 2026-10-16).
+const V5_PRICES := {"wrapped_knuckles": [15, 1.0], "calluses": [20, 1.7], "iron_fists": [20, 1.8], "pickpocket": [55, 1.8], "running_shoes": [140, 2.0], "thick_skin": [125, 2.0], "quick_wraps": [160, 1.9], "heavy_hitter": [140, 1.9], "armor_breaker": [140, 2.0], "guard": [210, 1.9], "giant_killer": [790, 2.0], "sigil_blood": [2310, 1.0], "vampiric_knuckles": [1540, 1.9], "bloodletting": [1540, 1.9], "blood_rage": [1850, 2.0], "sigil_fire": [275, 1.0], "hotter_flames": [250, 1.9], "wildfire": [220, 2.0], "lingering_flames": [220, 1.9], "searing": [275, 1.9], "kindling": [330, 2.0], "brass_tape": [30, 1.8], "light_feet": [30, 2.2], "rhythm": [65, 1.9], "ice_bath": [245, 2.0], "night_owl": [395, 1.9], "iron_will": [140, 2.0], "bounty": [245, 2.2], "weighted_wraps": [990, 1.0], "dawn_patrol": [1540, 2.2], "sigil_storm": [660, 1.0], "forked": [595, 1.9], "storm": [1650, 1.0], "overcharge": [660, 1.9], "conductor": [1320, 1.0], "static_shock": [1320, 1.0], "mouthguard": [40, 1.8], "grave_robber": [50, 1.8], "cornerman": [90, 1.8], "skull_cracker": [200, 2.0], "sigil_frost": [350, 1.0], "deep_freeze": [315, 1.9], "permafrost": [280, 1.9], "frost_nova": [280, 2.0], "brittle": [420, 2.0], "cold_snap": [385, 2.0], "road_work": [40, 1.8], "footwork_drills": [130, 2.0], "heavy_bag": [130, 2.0], "sparring_partner": [110, 1.9], "champions_belt": [530, 2.0], "bone_plating": [925, 1.9], "grave_gold": [790, 2.0], "pyre": [9000, 1.0], "thunderhead": [9000, 1.0], "frost_shatter": [9000, 1.0], "bloodbath": [9000, 1.0], "bellmans_bell": [375, 1.6], "headless_helm": [480, 1.6], "southpaws_rosary": [900, 1.6], "plague_censer": [2100, 1.6], "coffin_crown": [4500, 1.6]}
 ## Version 4 prices ([cost, growth] per node), for the version-5 respec.
 const V4_PRICES := {"wrapped_knuckles": [15, 1.0], "calluses": [20, 1.7], "iron_fists": [20, 1.8], "pickpocket": [55, 1.8], "running_shoes": [140, 2.0], "thick_skin": [125, 2.0], "quick_wraps": [160, 1.9], "heavy_hitter": [140, 1.9], "armor_breaker": [140, 2.0], "guard": [210, 1.9], "giant_killer": [790, 2.0], "sigil_blood": [2310, 1.0], "vampiric_knuckles": [1540, 1.9], "bloodletting": [1540, 1.9], "blood_rage": [1850, 2.0], "sigil_fire": [275, 1.0], "hotter_flames": [250, 1.9], "wildfire": [220, 2.0], "lingering_flames": [220, 1.9], "searing": [275, 1.9], "kindling": [330, 2.0], "brass_tape": [30, 1.8], "light_feet": [30, 2.2], "rhythm": [65, 1.9], "ice_bath": [245, 2.0], "night_owl": [395, 1.9], "iron_will": [140, 2.0], "bounty": [245, 2.2], "weighted_wraps": [990, 1.0], "dawn_patrol": [1540, 2.2], "sigil_storm": [660, 1.0], "forked": [595, 1.9], "storm": [1650, 1.0], "overcharge": [660, 1.9], "conductor": [1320, 1.0], "static_shock": [1320, 1.0], "mouthguard": [40, 1.8], "grave_robber": [50, 1.8], "cornerman": [90, 1.8], "skull_cracker": [200, 2.0], "sigil_frost": [350, 1.0], "deep_freeze": [315, 1.9], "permafrost": [280, 1.9], "frost_nova": [280, 2.0], "brittle": [420, 2.0], "cold_snap": [385, 2.0], "road_work": [40, 1.8], "footwork_drills": [130, 2.0], "heavy_bag": [130, 2.0], "sparring_partner": [110, 1.9], "champions_belt": [530, 2.0], "bone_plating": [925, 1.9], "grave_gold": [790, 2.0], "pyre": [9000, 1.0], "thunderhead": [9000, 1.0], "frost_shatter": [9000, 1.0], "bloodbath": [9000, 1.0], "bellmans_bell": [375, 1.6], "headless_helm": [480, 1.6], "southpaws_rosary": [900, 1.6], "plague_censer": [2100, 1.6], "coffin_crown": [4500, 1.6]}
 ## The fighter skill webs' version. Version 2 (2026-10-15) rebuilt every web
@@ -973,6 +1079,9 @@ var armory: Array = []
 var _next_uid := 1
 ## Underworld Arena: the division picked at camp, and bouts cleared per division.
 var arena_division := 1
+## The bout picked in camp for the next Arena run (0 = your next unbeaten one).
+## Not saved.
+var arena_bout_pick := 0
 var arena_bouts := {}
 ## The Crypt bracket picked at camp (runs start on its first floor).
 var crypt_tier := 1
@@ -1692,8 +1801,10 @@ func load_game() -> void:
 			resources[resource] = int(saved_resources[resource])
 	var saved_upgrade_version := int(data.get("upgrade_version", 1))
 	if saved_upgrade_version < UPGRADE_VERSION and data.get("upgrades", {}) is Dictionary:
-		if saved_upgrade_version == 4:
-			_respec_v5(data.get("upgrades", {}))
+		if saved_upgrade_version == 5:
+			_respec_at(data.get("upgrades", {}), V5_PRICES)
+		elif saved_upgrade_version == 4:
+			_respec_at(data.get("upgrades", {}), V4_PRICES)
 		elif saved_upgrade_version == 3:
 			_respec_for_rings(data.get("upgrades", {}), old_sigils)
 		elif saved_upgrade_version == 2:
@@ -1815,14 +1926,14 @@ func _respec_for_rings(saved: Dictionary, old_sigils: int) -> void:
 	_give_respec(coins, old_sigils)
 
 
-## Version 4 -> 5 (the upgrade revamp): nodes were renamed, retuned and
-## repriced. Clear the web and refund exactly what it cost.
-func _respec_v5(saved: Dictionary) -> void:
+## The web was rebuilt (version 4 -> 5: the revamp; 5 -> 6: the spoke web).
+## Clear it and refund exactly what it cost at that version's prices.
+func _respec_at(saved: Dictionary, prices: Dictionary) -> void:
 	var coins := 0
 	for id in saved:
-		if not V4_PRICES.has(id):
+		if not prices.has(id):
 			continue
-		var price: Array = V4_PRICES[id]
+		var price: Array = prices[id]
 		for level in int(saved[id]):
 			coins += roundi(price[0] * pow(price[1], level))
 	if coins > 0:

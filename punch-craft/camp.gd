@@ -619,6 +619,24 @@ func _pick_division() -> void:
 			"open": i + 1 <= Progression.current_tier(), "tier": i + 1, "value": i + 1})
 	_pick("UNDERWORLD ARENA", options, func(division: int) -> void:
 		GameState.arena_division = division
+		_pick_bout(division))
+
+
+## Then the bout: any you've won (to farm it) or the next one. Harder bouts
+## pay more. With nothing won yet it goes straight in.
+func _pick_bout(division: int) -> void:
+	var won := mini(int(GameState.arena_bouts.get(str(division), 0)), Progression.BOUTS_PER_DIVISION)
+	if won == 0:
+		GameState.arena_bout_pick = 1
+		_start_run()
+		return
+	var world := load("res://world.gd")
+	var options := []
+	for bout in range(1, mini(won + 1, Progression.BOUTS_PER_DIVISION) + 1):
+		options.append({"name": "BOUT %d" % bout, "number": "%d" % bout, "tier": division, "open": true, "value": bout,
+			"detail": ("WON" if bout <= won else "NEXT") + "   ·   x%.1f pay" % world.BOUT_PAY[bout - 1]})
+	_pick("%s DIVISION" % Progression.TIERS[division - 1].division.to_upper(), options, func(bout: int) -> void:
+		GameState.arena_bout_pick = bout
 		_start_run())
 
 
@@ -683,12 +701,16 @@ func _pick(title: String, options: Array, callback: Callable) -> void:
 		inside.add_theme_constant_override("separation", 10)
 		inside.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		card.add_child(inside)
-		var number := UiTheme.title_label("%d" % option.tier, 64, accent.lightened(0.2) if option.open else UiTheme.BORDER)
+		var number := UiTheme.title_label(option.get("number", "%d" % option.tier), 64, accent.lightened(0.2) if option.open else UiTheme.BORDER)
 		number.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		inside.add_child(number)
 		var label := UiTheme.title_label(option.name, 22, UiTheme.TEXT if option.open else UiTheme.MUTED.darkened(0.3))
 		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		inside.add_child(label)
+		if option.has("detail"):
+			var detail := _label(option.detail, 14, UiTheme.MUTED)
+			detail.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			inside.add_child(detail)
 		if not option.open:
 			var holder := _label("SEALED BY\n" + DeadLeagueRules.boss(option.tier - 2).name, 13, UiTheme.SIGIL)
 			holder.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

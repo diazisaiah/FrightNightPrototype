@@ -64,6 +64,8 @@ static func rate(build: Dictionary) -> int:
 	var fx: Dictionary = build.effects
 	var offense: float = build.damage / 2.0 * build.punch_speed * (1.0 + 2.5 * build.combo_step) / FRESH_COMBO
 	offense *= 1.0 + _weighted(fx, OFFENSE)
+	# Crits: the chance (capped) times the extra they deal (x1.5 + crit damage).
+	offense *= 1.0 + minf(fx.get("crit_chance", 0.0), 0.5) * (0.5 + fx.get("crit_damage", 0.0))
 	offense *= 1.0 + _weighted(fx, POWERS)
 	var defense: float = build.knuckles * (10.0 + build.defense) / 10.0 / 50.0 / (1.0 + maxf(fx.get("damage_taken", 0.0), -0.5))
 	defense *= 1.0 + _weighted(fx, DEFENSE)
@@ -130,4 +132,6 @@ static func _all_keys() -> Array:
 	for key in SPECIALS:
 		keys[key] = true
 	keys["damage_taken"] = true
+	keys["crit_chance"] = true
+	keys["crit_damage"] = true
 	return keys.keys()

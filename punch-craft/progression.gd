@@ -32,8 +32,9 @@ const BASE_DAMAGE := 2.0
 const BASE_KNUCKLES := 50.0
 ## Upgrade prices multiply by their ring (pay grows by tier to match).
 const RING_COST := {1: 1.0, 2: 1.25, 3: 1.6, 4: 3.0, 5: 7.0, 6: 15.0}
-## Coin pay by content tier (1-5); beyond tier 5 it keeps growing.
-const PAY := [1.0, 2.85, 4.9, 7.3, 11.2]
+## Coin pay by content tier (1-5); beyond tier 5 it keeps growing. Tier 1
+## pays 1.5x (2026-10-16): the first upgrades have to come quickly.
+const PAY := [1.5, 2.85, 4.9, 7.3, 11.2]
 const PAY_PAST_TOP := 1.35
 
 const TIERS := [

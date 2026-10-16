@@ -979,6 +979,39 @@ Why: skill webs couldn't be finished (28 points by the Coffin King against 57-73
 
 **Old saves:** upgrade web version 5 refunds every coin spent at the version-4 prices (`V4_PRICES`); skill web version 2 clears every class's skills and returns all its points (level - 1). Kept Piercing gear converts to the new percent. Camp says so once.
 
+## The spoke web and early money [Built 2026-10-16]
+
+**Upgrade web v6** (`punch-craft/tools/coin_web.py` generates `UPGRADES`; 83 nodes):
+- **Four straight spokes** from the center (Taped Up), one tier per seal ring (1-6). Each tier only shows once the one before it is maxed, and is stronger and pricier than the last:
+
+  | Spoke | Direction | Tiers |
+  |---|---|---|
+  | DAMAGE | east | +1 / 1.2 / 2 / 3 / 4 / 6 damage a level, 5 levels each: Bricks for Hands, Iron Fists, Sledge Fists, Wrecking Fists, Anvil Hands, Hands of the Damned |
+  | HEALTH | west | +6 / 9 / 13 / 19 / 27 / 38 knuckle HP: Leather Knuckles ... Undying Hide |
+  | DEFENSE | south | +0.6 / 0.8 / 1.2 / 1.7 / 2.4 / 3.2: Mouthguard ... Iron Coffin |
+  | MONEY | north | +5-12% coins, 3 levels each: Grave Robber ... King's Ransom |
+
+- **Related side lines:**
+  - Damage: Haymaker → Rib Shot (set-up heavies), Counterpuncher → Return Fire, Can Opener → Bigger They Fall, Lead Tape, and **crits** (Lucky Shot, Dirty Shot: crit chance; Glass Breaker: crit damage). A crit is x1.5 + crit damage, capped at a 50% chance, and shows CRIT!.
+  - Health: Ice Bath, Chin Check, Calloused (free punches), Thick Skull, Second Wind.
+  - Defense: Cornerman, Jump Rope, Bob and Weave, Rope-a-Dope.
+  - Money: XP, sprint, punch speed, combo build, milestone and purse bonuses.
+- **Powers are straight lines off the spokes:** FIRE off damage tier 2, STORM off damage tier 4, FROST off defense tier 3, BLOOD off health tier 5. Each opens with its contender's seal and ends in a Coffin King capstone (Pyre, Thunderhead, Shatter, Bloodbath).
+- **The Trophies** hang off the defense spoke's west side, one per seal.
+- **Prices:** each ring costs about what it did before (about 3.2k, 9.3k, 19k, 33k, 54k and 113k coins). Ring 1 takes about 2.5 good bouts, the rest about 4-6.
+- **Respec:** upgrade web version 6 refunds version-5 saves at their old prices (`V5_PRICES`), and version-4 saves at version-4 prices.
+
+**Skill webs:** same shape, but deeper is stronger per point (x0.8, 1.1, 1.35 along a branch, x1.15 for the capstone). A full web is still worth about the same for every class (x1.69-1.82 POWER).
+
+**Early money:**
+- **Pick your bout:** after the division, choose any bout you've won (to farm it) or the next one.
+- **Harder bouts pay more:** kills, milestones and the purse are x1.0 / 1.3 / 1.6 for bouts 1 / 2 / 3.
+- **First win of each bout:** a one-time bonus of 150 / 250 / 400 coins x the tier's pay.
+- **Knocked out:** you still get 35% of the purse times how far through the bout you got.
+- **Tier 1 pays 1.5x** (`Progression.PAY`).
+
+**The Mauler (2026-10-16):** Inferno Uppercut fires any time the meter is full. It goes at the last enemy to hit his super armor if it's in reach, otherwise the nearest one. No super-armor hit is needed first. His meter fills 30% faster and never drains from hits.
+
 ## Launch readiness [In progress, 2026-10-15]
 
 Checked: every main scene (title, camp, Arena, Crypt, training, Dead League menu and arena) runs 400 frames headless with no script errors, and the web build loads with no console errors (38 MB wasm + 15 MB pck; itch serves them compressed).
