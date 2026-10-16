@@ -29,10 +29,10 @@ const SINGLE_HOOKS := [["left_hook"], ["right_hook"]]
 const STEPS := [
 	{"title": "MOVE", "goals": {"move": 6}, "dummy": "passive",
 		"text": "Walk around the ring.",
-		"keys": [["W A S D", "Move"], ["Mouse", "Look"], ["Shift", "Sprint"]]},
+		"keys": [["<move>", "Move"], ["<look>", "Look"], ["<sprint>", "Sprint"]]},
 	{"title": "JAB AND CROSS", "goals": {"jab": 2, "cross": 2}, "dummy": "passive",
 		"text": "Walk up and hit the dummy.",
-		"keys": [["LMB", "Jab"], ["RMB", "Cross"]]},
+		"keys": [["<jab>", "Jab"], ["<cross>", "Cross"]]},
 	{"title": "HOOK AND UPPERCUT", "goals": {"hook": 1, "uppercut": 1}, "dummy": "passive",
 		"text": "They hit hardest right after a jab or cross.",
 		"keys": [["<hook>", "Hook"], ["<uppercut>", "Uppercut"]]},
@@ -42,7 +42,7 @@ const STEPS := [
 		"combos": SINGLE_STRAIGHTS, "telegraph": 1, "slow": 1.5},
 	{"title": "COUNTER", "goals": {"counter": 3},
 		"text": "After a dodge, punch with the hand that glows.",
-		"keys": [["<slip>", "Slip"], ["LMB / RMB", "Counter"]],
+		"keys": [["<slip>", "Slip"], ["<jab> / <cross>", "Counter"]],
 		"combos": SINGLE_STRAIGHTS, "telegraph": 1, "slow": 1.4},
 	{"title": "ROLL", "goals": {"roll": 3}, "cue": "orange",
 		"text": "An orange glove is a hook. Roll away from it.",
@@ -93,6 +93,7 @@ var _coach_warning: Label
 var _practice: PanelContainer
 var _practice_rows: VBoxContainer
 var _warning_tween: Tween
+var _skip_cap: PanelContainer
 
 @onready var _player: Player = $Player
 @onready var _hud: Hud = $HUD
@@ -131,6 +132,7 @@ func _ready() -> void:
 	$Enemies.add_child(_dummy)
 	_dummy.combo_done.connect(_on_combo_done)
 	_build_coach()
+	Controls.watch(self, _refresh_keys)
 	if GameState.tutorial_done:
 		_end_tutorial()
 		_hud.announce("Training")
@@ -140,6 +142,13 @@ func _ready() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	# Controller: the map button skips the tutorial, then cycles the dummy.
+	if event.is_action_pressed("map") and not event is InputEventKey:
+		if _step >= 0:
+			_finish_tutorial()
+		else:
+			_set_dummy_level(_dummy.level % Dummy.MAX_LEVEL + 1)
+		return
 	if not (event is InputEventKey and event.pressed and not event.echo):
 		return
 	if event.physical_keycode == KEY_T:
@@ -153,18 +162,22 @@ func _unhandled_input(event: InputEvent) -> void:
 		return  # The tutorial sets up the dummy.
 	var level: int = event.physical_keycode - KEY_0
 	if level >= 1 and level <= Dummy.MAX_LEVEL:
-		_dummy.set_level(level)
-		if level != Dummy.RING_LEVEL:
-			_dummy.global_position = DUMMY_POSITION
-			_dummy.velocity = Vector3.ZERO
-		_update_info()
-		_hud.announce_small("Dummy level %d" % level)
+		_set_dummy_level(level)
 	elif event.physical_keycode == KEY_UP or event.physical_keycode == KEY_DOWN:
 		# The list runs from most warning (top) to least, so Up = more warning.
 		var step := -1 if event.physical_keycode == KEY_UP else 1
 		_dummy.set_telegraph(_dummy.telegraph + step)
 		_update_info()
 		_hud.announce_small("Telegraph: " + Dummy.TELEGRAPHS[_dummy.telegraph - 1].name.get_slice("  ", 0))
+
+
+func _set_dummy_level(level: int) -> void:
+	_dummy.set_level(level)
+	if level != Dummy.RING_LEVEL:
+		_dummy.global_position = DUMMY_POSITION
+		_dummy.velocity = Vector3.ZERO
+	_update_info()
+	_hud.announce_small("Dummy level %d" % level)
 
 
 func _process(delta: float) -> void:
@@ -210,19 +223,34 @@ func _start_step(index: int) -> void:
 	_coach_step.text = "STEP %d / %d" % [index + 1, STEPS.size()]
 	_coach_title.text = step.title
 	_coach_title.add_theme_color_override("font_color", GOAL_COLOR)
-	var keys: Array = step.get("keys", [])
 	if step.has("ult"):
-		var tip: Array = ULT_TIPS[GameState.player_class]
-		_coach_text.text = tip[0]
-		keys = [["<ultimate>", tip[1]]]
+		_coach_text.text = ULT_TIPS[GameState.player_class][0]
 	else:
 		_coach_text.text = step.text
-	_fill_keys(keys, step.get("cue", ""))
+	_fill_keys(_step_keys(step), step.get("cue", ""))
 	_pop(_coach)
 	if step.has("ult"):
 		_player.ult.fill()
 	_coach_warning.text = " "
 	_update_goals()
+
+
+## The keycaps a step shows (the ultimate step: the class's ultimate).
+func _step_keys(step: Dictionary) -> Array:
+	if step.has("ult"):
+		return [["<ultimate>", ULT_TIPS[GameState.player_class][1]]]
+	return step.get("keys", [])
+
+
+## Every key on the coach and practice cards follows the bindings and
+## whether you're on a controller.
+func _refresh_keys() -> void:
+	if _skip_cap:
+		_skip_cap.get_child(0).text = Controls.key_name("map") if Controls.pad() else "T"
+	if _step >= 0:
+		_fill_keys(_step_keys(STEPS[_step]), STEPS[_step].get("cue", ""))
+	elif _practice and _practice.visible:
+		_update_info()
 
 
 func _add_progress(event: String, amount := 1.0) -> void:
@@ -384,7 +412,8 @@ func _build_coach() -> void:
 	box.add_child(_coach_warning)
 	var skip := HBoxContainer.new()
 	skip.add_theme_constant_override("separation", 8)
-	skip.add_child(_keycap("T"))
+	_skip_cap = _keycap("T")
+	skip.add_child(_skip_cap)
 	var skip_text := _coach_label(14, UiTheme.MUTED)
 	skip_text.text = "Skip the tutorial"
 	skip_text.autowrap_mode = TextServer.AUTOWRAP_OFF
@@ -489,8 +518,13 @@ func _update_info() -> void:
 	_practice.visible = true
 	for child in _practice_rows.get_children():
 		child.queue_free()
-	_practice_row("1 - %d" % Dummy.MAX_LEVEL, "DUMMY LEVEL %d" % _dummy.level, Dummy.LEVEL_DESCRIPTIONS[_dummy.level - 1])
 	var telegraph: String = Dummy.TELEGRAPHS[_dummy.telegraph - 1].name
+	if Controls.pad():
+		# On a controller, the map button cycles the dummy's level.
+		_practice_row(Controls.key_name("map"), "DUMMY LEVEL %d" % _dummy.level, Dummy.LEVEL_DESCRIPTIONS[_dummy.level - 1])
+		_practice_row("Keyboard", "TELEGRAPH", telegraph.get_slice("  (", 0) + "  (Up / Down)")
+		return
+	_practice_row("1 - %d" % Dummy.MAX_LEVEL, "DUMMY LEVEL %d" % _dummy.level, Dummy.LEVEL_DESCRIPTIONS[_dummy.level - 1])
 	_practice_row("UP / DOWN", "TELEGRAPH", telegraph.get_slice("  (", 0))
 	_practice_row("T", "TUTORIAL", "Start it again")
 

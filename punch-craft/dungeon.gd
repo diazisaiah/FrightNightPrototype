@@ -833,6 +833,11 @@ func _place_stairs(at: Vector3) -> void:
 	_interactables.append({"node": stairs, "kind": "stairs", "used": false})
 
 
+## "<use key>  ..." in front of a prompt (F, or B / Circle on a controller).
+func _use(what: String) -> String:
+	return "%s   %s" % [Controls.key_name("interact"), what]
+
+
 ## Shows "F  ..." for the nearest usable thing, and uses it on F. Mimics wake
 ## when the player gets close; their lids twitch now and then before that.
 func _update_interaction() -> void:
@@ -883,17 +888,17 @@ func _update_interaction() -> void:
 func _prompt_for(thing: Dictionary) -> String:
 	match thing.kind:
 		"chest":
-			return "F   Open cursed chest" if thing.quality == "cursed" else "F   Open chest"
+			return _use("Open cursed chest") if thing.quality == "cursed" else _use("Open chest")
 		"ware":
-			return "F   Look at %s     %d {silver}" % [thing.item.name, thing.price]
+			return _use("Look at %s     %d {silver}" % [thing.item.name, thing.price])
 		"heal":
-			return "F   Patch up  +%d%% {knuckles}     %d {silver}" % [roundi(HEAL_FRACTION * 100), HEAL_PRICE]
+			return _use("Patch up  +%d%% {knuckles}     %d {silver}" % [roundi(HEAL_FRACTION * 100), HEAL_PRICE])
 		"shrine":
-			return "F   Pray at the shrine"
+			return _use("Pray at the shrine")
 		"altar":
 			var bound := _bound_finds().size()
-			return ("F   Gild your finds  (%d to keep)" % bound) if bound > 0 else "Gilding altar  -  nothing to gild"
-	return "F   Descend, or leave the Crypt"
+			return _use("Gild your finds  (%d to keep)" % bound) if bound > 0 else "Gilding altar  -  nothing to gild"
+	return _use("Descend, or leave the Crypt")
 
 
 ## A chest that was a Mimic all along: the room seals and it stands up.

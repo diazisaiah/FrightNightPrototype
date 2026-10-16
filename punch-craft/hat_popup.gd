@@ -42,7 +42,7 @@ func _ready() -> void:
 
 func _input(event: InputEvent) -> void:
 	# Esc mustn't unpause the game underneath the card.
-	if event.is_action_pressed("ui_cancel"):
+	if event.is_action_pressed("ui_cancel") or event.is_action_pressed("pause"):
 		get_viewport().set_input_as_handled()
 
 

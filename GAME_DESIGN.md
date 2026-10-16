@@ -66,6 +66,21 @@ Playtesting said there were too many controls. **Settings → Controls → Mode*
 - Saved in Settings as `bindings` ({action: "k:<physical key>" | "m:<mouse button>"}).
 - The tutorial's coach card sits under the pause menu and Settings, instead of covering them.
 
+#### Controllers [Built 2026-10-16]
+Xbox-style and PlayStation (DualSense / DualShock) controllers, on desktop and in the browser (`pad.gd`, autoload "Pad").
+- **Layout** (`Controls.PAD_LAYOUT`):
+  - Left stick moves, right stick looks. Click the left stick to latch sprint until you stop.
+  - X / Y (Square / Triangle) jab and cross. LT / RT (L2 / R2) hook and uppercut.
+  - LB / RB (L1 / R1) dodge left and right (slips in Pro Gamer Mode).
+  - A (Cross) jumps, B (Circle) uses.
+  - D-pad: up dashes. In Pro Gamer Mode, left/right roll and down back steps.
+  - Click the right stick for the ultimate. Start (Options) pauses, View (Create) is the Crypt map. In training, View skips the tutorial, then cycles the dummy's level.
+- **Rebindable** in Settings → Controls → Bindings (a Controller column beside Keyboard). Buttons and triggers can be rebound; the sticks stay move and look. Swaps and "Reset keys" work like the keyboard. Saved as `pad_bindings` ({action: "j:<button>" | "a:<axis>:<+/->"}).
+- **Settings:** controller look speed, invert look, vibration (a buzz when you're hit, a big one on a knockout).
+- **Prompts follow the device.** `Pad.active` flips to the controller on any button or stick and back on any key, click or mouse move. Every hint swaps live through `Controls.watch()`: tutorial keycaps (`<move>`, `<jab>`...), practice card, pause Controls tab, ultimate gauge, dummy cues, Crypt "use" prompts, Temporal Break prompts, title card. PlayStation pads get PlayStation names (detected by name or Sony's vendor id).
+- **Menus: a controller cursor.** Whenever a fight isn't running, the left stick (or D-pad) moves a gold pointer. A / Cross clicks (hold to drag, e.g. panning the upgrade and skill webs; double-tap buys a node). The right stick scrolls and zooms, and B / Circle backs out. It sends real mouse events, so every screen works, the browser included.
+- Fights pause on a dedicated `pause` action (Esc / Start), not `ui_cancel`, which B also sends.
+
 #### Control schemes [Testing, 2026-10-11]
 
 Settings → Controls has three dropdowns, so layouts can be mixed and tried before choosing the default. The code is in `controls.gd`, which rewrites the InputMap. The HUD controls line, tutorial hints, Temporal Break prompts and demo reel captions all follow the chosen scheme.

@@ -86,6 +86,12 @@ var _speech_tween: Tween
 func _ready() -> void:
 	_pause_panel.hide()
 	_summary_panel.hide()
+	# Key names follow the bindings and whether you're on a controller.
+	Controls.watch(self, func() -> void:
+		if _ult_gauge:
+			_refresh_ult_label()
+		if _controls_page and _controls_page.is_visible_in_tree():
+			show_controls())
 	%ResumeButton.pressed.connect(set_paused.bind(false))
 	%GiveUpButton.pressed.connect(_on_give_up_pressed)
 	%CampButton.pressed.connect(back_to_camp_requested.emit)
@@ -124,7 +130,7 @@ func _notification(what: int) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if _can_pause and event.is_action_pressed("ui_cancel"):
+	if _can_pause and event.is_action_pressed("pause"):
 		set_paused(not get_tree().paused)
 		get_viewport().set_input_as_handled()
 

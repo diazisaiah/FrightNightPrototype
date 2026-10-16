@@ -44,6 +44,20 @@ func _check(condition: bool, message: String) -> void:
 		_failures.append(message)
 
 
+func _pad_buttons(action: String) -> Array:
+	var result := []
+	for event in InputMap.action_get_events(action):
+		if event is InputEventJoypadButton:
+			result.append(event.button_index)
+	return result
+
+
+func _ui_cancel_pad() -> InputEvent:
+	var event := InputEventJoypadButton.new()
+	event.button_index = JOY_BUTTON_B
+	return event
+
+
 func _keys(action: String) -> Array[Key]:
 	var result: Array[Key] = []
 	for event in InputMap.action_get_events(action):
@@ -79,6 +93,22 @@ func _test_control_preset() -> void:
 	_check(_keys("dodge_modifier") == [KEY_CTRL], "The dedicated roll preset must keep Ctrl+S back step")
 	_check(Controls.text("map") == "M", "The dedicated roll preset must move the Crypt map to M")
 	_check(Controls.summary().contains("T ultimate"), "The HUD summary must show T for ultimate")
+	# Controllers: a full layout, PlayStation names, and hints that follow.
+	Settings.values.assist_mode = "junior"
+	Settings.values.dodge_mode = "space"
+	Controls.apply()
+	_check(_pad_buttons("jump") == [JOY_BUTTON_A] and _pad_buttons("pause") == [JOY_BUTTON_START], "Controllers jump with A and pause with Start")
+	_check(_pad_buttons("roll_left_key").is_empty(), "Weenie Hut Junior Mode leaves rolls to the bumpers on a controller")
+	_check(not InputMap.action_has_event("pause", _ui_cancel_pad()), "B / Circle (ui_cancel) must not pause a fight")
+	var was_active := Pad.active
+	var was_kind := Pad.kind
+	Pad.active = true
+	Pad.kind = "xbox"
+	_check(Controls.text("hook") == "LT" and Controls.text("slip") == "LB or RB", "Controller hints name the triggers and bumpers")
+	Pad.kind = "playstation"
+	_check(Controls.text("hook") == "L2" and Controls.key_name("jump") == "Cross", "PlayStation controllers get PlayStation names")
+	Pad.active = was_active
+	Pad.kind = was_kind
 	Settings.values.dodge_mode = old_dodge
 	Settings.values.assist_mode = old_assist
 	Settings.values.bindings = old_bindings

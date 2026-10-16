@@ -321,9 +321,12 @@ func _ultimate(id: int) -> void:
 			await _wait(2.2)
 		"combo_master":
 			_overlay.color = Color(0.35, 0.45, 0.75, 0.25)
-			var hook_keys := Controls.text("hook").to_upper() if Controls.direct_punches() else "SHIFT + LMB"
-			var uppercut_keys := Controls.text("uppercut").to_upper() if Controls.direct_punches() else "CTRL + RMB"
-			var prompts := [["LMB", "jab", "left"], ["RMB", "cross", "right"], [hook_keys, "hook", "left"], [uppercut_keys, "uppercut", "right"]]
+			var jab := Controls.key_name("punch_left").to_upper()
+			var cross := Controls.key_name("punch_right").to_upper()
+			var direct := Controls.direct_punches() or Controls.pad()
+			var hook_keys := Controls.text("hook").to_upper() if direct else "%s + %s" % [Controls.key_name("sprint").to_upper(), jab]
+			var uppercut_keys := Controls.text("uppercut").to_upper() if direct else "%s + %s" % [Controls.key_name("uppercut_modifier").to_upper(), cross]
+			var prompts := [[jab, "jab", "left"], [cross, "cross", "right"], [hook_keys, "hook", "left"], [uppercut_keys, "uppercut", "right"]]
 			for i in 12:
 				var p: Array = prompts[i % prompts.size()]
 				_banner(p[0] + "\n%d HITS" % (i + 1), Color(1.0, 0.85, 0.35))

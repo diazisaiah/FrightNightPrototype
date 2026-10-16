@@ -82,6 +82,8 @@ const PUNCH_HEAD := {
 }
 ## What double tapping each movement key does.
 ## Moves with a key of their own (Controls): rolls, the back step and the dash.
+## Right-stick look speed at full tilt (radians a second, before Settings).
+const STICK_LOOK_SPEED := 3.4
 const DEDICATED_MOVES := {"roll_left_key": "roll_left", "roll_right_key": "roll_right", "back_step_key": "back_step", "dash_key": "forward_dash"}
 const DOUBLE_TAPS := {"move_forward": "forward_dash"}
 ## The "Double-tap A / D / S" dodge scheme adds these.
@@ -228,6 +230,8 @@ var _lean_tween: Tween
 var _last_tap := {}
 ## A movement key that just triggered a dodge stops moving the player until
 ## it's released, so holding the second tap doesn't drift you out of range.
+## Controller sprint, latched by clicking the stick.
+var _pad_sprint := false
 var _suppressed_move := ""
 var _forward_dash_cooldown := 0.0
 var _defense_window := 0.0
@@ -287,6 +291,22 @@ func _ready() -> void:
 	add_child(ult)
 
 
+## Fight input is live: the mouse is captured, or you're on a controller.
+func _live_input() -> bool:
+	return Input.mouse_mode == Input.MOUSE_MODE_CAPTURED or Pad.active
+
+
+## Right-stick look: a curve for fine aim near the middle, then fast turns.
+func _stick_look(delta: float) -> void:
+	var look := Input.get_vector("look_left", "look_right", "look_up", "look_down", 0.15)
+	if look == Vector2.ZERO:
+		return
+	look *= look.length()
+	var speed: float = STICK_LOOK_SPEED * float(Settings.get_value("stick_sensitivity")) * delta
+	rotate_y(-look.x * speed)
+	_camera.rotate_x(-look.y * speed * 0.7 * (-1.0 if Settings.get_value("invert_y") else 1.0))
+	_camera.rotation.x = clampf(_camera.rotation.x, deg_to_rad(-89), deg_to_rad(89))
+
 func _unhandled_input(event: InputEvent) -> void:
 	if not active:
 		return
@@ -299,7 +319,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		# Clicking back into the window after alt-tabbing recaptures the mouse.
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 		get_viewport().set_input_as_handled()
-	elif Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+	elif _live_input():
 		# Hook/uppercut buttons (scroll wheel or side buttons by scheme, or
 		# your own keys; empty in the Shift/Ctrl + click scheme otherwise).
 		for type in ["hook", "uppercut"]:
@@ -317,6 +337,8 @@ func _process(delta: float) -> void:
 	_update_camera_shake(delta)
 	if not active:
 		return
+	Pad.mark_fighting()
+	_stick_look(delta)
 	if ult.busy():
 		return  # Temporal Break / Highlight Reel take over the controls.
 
@@ -342,7 +364,9 @@ func _process(delta: float) -> void:
 				_set_combo(0)
 	_update_class_timers(delta)
 
-	if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+	if _live_input():
+		if Pad.active and Input.is_action_just_pressed("sprint"):
+			_pad_sprint = not _pad_sprint
 		if Input.is_action_just_pressed("slip_left"):
 			_dodge_key("left")
 		elif Input.is_action_just_pressed("slip_right"):
@@ -389,7 +413,10 @@ func _physics_process(delta: float) -> void:
 					input_dir.y = minf(input_dir.y, 0.0)
 			input_dir = input_dir.normalized() if input_dir.length() > 1.0 else input_dir
 		direction = (transform.basis * Vector3(input_dir.x, 0, input_dir.y)).normalized()
-		if Input.is_action_pressed("sprint"):
+		# On a controller, clicking the stick latches sprint until you stop.
+		if input_dir.length() < 0.2:
+			_pad_sprint = false
+		if Input.is_action_pressed("sprint") or _pad_sprint:
 			speed = SPRINT_SPEED * GameState.get_sprint_multiplier()
 		speed *= GameState.get_move_speed_multiplier()
 
@@ -496,6 +523,7 @@ func receive_attack(amount: float, from: Vector3, attack: String, attacker: Node
 	_fists.flinch()
 	Sfx.play("hurt")
 	attacked.emit(from)
+	Pad.rumble(0.35, 0.6, 0.18)
 	# Rhythm and dodge chains are lost on a clean hit.
 	_rhythm = 0.0
 	_dodge_chain = 0
@@ -625,6 +653,7 @@ func _lose_knuckles(amount: float) -> void:
 ## tips over onto the floor. The HUD handles the red, then black. Takes
 ## KNOCKOUT_TIME.
 func knock_out() -> void:
+	Pad.rumble(0.8, 1.0, 0.6)
 	active = false
 	_set_combo(0)
 	_clear_counter()
@@ -1350,7 +1379,7 @@ func _update_class_timers(delta: float) -> void:
 		"combo_master":
 			status += "  |  Shockwave in %d hits" % (_shockwave_every() - combo % _shockwave_every())
 		"free_runner":
-			status += "  |  Dash (%s) then LMB spear / RMB haymaker  |  jump punch weak ones" % Controls.text("dash")
+			status += "  |  Dash (%s) then %s spear / %s haymaker  |  jump punch weak ones" % [Controls.text("dash"), Controls.key_name("punch_left"), Controls.key_name("punch_right")]
 		"wise_guy":
 			status += "  |  Fuggedaboudit: " + ("READY" if _fugget_cooldown <= 0.0 else "%ds" % ceili(_fugget_cooldown))
 	if status != _class_status:

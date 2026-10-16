@@ -10,8 +10,13 @@ class_name Controls
 ## button (Settings "bindings": {action: "k:<physical keycode>" | "m:<button>"});
 ## a binding replaces that action's keyboard and mouse inputs, and binding a
 ## key that another action uses swaps the two.
+## Controllers (Xbox-style and PlayStation, see Pad) get their own default
+## layout (PAD_LAYOUT) and their own bindings (Settings "pad_bindings":
+## {action: "j:<button>" | "a:<axis>:<+/->"}), rebound the same way.
 ## apply() rewrites the InputMap; text() and key_name() give the key names for
-## the HUD hints, the tutorial and the Temporal Break prompts.
+## the HUD hints, the tutorial and the Temporal Break prompts (controller
+## buttons while a controller is in use). Anything showing them listens to
+## changed() and redraws when the layout, a binding or the device changes.
 
 const PUNCH_MODES := {
 	"modifiers": "Hold Shift / Ctrl + click",
@@ -38,7 +43,26 @@ const SLIP_MODES := {
 
 ## Actions this scheme fills in (created if the project doesn't have them).
 const ACTIONS := ["punch_hook", "punch_uppercut", "dodge_modifier", "jump", "slip_left", "slip_right",
-		"roll_left_key", "roll_right_key", "back_step_key", "dash_key", "ultimate", "map"]
+		"roll_left_key", "roll_right_key", "back_step_key", "dash_key", "ultimate", "map",
+		"look_left", "look_right", "look_up", "look_down", "pause"]
+## The controller layout: [action, button] or [action, axis, direction].
+## Sticks move and look, X / Y (Square / Triangle) jab and cross, the
+## triggers hook and uppercut, the bumpers dodge, A jumps, B uses, the D-pad
+## rolls / back steps / dashes, clicking the right stick fires the ultimate.
+const PAD_LAYOUT := [
+	["move_forward", JOY_AXIS_LEFT_Y, -1], ["move_back", JOY_AXIS_LEFT_Y, 1],
+	["move_left", JOY_AXIS_LEFT_X, -1], ["move_right", JOY_AXIS_LEFT_X, 1],
+	["look_left", JOY_AXIS_RIGHT_X, -1], ["look_right", JOY_AXIS_RIGHT_X, 1],
+	["look_up", JOY_AXIS_RIGHT_Y, -1], ["look_down", JOY_AXIS_RIGHT_Y, 1],
+	["sprint", JOY_BUTTON_LEFT_STICK], ["jump", JOY_BUTTON_A],
+	["punch_left", JOY_BUTTON_X], ["punch_right", JOY_BUTTON_Y],
+	["punch_hook", JOY_AXIS_TRIGGER_LEFT, 1], ["punch_uppercut", JOY_AXIS_TRIGGER_RIGHT, 1],
+	["slip_left", JOY_BUTTON_LEFT_SHOULDER], ["slip_right", JOY_BUTTON_RIGHT_SHOULDER],
+	["roll_left_key", JOY_BUTTON_DPAD_LEFT], ["roll_right_key", JOY_BUTTON_DPAD_RIGHT],
+	["back_step_key", JOY_BUTTON_DPAD_DOWN], ["dash_key", JOY_BUTTON_DPAD_UP],
+	["ultimate", JOY_BUTTON_RIGHT_STICK], ["interact", JOY_BUTTON_B],
+	["map", JOY_BUTTON_BACK], ["pause", JOY_BUTTON_START],
+]
 ## Actions you can rebind, in the order Settings lists them: [action, name,
 ## name in Pro Gamer Mode ("" = same), shown in Weenie Hut Junior Mode].
 const BINDABLE := [
@@ -62,6 +86,7 @@ const BINDABLE := [
 	["ultimate", "Ultimate", "", true],
 	["interact", "Use", "", true],
 	["map", "Map  (Crypt)", "", true],
+	["pause", "Pause", "", true],
 ]
 
 
@@ -94,6 +119,29 @@ static func direct_punches() -> bool:
 static func bindings() -> Dictionary:
 	var saved = Settings.get_value("bindings")
 	return saved if saved is Dictionary else {}
+
+
+static func pad_bindings() -> Dictionary:
+	var saved = Settings.get_value("pad_bindings")
+	return saved if saved is Dictionary else {}
+
+
+## A controller is what you're playing with right now (Pad).
+static func pad() -> bool:
+	return Pad.active
+
+
+## Calls redraw now and whenever the key names could change: a binding or
+## scheme (Settings.changed) or switching between keyboard and controller.
+## Disconnects when owner leaves the tree.
+static func watch(owner: Node, redraw: Callable) -> void:
+	var on_settings := func() -> void: redraw.call()
+	var on_device := func(_on: bool) -> void: redraw.call()
+	Settings.changed.connect(on_settings)
+	Pad.active_changed.connect(on_device)
+	owner.tree_exiting.connect(func() -> void:
+		Settings.changed.disconnect(on_settings)
+		Pad.active_changed.disconnect(on_device))
 
 
 static func apply() -> void:
@@ -136,6 +184,25 @@ static func apply() -> void:
 	_add_key("map", KEY_M)
 	if junior() or dodges() != "keys":
 		_add_key("map", KEY_TAB)
+	_add_key("pause", KEY_ESCAPE)
+	# The controller layout, then your own controller bindings over it. In
+	# Weenie Hut Junior Mode the bumpers pick every dodge, so the D-pad only dashes.
+	for entry in PAD_LAYOUT:
+		if junior() and entry[0] in ["roll_left_key", "roll_right_key", "back_step_key"]:
+			continue
+		InputMap.action_add_event(entry[0], _pad_event(entry))
+	var pad_custom := pad_bindings()
+	for action in pad_custom:
+		var event := _decode(String(pad_custom[action]))
+		if event == null or not InputMap.has_action(action):
+			continue
+		_erase_pad(action)
+		InputMap.action_add_event(action, event)
+	for action in pad_custom:
+		var event := _decode(String(pad_custom[action]))
+		for other in _bindable_ids():
+			if event != null and other != action and _has_input(other, event):
+				_erase_input(other, event)
 	# Your own bindings replace an action's keyboard and mouse inputs.
 	var custom := bindings()
 	for action in custom:
@@ -161,7 +228,7 @@ static func _restore_project_defaults() -> void:
 		if not InputMap.has_action(action):
 			continue
 		var defaults: Array = ProjectSettings.get_setting("input/" + action, {}).get("events", [])
-		_erase_keyboard_mouse(action)
+		InputMap.action_erase_events(action)
 		for event in defaults:
 			if event is InputEventKey or event is InputEventMouseButton:
 				InputMap.action_add_event(action, event)
@@ -175,8 +242,9 @@ static func bind(action: String, event: InputEvent) -> void:
 	var code := _encode(event)
 	if code == "":
 		return
-	var custom := bindings().duplicate()
-	var old := _primary(action)
+	var on_pad := _is_pad(event)
+	var custom := (pad_bindings() if on_pad else bindings()).duplicate()
+	var old := _primary_pad(action) if on_pad else _primary(action)
 	for other in _bindable_ids():
 		if other != action and _has_input(other, event):
 			var swap := _encode(old) if old else ""
@@ -185,11 +253,12 @@ static func bind(action: String, event: InputEvent) -> void:
 			else:
 				custom.erase(other)
 	custom[action] = code
-	Settings.set_value("bindings", custom)
+	Settings.set_value("pad_bindings" if on_pad else "bindings", custom)
 
 
 static func reset_bindings() -> void:
-	Settings.set_value("bindings", {})
+	Settings.values["bindings"] = {}
+	Settings.set_value("pad_bindings", {})
 
 
 ## The rows Settings shows for the current mode: [[action, name], ...].
@@ -217,9 +286,29 @@ static func _primary(action: String) -> InputEvent:
 	return null
 
 
-## e.g. "Space", "Q", "Mouse 4", "Scroll up"; "-" when nothing is bound.
+## The first controller input on an action.
+static func _primary_pad(action: String) -> InputEvent:
+	if not InputMap.has_action(action):
+		return null
+	for event in InputMap.action_get_events(action):
+		if _is_pad(event):
+			return event
+	return null
+
+
+## What hints show for an action: its controller button while a controller is
+## in use, otherwise its key ("Space", "Q", "Mouse 4"); "-" when unbound.
 static func key_name(action: String) -> String:
+	return pad_name(action) if pad() else kb_name(action)
+
+
+static func kb_name(action: String) -> String:
 	return input_name(_primary(action))
+
+
+static func pad_name(action: String) -> String:
+	var event := _primary_pad(action)
+	return Pad.input_name(event) if event else "-"
 
 
 static func input_name(event: InputEvent) -> String:
@@ -260,7 +349,28 @@ static func input_name(event: InputEvent) -> String:
 	return "-"
 
 
+static func _is_pad(event: InputEvent) -> bool:
+	return event is InputEventJoypadButton or event is InputEventJoypadMotion
+
+
+static func _pad_event(entry: Array) -> InputEvent:
+	if entry.size() == 3:
+		var motion := InputEventJoypadMotion.new()
+		motion.device = -1
+		motion.axis = entry[1]
+		motion.axis_value = float(entry[2])
+		return motion
+	var button := InputEventJoypadButton.new()
+	button.device = -1
+	button.button_index = entry[1]
+	return button
+
+
 static func _encode(event: InputEvent) -> String:
+	if event is InputEventJoypadButton:
+		return "j:%d" % event.button_index
+	if event is InputEventJoypadMotion:
+		return "a:%d:%s" % [event.axis, "+" if event.axis_value > 0.0 else "-"]
 	if event is InputEventKey:
 		var code: Key = event.physical_keycode if event.physical_keycode != KEY_NONE else event.keycode
 		return "k:%d" % code
@@ -270,6 +380,11 @@ static func _encode(event: InputEvent) -> String:
 
 
 static func _decode(code: String) -> InputEvent:
+	if code.begins_with("a:"):
+		var parts := code.split(":")
+		return _pad_event(["", int(parts[1]), 1 if parts[2] == "+" else -1])
+	if code.begins_with("j:"):
+		return _pad_event(["", code.substr(2).to_int()])
 	var value := code.substr(2).to_int()
 	if code.begins_with("k:"):
 		var key := InputEventKey.new()
@@ -301,6 +416,12 @@ static func _erase_input(action: String, event: InputEvent) -> void:
 			InputMap.action_erase_event(action, existing)
 
 
+static func _erase_pad(action: String) -> void:
+	for existing in InputMap.action_get_events(action):
+		if _is_pad(existing):
+			InputMap.action_erase_event(action, existing)
+
+
 static func _erase_keyboard_mouse(action: String) -> void:
 	for existing in InputMap.action_get_events(action):
 		if existing is InputEventKey or existing is InputEventMouseButton:
@@ -318,6 +439,21 @@ static func _bound(action: String) -> bool:
 static func text(move: String) -> String:
 	var left := key_name("slip_left")
 	var right := key_name("slip_right")
+	match move:
+		"jab":
+			return key_name("punch_left")
+		"cross":
+			return key_name("punch_right")
+		"sprint":
+			return key_name("sprint")
+		"look":
+			return "Right stick" if pad() else "Mouse"
+		"move":
+			if pad():
+				return "Left stick"
+			return "%s %s %s %s" % [key_name("move_forward"), key_name("move_left"), key_name("move_back"), key_name("move_right")]
+	if pad():
+		return _pad_text(move, left, right)
 	match move:
 		"hook":
 			if direct_punches() or _bound("punch_hook"):
@@ -364,10 +500,44 @@ static func text(move: String) -> String:
 	return move
 
 
+## How a hook or uppercut is thrown on the keyboard ("Shift + click", or its key).
+static func kb_hint(move: String) -> String:
+	var action := "punch_" + move
+	if direct_punches() or _bound(action):
+		return kb_name(action)
+	return "%s + click" % kb_name("sprint" if move == "hook" else "uppercut_modifier")
+
+
+## text() on a controller: every move has a button of its own.
+static func _pad_text(move: String, left: String, right: String) -> String:
+	match move:
+		"hook":
+			return pad_name("punch_hook")
+		"uppercut":
+			return pad_name("punch_uppercut")
+		"roll":
+			if junior():
+				return "%s or %s" % [left, right]
+			return "%s / %s" % [pad_name("roll_left_key"), pad_name("roll_right_key")]
+		"back_step":
+			return "%s or %s" % [left, right] if junior() else pad_name("back_step_key")
+		"dash":
+			return pad_name("dash_key")
+		"slip":
+			return "%s or %s" % [left, right] if junior() else "%s / %s" % [left, right]
+		"jump":
+			return pad_name("jump")
+		"ultimate":
+			return pad_name("ultimate")
+		"map":
+			return pad_name("map")
+	return move
+
+
 ## Replaces <hook>, <uppercut>, <roll>, <back_step>, <dash>, <jump> and
 ## <slip> in a hint with this scheme's keys.
 static func fill(hint: String) -> String:
-	for move in ["hook", "uppercut", "roll", "back_step", "dash", "jump", "slip", "ultimate"]:
+	for move in ["hook", "uppercut", "roll", "back_step", "dash", "jump", "slip", "ultimate", "jab", "cross", "move", "look", "sprint"]:
 		hint = hint.replace("<%s>" % move, text(move))
 	return hint
 
@@ -381,7 +551,7 @@ static func qte_prompts() -> Array:
 		{"type": "jab", "hand": "left", "keys": jab, "name": "JAB"},
 		{"type": "cross", "hand": "right", "keys": cross, "name": "CROSS"},
 	]
-	if direct_punches():
+	if direct_punches() or pad():
 		prompts.append({"type": "hook", "hand": "any", "keys": text("hook").to_upper(), "name": "HOOK"})
 		prompts.append({"type": "uppercut", "hand": "any", "keys": text("uppercut").to_upper(), "name": "UPPERCUT"})
 	else:
@@ -405,7 +575,7 @@ static func summary() -> String:
 		parts.append_array(["%s slip" % text("slip"), "%s roll" % text("roll"), "%s back step" % text("back_step")])
 	parts.append_array([
 		"%s dash" % text("dash"), "%s jump" % text("jump"), "%s ultimate" % text("ultimate"),
-		"%s use" % key_name("interact"), "Esc pause",
+		"%s use" % key_name("interact"), "%s pause" % key_name("pause"),
 	])
 	return "  |  ".join(parts)
 
@@ -413,7 +583,9 @@ static func summary() -> String:
 ## [what, keys] rows for the pause menu's Controls tab.
 static func rows() -> Array:
 	var move := "%s %s %s %s" % [key_name("move_forward"), key_name("move_left"), key_name("move_back"), key_name("move_right")]
-	var list := [["Move", move], ["Look", "Mouse"], ["Sprint", key_name("sprint")],
+	if pad():
+		move = "Left stick"
+	var list := [["Move", move], ["Look", "Right stick" if pad() else "Mouse"], ["Sprint", key_name("sprint") + ("  (click to toggle)" if pad() else "")],
 			["Jab  /  Cross", "%s / %s" % [key_name("punch_left"), key_name("punch_right")]]]
 	list.append(["Hook", text("hook")])
 	list.append(["Uppercut", text("uppercut")])
@@ -424,7 +596,7 @@ static func rows() -> Array:
 		list.append(["Roll", text("roll")])
 		list.append(["Back step", text("back_step")])
 	list.append_array([["Dash", text("dash")], ["Jump", text("jump")], ["Ultimate", text("ultimate")],
-			["Use", key_name("interact")], ["Pause", "Esc"]])
+			["Use", key_name("interact")], ["Pause", key_name("pause")]])
 	return list
 
 
@@ -473,6 +645,8 @@ static func _move_keys(move: String) -> String:
 		"back_step":
 			return text("back_step") + " back step"
 	var right := move == "roll_right"
+	if pad():
+		return "%s roll" % pad_name("roll_right_key" if right else "roll_left_key")
 	if _bound("roll_left_key"):
 		return "%s roll" % key_name("roll_right_key" if right else "roll_left_key")
 	var side := key_name("move_right" if right else "move_left")

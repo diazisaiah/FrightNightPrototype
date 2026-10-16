@@ -26,6 +26,8 @@ const DEFAULTS := {
 	"render_scale": "auto",
 	# Your own key bindings (Controls.bind): {action: "k:<key>" | "m:<button>"}.
 	"bindings": {},
+	# Controllers: your own button bindings, look speed, invert, rumble.
+	"pad_bindings": {}, "stick_sensitivity": 1.0, "invert_y": false, "vibration": true,
 }
 
 var values := DEFAULTS.duplicate()

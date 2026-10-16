@@ -29,6 +29,7 @@ TimeFx="*res://time_fx.gd"
 Settings="*res://settings.gd"
 Sfx="*res://sfx.gd"
 Loading="*res://loading.gd"
+Pad="*res://pad.gd"
 
 [display]
 

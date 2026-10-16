@@ -434,7 +434,7 @@ func answer_direct(type: String) -> void:
 
 func _update_time_stop(real_delta: float) -> void:
 	_time_left -= real_delta * (1.0 + TIME_STOP_SPEEDUP * _hits)
-	if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+	if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED or Pad.active:
 		if Input.is_action_just_pressed("punch_left"):
 			_answer_prompt("left")
 		elif Input.is_action_just_pressed("punch_right"):

@@ -56,6 +56,8 @@ var _scheme_note: Label
 var _bind_list: VBoxContainer
 var _listening := ""
 var _listen_button: Button
+## True while the waiting binding is a controller one.
+var _listen_pad := false
 static var _knob: ImageTexture
 
 
@@ -153,6 +155,9 @@ func _ready() -> void:
 	_scheme_note = _label("", 14, UiTheme.BAD)
 	_scheme_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	controls.add_child(_scheme_note)
+	_slider(controls, "stick_sensitivity", "crosshair", "Controller look speed", "How fast the right stick turns you", 0.3, 3.0, 0.05, "x%.2f", 1.0)
+	_toggle(controls, "invert_y", "eye", "Invert controller look", "Push up to look down")
+	_toggle(controls, "vibration", "quake", "Controller vibration", "Rumble when you get hit")
 	_build_bindings(controls)
 
 	var display := _page(pages, "DISPLAY")
@@ -181,13 +186,31 @@ func _ready() -> void:
 func _input(event: InputEvent) -> void:
 	if _listening == "" or not visible:
 		return
-	var pressed: bool = (event is InputEventKey and event.pressed and not event.echo) or (event is InputEventMouseButton and event.pressed)
+	var pressed: bool
+	if _listen_pad:
+		# Buttons and the triggers (the sticks stay move and look).
+		pressed = (event is InputEventJoypadButton and event.pressed) or (event is InputEventJoypadMotion \
+				and event.axis in [JOY_AXIS_TRIGGER_LEFT, JOY_AXIS_TRIGGER_RIGHT] and event.axis_value > 0.6)
+		if event is InputEventKey and event.pressed and event.physical_keycode == KEY_ESCAPE:
+			get_viewport().set_input_as_handled()
+			_stop_listening()
+			_refresh()
+			return
+		if event is InputEventJoypadButton and event.button_index == JOY_BUTTON_START and event.pressed:
+			get_viewport().set_input_as_handled()
+			_stop_listening()
+			_refresh()
+			return
+	else:
+		pressed = (event is InputEventKey and event.pressed and not event.echo) or (event is InputEventMouseButton and event.pressed and not event.has_meta("pad"))
+		if event is InputEventKey and event.pressed and event.physical_keycode == KEY_ESCAPE:
+			get_viewport().set_input_as_handled()
+			_stop_listening()
+			_refresh()
+			return
 	if not pressed:
 		return
 	get_viewport().set_input_as_handled()
-	if event is InputEventKey and event.physical_keycode == KEY_ESCAPE:
-		_stop_listening()
-		return
 	Controls.bind(_listening, event)
 	Sfx.play("tick", -6.0, 1.2)
 	_stop_listening()
@@ -474,7 +497,7 @@ func _build_bindings(page: Control) -> void:
 	var head := HBoxContainer.new()
 	head.add_theme_constant_override("separation", 14)
 	column.add_child(head)
-	_row_head(head, "fist", "Key bindings", "Click a key, then press the new key or mouse button. Esc cancels.", UiTheme.GOLD)
+	_row_head(head, "fist", "Bindings", "Click one, then press the new key, mouse button or controller button. Esc / Start cancels.", UiTheme.GOLD)
 	var reset := Button.new()
 	reset.text = "Reset keys"
 	reset.focus_mode = Control.FOCUS_NONE
@@ -486,6 +509,17 @@ func _build_bindings(page: Control) -> void:
 		Sfx.play("tick", -8.0)
 		_refresh())
 	head.add_child(reset)
+	var columns := HBoxContainer.new()
+	columns.add_theme_constant_override("separation", 12)
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	columns.add_child(spacer)
+	for title in ["KEYBOARD", "CONTROLLER"]:
+		var label := _label(title, 13, UiTheme.MUTED)
+		label.custom_minimum_size.x = 170
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		columns.add_child(label)
+	column.add_child(columns)
 	_bind_list = VBoxContainer.new()
 	_bind_list.add_theme_constant_override("separation", 4)
 	column.add_child(_bind_list)
@@ -497,6 +531,7 @@ func _fill_bindings() -> void:
 	for child in _bind_list.get_children():
 		child.queue_free()
 	var custom := Controls.bindings()
+	var pad_custom := Controls.pad_bindings()
 	for entry in Controls.bindable_rows():
 		var action: String = entry[0]
 		var row := HBoxContainer.new()
@@ -504,29 +539,40 @@ func _fill_bindings() -> void:
 		var name_label := _label(entry[1], 16, UiTheme.TEXT)
 		name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.add_child(name_label)
-		var key := Button.new()
-		var shown := Controls.key_name(action)
+		var shown := Controls.kb_name(action)
 		if shown == "-":
 			# Nothing of its own: say how it's done instead.
-			shown = {"punch_hook": Controls.text("hook"), "punch_uppercut": Controls.text("uppercut")}.get(action, "Not set")
-		key.text = "Press a key..." if action == _listening else shown
-		key.focus_mode = Control.FOCUS_NONE
-		key.custom_minimum_size = Vector2(190, 34)
-		key.add_theme_font_size_override("font_size", 16)
-		key.add_theme_color_override("font_color", UiTheme.GOLD.lightened(0.3) if custom.has(action) else UiTheme.TEXT)
-		key.add_theme_stylebox_override("normal", UiTheme.box(Color(0, 0, 0, 0.35), Color(1, 1, 1, 0.12), 1, 6))
-		key.add_theme_stylebox_override("hover", UiTheme.box(Color(1, 1, 1, 0.06), Color(UiTheme.GOLD, 0.5), 1, 6))
-		key.pressed.connect(func() -> void:
-			_listening = action
-			_listen_button = key
-			key.text = "Press a key...")
-		row.add_child(key)
+			shown = {"punch_hook": Controls.kb_hint("hook"), "punch_uppercut": Controls.kb_hint("uppercut")}.get(action, "Not set")
+		row.add_child(_bind_button(action, false, shown, custom.has(action)))
+		var on_pad := Controls.pad_name(action)
+		row.add_child(_bind_button(action, true, on_pad if on_pad != "-" else "Not set", pad_custom.has(action)))
 		_bind_list.add_child(row)
+
+
+func _bind_button(action: String, for_pad: bool, shown: String, custom: bool) -> Button:
+	var key := Button.new()
+	var waiting := action == _listening and for_pad == _listen_pad
+	key.text = ("Press a button..." if for_pad else "Press a key...") if waiting else shown
+	key.focus_mode = Control.FOCUS_NONE
+	key.custom_minimum_size = Vector2(170, 34)
+	key.add_theme_font_size_override("font_size", 15)
+	key.add_theme_color_override("font_color", UiTheme.GOLD.lightened(0.3) if custom else UiTheme.TEXT)
+	key.add_theme_stylebox_override("normal", UiTheme.box(Color(0, 0, 0, 0.35), Color(1, 1, 1, 0.12), 1, 6))
+	key.add_theme_stylebox_override("hover", UiTheme.box(Color(1, 1, 1, 0.06), Color(UiTheme.GOLD, 0.5), 1, 6))
+	key.pressed.connect(func() -> void:
+		_listening = action
+		_listen_pad = for_pad
+		_listen_button = key
+		Pad.listening = for_pad
+		key.text = "Press a button..." if for_pad else "Press a key...")
+	return key
 
 
 func _stop_listening() -> void:
 	_listening = ""
 	_listen_button = null
+	_listen_pad = false
+	Pad.listening = false
 
 
 func _refresh() -> void:

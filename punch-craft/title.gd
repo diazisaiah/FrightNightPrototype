@@ -92,6 +92,9 @@ func _ready() -> void:
 	if WebBench.start_if_requested(get_tree()):
 		return
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	Controls.watch(self, func() -> void:
+		if _detail_ult_tag:
+			_detail_ult_tag.text = "ULTIMATE  -  " + Controls.text("ultimate"))
 	get_tree().paused = false
 	TimeFx.clear()
 	_build_world()
