@@ -161,7 +161,7 @@ func _ready() -> void:
 	_floor = _start_floor
 	GameState.begin_crypt_run()
 	Look.tune_environment($WorldEnvironment.environment, "crypt")
-	Voxel.prewarm(self, WORLD.SCENES.values() + CRYPT_SCENES.values())
+	Voxel.prewarm(self, WORLD.SCENES.values() + CRYPT_SCENES.values() + Veterans.SCENES.values())
 	_player.knuckles_changed.connect(_hud.set_knuckles)
 	_player.combo_changed.connect(_hud.set_combo)
 	_hud.bind_ult(_player.ult)
@@ -579,6 +579,11 @@ func _scene(kind: String) -> PackedScene:
 	return CRYPT_SCENES[kind] if CRYPT_SCENES.has(kind) else WORLD.SCENES[kind]
 
 
+## The climb tier this floor belongs to (two floors a tier; deeper keeps counting).
+func _tier() -> int:
+	return ceili(_floor / float(Progression.FLOORS_PER_TIER))
+
+
 ## Which boss guards this floor.
 func _boss_kind() -> String:
 	if _floor <= BOSS_ORDER.size():
@@ -614,7 +619,9 @@ func _spawn_point() -> Vector3:
 
 func _spawn_enemy(entry: Dictionary, at: Vector3) -> void:
 	var kind: String = entry.kind
-	var enemy: Enemy = _scene(kind).instantiate()
+	# Deeper floors send veterans (tougher versions with a big move).
+	var veteran := Veterans.pick(kind, _tier()) if not kind in BOSS_CYCLE and kind != "mimic" else null
+	var enemy: Enemy = (veteran if veteran else _scene(kind)).instantiate()
 	var night_only := Progression.enemy_scaling(_position(), Progression.crypt_difficulty(_floor, _start_floor))
 	var is_boss_kind: bool = kind in BOSS_CYCLE
 	enemy.setup(_player, entry.armored, night_only if is_boss_kind else _scaling(_current_room))

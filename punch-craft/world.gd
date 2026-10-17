@@ -142,7 +142,7 @@ func _ready() -> void:
 	_reset_style()
 	$Moon.shadow_enabled = Settings.get_value("shadows") and not Settings.use_web_profile()
 	Look.tune_environment($WorldEnvironment.environment, "night")
-	Voxel.prewarm(self, SCENES.values())
+	Voxel.prewarm(self, SCENES.values() + (Veterans.SCENES.values() if _division > 1 else []))
 	_build_decorations()
 	Look.batch_meshes(_decorations, true)
 
@@ -345,7 +345,9 @@ func _boss_scaling() -> Dictionary:
 ## at: where to spawn; by default a point out in the fog.
 func _spawn_enemy(entry: Dictionary, at := Vector3.INF) -> void:
 	var kind: String = entry.kind
-	var enemy: Enemy = SCENES[kind].instantiate()
+	# Deeper divisions send veterans (tougher versions with a big move).
+	var veteran := Veterans.pick(kind, _division) if kind != "boss" and not _first_night() else null
+	var enemy: Enemy = (veteran if veteran else SCENES[kind]).instantiate()
 	enemy.setup(_player, entry.armored, _boss_scaling() if kind == "boss" else _spawn_scaling())
 	enemy.set_meta("kind", kind)
 	# Position before entering the tree so it never overlaps the player at the origin.

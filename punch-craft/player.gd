@@ -173,6 +173,8 @@ const ANSWERS := {
 	"charge": ["roll_left", "roll_right"],
 	# A contender's judgment circle or vial: no dodge beats it, only leaving it.
 	"zone": [],
+	# A Banshee's shriek: back step out of the cone.
+	"scream": ["back_step"],
 }
 
 # mult: damage multiplier (heavy punches only get it after a setup).

@@ -128,6 +128,10 @@ var _armor_shown := false
 
 
 func take_hit(raw_damage: float, hit_point: Vector3, push: Vector3, stagger: bool, caption := "", pierce := false, crush := false) -> float:
+	# Specials are armored: hits land, but nothing staggers it (except dazed).
+	if _special != "" and _step != "dazed":
+		stagger = false
+		push = Vector3.ZERO
 	if combo_armor and _combo_armored():
 		if stagger and not _armor_shown and not is_dead():
 			_armor_shown = true
@@ -162,6 +166,8 @@ func _ready() -> void:
 func _think(delta: float) -> Vector3:
 	var offset := _to_player()
 	var distance := offset.length()
+	if _special_think(delta, distance):
+		return _special_move
 	_turn_toward(offset, delta)
 	_state_timer -= delta
 	match _state:
@@ -199,6 +205,8 @@ func _think(delta: float) -> Vector3:
 
 
 func _on_staggered() -> void:
+	if _special != "":
+		_end_special()
 	_queue.clear()
 	_cue_label.visible = false
 	_enter(State.RECOVER, 0.6)
@@ -249,11 +257,39 @@ func _begin_attack(attack: String, windup: float) -> void:
 		Sfx.play_at("draw", mouth, -4.0, 1.6 / _body.scale.y)
 
 
+func _die(push: Vector3) -> void:
+	_clear_specials()
+	super(push)
+
+
 func incoming_attack() -> String:
+	if _special != "":
+		if _special == "leap_slam" and _step in ["crouch", "air"] or _special == "ground_slam":
+			return "quake"
+		if _special in ["charge", "dash"] and _step in ["aim", "dash"]:
+			return "charge"
+		if _special == "scream":
+			return "scream"
+		return ""
 	return _attack if _state in [State.WINDUP, State.STRIKE] else ""
 
 
 func attack_eta() -> float:
+	if _special != "":
+		match _step:
+			"crouch":
+				return CROUCH_TIME - _step_time + LEAP_TIME
+			"air":
+				return LEAP_TIME - _step_time
+			"raise":
+				return GROUND_SLAM_WINDUP - _step_time
+			"aim":
+				return CHARGE_WINDUP - _step_time
+			"howl":
+				return SCREAM_WINDUP - _step_time
+			"dash":
+				return 0.0
+		return INF
 	return _state_timer if _state == State.WINDUP else 0.0
 
 
@@ -438,6 +474,9 @@ func _animate(delta: float, speed: float) -> void:
 ## How this arm should glow right now: {color, energy}, or {} for dark.
 ## Its own attack flashes bright once wound up; a combo's next attack shows
 ## dimmer from the moment the current one flashes until it flashes itself.
+	_animate_special(delta)
+
+
 func _arm_glow(arm: String) -> Dictionary:
 	if not glow_tells:
 		return {}
@@ -528,3 +567,459 @@ func _build_torso() -> void:
 		part.position = pos
 	for arm in _arm_rest:
 		_arm_rest[arm] -= _torso.position
+
+
+# --- Specials -----------------------------------------------------------------------
+
+## Big moves on top of the boxing, for any boxer with a special_kit (the Dead
+## League contenders and the tougher monsters of the deeper tiers). Each is
+## marked on the floor (Telegraphs), armored while it happens (hits land but
+## don't stagger, except dazed), and leaves an opening after.
+##   leap_slam   - crouches, leaps onto where you stand (a red ring follows
+##                 you until it jumps), lands in a shockwave: get out or jump.
+##   ground_slam - raises both fists, a ring around it, then a shockwave.
+##   charge      - a lane lights toward you (it tracks you, then locks), then
+##                 a shoulder charge to the ropes / walls. It ends dazed.
+##   dash        - a short charge (a few meters), no daze.
+##   zones       - leaps to the far edge and calls down burning circles.
+##   miasma      - leaps to the far edge and lobs vials that leave poison.
+##   scream      - a wide cone in front of it lights up, then a shriek that
+##                 hits everything in it: back step out (or leave the cone).
+const SPECIAL_NAMES := {"leap_slam": "DEATH FROM ABOVE", "charge": "GHOST CHARGE", "zones": "JUDGMENT",
+		"miasma": "MIASMA", "ground_slam": "GROUND SLAM", "dash": "BULL RUSH", "scream": "SHRIEK"}
+const CROUCH_TIME := 0.45
+const LEAP_TIME := 0.95
+const SLAM_RADIUS := 1.9
+const SLAM_DAMAGE := 1.6
+const GROUND_SLAM_WINDUP := 0.9
+const GROUND_SLAM_RADIUS := 3.3
+const CHARGE_WINDUP := 1.15
+## The lane stops tracking you this long before the dash.
+const CHARGE_LOCK := 0.4
+const CHARGE_SPEED := 13.0
+const CHARGE_WIDTH := 1.3
+const CHARGE_DAMAGE := 1.9
+const DASH_REACH := 7.0
+const SCREAM_WINDUP := 1.0
+const SCREAM_REACH := 5.5
+const SCREAM_WIDTH := 3.0
+const SCREAM_DAMAGE := 1.4
+const DAZED_TIME := 1.5
+const ZONE_FUSE := 1.4
+const ZONE_DAMAGE := 1.3
+const MIASMA_LINGER := 3.5
+## Poison cloud damage (x attack damage) every half second you stand in one.
+const MIASMA_TICK := 0.22
+const SPECIAL_RECOVER := 0.9
+
+## The moves this boxer may use ("" kinds above); empty: none.
+var special_kit: Array = []
+## Seconds between specials (and before the first).
+var special_every := 9.0
+var special_first := 5.0
+## Shown over its head when it starts one (contenders also tell the HUD).
+var special_names := true
+var _special := ""
+var _last_special := ""
+var _step := ""
+var _step_time := 0.0
+var _special_cooldown := 0.0
+var _special_primed := false
+var _repeats := 0
+var _leap_from := Vector3.ZERO
+var _leap_to := Vector3.ZERO
+var _charge_dir := Vector3.FORWARD
+var _charge_end := Vector3.ZERO
+var _charge_hit := false
+var _locked := false
+var _marks: Telegraphs
+
+
+## Called from _think: runs a special, or starts one when it's time.
+## Returns true (with the movement in _special_move) while one is running.
+var _special_move := Vector3.ZERO
+
+
+func _special_think(delta: float, distance: float) -> bool:
+	if special_kit.is_empty():
+		return false
+	if _special != "":
+		_special_move = _run_special(delta)
+		return true
+	if not _special_primed:
+		_special_primed = true
+		_special_cooldown = special_first
+	_special_cooldown -= delta
+	if _special_cooldown > 0.0 or _state != State.IDLE or not has_turn():
+		return false
+	var kit: Array = special_kit.filter(func(kind: String) -> bool: return _special_in_range(kind, distance))
+	if kit.size() > 1:
+		kit = kit.filter(func(kind: String) -> bool: return kind != _last_special)
+	if kit.is_empty():
+		return false
+	_start_special(kit.pick_random())
+	_special_move = Vector3.ZERO
+	return true
+
+
+## Whether a move makes sense from here.
+func _special_in_range(kind: String, distance: float) -> bool:
+	match kind:
+		"ground_slam":
+			return distance < GROUND_SLAM_RADIUS - 0.3
+		"dash":
+			return distance > 2.5 and distance < DASH_REACH + 1.0
+		"charge":
+			return distance > 2.5
+		"leap_slam":
+			return distance < 14.0
+		"scream":
+			return distance < SCREAM_REACH - 0.5
+	return true
+
+
+# Hooks the Dead League contenders override.
+
+func _special_tint() -> Color:
+	return hit_color
+
+
+func _special_repeats(_kind: String) -> int:
+	return 0
+
+
+func _special_delay() -> float:
+	return special_every * randf_range(0.85, 1.15)
+
+
+func _zone_count() -> int:
+	return 3
+
+
+func _announce_special(kind: String) -> void:
+	if special_names:
+		DamagePopup.spawn(get_parent(), SPECIAL_NAMES[kind], _special_tint(), 36, global_position + Vector3(0, 2.6 * _body.scale.y, 0))
+
+
+func _start_special(kind: String) -> void:
+	if _marks == null:
+		_marks = Telegraphs.new(self)
+		add_child(_marks)
+	_special = kind
+	_last_special = kind
+	_queue.clear()
+	_cue_label.visible = false
+	_enter(State.IDLE, 0.0)
+	_repeats = _special_repeats(kind)
+	_announce_special(kind)
+	Sfx.play_at("growl", global_position + Vector3.UP * 2.0, 1.0, 0.9)
+	match kind:
+		"leap_slam":
+			_begin_leap(_clamp_to_arena(player.global_position))
+		"charge", "dash":
+			_begin_charge()
+		"ground_slam":
+			_marks.show_ring(global_position, GROUND_SLAM_RADIUS)
+			_set_step("raise")
+		"scream":
+			_locked = false
+			_aim_scream()
+			_set_step("howl")
+		"zones", "miasma":
+			_begin_leap(_far_edge())
+
+
+func _end_special() -> void:
+	_special = ""
+	_step = ""
+	if _marks:
+		_marks.hide_mark()
+	collision_mask |= 2
+	_special_cooldown = _special_delay()
+	_enter(State.IDLE, _idle_time() * 0.5)
+
+
+func _set_step(step: String) -> void:
+	_step = step
+	_step_time = 0.0
+
+
+func _run_special(delta: float) -> Vector3:
+	_step_time += delta
+	match _step:
+		"crouch":
+			_turn_toward(_leap_to - global_position, delta)
+			if _special == "leap_slam":
+				# It follows you until it jumps.
+				_leap_to = _clamp_to_arena(player.global_position)
+				_marks.show_ring(_leap_to, SLAM_RADIUS)
+			if _step_time >= CROUCH_TIME:
+				_leap_from = global_position
+				velocity.y = _gravity * LEAP_TIME * 0.5
+				collision_mask &= ~2  # Over you, not into you.
+				Sfx.play_at("whoosh", global_position, 2.0, 0.6)
+				_set_step("air")
+			return Vector3.ZERO
+		"air":
+			if _special == "leap_slam":
+				_marks.pulse(_step_time / LEAP_TIME)
+			if (_step_time >= LEAP_TIME * 0.6 and is_on_floor()) or _step_time >= LEAP_TIME + 0.5:
+				_land()
+				return Vector3.ZERO
+			var flat := _leap_to - _leap_from
+			flat.y = 0.0
+			return flat / LEAP_TIME
+		"raise":
+			_turn_toward(player.global_position - global_position, delta)
+			_marks.show_ring(global_position, GROUND_SLAM_RADIUS)
+			_marks.pulse(_step_time / GROUND_SLAM_WINDUP)
+			if not _locked and _step_time >= GROUND_SLAM_WINDUP - TELL_FLASH_TIME:
+				_locked = true
+				_flash_tell(Telegraphs.DANGER, 2.2)
+			if _step_time >= GROUND_SLAM_WINDUP:
+				_locked = false
+				_marks.hide_mark()
+				_slam_at(global_position, GROUND_SLAM_RADIUS)
+				_set_step("recover")
+			return Vector3.ZERO
+		"howl":
+			if _step_time < SCREAM_WINDUP - CHARGE_LOCK:
+				_aim_scream()
+			elif not _locked:
+				_locked = true
+				_flash_tell(Telegraphs.DANGER, 1.9)
+			_turn_toward(_charge_dir, delta * 3.0)
+			_marks.pulse(_step_time / SCREAM_WINDUP)
+			if _step_time >= SCREAM_WINDUP:
+				_locked = false
+				_marks.hide_mark()
+				_shriek()
+				_set_step("recover")
+			return Vector3.ZERO
+		"aim":
+			if _step_time < CHARGE_WINDUP - CHARGE_LOCK:
+				_aim_charge()
+			elif not _locked:
+				_locked = true
+				_flash_tell(Telegraphs.DANGER, 2.4)
+			_turn_toward(_charge_dir, delta * 3.0)
+			_marks.pulse(_step_time / CHARGE_WINDUP)
+			if _step_time >= CHARGE_WINDUP:
+				_charge_hit = false
+				collision_mask &= ~2
+				_marks.hide_mark()
+				Sfx.play_at("whoosh", global_position, 4.0, 0.5)
+				_set_step("dash")
+			return Vector3.ZERO
+		"dash":
+			_check_charge_hit()
+			var past := (global_position - _charge_end).dot(_charge_dir) >= 0.0
+			if past or _step_time > 1.6:
+				collision_mask |= 2
+				if _special == "dash":
+					_set_step("recover")
+					return Vector3.ZERO
+				Sfx.play_at("block", global_position, 2.0, 0.6)
+				player.shake(0.05)
+				if _repeats > 0:
+					_repeats -= 1
+					_begin_charge(0.75)
+				else:
+					DamagePopup.spawn(get_parent(), "DAZED", Color(1.0, 0.9, 0.5), 40, global_position + Vector3(0, 2.4 * _body.scale.y, 0))
+					_set_step("dazed")
+				return Vector3.ZERO
+			return _charge_dir * CHARGE_SPEED
+		"cast":
+			_turn_toward(player.global_position - global_position, delta)
+			if _step_time >= 0.7:
+				_set_step("recover")
+			return Vector3.ZERO
+		"dazed":
+			if _step_time >= DAZED_TIME:
+				_end_special()
+			return Vector3.ZERO
+		"recover":
+			_turn_toward(player.global_position - global_position, delta)
+			if _step_time >= SPECIAL_RECOVER:
+				if _repeats > 0 and _special == "leap_slam":
+					_repeats -= 1
+					_begin_leap(_clamp_to_arena(player.global_position))
+				else:
+					_end_special()
+			return Vector3.ZERO
+	_end_special()
+	return Vector3.ZERO
+
+
+func _begin_leap(to: Vector3) -> void:
+	_leap_to = to
+	if _special == "leap_slam":
+		_marks.show_ring(_leap_to, SLAM_RADIUS)
+	_set_step("crouch")
+
+
+func _land() -> void:
+	collision_mask |= 2
+	velocity.y = 0.0
+	Sfx.play_at("quake", global_position, 3.0 if _special == "leap_slam" else -2.0, 0.8)
+	HitFx.burst(get_parent(), global_position + Vector3.UP * 0.2, Vector3.UP, Color(0.35, 0.3, 0.25), 30, 5.0, false, 0.1)
+	if _special == "leap_slam":
+		_marks.hide_mark()
+		_slam_at(global_position, SLAM_RADIUS)
+		_set_step("recover")
+	else:
+		_cast_zones()
+		_set_step("cast")
+
+
+## A shockwave here: jump it or be out of it.
+func _slam_at(at: Vector3, radius: float) -> void:
+	Sfx.play_at("quake", at, 4.0, 0.8)
+	_marks.shockwave(at, radius)
+	HitFx.burst(get_parent(), at + Vector3.UP * 0.2, Vector3.UP, Color(0.35, 0.3, 0.25), 30, 5.0, false, 0.1)
+	var flat := player.global_position - at
+	flat.y = 0.0
+	player.shake(0.12 if flat.length() < radius * 2.0 else 0.04)
+	if flat.length() <= radius:
+		player.receive_attack(attack_damage * SLAM_DAMAGE * damage_multiplier, at, "quake", self)
+
+
+## The edge point of its arena farthest from you (where it casts from).
+func _far_edge() -> Vector3:
+	var best := arena_center
+	var best_distance := -1.0
+	var reach := minf(arena_limit, 9.0)
+	for i in 8:
+		var a := i * TAU / 8.0
+		var spot := arena_center + Vector3(clampf(cos(a) * 1.5, -1.0, 1.0), 0, clampf(sin(a) * 1.5, -1.0, 1.0)) * reach
+		var distance := spot.distance_to(player.global_position)
+		if distance > best_distance:
+			best_distance = distance
+			best = spot
+	best.y = global_position.y
+	return best
+
+
+func _clamp_to_arena(point: Vector3) -> Vector3:
+	return Vector3(clampf(point.x, arena_center.x - arena_limit, arena_center.x + arena_limit), global_position.y,
+			clampf(point.z, arena_center.z - arena_limit, arena_center.z + arena_limit))
+
+
+func _begin_charge(windup_scale_now := 1.0) -> void:
+	_set_step("aim")
+	_locked = false
+	_step_time = CHARGE_WINDUP * (1.0 - windup_scale_now)
+	_aim_charge()
+
+
+## Points the lane at you, to the edge of its arena (or DASH_REACH for a dash).
+func _aim_charge() -> void:
+	var to_player := player.global_position - global_position
+	to_player.y = 0.0
+	if to_player.length() > 0.1:
+		_charge_dir = to_player.normalized()
+	var reach := DASH_REACH if _special == "dash" else INF
+	for axis in [0, 2]:
+		var d: float = _charge_dir[axis]
+		if absf(d) < 0.001:
+			continue
+		var wall: float = arena_center[axis] + arena_limit * signf(d)
+		reach = minf(reach, (wall - global_position[axis]) / d)
+	reach = maxf(reach, 1.0)
+	_charge_end = global_position + _charge_dir * reach
+	_marks.show_lane(global_position, _charge_end, CHARGE_WIDTH)
+
+
+## The shriek's cone (drawn as a wide lane) toward you.
+func _aim_scream() -> void:
+	var to_player := player.global_position - global_position
+	to_player.y = 0.0
+	if to_player.length() > 0.1:
+		_charge_dir = to_player.normalized()
+	_charge_end = global_position + _charge_dir * SCREAM_REACH
+	_marks.show_lane(global_position, _charge_end, SCREAM_WIDTH, Color(0.6, 0.85, 1.0))
+
+
+func _shriek() -> void:
+	Sfx.play_at("growl", global_position + Vector3.UP * 1.6, 6.0, 1.8)
+	HitFx.burst(get_parent(), global_position + Vector3.UP * 1.6 + _charge_dir, _charge_dir, Color(0.7, 0.9, 1.0), 30, 9.0, true, 0.06)
+	var offset := player.global_position - global_position
+	offset.y = 0.0
+	var along := offset.dot(_charge_dir)
+	var across := absf(offset.cross(_charge_dir).y)
+	player.shake(0.06)
+	if along >= -0.3 and along <= SCREAM_REACH and across <= SCREAM_WIDTH * 0.5 + 0.2:
+		player.receive_attack(attack_damage * SCREAM_DAMAGE * damage_multiplier, global_position, "scream", self)
+
+
+func _check_charge_hit() -> void:
+	if _charge_hit:
+		return
+	var flat := player.global_position - global_position
+	flat.y = 0.0
+	if flat.length() < 0.6 + CHARGE_WIDTH * 0.5:
+		_charge_hit = true
+		var result := player.receive_attack(attack_damage * CHARGE_DAMAGE * damage_multiplier, global_position, "charge", self)
+		if result == "hit":
+			player.shake(0.15)
+
+
+func _cast_zones() -> void:
+	_flash_tell(_special_tint(), 2.6)
+	var poison := _special == "miasma"
+	Sfx.play_at("draw" if poison else "fire", global_position, 2.0, 0.8 if poison else 1.1)
+	var spots: Array[Vector3] = [_clamp_to_arena(player.global_position)]
+	var count := 3 if poison else _zone_count()
+	var tries := 0
+	while spots.size() < count and tries < 60:
+		tries += 1
+		var spot: Vector3
+		if poison:
+			# Vials land around you, boxing you in.
+			var a := randf() * TAU
+			spot = _clamp_to_arena(player.global_position + Vector3(cos(a), 0, sin(a)) * randf_range(1.6, 2.6))
+		else:
+			var reach := minf(arena_limit, 9.0)
+			spot = arena_center + Vector3(randf_range(-1, 1), 0, randf_range(-1, 1)) * reach
+			spot.y = global_position.y
+		var clear := true
+		for other in spots:
+			if other.distance_to(spot) < Telegraphs.ZONE_RADIUS * 1.6:
+				clear = false
+		if clear:
+			spots.append(spot)
+	var damage := attack_damage * damage_multiplier
+	for i in spots.size():
+		# The one under you goes off last, so there's time to read it.
+		var fuse := ZONE_FUSE + (0.25 if i == 0 else 0.0) + (0.15 * i if not poison else 0.0)
+		if poison:
+			_marks.spawn_zone(spots[i], fuse, damage * ZONE_DAMAGE * 0.7, Telegraphs.POISON, Telegraphs.ZONE_RADIUS, MIASMA_LINGER, damage * MIASMA_TICK)
+		else:
+			_marks.spawn_zone(spots[i], fuse, damage * ZONE_DAMAGE)
+
+
+func _clear_specials() -> void:
+	if _marks:
+		_marks.clear()
+	_special = ""
+	_step = ""
+
+
+## Leans into the special's moves (call after the normal animation).
+func _animate_special(delta: float) -> void:
+	var lean := 0.0
+	match _step:
+		"howl":
+			lean = -0.25
+		"crouch", "raise":
+			lean = 0.25 if _step == "crouch" else -0.2
+		"air", "cast":
+			lean = -0.15
+		"aim":
+			lean = 0.3
+		"dash":
+			lean = 0.45
+		"dazed":
+			lean = -0.12
+			_body.rotation.z = sin(Time.get_ticks_msec() * 0.009) * 0.14
+	_body.rotation.x = lerpf(_body.rotation.x, lean, minf(1.0, 12.0 * delta))

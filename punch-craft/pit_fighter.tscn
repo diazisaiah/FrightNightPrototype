@@ -1,0 +1,28 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://pit_fighter.gd" id="1_script"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
+radius = 0.4
+height = 1.85
+
+[node name="PitFighter" type="CharacterBody3D"]
+collision_layer = 4
+collision_mask = 7
+script = ExtResource("1_script")
+display_name = "Pit Fighter"
+hit_color = Color(0.35, 0.4, 0.3, 1)
+head_height = 1.56
+max_hp = 62.0
+move_speed = 3.5
+coin_reward = 13
+xp_reward = 15
+armor_value = 4.0
+armor_bonus_hp = 30.0
+attack_damage = 7.5
+attack_range = 2.3
+preferred_distance = 1.8
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.925, 0)
+shape = SubResource("CapsuleShape3D_body")
