@@ -4,7 +4,8 @@ the last bar wrap into the first), mono 16-bit at 24 kHz.
 
   title   78 BPM, A minor     music box and choir over a slow heartbeat
   camp    72 BPM, E minor     lo-fi campfire: soft drums, warm keys, crackle
-  arena   90 BPM, D minor     the spooky boom-bap (808 slides, swung hats)
+  arena  140 BPM, D minor     spooky phonk fight anthem: cowbell riff, sliding
+                              808, four-on-the-floor, saw lead on the hook (32 bars)
   crypt   66 BPM, C# phrygian  drone, tolling bells, sparse heavy drums
   league 104 BPM, D minor     driving drums, choir stabs, big 808
 
@@ -192,6 +193,39 @@ def choir(notes, dur, level=0.03):
     return out * env * level
 
 
+def cowbell(note, dur=0.3, level=0.2):
+    """Phonk cowbell: two square-ish partials, band-limited, quick decay."""
+    n = int(dur * SR)
+    t = t_of(n)
+    f = midi(note)
+    tone = np.tanh(3 * np.sin(2 * np.pi * f * t)) + 0.7 * np.tanh(3 * np.sin(2 * np.pi * f * 1.48 * t))
+    tone = fft_filter(tone, low=350, high=5000)
+    return tone * np.exp(-t * 11) * np.minimum(1, t * 2000) * level
+
+
+def saw_lead(note, dur, level=0.06):
+    """Detuned saw lead, a little bright, for the hook."""
+    n = int(dur * SR)
+    t = t_of(n)
+    out = np.zeros(n)
+    for detune in (-0.08, 0.08):
+        f = midi(note + detune)
+        for h in range(1, 14):
+            out += np.sin(2 * np.pi * f * h * t) / h
+    env = np.minimum(1, t * 150) * (0.55 + 0.45 * np.exp(-t * 4)) * np.minimum(1, np.maximum(dur - t, 0) * 40)
+    return out * env * level
+
+
+def clap(level=0.7):
+    n = int(0.3 * SR)
+    t = t_of(n)
+    noise = fft_filter(rng.standard_normal(n), low=1000, high=7000)
+    env = np.exp(-t * 22)
+    for k in (0.0, 0.011, 0.022):
+        env += np.where(t >= k, np.exp(-(t - k) * 140), 0) * 0.8
+    return noise * env * level * 0.5
+
+
 def crackle(amount=0.0006, hiss=0.006):
     out = np.zeros(N)
     pops = rng.random(N) < amount
@@ -202,39 +236,68 @@ def crackle(amount=0.0006, hiss=0.006):
 # --- Tracks ------------------------------------------------------------------
 
 def arena(b):
+    # Dm  Bb  Gm  A: a spooky phonk fight anthem, 32 bars.
+    # 0-3 intro (cowbell + kick), 4-11 groove, 12-13 break and snare roll,
+    # 14-23 full with the saw hook from 16, 24-27 groove, 28-29 break, 30-31 full.
     chords = [[50, 53, 57], [46, 50, 53], [43, 46, 50], [45, 49, 52]]
     roots = [38, 34, 31, 33]
-    mel_a = [[(0, 74), (1.5, 77), (2, 76), (3, 74)], [(0, 74), (1.5, 70), (2, 69), (3, 70)],
-             [(0, 67), (1, 70), (1.5, 74), (3, 72)], [(0, 73), (1, 76), (2, 73), (3, 69)]]
-    mel_b = [[(0, 81), (0.5, 77), (1, 74), (2.5, 77), (3, 81)], [(0, 82), (1, 77), (2, 74), (3, 70)],
-             [(0, 79), (1, 74), (1.5, 79), (2, 82), (3, 81)], [(0, 76), (0.5, 73), (1, 76), (2, 79), (3, 81)]]
-    K, S = kick(), snare()
-    for bar in range(16):
+    riff_a = [[(0, 74), (0.75, 74), (1.5, 77), (2, 74), (2.75, 72), (3.5, 69)],
+              [(0, 74), (0.75, 74), (1.5, 77), (2, 74), (2.75, 70), (3.5, 69)],
+              [(0, 74), (0.75, 74), (1.5, 79), (2, 77), (2.75, 74), (3.5, 70)],
+              [(0, 73), (0.75, 73), (1.5, 76), (2, 73), (2.75, 69), (3.5, 73)]]
+    riff_b = [[(0, 81), (0.5, 81), (0.75, 77), (1.5, 81), (2, 84), (2.5, 81), (3, 77), (3.5, 74)],
+              [(0, 82), (0.5, 82), (0.75, 77), (1.5, 82), (2, 81), (2.5, 77), (3, 74), (3.5, 77)],
+              [(0, 79), (0.5, 79), (0.75, 74), (1.5, 79), (2, 82), (2.5, 79), (3, 77), (3.5, 74)],
+              [(0, 81), (0.5, 81), (0.75, 76), (1.5, 81), (2, 85), (2.5, 81), (3, 76), (3.5, 73)]]
+    hook = [[(0, 74, 1.5), (1.5, 77, 0.5), (2, 81, 2.0)], [(0, 82, 1.5), (1.5, 81, 0.5), (2, 77, 2.0)],
+            [(0, 79, 1.0), (1, 82, 1.0), (2, 86, 1.5), (3.5, 84, 0.5)], [(0, 85, 2.0), (2, 81, 1.0), (3, 76, 1.0)]]
+    K, S, C = kick(1.25, 0.35), snare(210, 8500, 0.25), clap()
+    for bar in range(32):
         b0 = bar * BAR
         c = bar % 4
-        place(b["pads"], pad(chords[c], BAR + 0.4), b0)
-        for beat, note in (mel_b if 8 <= bar < 12 else mel_a)[c]:
-            place(b["keys"], music_box(note), b0 + beat * BEAT)
-        if bar < 2:
+        intro = bar < 4
+        brk = bar in (12, 13, 28, 29)
+        hooked = 16 <= bar < 24 or bar >= 30
+        place(b["pads"], pad(chords[c], BAR + 0.3, 0.012 if not brk else 0.02), b0)
+        for beat, note in (riff_b if 16 <= bar < 24 else riff_a)[c]:
+            place(b["keys"], cowbell(note, 0.3, 0.2 if not brk else 0.26), b0 + beat * BEAT)
+        if hooked:
+            for beat, note, length in hook[c]:
+                place(b["keys"], saw_lead(note, length * BEAT), b0 + beat * BEAT)
+        if brk:
+            if bar in (13, 29):
+                # The snare roll into the drop, rising.
+                for i in range(16):
+                    place(b["drums"], S * (0.25 + i * 0.045), b0 + i * BEAT / 4)
             continue
-        brk = bar in (12, 13)
-        if not brk:
-            for beat in ([0, 1.5, 2.75] if bar % 2 else [0, 1.75, 2.5]):
+        if intro:
+            for beat in (0, 2):
                 place(b["drums"], K, b0 + beat * BEAT)
+            for i in range(8):
+                place(b["drums"], hat() * (0.5 if i % 2 else 0.3), b0 + i * BEAT / 2)
+            continue
+        for beat in range(4):
+            place(b["drums"], K, b0 + beat * BEAT)
+            place(b["drums"], hat(True) * 0.45, b0 + (beat + 0.5) * BEAT)
         for beat in (1, 3):
-            place(b["drums"], S * (0.6 if brk else 1.0), b0 + beat * BEAT)
-        for i in range(8):
-            place(b["drums"], hat(i == 7 and bar % 4 == 3) * (1.0 if i % 2 == 0 else 0.6), b0 + i * BEAT / 2 + (0.03 if i % 2 else 0))
-        if bar == 15:
-            for i in range(4):
-                place(b["drums"], S * (0.35 + i * 0.12), b0 + (3 + i / 4) * BEAT)
-        if not brk:
-            r = roots[c]
-            place(b["low"], bass(r, BEAT * 1.4), b0)
-            place(b["low"], bass(r, BEAT * 0.9, glide_from=r + 12), b0 + 1.75 * BEAT)
-            place(b["low"], bass(r + 7 if c != 3 else r + 4, BEAT * 0.9), b0 + 2.75 * BEAT)
-            place(b["low"], bass(r, BEAT * 0.6), b0 + 3.5 * BEAT)
-    return {"keys": (0.75, 0.4, 2.5, 0.45), "pads": (1800, 3.0, 0.5), "mix": (0.7, 0.9, 1.2, 1.1, 0.6)}
+            place(b["drums"], C, b0 + beat * BEAT)
+            place(b["drums"], S * 0.45, b0 + beat * BEAT)
+        for i in range(16):
+            roll = bar % 4 == 3 and i >= 12
+            place(b["drums"], hat() * (0.7 if i % 4 == 2 else 0.4), b0 + i * BEAT / 4)
+            if roll:
+                place(b["drums"], hat() * 0.5, b0 + (i + 0.5) * BEAT / 4)
+        if bar in (11, 27, 31):
+            for i in range(8):
+                place(b["drums"], S * (0.35 + i * 0.07), b0 + (2 + i / 4) * BEAT)
+        r = roots[c]
+        place(b["low"], bass(r, BEAT * 0.7, drive=2.6), b0)
+        place(b["low"], bass(r, BEAT * 0.45, drive=2.6), b0 + 0.75 * BEAT)
+        place(b["low"], bass(r + 12, BEAT * 0.5, glide_from=r, drive=2.6), b0 + 1.5 * BEAT)
+        place(b["low"], bass(r, BEAT * 0.7, drive=2.6), b0 + 2 * BEAT)
+        place(b["low"], bass(r + 7 if c != 3 else r + 4, BEAT * 0.45, drive=2.6), b0 + 2.75 * BEAT)
+        place(b["low"], bass(r, BEAT * 0.5, glide_from=r + 12, drive=2.6), b0 + 3.5 * BEAT)
+    return {"keys": (0.75, 0.25, 1.4, 0.22), "pads": (2200, 2.0, 0.4), "mix": (1.0, 1.05, 1.0, 0.9, 0.1)}
 
 
 def title(b):
@@ -354,7 +417,9 @@ def league(b):
     return {"keys": (0.5, 0.3, 1.6, 0.3), "pads": (3000, 1.8, 0.3), "mix": (0.85, 1.0, 0.9, 1.0, 0.2)}
 
 
-TRACKS = {"title": (78, title), "camp": (72, camp), "arena": (90, arena), "crypt": (66, crypt), "league": (104, league)}
+TRACKS = {"title": (78, title), "camp": (72, camp), "arena": (140, arena), "crypt": (66, crypt), "league": (104, league)}
+## Bars per loop (16 unless listed).
+BARS = {"arena": 32}
 
 
 def render(name):
@@ -362,7 +427,7 @@ def render(name):
     bpm, song = TRACKS[name]
     BEAT = 60.0 / bpm
     BAR = BEAT * 4
-    N = int(BAR * 16 * SR)
+    N = int(BAR * BARS.get(name, 16) * SR)
     b = {k: np.zeros(N) for k in ("drums", "low", "keys", "pads")}
     fx = song(b)
     d_beats, fb, verb, verb_mix = fx["keys"]

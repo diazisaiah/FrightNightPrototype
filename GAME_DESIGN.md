@@ -371,7 +371,7 @@ Audio buses (Effects and Ambience) are created at startup; all sound effects pla
 **Music (placeholder, 2026-10-16):** a looping track per place on the Music bus (default 60%), starting with the first click (browsers block audio before that) and crossfading over 1.4s as you move (`Sfx.play_music`). All synthesized by `audio_lab/make_tracks.py`, 16 bars each, mono 24 kHz:
 - **title** (78 BPM, A minor): music box and choir over a slow heartbeat. Title screen.
 - **camp** (72 BPM, E minor): lo-fi campfire, soft drums, warm keys, crackle. Camp and training.
-- **arena** (90 BPM, D minor): the spooky boom-bap. Underworld Arena.
+- **arena** (140 BPM, D minor, 32 bars; rewritten 2026-10-17 to be much more upbeat): a spooky phonk fight anthem. Cowbell riff, hard sliding 808, four-on-the-floor kick with claps and rolling hats, a detuned saw hook in the second half, and two breakdowns with rising snare rolls into the drop. Underworld Arena (2 dB under the others, since it's denser).
 - **crypt** (66 BPM, C# phrygian): a drone, tolling bells, sparse heavy drums. The Crypt.
 - **league** (104 BPM, D minor): driving drums, choir stabs, big 808. Dead League menu and bouts.
 

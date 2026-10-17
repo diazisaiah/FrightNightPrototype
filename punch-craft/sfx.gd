@@ -21,7 +21,7 @@ var _ambience: AudioStreamPlayer
 const MUSIC := {
 	"title": ["res://music/title.wav", -1.0],
 	"camp": ["res://music/camp.wav", 2.0],
-	"arena": ["res://music/arena.wav", 0.0],
+	"arena": ["res://music/arena.wav", -2.0],
 	"crypt": ["res://music/crypt.wav", -1.0],
 	"league": ["res://music/league.wav", -2.0],
 }
