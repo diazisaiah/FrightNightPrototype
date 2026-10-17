@@ -218,6 +218,14 @@ func _build_tabs() -> Control:
 	training.text = "Training" if GameState.tutorial_done else "Tutorial"
 	training.pressed.connect(_start_training)
 	tabs.add_child(training)
+	# Daily drills: score runs that pay once a day.
+	var daily := Button.new()
+	daily.text = "Daily"
+	daily.tooltip_text = "Pad Work, Slip Line and Heavy Bags: score runs that pay coins and XP once a day."
+	daily.pressed.connect(_pick_drill)
+	tabs.add_child(daily)
+	if DRILLS.any(func(id: String) -> bool: return GameState.drill_ready(id)):
+		daily.add_child(_new_badge("READY"))
 	var league := Button.new()
 	league.text = "Dead League"
 	league.tooltip_text = "1v1 bouts against the contenders. Each first win breaks a seal on your upgrade web."
@@ -244,19 +252,19 @@ func _build_tabs() -> Control:
 
 
 ## A small pulsing "NEW" tag on a button's corner.
-func _new_badge() -> Control:
+func _new_badge(text := "NEW") -> Control:
 	var badge := PanelContainer.new()
 	badge.add_theme_stylebox_override("panel", UiTheme.box(CryptDoor.GLOW, Color.TRANSPARENT, 0, 8, 3.0))
 	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var label := Label.new()
-	label.text = "NEW"
+	label.text = text
 	label.add_theme_font_override("font", UiTheme.display_font())
 	label.add_theme_font_size_override("font_size", 13)
 	label.add_theme_color_override("font_color", Color.WHITE)
 	badge.add_child(label)
 	badge.anchor_left = 1.0
 	badge.anchor_right = 1.0
-	badge.offset_left = -34
+	badge.offset_left = -10.0 - 8.0 * text.length()
 	badge.offset_right = 4
 	badge.offset_top = -12
 	badge.offset_bottom = 8
@@ -711,6 +719,8 @@ func _pick(title: String, options: Array, callback: Callable) -> void:
 		if option.has("detail"):
 			var detail := _label(option.detail, 14, UiTheme.MUTED)
 			detail.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			detail.custom_minimum_size.x = 176
 			inside.add_child(detail)
 		if not option.open:
 			var holder := _label("SEALED BY\n" + DeadLeagueRules.boss(option.tier - 2).name, 13, UiTheme.SIGIL)
@@ -739,6 +749,30 @@ func _pick(title: String, options: Array, callback: Callable) -> void:
 func _start_run() -> void:
 	GameState.save_game()
 	Loading.go("res://world.tscn")
+
+
+const DRILLS := ["pads", "slip", "bags"]
+const DRILL_CARDS := {
+	"pads": ["PADS", "PAD WORK", "Throw the combo the coach calls"],
+	"slip": ["SLIP", "SLIP LINE", "Dodge everything it throws"],
+	"bags": ["BAGS", "HEAVY BAGS", "Knock bags off the rack in 60s"],
+}
+
+
+## Daily drills: pick one. Each pays once a day for your score; after that
+## it's practice for a best score.
+func _pick_drill() -> void:
+	var options := []
+	for id in DRILLS:
+		var card: Array = DRILL_CARDS[id]
+		var best := int(GameState.drills.get(id, {}).get("best", 0))
+		var status := "REWARD READY" if GameState.drill_ready(id) else "PRACTICE"
+		options.append({"name": card[1], "number": card[0], "tier": 1, "open": true, "value": id,
+			"detail": "%s\n%s\nBEST  %d" % [card[2], status, best]})
+	_pick("DAILY DRILLS", options, func(id: String) -> void:
+		GameState.drill_pick = id
+		GameState.save_game()
+		Loading.go("res://drills.tscn"))
 
 
 func _start_crypt() -> void:

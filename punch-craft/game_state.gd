@@ -1092,6 +1092,15 @@ var arena_bouts := {}
 var crypt_tier := 1
 ## Collected hats: id -> how many popped (duplicates turned into Souls).
 var hats := {}
+## Daily drills: {drill: {"best": score, "day": "YYYY-MM-DD" of the last paid run}}.
+var drills := {}
+## The drill picked in camp for the drills scene (not saved).
+var drill_pick := "pads"
+## What a score is worth: a run scoring this pays about one good Arena bout
+## of your division. Pad Work and Slip Line have no cap (the longer you last,
+## the more you earn); Heavy Bags is a timed DPS check, capped at 1.5 bouts.
+const DRILL_GOOD_SCORE := {"pads": 1700.0, "slip": 1200.0, "bags": 4000.0}
+const DRILL_CAP := {"bags": 1.5}
 ## Hats spawned since the last legendary (bad-luck protection, see Hats).
 var hat_pity := 0
 ## All four Yonkers collected: Tony is playable.
@@ -1224,6 +1233,36 @@ func get_effect(effect: String) -> float:
 func unlock_tony() -> void:
 	tony_unlocked = true
 	_commit()
+
+
+## A drill run ended: records the best score and, on the first run of the day,
+## pays coins and XP for the score (scaled to your Arena division's pay).
+## Returns {paid, coins, xp, best, new_best}.
+func claim_drill(drill: String, score: int, _level: int) -> Dictionary:
+	var record: Dictionary = drills.get(drill, {"best": 0, "day": ""})
+	var today := Time.get_date_string_from_system()
+	var result := {"paid": false, "coins": 0, "xp": 0, "best": int(record.best), "new_best": score > int(record.best)}
+	record.best = maxi(int(record.best), score)
+	result.best = record.best
+	if record.day != today and score > 0:
+		record.day = today
+		var share: float = score / float(DRILL_GOOD_SCORE.get(drill, 1500.0))
+		if DRILL_CAP.has(drill):
+			share = minf(share, float(DRILL_CAP[drill]))
+		var x := Progression.arena_position(clampi(arena_division, 1, Progression.current_tier()), 2)
+		result.coins = roundi(770.0 * Progression.pay(x) * share)
+		result.xp = roundi(250.0 * Progression.xp_pay(x) * share)
+		result.paid = true
+		resources["coins"] = resources.get("coins", 0) + result.coins
+		add_xp(result.xp)
+	drills[drill] = record
+	_commit()
+	return result
+
+
+## True when this drill's daily reward hasn't been claimed today.
+func drill_ready(drill: String) -> bool:
+	return drills.get(drill, {}).get("day", "") != Time.get_date_string_from_system()
 
 
 ## Collects a popped hat. Returns "new", "duplicate" (turned into Souls) or
@@ -1725,6 +1764,7 @@ func save_game() -> void:
 		"arena_bouts": arena_bouts,
 		"crypt_tier": crypt_tier,
 		"hats": hats,
+		"drills": drills,
 		"hat_pity": hat_pity,
 		"tony_unlocked": tony_unlocked,
 		"upgrades": upgrade_levels,
@@ -1792,6 +1832,7 @@ func load_game() -> void:
 	arena_bouts = data.get("arena_bouts", {}).duplicate() if data.get("arena_bouts", {}) is Dictionary else {}
 	crypt_tier = int(data.get("crypt_tier", 1))
 	hats = {}
+	drills = data.get("drills", {}).duplicate(true) if data.get("drills", {}) is Dictionary else {}
 	var saved_hats = data.get("hats", {})
 	if saved_hats is Dictionary:
 		for id in saved_hats:
@@ -2020,6 +2061,7 @@ func _reset_fields() -> void:
 	arena_bouts = {}
 	crypt_tier = 1
 	hats = {}
+	drills = {}
 	hat_pity = 0
 	tony_unlocked = false
 	_run_entry = {}

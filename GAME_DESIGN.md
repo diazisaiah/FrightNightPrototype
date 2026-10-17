@@ -1031,6 +1031,23 @@ Why: skill webs couldn't be finished (28 points by the Coffin King against 57-73
 - **The fighter's lantern:** 1.1 bright, 10m reach.
 - **Browser builds** (no glow) get +16% brightness and +25% ambient to make up for it (`Look.tune_environment`).
 
+## Daily drills [Built 2026-10-16]
+
+Camp's **Daily** button (a READY badge while any reward is unclaimed) opens three score runs in the training ring (`drills.tscn`, `drills.gd`). Each gets harder the longer you last. The first run of each drill each day pays coins and XP for the score; after that it's practice, chasing your best. Punches cost no knuckle HP in drills.
+
+| Drill | How it plays | Scoring | Gets harder by |
+|---|---|---|---|
+| **Pad Work** | The coach calls a combo as punch chips (with your keys); throw it in order before the clock runs out. Hooks and uppercuts must be set up, and the combo must stay alive. A wrong or sloppy punch, or the clock running out, costs a life (3 lives). | 10 a punch, 25 a set-up heavy, plus (40 + 15 a punch) x (1 + time left) x (1 + 5% a level) per combo | Combos grow from 2 punches to 6 (heavies from level 3); the clock shrinks 5% a level down to 0.9s |
+| **Slip Line** | The dummy follows you round the ring and throws; dodge it. Getting hit costs a life (3 lives). | 12 a dodge (25 clean) + 2 a level; counters 30 + 3 a level | A new level every 5 dodges: longer combos (2, 3, then 4 punches), less warning (full, color, pose, fight speed), windups 3.5% faster a level down to 30% |
+| **Heavy Bags** | 60 seconds to knock bags off a three-bag rack (Wii Sports style). Bags swing on their chains and fly off when knocked out. | 10 per base punch of damage dealt (set-up heavies hit hardest), plus 100 + 25 a bag for each one knocked off | Each new bag has 14 + 2.5 x (bags knocked) base punches of HP |
+
+**Rewards** (`GameState.claim_drill`): coins = 770 x your division's pay x (score / a good score), XP = 250 x XP pay x the same share. Good scores: Pad Work 1,700, Slip Line 1,200, Heavy Bags 4,000.
+- Pad Work and Slip Line have **no cap**: the longer you last, the more you earn.
+- Heavy Bags caps at 1.5x.
+- The difficulty floors (0.9s for a 6-punch combo, 30% windups at fight speed) are where it gets too hard for a human, around level 40.
+
+Saved as `drills: {drill: {best, day}}`; the day is your own clock's date.
+
 ## Launch readiness [In progress, 2026-10-15]
 
 Checked: every main scene (title, camp, Arena, Crypt, training, Dead League menu and arena) runs 400 frames headless with no script errors, and the web build loads with no console errors (38 MB wasm + 15 MB pck; itch serves them compressed).
