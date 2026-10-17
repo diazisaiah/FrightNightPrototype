@@ -116,6 +116,8 @@ var _torch_time := 0.0
 var _night := 1
 ## The Underworld Arena division (= tier of the Climb).
 var _division := 1
+## This division's place (Themes.ARENA).
+var _theme := {}
 ## Style tally for the current bout (the purse's grade).
 var _style := {}
 var _run_souls := 0
@@ -130,9 +132,10 @@ var _nights_cleared_this_run := 0
 
 
 func _ready() -> void:
-	Sfx.play_music("arena")
 	# Your kept gear comes with you (GameState.equipped).
 	_division = clampi(GameState.arena_division, 1, Progression.current_tier())
+	_theme = Themes.arena(_division)
+	Sfx.play_music(_theme.music)
 	_night = clampi(int(GameState.arena_bouts.get(str(_division), 0)) + 1, 1, Progression.BOUTS_PER_DIVISION)
 	# A bout picked in camp: any you've won, or the next one.
 	if GameState.arena_bout_pick > 0:
@@ -141,6 +144,7 @@ func _ready() -> void:
 	Enemy.max_attackers = 1 if _division <= 2 else 2
 	_reset_style()
 	$Moon.shadow_enabled = Settings.get_value("shadows") and not Settings.use_web_profile()
+	Themes.apply_environment($WorldEnvironment.environment, _theme, $Moon)
 	Look.tune_environment($WorldEnvironment.environment, "night")
 	Voxel.prewarm(self, SCENES.values() + (Veterans.SCENES.values() if _division > 1 else []))
 	_build_decorations()
@@ -574,6 +578,12 @@ func _go_to_camp() -> void:
 func _build_decorations() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 6661 + _night
+	if _theme.id != "graveyard":
+		# The deeper divisions have their own places (ArenaScenery).
+		($Ground/Mesh as MeshInstance3D).material_override = Look.block_material(_theme.ground)
+		_torches.append_array(ArenaScenery.build(_theme, _decorations, rng))
+		_place_hazards(rng)
+		return
 	var web := Settings.use_web_profile()
 	var grave_plots := 5 if web else GRAVE_PLOTS
 	var lone_graves := 14 if web else GRAVESTONE_COUNT
@@ -641,6 +651,28 @@ func _build_decorations() -> void:
 		light.position.y = 1.95
 		torch.add_child(light)
 		_torches.append(light)
+
+
+## The deeper divisions' hazards (Themes): toxic puddles or fire vents across
+## the field, away from the middle and each other. Not decorations: they
+## live in the world so batching never touches them.
+func _place_hazards(rng: RandomNumberGenerator) -> void:
+	if _theme.hazard == "":
+		return
+	var hit: float = 6.0 * _night_scaling().damage
+	var spots: Array[Vector2] = []
+	var tries := 0
+	while spots.size() < (10 if _theme.hazard == "toxic" else 9) and tries < 200:
+		tries += 1
+		var spot := Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(8.0, ARENA_RADIUS - 6.0)
+		if spots.any(func(other: Vector2) -> bool: return other.distance_to(spot) < 7.0):
+			continue
+		spots.append(spot)
+	for spot in spots:
+		var toxic: bool = _theme.hazard == "toxic"
+		var hazard := Hazard.make(_theme.hazard, Vector3(spot.x, 0, spot.y), rng.randf_range(1.6, 2.4) if toxic else 1.5,
+				hit * (0.16 if toxic else 1.3), _player)
+		add_child(hazard)
 
 
 func _decoration_at(spot: Vector2) -> Node3D:

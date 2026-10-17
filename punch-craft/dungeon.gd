@@ -115,6 +115,10 @@ const IRON := Color(0.25, 0.25, 0.28)
 const SEAL_GLOW := Color(0.8, 0.25, 0.15)
 
 var _floor := 1
+## This floor's look (Themes.CRYPT): by tier, two floors a tier.
+var _theme: Dictionary = Themes.CRYPT[0]
+## The floor's hazards (kept apart from _level so batching leaves them be).
+var _hazards: Node3D
 ## The floor this run started on (its first floor gets the starter chest).
 var _start_floor := 1
 ## Rooms on this floor: {cell, type ("start", "fight", "chest", "boss"),
@@ -154,7 +158,6 @@ var _minimap: Minimap
 
 func _ready() -> void:
 	add_to_group("map_scene")  # A tap of the controller emote button opens the map.
-	Sfx.play_music("crypt")
 	# You bring your kept gear in; what you find is bound to the Crypt until
 	# it's gilded at an altar and carried out by the exit stairs.
 	_start_floor = Progression.crypt_start_floor(clampi(GameState.crypt_tier, 1, Progression.current_tier()))
@@ -269,6 +272,17 @@ func _build_floor() -> void:
 	_torches.clear()
 	_current_room = {}
 	_player.on_floor_start()
+	# Each tier of floors has its own look, music and hazards.
+	var theme := Themes.crypt(_floor)
+	if theme.id != _theme.id or _materials.is_empty():
+		_materials.clear()
+	_theme = theme
+	Themes.apply_environment($WorldEnvironment.environment, _theme)
+	Sfx.play_music(_theme.music)
+	if _hazards:
+		_hazards.queue_free()
+	_hazards = Node3D.new()
+	add_child(_hazards)
 	_level = Node3D.new()
 	add_child(_level)
 	_generate_layout()
@@ -832,7 +846,7 @@ func _place_stairs(at: Vector3) -> void:
 	var stairs := Node3D.new()
 	stairs.position = at
 	_level.add_child(stairs)
-	var stone := _material("stone", STONE)
+	var stone := _material("stone", _theme.wall)
 	var void_material := _material("void", Color(0.01, 0.0, 0.02))
 	stairs.add_child(_mesh(Enemy._box(Vector3(2.2, 0.06, 2.2)), void_material, Vector3(0, 0.03, 0)))
 	for i in 3:
@@ -1040,7 +1054,7 @@ func _build_altar(at: Vector3) -> void:
 	var altar := StaticBody3D.new()
 	altar.position = at
 	_level.add_child(altar)
-	_block(altar, Vector3(1.0, 0.9, 0.7), Vector3(0, 0.45, 0), _material("stone", STONE))
+	_block(altar, Vector3(1.0, 0.9, 0.7), Vector3(0, 0.45, 0), _material("stone", _theme.wall))
 	var gold := _material("altar_gold", Color(1.0, 0.75, 0.25), 0.8)
 	_add_solid_mesh(altar, Vector3(0.8, 0.08, 0.5), Vector3(0, 0.94, 0), gold)
 	var flame := StandardMaterial3D.new()
@@ -1137,7 +1151,7 @@ func _stand(at: Vector3, color: Color) -> Node3D:
 	var stand := StaticBody3D.new()
 	stand.position = at
 	_level.add_child(stand)
-	_block(stand, Vector3(0.7, 0.9, 0.7), Vector3(0, 0.45, 0), _material("stone", STONE))
+	_block(stand, Vector3(0.7, 0.9, 0.7), Vector3(0, 0.45, 0), _material("stone", _theme.wall))
 	var glow := StandardMaterial3D.new()
 	glow.albedo_color = color
 	glow.emission_enabled = true
@@ -1178,7 +1192,7 @@ func _build_shrine(room: Dictionary) -> void:
 	var altar := StaticBody3D.new()
 	altar.position = room.center
 	_level.add_child(altar)
-	_block(altar, Vector3(1.4, 1.0, 0.9), Vector3(0, 0.5, 0), _material("stone", STONE))
+	_block(altar, Vector3(1.4, 1.0, 0.9), Vector3(0, 0.5, 0), _material("stone", _theme.wall))
 	var flame := StandardMaterial3D.new()
 	flame.albedo_color = Color(0.6, 0.85, 1.0)
 	flame.emission_enabled = true
@@ -1313,6 +1327,9 @@ func _build_room(room: Dictionary) -> void:
 	elif room.type == "shrine":
 		_build_shrine(room)
 	_decorate(room)
+	_theme_decor(room)
+	if _theme.hazard != "" and room.type in ["fight", "boss"]:
+		_place_hazards(room)
 	if room.state == "waiting":
 		var trigger := Area3D.new()
 		trigger.collision_mask = 2  # Player.
@@ -1362,11 +1379,11 @@ func _decorate(room: Dictionary) -> void:
 	var beam := _material("beam", Color(0.16, 0.1, 0.06))
 	var iron := _material("iron", Color(0.08, 0.08, 0.09), 0.6)
 	if not _materials.has("ledge"):
-		_materials["ledge"] = Look.patterned_material(STONE.lightened(0.05), Look.bricks())
+		_materials["ledge"] = Look.patterned_material(Color(_theme.wall).lightened(0.05), Look.bricks())
 	var ledge: StandardMaterial3D = _materials["ledge"]
 	var wax := _material("wax", Color(0.86, 0.82, 0.7))
-	var cloth := _material("banner", Color(0.4, 0.06, 0.06))
-	var flame := Enemy._glow_material(Color(1.0, 0.65, 0.25))
+	var cloth := _material("banner", _theme.banner)
+	var flame := Enemy._glow_material(Color(_theme.fire).lightened(0.3))
 	# Ledge along the foot of every wall, and half-pillars set into the walls.
 	for direction in DIRECTIONS:
 		var outward := Vector3(direction.x, 0, direction.y)
@@ -1426,7 +1443,7 @@ func _decorate(room: Dictionary) -> void:
 			_add_mesh(Enemy._box(Vector3(0.06, h, 0.06)), wax, at + Vector3(0, h / 2.0, 0))
 			_add_mesh(Enemy._box(Vector3(0.025, 0.05, 0.025)), flame, at + Vector3(0, h + 0.03, 0))
 		var glow := OmniLight3D.new()
-		glow.light_color = Color(1.0, 0.65, 0.3)
+		glow.light_color = Color(_theme.fire).lightened(0.35)
 		glow.light_energy = 0.9
 		glow.omni_range = 3.0
 		glow.position = spot + Vector3(0, 0.5, 0)
@@ -1485,6 +1502,186 @@ func _decorate(room: Dictionary) -> void:
 
 ## A random open spot on the room's floor, away from the middle and the
 ## blocks; INF when none was found.
+# --- Tier looks (Themes.CRYPT) --------------------------------------------------------
+
+## The deeper tiers' own dressing on top of the stone crypt's.
+func _theme_decor(room: Dictionary) -> void:
+	match _theme.id:
+		"catacombs":
+			_catacomb_niches(room)
+		"flooded":
+			_flood(room)
+		"rot":
+			_rot(room)
+		"tomb":
+			_royal_tomb(room)
+
+
+## Catacombs: rows of skulls in niches along every wall.
+func _catacomb_niches(room: Dictionary) -> void:
+	var half: Vector2 = room.size / 2.0
+	var bone := _material("bone", Color(0.8, 0.76, 0.66))
+	var dark := _material("socket", Color(0.05, 0.04, 0.04))
+	for direction in DIRECTIONS:
+		var outward := Vector3(direction.x, 0, direction.y)
+		var along := Vector3(absf(direction.y), 0, absf(direction.x))
+		var out_extent: float = half.x if direction.x != 0 else half.y
+		var length: float = room.size.y if direction.x != 0 else room.size.x
+		var face: Vector3 = room.center + outward * (out_extent - 0.12)
+		var rot := atan2(outward.x, outward.z)
+		var count := int(length / 1.1)
+		for i in count:
+			var t := -length / 2.0 + (i + 0.5) * length / count
+			if direction in room.doors and absf(t) < DOOR_WIDTH / 2.0 + 0.6:
+				continue
+			for row in 2:
+				var at := face + along * t + Vector3(0, 1.1 + row * 1.0, 0)
+				if _in_solid(room, at, 0.3):
+					continue
+				_add_mesh(Enemy._box(Vector3(0.7, 0.55, 0.7) if direction.x != 0 else Vector3(0.7, 0.55, 0.7)), dark, at - outward * 0.05)
+				if randf() < 0.85:
+					var skull := Node3D.new()
+					_level.add_child(skull)
+					ArenaScenery._skull(skull, at - outward * 0.32, 0.36, bone, dark, rot + randf_range(-0.3, 0.3))
+
+
+## Flooded vaults: still black water over the floor, coffins half sunk in it,
+## drips from the ceiling.
+func _flood(room: Dictionary) -> void:
+	var size: Vector2 = room.size
+	if not _materials.has("water"):
+		var water := StandardMaterial3D.new()
+		water.albedo_color = Color(0.05, 0.18, 0.18, 0.72)
+		water.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		water.metallic = 0.5
+		water.roughness = 0.05
+		_materials["water"] = water
+	var sheet := _mesh(Enemy._box(Vector3(size.x, 0.02, size.y)), _materials["water"], room.center + Vector3(0, 0.12, 0))
+	add_child.call_deferred(sheet)  # Off _level: batching would merge it.
+	_level.tree_exiting.connect(sheet.queue_free)
+	var wood := _material("coffin", Color(0.22, 0.14, 0.09))
+	for i in randi_range(1, 3):
+		var spot := _decor_spot(room)
+		if spot == Vector3.INF:
+			continue
+		var coffin := _mesh(Enemy._box(Vector3(0.7, 0.4, 2.0)), wood, spot + Vector3(0, 0.08, 0))
+		coffin.rotation = Vector3(randf_range(-0.25, 0.25), randf() * TAU, randf_range(-0.15, 0.15))
+		_level.add_child(coffin)
+	var drips := CPUParticles3D.new()
+	drips.amount = 10 if Settings.use_web_profile() else 24
+	drips.lifetime = 1.0
+	drips.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	drips.emission_box_extents = Vector3(size.x / 2.0 - 1.0, 0.05, size.y / 2.0 - 1.0)
+	drips.position = room.center + Vector3(0, WALL_HEIGHT - 0.1, 0)
+	drips.gravity = Vector3(0, -9.0, 0)
+	var drop := BoxMesh.new()
+	drop.size = Vector3(0.02, 0.08, 0.02)
+	drop.material = Enemy._glow_material(Color(0.5, 1.0, 0.9))
+	drips.mesh = drop
+	_level.add_child(drips)
+
+
+## Rot gardens: glowing mushrooms in clusters, fungus on the walls, spores.
+func _rot(room: Dictionary) -> void:
+	var stem := _material("stem", Color(0.82, 0.8, 0.68))
+	var caps := [Enemy._glow_material(Color(0.45, 1.0, 0.25)), Enemy._glow_material(Color(0.75, 0.35, 1.0))]
+	for c in caps:
+		c.emission_energy_multiplier = 1.6
+	for i in randi_range(3, 6):
+		var spot := _decor_spot(room)
+		if spot == Vector3.INF:
+			continue
+		var cap: Material = caps[i % 2]
+		for m in randi_range(3, 6):
+			var h := randf_range(0.2, 0.7)
+			var at := spot + Vector3(randf_range(-0.5, 0.5), 0, randf_range(-0.5, 0.5))
+			_add_mesh(Enemy._box(Vector3(0.08, h, 0.08)), stem, at + Vector3(0, h / 2.0, 0))
+			var w := randf_range(0.2, 0.45)
+			_add_mesh(Enemy._box(Vector3(w, 0.1, w)), cap, at + Vector3(0, h + 0.04, 0))
+		var glow := OmniLight3D.new()
+		glow.light_color = Color(0.55, 1.0, 0.4) if i % 2 == 0 else Color(0.8, 0.45, 1.0)
+		glow.light_energy = 0.8
+		glow.omni_range = 3.5
+		glow.position = spot + Vector3(0, 0.6, 0)
+		_level.add_child(glow)
+	var spores := CPUParticles3D.new()
+	spores.amount = 14 if Settings.use_web_profile() else 30
+	spores.lifetime = 6.0
+	spores.preprocess = 6.0
+	spores.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	spores.emission_box_extents = Vector3(room.size.x / 2.0 - 1.0, 1.2, room.size.y / 2.0 - 1.0)
+	spores.position = room.center + Vector3(0, 1.4, 0)
+	spores.gravity = Vector3(0, 0.05, 0)
+	spores.spread = 180.0
+	spores.initial_velocity_max = 0.15
+	var spore := BoxMesh.new()
+	spore.size = Vector3.ONE * 0.04
+	spore.material = Enemy._glow_material(Color(0.6, 1.0, 0.3))
+	spores.mesh = spore
+	_level.add_child(spores)
+
+
+## The royal tomb: a red carpet down the room, gold-trimmed sarcophagi,
+## heaps of treasure and a candle chandelier.
+func _royal_tomb(room: Dictionary) -> void:
+	var size: Vector2 = room.size
+	var carpet := _material("carpet", Color(0.55, 0.05, 0.07))
+	var gold := _material("gold", Color(0.95, 0.72, 0.25), 0.8)
+	var marble := _material("marble", Color(0.08, 0.07, 0.08))
+	var long_x := size.x >= size.y
+	_add_mesh(Enemy._box(Vector3(size.x - 2.0, 0.02, 1.6) if long_x else Vector3(1.6, 0.02, size.y - 2.0)), carpet, room.center + Vector3(0, 0.01, 0))
+	_add_mesh(Enemy._box(Vector3(size.x - 2.0, 0.025, 0.08) if long_x else Vector3(0.08, 0.025, size.y - 2.0)), gold, room.center + (Vector3(0, 0.01, 0.8) if long_x else Vector3(0.8, 0.01, 0)))
+	_add_mesh(Enemy._box(Vector3(size.x - 2.0, 0.025, 0.08) if long_x else Vector3(0.08, 0.025, size.y - 2.0)), gold, room.center + (Vector3(0, 0.01, -0.8) if long_x else Vector3(-0.8, 0.01, 0)))
+	for i in randi_range(1, 2):
+		var spot := _decor_spot(room)
+		if spot == Vector3.INF:
+			continue
+		var tomb := Node3D.new()
+		tomb.position = spot
+		tomb.rotation.y = 0.0 if long_x else PI / 2.0
+		_level.add_child(tomb)
+		tomb.add_child(_mesh(Enemy._box(Vector3(2.2, 0.8, 1.0)), marble, Vector3(0, 0.4, 0)))
+		tomb.add_child(_mesh(Enemy._box(Vector3(2.3, 0.12, 1.1)), gold, Vector3(0, 0.86, 0)))
+		tomb.add_child(_mesh(Enemy._box(Vector3(1.6, 0.18, 0.6)), gold, Vector3(0, 1.0, 0)))
+		tomb.add_child(_mesh(Enemy._box(Vector3(0.3, 0.2, 0.3)), gold, Vector3(0.9, 1.1, 0)))
+	for i in randi_range(2, 4):
+		var spot := _decor_spot(room)
+		if spot == Vector3.INF:
+			continue
+		for c in randi_range(6, 12):
+			var at := spot + Vector3(randf_range(-0.45, 0.45), 0, randf_range(-0.45, 0.45))
+			var coin := _mesh(Enemy._box(Vector3(0.12, 0.03, 0.12)), gold, at + Vector3(0, 0.02 + randf() * 0.25, 0))
+			coin.rotation = Vector3(randf_range(-0.4, 0.4), randf() * TAU, randf_range(-0.4, 0.4))
+			_level.add_child(coin)
+	# The chandelier: a gold ring of candles hung from the ceiling.
+	var hang: Vector3 = room.center + Vector3(0, WALL_HEIGHT - 1.4, 0)
+	_add_mesh(Enemy._box(Vector3(0.05, 1.2, 0.05)), gold, hang + Vector3(0, 0.7, 0))
+	var flame := Enemy._glow_material(Color(1.0, 0.75, 0.35))
+	for k in 8:
+		var a := k * TAU / 8.0
+		var at := hang + Vector3(cos(a), 0, sin(a)) * 0.8
+		_add_mesh(Enemy._box(Vector3(0.3, 0.06, 0.06)), gold, at)
+		_add_mesh(Enemy._box(Vector3(0.05, 0.15, 0.05)), _material("wax", Color(0.86, 0.82, 0.7)), at + Vector3(0, 0.1, 0))
+		_add_mesh(Enemy._box(Vector3(0.03, 0.05, 0.03)), flame, at + Vector3(0, 0.2, 0))
+	var light := OmniLight3D.new()
+	light.light_color = Color(1.0, 0.75, 0.4)
+	light.light_energy = 1.6
+	light.omni_range = 9.0
+	light.position = hang
+	_level.add_child(light)
+
+
+## Toxic puddles (Rot Gardens) or fire vents (Royal Tomb) in fight rooms.
+func _place_hazards(room: Dictionary) -> void:
+	var hit: float = 6.0 * Progression.enemy_scaling(_position(), Progression.crypt_difficulty(_floor, _start_floor)).damage
+	var toxic: bool = _theme.hazard == "toxic"
+	for i in (3 if room.type == "boss" else 2):
+		var spot := _decor_spot(room)
+		if spot == Vector3.INF:
+			continue
+		_hazards.add_child(Hazard.make(_theme.hazard, spot, randf_range(1.2, 1.7) if toxic else 1.3, hit * (0.16 if toxic else 1.3), _player))
+
+
 func _decor_spot(room: Dictionary) -> Vector3:
 	var half: Vector2 = room.size / 2.0
 	for attempt in 6:
@@ -1535,8 +1732,8 @@ func _add_mesh(mesh: PrimitiveMesh, material: Material, pos: Vector3) -> MeshIns
 func _torch(at: Vector3, on_wall := false) -> void:
 	if not on_wall:
 		_level.add_child(_mesh(Enemy._cylinder(0.05, 1.7), _material("wood", Color(0.35, 0.22, 0.12)), at + Vector3(0, 0.85, 0)))
-	Look.flame(_level, at + Vector3(0, 1.78 if not on_wall else 2.6, 0))
-	var light := Look.fire_light(Color(1.0, 0.6, 0.28), 2.4, 13.0)
+	Look.flame(_level, at + Vector3(0, 1.78 if not on_wall else 2.6, 0), 1.0, true, _theme.fire)
+	var light := Look.fire_light(Color(1.0, 0.6, 0.28) if _theme.fire == Look.FIRE else Color(_theme.fire).lightened(0.25), 2.4, 13.0)
 	light.position = at + Vector3(0, 2.0 if not on_wall else 2.8, 0)
 	_level.add_child(light)
 	_torches.append(light)
@@ -1552,13 +1749,13 @@ func _flicker_torches(delta: float) -> void:
 ## Brick walls and flagstone floors (shared, made once).
 func _wall_material() -> StandardMaterial3D:
 	if not _materials.has("bricks"):
-		_materials["bricks"] = Look.patterned_material(STONE.lightened(0.15), Look.bricks())
+		_materials["bricks"] = Look.patterned_material(Color(_theme.wall).lightened(0.15), Look.bricks())
 	return _materials["bricks"]
 
 
 func _floor_material() -> StandardMaterial3D:
 	if not _materials.has("tiles"):
-		_materials["tiles"] = Look.patterned_material(FLOOR_STONE.lightened(0.2), Look.tiles())
+		_materials["tiles"] = Look.patterned_material(Color(_theme.floor).lightened(0.2), Look.tiles())
 	return _materials["tiles"]
 
 

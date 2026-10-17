@@ -113,21 +113,26 @@ static func fire_light(color := Color(1.0, 0.6, 0.28), energy := 2.2, light_rang
 
 
 ## A torch flame at pos: a hot core and an outer flame of glowing cubes,
-## with embers and a wisp of smoke rising off it.
-static func flame(parent: Node3D, pos: Vector3, size := 1.0, particles := true) -> Node3D:
+## with embers and a wisp of smoke rising off it. tint recolors it (blue
+## ghost-fire, green plague-fire...); the default is a warm orange fire.
+const FIRE := Color(1.0, 0.42, 0.08)
+
+
+static func flame(parent: Node3D, pos: Vector3, size := 1.0, particles := true, tint := FIRE) -> Node3D:
+	var warm := tint == FIRE
 	var root := Node3D.new()
 	root.position = pos
 	parent.add_child(root)
 	var outer := MeshInstance3D.new()
-	outer.mesh = _glow_box(Vector3(0.15, 0.13, 0.15) * size, Color(1.0, 0.42, 0.08), 3.0)
+	outer.mesh = _glow_box(Vector3(0.15, 0.13, 0.15) * size, tint, 3.0)
 	outer.position.y = -0.02 * size
 	root.add_child(outer)
 	var core := MeshInstance3D.new()
-	core.mesh = _glow_box(Vector3(0.09, 0.16, 0.09) * size, Color(1.0, 0.82, 0.35), 5.0)
+	core.mesh = _glow_box(Vector3(0.09, 0.16, 0.09) * size, Color(1.0, 0.82, 0.35) if warm else tint.lightened(0.55), 5.0)
 	core.position.y = 0.03 * size
 	root.add_child(core)
 	var tip := MeshInstance3D.new()
-	tip.mesh = _glow_box(Vector3(0.05, 0.07, 0.05) * size, Color(1.0, 0.65, 0.2), 4.0)
+	tip.mesh = _glow_box(Vector3(0.05, 0.07, 0.05) * size, Color(1.0, 0.65, 0.2) if warm else tint.lightened(0.3), 4.0)
 	tip.position.y = 0.13 * size
 	root.add_child(tip)
 	# The glowing cubes carry the read of the flame. On Web, skipping the two
@@ -145,7 +150,7 @@ static func flame(parent: Node3D, pos: Vector3, size := 1.0, particles := true) 
 	embers.gravity = Vector3(0, 0.5, 0)
 	embers.initial_velocity_min = 0.2
 	embers.initial_velocity_max = 0.6
-	embers.mesh = _glow_box(Vector3.ONE * 0.018 * size, Color(1.0, 0.55, 0.15), 4.0)
+	embers.mesh = _glow_box(Vector3.ONE * 0.018 * size, Color(1.0, 0.55, 0.15) if warm else tint.lightened(0.15), 4.0)
 	embers.position.y = 0.1 * size
 	root.add_child(embers)
 	var smoke := CPUParticles3D.new()
