@@ -1056,6 +1056,29 @@ Now the generator tracks hands (jab left, cross right, a hook or uppercut from t
 
 Saved as `drills: {drill: {best, day}}`; the day is your own clock's date.
 
+## Contender specials [Built 2026-10-17]
+
+Two contenders went down back to back. Each Dead League contender now has signature moves on top of the boxing (`dead_league_boss.gd`, Specials).
+
+**Timing:**
+- The first special comes about 5s into a round, then every 9 / 8.5 / 8 / 8 / 7s (Bellman to Coffin King).
+- Each later round brings them 12% sooner, and the final bell 30% sooner.
+- A boss with several moves never repeats one twice in a row.
+- In round 3 or after the final bell, a slam or charge can come twice.
+
+**Warnings:** each special pops its name over the contender, and the HUD tells you what to do, with your keys. The marks can be under your feet, out of view.
+
+**Armor and punishment:** hits land during a special but don't stagger it, except while dazed. Every special leaves an opening after.
+
+| Move | Who | What happens | How to beat it |
+|---|---|---|---|
+| **Death From Above** (leap slam) | Bellman, Plague Doctor, Coffin King | Crouches (0.45s), a red ring follows you until it jumps, then it lands on that spot in a shockwave (radius 1.9 m, 1.6x a punch) | Get out of the ring, or jump it. Jumping it readies a counter |
+| **Ghost Charge** | Headless, Southpaw, Coffin King | A lane lights the canvas toward you, tracking you, then locks 0.4s before the dash. A shoulder charge to the ropes at 13 m/s (1.9x a punch). It hits the ropes **dazed** for 1.5s | Step out of the lane, or roll it (Q/E in Weenie Hut Junior Mode). Punish the daze |
+| **Judgment** | Southpaw, Coffin King | Leaps to the far edge and calls down circles: one under you (it goes off last) and 1 + round more around the ring. They burst after about 1.4s (1.3x a punch) | Stay out of the circles; no dodge helps |
+| **Miasma** | Plague Doctor | Leaps to the far edge and lobs three vials around you. They burst, then leave poison clouds for 3.5s that sting every half second you stand in them | Stay out of the clouds |
+
+New attack types: `charge` (answered by either roll) and `zone` (no dodge beats it).
+
 ## Tamer upgrade prices [Built 2026-10-17]
 
 Upgrade costs climbed too fast. Two changes in `tools/coin_web.py`:

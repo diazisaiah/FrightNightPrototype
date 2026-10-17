@@ -169,6 +169,10 @@ const ANSWERS := {
 	"bite": ["back_step"],
 	# A Hulk's ground smash can't be slipped: jump over it or get out of range.
 	"quake": [],
+	# A contender's shoulder charge: roll out of its way (or step out of the lane).
+	"charge": ["roll_left", "roll_right"],
+	# A contender's judgment circle or vial: no dodge beats it, only leaving it.
+	"zone": [],
 }
 
 # mult: damage multiplier (heavy punches only get it after a setup).
@@ -544,6 +548,8 @@ func receive_attack(amount: float, from: Vector3, attack: String, attacker: Node
 			dodged.emit("jump")
 			_ready_counter("any")
 			return "dodged"
+	elif attack == "zone":
+		pass  # Standing in it: no dodge helps.
 	elif _defense != "":
 		var move := _defense
 		# Pressed late, right before the hit: a clean dodge.

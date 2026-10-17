@@ -84,6 +84,7 @@ var _speech_tween: Tween
 
 
 func _ready() -> void:
+	add_to_group("hud")
 	_pause_panel.hide()
 	_summary_panel.hide()
 	# Key names follow the bindings and whether you're on a controller.
