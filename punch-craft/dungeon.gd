@@ -176,7 +176,7 @@ func _ready() -> void:
 	_player.knuckles_broken.connect(_on_knocked_out)
 	GameState.leveled_up.connect(_on_leveled_up)
 	_hud.end_run_requested.connect(_end_run.bind("ABANDONED"))
-	_hud.set_leave_text("Abandon run  (lose your finds)")
+	_hud.set_leave_text("Abandon run  (lose finds that aren't gilded)")
 	_hud.gild_chosen.connect(_on_gild_chosen)
 	_hud.back_to_camp_requested.connect(_leave_crypt)
 	_hud.continue_requested.connect(_descend)
@@ -744,6 +744,9 @@ func _win_floor() -> void:
 	if GameState.has_effect("lantern"):
 		_place_chest(room.center + Vector3(-2.5, 0, 2.0), "boss")
 	_place_stairs(room.center + Vector3(2.5, 0, 0))
+	# A gilding altar rises where the boss fell, to keep what it dropped.
+	_build_altar(room.center + Vector3(0, 0, -3.0))
+	_hud.announce_small("A gilding altar rises", Color(1, 0.85, 0.4))
 	_update_info()
 
 
@@ -1022,9 +1025,10 @@ func _bound_finds() -> Array:
 	return finds
 
 
-## A gilding altar in each floor's first room: pay Souls and silver to gild a
-## find (it turns gold). Only gilded finds leave the Crypt with you, and only
-## by the exit stairs.
+## A gilding altar in each floor's first room and in the boss room once the
+## boss falls: pay Souls and silver to gild a find (it turns gold). Gilded
+## finds are yours: they leave the Crypt with you by the stairs, and survive
+## a knockout too.
 func _build_altar(at: Vector3) -> void:
 	var altar := StaticBody3D.new()
 	altar.position = at
@@ -1611,16 +1615,23 @@ func _end_run(title: String, slow := true) -> void:
 	TimeFx.clear()
 	if slow:
 		TimeFx.slowmo(0.3, 0.8)
-	var lost := _bound_finds().size()
-	GameState.end_crypt_run(false)
+	var lost := _bound_finds().filter(func(item: Dictionary) -> bool: return not item.get("gilded", false)).size()
+	var kept := GameState.end_crypt_run(false)
 	_hud.set_equipment(GameState.equipped)
+	var notes: Array[String] = []
+	if not kept.is_empty():
+		notes.append("KEPT %d GILDED" % kept.size())
+		var names: Array = kept.map(func(item: Dictionary) -> String: return item.name)
+		GameState.upgrade_notice = "Knocked out, but your gilded finds came home:\n" + "\n".join(names) + "\n\nThey're in your Armory."
+	if lost > 0:
+		notes.append("%d FIND%s CRUMBLED TO DUST" % [lost, "" if lost == 1 else "S"])
 	_hud.show_results({
 		"title": "KNOCKED OUT" if title == "KNOCKED OUT" else "RUN ABANDONED",
 		"title_color": UiTheme.BAD,
 		"subtitle": "FLOOR %d" % _floor,
 		"rewards": {"coins": _run_coins, "xp": _run_xp, "souls": _run_souls},
-		"note": ("%d FIND%s CRUMBLED TO DUST" % [lost, "" if lost == 1 else "S"]) if lost > 0 else "",
-		"note_color": UiTheme.BAD,
+		"note": "   ·   ".join(notes),
+		"note_color": UiTheme.BAD if kept.is_empty() else UiTheme.GOLD,
 	}, "", false, "Back to camp")
 
 

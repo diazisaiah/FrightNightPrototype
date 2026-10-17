@@ -1338,26 +1338,24 @@ func begin_crypt_run() -> void:
 	blessings.clear()
 
 
-## Ends a Crypt run. escaped (left by the exit stairs): gilded finds join the
-## armory and stay worn; finds that weren't gilded are lost (that slot goes
-## back to what you came in with). Knocked out: only what you came in with.
-func end_crypt_run(escaped: bool) -> Array:
+## Ends a Crypt run, by the exit stairs or knocked out alike (2026-10-17:
+## gilding is for keeps, even when you go down): gilded finds join the armory
+## and stay worn; finds that weren't gilded are lost (that slot goes back to
+## what you came in with). Returns the kept finds.
+func end_crypt_run(_escaped: bool) -> Array:
 	var kept: Array = []
-	if escaped:
-		for slot in equipped.keys():
-			var item: Dictionary = equipped[slot]
-			if not item.get("found", false):
-				continue
-			if item.get("gilded", false):
-				item.erase("found")
-				armory.append(item)
-				kept.append(item)
-			elif _run_entry.has(slot):
-				equipped[slot] = _run_entry[slot]
-			else:
-				equipped.erase(slot)
-	else:
-		equipped = _run_entry.duplicate()
+	for slot in equipped.keys():
+		var item: Dictionary = equipped[slot]
+		if not item.get("found", false):
+			continue
+		if item.get("gilded", false):
+			item.erase("found")
+			armory.append(item)
+			kept.append(item)
+		elif _run_entry.has(slot):
+			equipped[slot] = _run_entry[slot]
+		else:
+			equipped.erase(slot)
 	_run_entry = {}
 	blessings.clear()
 	_commit()

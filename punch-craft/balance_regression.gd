@@ -408,14 +408,16 @@ func _test_seals_and_gear() -> void:
 	_check(kept.size() == 1 and kept[0].name == "Found Wraps", "Leaving by the stairs keeps only gilded finds")
 	_check(GameState.equipped.has("gloves") and GameState.equipped.has("wraps") and not GameState.equipped.has("charm"),
 			"After leaving: brought gear and gilded finds are worn, ungilded finds are gone")
-	# A knockout: even a gilded find is lost; only what you came in with stays.
+	# A knockout (2026-10-17): gilded finds are kept too; ungilded ones are lost.
 	GameState.begin_crypt_run()
 	var boots := {"slot": "boots", "rarity": "rare", "name": "Found Boots", "effects": {"move_speed": 0.05}, "floor": 1, "found": true}
+	var ring := {"slot": "charm", "rarity": "common", "name": "Found Ring", "effects": {"xp_bonus": 0.1}, "floor": 1, "found": true}
 	GameState.equip(boots)
+	GameState.equip(ring)
 	GameState.gild(boots)
-	GameState.end_crypt_run(false)
-	_check(not GameState.equipped.has("boots") and GameState.armory.size() == 2,
-			"A knockout keeps only what you came in with, gilded finds included")
+	var saved := GameState.end_crypt_run(false)
+	_check(saved.size() == 1 and GameState.equipped.has("boots") and not GameState.equipped.has("charm") and GameState.armory.size() == 3,
+			"A knockout keeps gilded finds and loses the rest")
 	GameState.dead_league_clears = saved_clears
 	GameState.equipped = saved_equipped
 	GameState.armory = saved_armory

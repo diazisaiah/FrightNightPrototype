@@ -1056,6 +1056,12 @@ Now the generator tracks hands (jab left, cross right, a hook or uppercut from t
 
 Saved as `drills: {drill: {best, day}}`; the day is your own clock's date.
 
+## Gilding is for keeps [Built 2026-10-17]
+
+- **A gilding altar rises in every Crypt boss room** when the boss falls, next to the boss chest and the stairs. You can gild the boss's drop right there, not only at the floor's first room.
+- **Gilded finds survive a knockout.** Going down (or abandoning the run) keeps every gilded find, worn and in the Armory, the same as leaving by the stairs. Only finds that weren't gilded crumble.
+- The results card says "KEPT N GILDED · M FINDS CRUMBLED TO DUST", and camp lists what came home.
+
 ## Gentler difficulty ramp [Built 2026-10-17]
 
 Crypt floors and Arena bouts got too hard too fast. Monsters are now built for a position on the climb that trails what the fight pays, using `Progression.enemy_scaling(x, difficulty)`.
