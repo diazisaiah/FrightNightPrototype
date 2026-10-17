@@ -37,6 +37,14 @@ const CATALOG := {
 		"desc": "The life of the funeral."},
 	"bucket": {"name": "Bucket", "rarity": "common", "effects": {"defense": 0.5},
 		"desc": "It's a bucket."},
+	"wig_black": {"name": "Strong Guy Wig (Black)", "rarity": "common", "effects": {"damage_percent": 0.015},
+		"desc": "Spiky. Suspiciously heroic."},
+	"wig_blonde": {"name": "Strong Guy Wig (Blonde)", "rarity": "uncommon", "effects": {"damage_percent": 0.025, "ult_gain": 0.02},
+		"desc": "Took three episodes of screaming to put on."},
+	"wig_blue": {"name": "Strong Guy Wig (Blue)", "rarity": "rare", "effects": {"damage_percent": 0.035, "ult_gain": 0.03},
+		"desc": "Dyed. Don't tell anyone."},
+	"wig_white": {"name": "Strong Guy Wig (White)", "rarity": "epic", "effects": {"dodge_window": 0.06, "counter_bonus": 0.08},
+		"desc": "It moves on its own. So do you."},
 	"bowler": {"name": "Bowler Hat", "rarity": "uncommon", "effects": {"counter_bonus": 0.05},
 		"desc": "Very proper. Very dead."},
 	"chef_toque": {"name": "Chef's Toque", "rarity": "uncommon", "effects": {"xp_bonus": 0.04},
@@ -59,6 +67,8 @@ const CATALOG := {
 		"desc": "He left it at the coat check."},
 	"fruit_hat": {"name": "Fruit Hat", "rarity": "epic", "effects": {"knuckles_percent": 0.04, "heal_on_kill": 1.0},
 		"desc": "Five servings a day. Too late for this guy."},
+	"monkey_mask": {"name": "Big Monkey Mask", "rarity": "epic", "effects": {"damage_percent": 0.03, "dodge_window": 0.03},
+		"desc": "Ook. The dead find it deeply unsettling."},
 	"yonker_brim": {"name": "Yonker with Brim", "rarity": "legendary", "effects": {},
 		"desc": "Does nothing. Yet."},
 	"yonker_no_brim": {"name": "Yonker with No Brim", "rarity": "legendary", "effects": {},
@@ -214,6 +224,16 @@ static func build(id: String, u: float) -> Node3D:
 			_b(hat, u, Vector3(0.6, 0.3, 0.5), Vector3(0, 0.25, 0.5), cloth, Vector3(0.4, 0, 0))
 		"fruit_hat":
 			_fruit_hat(hat, u)
+		"monkey_mask":
+			_monkey_mask(hat, u)
+		"wig_black":
+			_strong_wig(hat, u, Color(0.13, 0.13, 0.16), false)
+		"wig_blonde":
+			_strong_wig(hat, u, Color(1.0, 0.86, 0.28), true)
+		"wig_blue":
+			_strong_wig(hat, u, Color(0.25, 0.6, 1.0), true)
+		"wig_white":
+			_strong_wig(hat, u, Color(0.92, 0.94, 1.0), true)
 		"yonker_brim", "yonker_no_brim":
 			_yonker_cap(hat, u, id == "yonker_brim")
 		"brim_no_yonker":
@@ -236,6 +256,83 @@ static func _yonker_cap(hat: Node3D, u: float, brim: bool) -> void:
 	_b(hat, u, Vector3(0.05, 0.12, 0.03), Vector3(0, 0.08, -0.56), white)
 	_b(hat, u, Vector3(0.05, 0.1, 0.03), Vector3(-0.05, 0.18, -0.56), white, Vector3(0, 0, 0.6))
 	_b(hat, u, Vector3(0.05, 0.1, 0.03), Vector3(0.05, 0.18, -0.56), white, Vector3(0, 0, -0.6))
+
+
+## The strong guy's hair: a cap down the back of the head, bangs over the
+## brow and big blocky spikes. The base (black) look fans out every way; the
+## powered-up colors stand straight up and taller.
+static func _strong_wig(hat: Node3D, u: float, tint: Color, powered: bool) -> void:
+	var shade := tint.darkened(0.25)
+	_b(hat, u, Vector3(1.08, 0.24, 1.08), Vector3(0, 0.02, 0.02), tint)
+	_b(hat, u, Vector3(1.08, 0.62, 0.22), Vector3(0, -0.26, 0.46), shade)
+	for side in [-1.0, 1.0]:
+		_b(hat, u, Vector3(0.14, 0.42, 0.7), Vector3(0.5 * side, -0.14, 0.12), shade)
+	# Bangs: three points hanging over the brow.
+	for i in 3:
+		var x := (i - 1) * 0.26
+		_spike(hat, u, Vector3(x, -0.02, -0.5), Vector3(PI - 0.25, 0, x * 0.9), 0.32, 0.2, tint)
+	# The spikes: [base, tilt (x back, z out), length].
+	var spikes := [
+		[Vector3(0, 0.12, 0.0), Vector3(0.35, 0, 0), 0.7],
+		[Vector3(-0.3, 0.1, 0.05), Vector3(0.2, 0, 0.75), 0.62],
+		[Vector3(0.3, 0.1, 0.05), Vector3(0.2, 0, -0.75), 0.62],
+		[Vector3(-0.42, 0.0, 0.2), Vector3(0.5, 0, 1.25), 0.55],
+		[Vector3(0.42, 0.0, 0.2), Vector3(0.5, 0, -1.25), 0.55],
+		[Vector3(-0.18, 0.08, 0.35), Vector3(1.0, 0, 0.45), 0.58],
+		[Vector3(0.18, 0.08, 0.35), Vector3(1.0, 0, -0.45), 0.58],
+		[Vector3(0, 0.0, 0.48), Vector3(1.35, 0, 0), 0.52],
+		[Vector3(-0.2, 0.1, -0.25), Vector3(-0.35, 0, 0.4), 0.45],
+		[Vector3(0.2, 0.1, -0.25), Vector3(-0.35, 0, -0.4), 0.45],
+	]
+	for i in spikes.size():
+		var spike: Array = spikes[i]
+		var tilt: Vector3 = spike[1]
+		var length: float = spike[2]
+		tilt *= 0.45 if powered else 0.8
+		length *= 1.45 if powered else 1.15
+		_spike(hat, u, spike[0], tilt, length, 0.4, tint if i % 2 == 0 else tint.lightened(0.08))
+
+
+## One blocky spike of hair: three blocks narrowing to a point along its +Y.
+static func _spike(hat: Node3D, u: float, base: Vector3, tilt: Vector3, length: float, width: float, tint: Color) -> void:
+	var pivot := Node3D.new()
+	pivot.position = base * u
+	pivot.rotation = tilt
+	hat.add_child(pivot)
+	for k in 3:
+		var w := width * (1.0 - k * 0.32)
+		var h := length / 3.0
+		_b(pivot, u, Vector3(w, h * 1.05, w), Vector3(0, h * (k + 0.5), 0), tint)
+
+
+## A big rubber monkey head pulled over the whole head: brown fur, a tan face
+## with a heavy brow, wide eyes, a big grinning muzzle and round ears.
+static func _monkey_mask(hat: Node3D, u: float) -> void:
+	var fur := Color(0.36, 0.22, 0.12)
+	var fur_dark := Color(0.26, 0.15, 0.08)
+	var face := Color(0.86, 0.68, 0.5)
+	var dark := Color(0.08, 0.05, 0.04)
+	# The head: bigger than the wearer's, down over the face.
+	_b(hat, u, Vector3(1.04, 1.0, 1.0), Vector3(0, -0.3, 0.02), fur)
+	_b(hat, u, Vector3(0.3, 0.16, 0.3), Vector3(0, 0.24, 0.05), fur_dark)  # A tuft on top.
+	_b(hat, u, Vector3(0.16, 0.12, 0.16), Vector3(0.06, 0.34, 0.02), fur_dark)
+	# The face plate, brow and eyes.
+	_b(hat, u, Vector3(0.8, 0.66, 0.08), Vector3(0, -0.36, -0.5), face)
+	_b(hat, u, Vector3(0.84, 0.12, 0.14), Vector3(0, -0.06, -0.52), fur_dark)
+	for side in [-1.0, 1.0]:
+		_b(hat, u, Vector3(0.18, 0.16, 0.04), Vector3(0.18 * side, -0.2, -0.55), Color(0.97, 0.95, 0.9))
+		_b(hat, u, Vector3(0.09, 0.11, 0.04), Vector3(0.16 * side, -0.21, -0.57), dark)
+		_b(hat, u, Vector3(0.03, 0.03, 0.02), Vector3(0.14 * side, -0.18, -0.59), Color(1, 1, 1))
+	# The muzzle: a big snout with nostrils and a toothy grin.
+	_b(hat, u, Vector3(0.6, 0.34, 0.24), Vector3(0, -0.56, -0.6), face.darkened(0.06))
+	for side in [-1.0, 1.0]:
+		_b(hat, u, Vector3(0.07, 0.05, 0.03), Vector3(0.08 * side, -0.46, -0.73), dark)
+	_b(hat, u, Vector3(0.44, 0.09, 0.03), Vector3(0, -0.62, -0.72), dark)
+	_b(hat, u, Vector3(0.36, 0.05, 0.03), Vector3(0, -0.6, -0.735), Color(0.97, 0.95, 0.9))
+	# Big round ears, tan inside.
+	for side in [-1.0, 1.0]:
+		_b(hat, u, Vector3(0.2, 0.44, 0.4), Vector3(0.62 * side, -0.24, 0.02), fur)
+		_b(hat, u, Vector3(0.06, 0.3, 0.26), Vector3(0.73 * side, -0.24, 0.0), face.darkened(0.1))
 
 
 ## A towering fruit basket on a ruffled hot-pink brim, ribbons trailing.

@@ -46,6 +46,10 @@ var _keys: Array = []
 var _key := 0
 var _key_time := 0.0
 var _from := {}
+## The pose as the dance sets it (legs get _plant_feet on top).
+var _values := {}
+const LEGS := ["lh", "lk", "rh", "rk"]
+const LEG_LENGTH := 0.89
 var _playing := ""
 ## The current key's length when it isn't its own (easing into a dance).
 var _blend := -1.0
@@ -97,6 +101,7 @@ func _process(delta: float) -> void:
 	for joint in _from:
 		var to: Vector3 = target.get(joint, Emotes.REST.get(joint, Vector3.ZERO))
 		_set_joint(joint, (_from[joint] as Vector3).lerp(to, t))
+	_plant_feet()
 	if _key_time >= length:
 		if _playing == "" and _key >= _keys.size() - 1:
 			set_process(false)
@@ -117,19 +122,31 @@ func _next_key(first_length := -1.0) -> void:
 func _apply(pose: Dictionary) -> void:
 	for joint in Emotes.JOINTS + ["pos"]:
 		_set_joint(joint, pose.get(joint, Emotes.REST.get(joint, Vector3.ZERO)))
+	_plant_feet()
 
 
 func _set_joint(joint: String, value: Vector3) -> void:
+	_values[joint] = value
 	if joint == "pos":
 		_joints.hips.position = Vector3(0, _hip_height(), 0) + value
-	elif _joints.has(joint):
+	elif _joints.has(joint) and not joint in LEGS:
 		_joints[joint].rotation = value
 
 
 func _get_joint(joint: String) -> Vector3:
-	if joint == "pos":
-		return _joints.hips.position - Vector3(0, _hip_height(), 0)
-	return _joints[joint].rotation
+	return _values.get(joint, Vector3.ZERO)
+
+
+## Keeps the feet on the canvas: when the hips drop, the knees bend; when
+## they sway sideways, the legs lean to stay planted. Poses only say where
+## the hips go (and any kick on top).
+func _plant_feet() -> void:
+	var pos: Vector3 = _values.get("pos", Vector3.ZERO)
+	var bend := acos(clampf(1.0 - maxf(-pos.y, 0.0) / LEG_LENGTH, -1.0, 1.0))
+	var lean := -asin(clampf(pos.x / LEG_LENGTH, -1.0, 1.0))
+	for side in ["l", "r"]:
+		_joints[side + "h"].rotation = _values.get(side + "h", Vector3.ZERO) + Vector3(bend, 0, lean)
+		_joints[side + "k"].rotation = _values.get(side + "k", Vector3.ZERO) + Vector3(-2.0 * bend, 0, 0)
 
 
 func _hip_height() -> float:

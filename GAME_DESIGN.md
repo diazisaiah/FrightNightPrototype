@@ -935,6 +935,13 @@ The humor pillar: a hat collection and a secret character.
   - Uncommons: Bowler, Chef's Toque, Viking Helmet, Pirate Tricorn.
   - Rares: Top Hat (bunny inside), Tinfoil Hat, Hard Hat.
   - Epics: Paper Crown, Witch's Hat, Grim Reaper's Hood, and the **Fruit Hat**: a towering voxel fruit basket (pineapple leaves, oranges, a banana, grapes, cherries, strawberries) on a ruffled hot-pink brim with pink and yellow ruffles trailing down. "Five servings a day. Too late for this guy." +4% max knuckle HP and +1 heal on kill.
+  - Added 2026-10-17:
+    - **Big Monkey Mask** (epic): a big rubber monkey head over the whole head, with a heavy brow, wide eyes, a toothy grin and round ears. "Ook. The dead find it deeply unsettling." +3% damage, +3% dodge window.
+    - **Strong Guy Wigs:** big blocky spiked hair. The black one fans out every way; the powered-up colors stand straight up and taller.
+      - Black (common): +1.5% damage. "Spiky. Suspiciously heroic."
+      - Blonde (uncommon): +2.5% damage, +2% ultimate gain. "Took three episodes of screaming to put on."
+      - Blue (rare): +3.5% damage, +3% ultimate gain. "Dyed. Don't tell anyone."
+      - White (epic): +6% dodge window, +8% counter damage. "It moves on its own. So do you."
   - **Skeletons love the Fruit Hat:** when a skeleton (including skeleton mages and archers) rolls a hat, 1 in 4 times it's the Fruit Hat. The overall 2% hat rate is unchanged; on other enemies it's as rare as any epic.
 - **Legendaries** (generic navy caps with a stitched "Y", no real logo): **Yonker with Brim, Yonker with No Brim, Brim with No Yonker, No Yonker with No Brim** (an empty spot with legendary sparkles). Each does nothing ("Does nothing. Yet."). All four unlock Tony.
 
@@ -1128,6 +1135,12 @@ Hold **Emote** (G; View / Create on a controller, plus D-pad down in Weenie Hut 
 - Horse Ride (reins hop, then the lasso)
 - Running Man
 - Bros. Shuffle (the Mario & Luigi dance: fists bouncing at the chest, knock-kneed sway, alternating fist pumps)
+
+**Tightened 2026-10-17:** the dances were stiff from the front, because knee bends and hip dips happen front to back, and the feet sank into the floor.
+- `PlayerBody._plant_feet` now keeps the feet on the canvas: dropping the hips bends the knees, and swaying them sideways leans the legs.
+- Every dance moves in the frontal plane: wide hip sways, arms out to the sides, sideways kicks.
+- Timing is snappier, about 0.15-0.2s a beat.
+- The Nae Nae has a big overhead wave, a loose low arm, and a hip-to-hip rock with a knee pop into each side.
 
 **The body** (`player_body.gd`) is voxel blocks like the enemies, dressed after each card:
 - The Mauler: bare chest, red trunks, red gloves taped white, orange eyes.
