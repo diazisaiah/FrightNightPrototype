@@ -455,6 +455,12 @@ func _show_results() -> void:
 	# The fight's over: with the player still "fighting", the controller's menu
 	# cursor stays hidden (Pad) and the buttons can't be reached.
 	_player.active = false
+	# The card must stay clickable: pausing (Esc / Start, or the browser losing
+	# focus when the mouse is released) froze it while the cursor still moved.
+	_hud._can_pause = false
+	if get_tree().paused:
+		_hud.set_paused(false)
+	_ui.process_mode = Node.PROCESS_MODE_ALWAYS
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	var dim := ColorRect.new()
 	dim.color = Color(0, 0, 0, 0.6)

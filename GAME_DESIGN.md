@@ -1052,7 +1052,7 @@ Camp's **Daily** button (a READY badge while any reward is unclaimed) opens thre
 
 Now the generator tracks hands (jab left, cross right, a hook or uppercut from the hand that didn't punch last). Every called combo alternates hands (one double jab allowed) and sets up every heavy. A regression test throws 1,800 combos through the player's rules.
 
-**Results card (2026-10-17).** Again and Back to camp didn't work on a controller: the player still counted as fighting, so the menu cursor stayed hidden. The results card now ends the fight and focuses Again. The drill picker cards are bigger, with the status and best score on their own lines.
+**Results card (2026-10-17).** Again and Back to camp could go dead, for mouse and controller alike. If the game paused as the drill ended (Esc / Start, or the browser losing focus when the mouse is released), the card froze with the tree while the cursor still moved. The results card now ends the fight, turns pausing off, unpauses, keeps processing while paused, and focuses Again. The drill picker cards are bigger, with the status and best score on their own lines.
 
 Saved as `drills: {drill: {best, day}}`; the day is your own clock's date.
 
