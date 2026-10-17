@@ -551,7 +551,17 @@ func _test_emotes_and_hats() -> void:
 	Settings.values.pad_bindings = {}
 	Controls.apply()
 	_check(_keys("emote") == [KEY_G], "G emotes")
+	var old_assist = Settings.values.assist_mode
+	Settings.values.assist_mode = "pro"
+	Controls.apply()
 	_check(_pad_buttons("emote") == [JOY_BUTTON_BACK], "View / Create holds for the emote wheel")
+	_check(_pad_buttons("back_step_key") == [JOY_BUTTON_DPAD_DOWN], "Pro Gamer Mode keeps D-pad down for the back step")
+	Settings.values.assist_mode = "junior"
+	Controls.apply()
+	_check(_pad_buttons("emote") == [JOY_BUTTON_DPAD_DOWN, JOY_BUTTON_BACK], "Weenie Hut Junior Mode emotes on D-pad down too")
+	_check(Controls.pad_name("emote") == Pad.input_name(Controls._primary_pad("emote")) and Controls._primary_pad("emote").button_index == JOY_BUTTON_DPAD_DOWN, "Junior hints show D-pad down for emote")
+	Settings.values.assist_mode = old_assist
+	Controls.apply()
 	_check(_pad_buttons("map").is_empty(), "The map has no button of its own on a controller (a tap of emote opens it)")
 	_check(Controls.pad_name("map") == Controls.pad_name("emote"), "The controller map hint shows the emote button")
 	Settings.values.bindings = old_bindings

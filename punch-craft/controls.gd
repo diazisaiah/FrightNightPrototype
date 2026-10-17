@@ -49,7 +49,8 @@ const ACTIONS := ["punch_hook", "punch_uppercut", "dodge_modifier", "jump", "sli
 ## Sticks move and look, X / Y (Square / Triangle) jab and cross, the
 ## triggers hook and uppercut, the bumpers dodge, A jumps, B uses, the D-pad
 ## rolls / back steps / dashes, clicking the right stick fires the ultimate,
-## View / Create holds for the emote wheel (a tap opens the Crypt map).
+## View / Create holds for the emote wheel (a tap opens the Crypt map); in
+## Weenie Hut Junior Mode D-pad down does too (it's free there).
 const PAD_LAYOUT := [
 	["move_forward", JOY_AXIS_LEFT_Y, -1], ["move_back", JOY_AXIS_LEFT_Y, 1],
 	["move_left", JOY_AXIS_LEFT_X, -1], ["move_right", JOY_AXIS_LEFT_X, 1],
@@ -193,6 +194,9 @@ static func apply() -> void:
 	for entry in PAD_LAYOUT:
 		if junior() and entry[0] in ["roll_left_key", "roll_right_key", "back_step_key"]:
 			continue
+		if junior() and entry[0] == "emote":
+			# D-pad down first, so the hints show it.
+			InputMap.action_add_event("emote", _pad_event(["emote", JOY_BUTTON_DPAD_DOWN]))
 		InputMap.action_add_event(entry[0], _pad_event(entry))
 	var pad_custom := pad_bindings()
 	for action in pad_custom:
