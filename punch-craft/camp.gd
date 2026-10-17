@@ -662,7 +662,7 @@ func _pick_crypt_floors() -> void:
 
 ## A row of big cards, one per tier, edged in that tier's contender's color.
 ## Sealed ones show who holds the seal. options: {name, open, tier, value, pips}.
-func _pick(title: String, options: Array, callback: Callable) -> void:
+func _pick(title: String, options: Array, callback: Callable, subtitle := "") -> void:
 	var layer := CanvasLayer.new()
 	layer.layer = 50
 	add_child(layer)
@@ -684,6 +684,10 @@ func _pick(title: String, options: Array, callback: Callable) -> void:
 	var heading := UiTheme.title_label(title, 48, UiTheme.GOLD)
 	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(heading)
+	if subtitle != "":
+		var sub := _label(subtitle, 16, UiTheme.MUTED)
+		sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		column.add_child(sub)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 14)
 	column.add_child(row)
@@ -772,7 +776,7 @@ func _pick_drill() -> void:
 	_pick("DAILY DRILLS", options, func(id: String) -> void:
 		GameState.drill_pick = id
 		GameState.save_game()
-		Loading.go("res://drills.tscn"))
+		Loading.go("res://drills.tscn"), "Rewards pay at your furthest fight:  " + GameState.climb_place())
 
 
 func _start_crypt() -> void:

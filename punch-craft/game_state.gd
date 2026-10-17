@@ -1249,7 +1249,7 @@ func claim_drill(drill: String, score: int, _level: int) -> Dictionary:
 		var share: float = score / float(DRILL_GOOD_SCORE.get(drill, 1500.0))
 		if DRILL_CAP.has(drill):
 			share = minf(share, float(DRILL_CAP[drill]))
-		var x := Progression.arena_position(clampi(arena_division, 1, Progression.current_tier()), 2)
+		var x := climb_position()
 		result.coins = roundi(770.0 * Progression.pay(x) * share)
 		result.xp = roundi(250.0 * Progression.xp_pay(x) * share)
 		result.paid = true
@@ -1258,6 +1258,28 @@ func claim_drill(drill: String, score: int, _level: int) -> Dictionary:
 	drills[drill] = record
 	_commit()
 	return result
+
+
+## How far up the climb you've fought: the furthest Arena bout you've
+## reached (the next one after your best win) or Crypt floor you've cleared,
+## whichever is further. Daily drills pay at this point on the pay ladder.
+func climb_position() -> float:
+	var x := 0.0
+	for division in range(1, Progression.current_tier() + 1):
+		var won := int(arena_bouts.get(str(division), 0))
+		if won > 0 or division == 1:
+			x = maxf(x, Progression.arena_position(division, mini(won + 1, Progression.BOUTS_PER_DIVISION)))
+	if crypt_floors_cleared > 0:
+		x = maxf(x, Progression.crypt_position(crypt_floors_cleared, 1.0))
+	return x
+
+
+## Where the drills pay from, for the picker: "GRAVEDIGGER DIVISION  ·  BOUT 2".
+func climb_place() -> String:
+	var x := climb_position()
+	var division := clampi(floori(x) + 1, 1, Progression.TIER_COUNT)
+	var bout := clampi(roundi((x - (division - 1)) * Progression.BOUTS_PER_DIVISION) + 1, 1, Progression.BOUTS_PER_DIVISION)
+	return "%s DIVISION  ·  BOUT %d" % [Progression.TIERS[division - 1].division.to_upper(), bout]
 
 
 ## True when this drill's daily reward hasn't been claimed today.

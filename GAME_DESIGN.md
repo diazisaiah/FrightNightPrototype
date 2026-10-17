@@ -1041,7 +1041,7 @@ Camp's **Daily** button (a READY badge while any reward is unclaimed) opens thre
 | **Slip Line** | The dummy follows you round the ring and throws; dodge it. Getting hit costs a life (3 lives). | 12 a dodge (25 clean) + 2 a level; counters 30 + 3 a level | A new level every 5 dodges: longer combos (2, 3, then 4 punches), less warning (full, color, pose, fight speed), windups 3.5% faster a level down to 30% |
 | **Heavy Bags** | 60 seconds to knock bags off a three-bag rack (Wii Sports style). Bags swing on their chains and fly off when knocked out. | 10 per base punch of damage dealt (set-up heavies hit hardest), plus 100 + 25 a bag for each one knocked off | Each new bag has 14 + 2.5 x (bags knocked) base punches of HP |
 
-**Rewards** (`GameState.claim_drill`): coins = 770 x your division's pay x (score / a good score), XP = 250 x XP pay x the same share. Good scores: Pad Work 1,700, Slip Line 1,200, Heavy Bags 4,000.
+**Rewards** (`GameState.claim_drill`): coins = 770 x pay x (score / a good score), XP = 250 x XP pay x the same share. Pay comes from **your furthest fight on the climb** (`GameState.climb_position`): the next bout after your best Arena win, or the deepest Crypt floor you've cleared, whichever is further. Farming an easy division never shrinks them, and the picker shows where they pay from. Good scores: Pad Work 1,700, Slip Line 1,200, Heavy Bags 4,000.
 - Pad Work and Slip Line have **no cap**: the longer you last, the more you earn.
 - Heavy Bags caps at 1.5x.
 - The difficulty floors (0.9s for a 6-punch combo, 30% windups at fight speed) are where it gets too hard for a human, around level 40.
