@@ -1063,6 +1063,34 @@ Now the generator tracks hands (jab left, cross right, a hook or uppercut from t
 
 Saved as `drills: {drill: {best, day}}`; the day is your own clock's date.
 
+## Deeper tiers: places, veterans and music [Built 2026-10-17]
+
+- **Places** (`themes.gd`, `arena_scenery.gd`, Crypt `_theme_decor`): each tier has its own look, music and hazard.
+
+  | Tier | Arena | Crypt |
+  |---|---|---|
+  | 2 | Ossuary Pit (skull wall, skull pillars with blue fire, giant ribcages) | Catacombs (skull niches) |
+  | 3 | Drowned Pier (dock over black water, ghost lanterns, sunken ships) | Flooded Vaults (water, sunken coffins, drips) |
+  | 4 | Plague Carnival (tents, broken carousel, bulb strings, dead Ferris wheel) | Rot Gardens (glowing mushrooms, spores) |
+  | 5 | Coffin King's Colosseum (arcade, skeleton crowd, crown banners, lava cracks) | Royal Tomb (gold sarcophagi, carpet, chandelier, treasure) |
+
+- **Hazards** (`hazard.gd`), always marked and avoidable:
+  - Tier 4: toxic puddles that sting while you stand in them.
+  - Tier 5: fire vents that glow for a second, then erupt.
+- **Veterans** (`veterans.gd`): from tier 2, a growing share of each kind comes as its tougher version, from 25% at tier 2 to 85% at tier 5.
+  - Grave Bruiser: bull rush.
+  - Sprinter: double haymaker and bull rush.
+  - Bone Crusher: combos ending in a ground slam.
+  - Pit Fighter: leap slam.
+  - Bulwark: shield rush.
+  - Pyromancer: fire circles every other cast.
+  - Bone Sniper: a lane shot.
+  - Banshee: a shriek cone; back step out of it.
+- **Shared specials:** the contender specials now live in `Boxer`, with `Telegraphs` for the floor marks, so any boxer can use them.
+- **Music:** all tracks are Ogg now (about 0.3-0.45 MB each, looped in game). New tracks:
+  - Four Arena tracks and four Crypt tracks, one per tier.
+  - A theme for each contender: Bellman iron-bell doom, Headless gallop-western, Southpaw harpsichord drill, Plague Doctor carnival waltz-trap, Coffin King epic.
+
 ## Gilding is for keeps [Built 2026-10-17]
 
 - **A gilding altar rises in every Crypt boss room** when the boss falls, next to the boss chest and the stairs. You can gild the boss's drop right there, not only at the floor's first room.

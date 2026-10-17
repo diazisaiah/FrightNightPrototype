@@ -37,7 +37,8 @@ func _enter_tree() -> void:
 
 
 func _ready() -> void:
-	Sfx.play_music("league")
+	# Each contender has a theme of their own.
+	Sfx.play_music("boss_" + DeadLeagueRules.boss(GameState.dead_league_bout).id)
 	Enemy.max_attackers = 1
 	$Moon.shadow_enabled = Settings.get_value("shadows") and not Settings.use_web_profile()
 	Look.tune_environment($WorldEnvironment.environment, "ring")

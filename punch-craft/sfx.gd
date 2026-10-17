@@ -19,11 +19,24 @@ var _ambience: AudioStreamPlayer
 ## The soundtrack: one looping track per place (audio_lab/make_tracks.py),
 ## crossfading as you move between them. [path, volume_db].
 const MUSIC := {
-	"title": ["res://music/title.wav", -1.0],
-	"camp": ["res://music/camp.wav", 2.0],
-	"arena": ["res://music/arena.wav", -2.0],
-	"crypt": ["res://music/crypt.wav", -1.0],
-	"league": ["res://music/league.wav", -2.0],
+	"title": ["res://music/title.ogg", -1.0],
+	"camp": ["res://music/camp.ogg", 2.0],
+	"arena": ["res://music/arena.ogg", -2.0],
+	"crypt": ["res://music/crypt.ogg", -1.0],
+	"league": ["res://music/league.ogg", -2.0],
+	"arena_bone": ["res://music/arena_bone.ogg", -1.5],
+	"arena_ghost": ["res://music/arena_ghost.ogg", -1.0],
+	"arena_plague": ["res://music/arena_plague.ogg", 0.0],
+	"arena_crown": ["res://music/arena_crown.ogg", -2.0],
+	"crypt_bone": ["res://music/crypt_bone.ogg", 1.0],
+	"crypt_ghost": ["res://music/crypt_ghost.ogg", 0.0],
+	"crypt_plague": ["res://music/crypt_plague.ogg", 0.0],
+	"crypt_crown": ["res://music/crypt_crown.ogg", 1.0],
+	"boss_bellman": ["res://music/boss_bellman.ogg", -3.0],
+	"boss_headless": ["res://music/boss_headless.ogg", -1.5],
+	"boss_southpaw": ["res://music/boss_southpaw.ogg", -1.0],
+	"boss_plague_doctor": ["res://music/boss_plague_doctor.ogg", 0.0],
+	"boss_coffin_king": ["res://music/boss_coffin_king.ogg", -2.0],
 }
 const MUSIC_FADE := 1.4
 ## Two players so tracks can crossfade.
@@ -133,7 +146,10 @@ func play_music(track: String) -> void:
 	var old := _music
 	_music = _music_b
 	_music_b = old
-	_music.stream = load(path)
+	var stream: AudioStream = load(path)
+	if stream is AudioStreamOggVorbis:
+		(stream as AudioStreamOggVorbis).loop = true
+	_music.stream = stream
 	_music.volume_db = -40.0
 	_music.play()
 	# A new switch takes over from a crossfade still running.
