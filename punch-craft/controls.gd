@@ -44,11 +44,12 @@ const SLIP_MODES := {
 ## Actions this scheme fills in (created if the project doesn't have them).
 const ACTIONS := ["punch_hook", "punch_uppercut", "dodge_modifier", "jump", "slip_left", "slip_right",
 		"roll_left_key", "roll_right_key", "back_step_key", "dash_key", "ultimate", "map",
-		"look_left", "look_right", "look_up", "look_down", "pause"]
+		"look_left", "look_right", "look_up", "look_down", "pause", "emote"]
 ## The controller layout: [action, button] or [action, axis, direction].
 ## Sticks move and look, X / Y (Square / Triangle) jab and cross, the
 ## triggers hook and uppercut, the bumpers dodge, A jumps, B uses, the D-pad
-## rolls / back steps / dashes, clicking the right stick fires the ultimate.
+## rolls / back steps / dashes, clicking the right stick fires the ultimate,
+## View / Create holds for the emote wheel (a tap opens the Crypt map).
 const PAD_LAYOUT := [
 	["move_forward", JOY_AXIS_LEFT_Y, -1], ["move_back", JOY_AXIS_LEFT_Y, 1],
 	["move_left", JOY_AXIS_LEFT_X, -1], ["move_right", JOY_AXIS_LEFT_X, 1],
@@ -61,7 +62,7 @@ const PAD_LAYOUT := [
 	["roll_left_key", JOY_BUTTON_DPAD_LEFT], ["roll_right_key", JOY_BUTTON_DPAD_RIGHT],
 	["back_step_key", JOY_BUTTON_DPAD_DOWN], ["dash_key", JOY_BUTTON_DPAD_UP],
 	["ultimate", JOY_BUTTON_RIGHT_STICK], ["interact", JOY_BUTTON_B],
-	["map", JOY_BUTTON_BACK], ["pause", JOY_BUTTON_START],
+	["emote", JOY_BUTTON_BACK], ["pause", JOY_BUTTON_START],
 ]
 ## Actions you can rebind, in the order Settings lists them: [action, name,
 ## name in Pro Gamer Mode ("" = same), shown in Weenie Hut Junior Mode].
@@ -86,6 +87,7 @@ const BINDABLE := [
 	["ultimate", "Ultimate", "", true],
 	["interact", "Use", "", true],
 	["map", "Map  (Crypt)", "", true],
+	["emote", "Emote  (hold for the wheel)", "", true],
 	["pause", "Pause", "", true],
 ]
 
@@ -185,6 +187,7 @@ static func apply() -> void:
 	if junior() or dodges() != "keys":
 		_add_key("map", KEY_TAB)
 	_add_key("pause", KEY_ESCAPE)
+	_add_key("emote", KEY_G)
 	# The controller layout, then your own controller bindings over it. In
 	# Weenie Hut Junior Mode the bumpers pick every dodge, so the D-pad only dashes.
 	for entry in PAD_LAYOUT:
@@ -308,6 +311,8 @@ static func kb_name(action: String) -> String:
 
 static func pad_name(action: String) -> String:
 	var event := _primary_pad(action)
+	if event == null and action == "map":
+		event = _primary_pad("emote")  # A tap of the emote button opens the map.
 	return Pad.input_name(event) if event else "-"
 
 
@@ -575,7 +580,7 @@ static func summary() -> String:
 		parts.append_array(["%s slip" % text("slip"), "%s roll" % text("roll"), "%s back step" % text("back_step")])
 	parts.append_array([
 		"%s dash" % text("dash"), "%s jump" % text("jump"), "%s ultimate" % text("ultimate"),
-		"%s use" % key_name("interact"), "%s pause" % key_name("pause"),
+		"%s use" % key_name("interact"), "%s emote" % key_name("emote"), "%s pause" % key_name("pause"),
 	])
 	return "  |  ".join(parts)
 
@@ -596,7 +601,7 @@ static func rows() -> Array:
 		list.append(["Roll", text("roll")])
 		list.append(["Back step", text("back_step")])
 	list.append_array([["Dash", text("dash")], ["Jump", text("jump")], ["Ultimate", text("ultimate")],
-			["Use", key_name("interact")], ["Pause", key_name("pause")]])
+			["Use", key_name("interact")], ["Emote  (hold for the wheel)", key_name("emote")], ["Pause", key_name("pause")]])
 	return list
 
 

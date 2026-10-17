@@ -1092,6 +1092,9 @@ var arena_bouts := {}
 var crypt_tier := 1
 ## Collected hats: id -> how many popped (duplicates turned into Souls).
 var hats := {}
+## The hat your fighter wears (seen when you emote), "" for none. Cosmetic:
+## every hat's boost counts once it's on the rack.
+var worn_hat := ""
 ## Daily drills: {drill: {"best": score, "day": "YYYY-MM-DD" of the last paid run}}.
 var drills := {}
 ## The drill picked in camp for the drills scene (not saved).
@@ -1285,6 +1288,12 @@ func climb_place() -> String:
 ## True when this drill's daily reward hasn't been claimed today.
 func drill_ready(drill: String) -> bool:
 	return drills.get(drill, {}).get("day", "") != Time.get_date_string_from_system()
+
+
+## Puts on a hat you own, or takes it off when it's already on ("" for none).
+func wear_hat(id: String) -> void:
+	worn_hat = "" if id == worn_hat or not hats.has(id) else id
+	_commit()
 
 
 ## Collects a popped hat. Returns "new", "duplicate" (turned into Souls) or
@@ -1786,6 +1795,7 @@ func save_game() -> void:
 		"arena_bouts": arena_bouts,
 		"crypt_tier": crypt_tier,
 		"hats": hats,
+		"worn_hat": worn_hat,
 		"drills": drills,
 		"hat_pity": hat_pity,
 		"tony_unlocked": tony_unlocked,
@@ -1860,6 +1870,9 @@ func load_game() -> void:
 		for id in saved_hats:
 			hats[id] = int(saved_hats[id])
 	hat_pity = int(data.get("hat_pity", 0))
+	worn_hat = String(data.get("worn_hat", ""))
+	if not hats.has(worn_hat):
+		worn_hat = ""
 	tony_unlocked = bool(data.get("tony_unlocked", false))
 	# Champion Sigils are gone: any saved (spent or not) become Souls.
 	var old_sigils := int(data.get("sigils", 0))
@@ -2083,6 +2096,7 @@ func _reset_fields() -> void:
 	arena_bouts = {}
 	crypt_tier = 1
 	hats = {}
+	worn_hat = ""
 	drills = {}
 	hat_pity = 0
 	tony_unlocked = false

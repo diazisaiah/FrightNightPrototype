@@ -29,6 +29,8 @@ func _run() -> void:
 	_test_browser_audio_guard()
 	_test_crypt_unlock()
 	_test_class_balance()
+	_test_emotes_and_hats()
+	_test_pad_work_combos()
 	if _failures.is_empty():
 		print("BALANCE REGRESSION: PASS")
 		get_tree().quit(0)
@@ -528,3 +530,75 @@ func _test_class_balance() -> void:
 	_check(uplifts.max() - uplifts.min() < 0.2, "Full skill webs should be worth about the same for every class: %s" % [uplifts])
 	print("Full skill web POWER: %s" % [uplifts.map(func(u: float) -> String: return "x%.2f" % u)])
 	GameState.player_class = saved_class
+
+
+## Emotes: every dance only moves real joints; the emote key is G / View
+## (the controller's map tap rides on it); a worn hat must be owned and saves.
+func _test_emotes_and_hats() -> void:
+	_check(Emotes.ORDER.size() == Emotes.NAMES.size(), "Every dance is on the wheel")
+	for id in Emotes.ORDER:
+		var keys := Emotes.keys(id)
+		_check(keys.size() >= 2, "%s has a loop of poses" % id)
+		for key in keys:
+			_check(float(key[0]) > 0.0, "%s keys take time" % id)
+			for joint in key[1]:
+				_check(joint == "pos" or joint in Emotes.JOINTS, "%s moves a real joint (not %s)" % [id, joint])
+	var flipped := Emotes.mirror({"ls": Vector3(1, 0.2, 0.3), "pos": Vector3(0.1, 0, 0)})
+	_check(flipped.has("rs") and flipped.rs == Vector3(1, -0.2, -0.3) and flipped.pos == Vector3(-0.1, 0, 0), "mirror() swaps sides")
+	var old_bindings = Settings.values.get("bindings", {})
+	var old_pad = Settings.values.get("pad_bindings", {})
+	Settings.values.bindings = {}
+	Settings.values.pad_bindings = {}
+	Controls.apply()
+	_check(_keys("emote") == [KEY_G], "G emotes")
+	_check(_pad_buttons("emote") == [JOY_BUTTON_BACK], "View / Create holds for the emote wheel")
+	_check(_pad_buttons("map").is_empty(), "The map has no button of its own on a controller (a tap of emote opens it)")
+	_check(Controls.pad_name("map") == Controls.pad_name("emote"), "The controller map hint shows the emote button")
+	Settings.values.bindings = old_bindings
+	Settings.values.pad_bindings = old_pad
+	Controls.apply()
+	GameState._reset_fields()
+	GameState.wear_hat("top_hat")
+	_check(GameState.worn_hat == "", "You can't wear a hat you don't own")
+	GameState.add_hat("top_hat")
+	GameState.wear_hat("top_hat")
+	_check(GameState.worn_hat == "top_hat", "You can wear a hat you own")
+	GameState.save_game()
+	GameState.worn_hat = ""
+	GameState.load_game()
+	_check(GameState.worn_hat == "top_hat", "The worn hat is saved")
+	GameState.wear_hat("top_hat")
+	_check(GameState.worn_hat == "", "Clicking the worn hat takes it off")
+	GameState._reset_fields()
+
+
+## Pad Work only calls combos you can throw clean: hands alternate (one
+## double jab), and every hook or uppercut is set up, by the player's rules.
+func _test_pad_work_combos() -> void:
+	var drill = load("res://drills.gd").new()
+	seed(99)
+	for level in [1, 3, 6, 10, 16, 25]:
+		drill._level = level
+		for n in 300:
+			var combo: Array = drill._make_combo()
+			var last_hand := ""
+			var last_type := ""
+			var last_set_up := false
+			var jab_run := 0
+			for i in combo.size():
+				var type: String = combo[i]
+				var hand := "left" if type == "jab" else ("right" if type == "cross" else ("right" if last_hand == "left" else "left"))
+				_check(hand == drill._pad_hands[i], "Pad Work knows which hand throws each punch")
+				var jab_repeat := type == "jab" and last_type == "jab" and hand == last_hand
+				jab_run = jab_run + 1 if jab_repeat else (1 if type == "jab" else 0)
+				if i > 0 and hand == last_hand and not (jab_repeat and jab_run <= 2):
+					_check(false, "Pad Work called the same hand twice: %s" % [combo])
+				var heavy: bool = Player.PUNCHES[type].heavy
+				var set_up := heavy and i > 0 and hand != last_hand \
+						and (last_type in ["jab", "cross"] or (type == "uppercut" and last_type == "hook" and last_set_up))
+				if heavy and not set_up:
+					_check(false, "Pad Work called an unset-up %s: %s" % [type, combo])
+				last_hand = hand
+				last_type = type
+				last_set_up = set_up
+	drill.free()

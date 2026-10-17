@@ -40,6 +40,8 @@ var _done := false
 var _claim := {}
 # Pad Work.
 var _pad_combo: Array = []
+## Which hand throws each punch of the combo ("left" / "right").
+var _pad_hands: Array = []
 var _pad_at := 0
 var _pad_time := 0.0
 var _pad_clock := 0.0
@@ -155,32 +157,33 @@ func _countdown() -> void:
 
 ## A combo for this level: 2 punches at first, up to 6. Hooks and uppercuts
 ## join from level 3, always placed where they can be set up.
+## A combo that follows the combo rules, tracking hands: the jab is the left,
+## the cross the right, a hook or uppercut comes from the hand that didn't
+## punch last. Hands alternate (one double jab allowed), and every hook or
+## uppercut is set up (after a jab or cross, or an uppercut after a hook).
+## Fills _pad_hands too.
 func _make_combo() -> Array:
 	var length := clampi(2 + (_level - 1) / 3, 2, 6)
 	var heavies := _level >= 3
 	var combo := [["jab", "cross"].pick_random()]
-	var hooked := false
+	var hand := "left" if combo[0] == "jab" else "right"
+	_pad_hands = [hand]
 	while combo.size() < length:
 		var last: String = combo[-1]
-		var options := []
-		match last:
-			"jab":
-				options = ["cross", "cross"]
-				if combo.size() < 2 or combo[-2] != "jab":
-					options.append("jab")
-				if heavies:
-					options.append_array(["hook", "uppercut"])
-			"cross":
-				options = ["jab", "jab"]
-				if heavies:
-					options.append_array(["hook", "uppercut"])
-			"hook":
-				options = ["cross", "uppercut"] if hooked else ["cross"]
-			"uppercut":
-				options = ["jab", "cross"]
+		var other := "right" if hand == "left" else "left"
+		var straight := "jab" if other == "left" else "cross"
+		var options := [straight, straight]
+		if last == "jab" and (combo.size() < 2 or combo[-2] != "jab"):
+			options.append("jab")  # The double jab (the right hand comes next).
+		if heavies and last in ["jab", "cross"]:
+			options.append_array(["hook", "uppercut"])
+		elif heavies and last == "hook":
+			options.append("uppercut")
 		var pick: String = options.pick_random()
-		hooked = pick == "hook"
+		if not (pick == "jab" and last == "jab"):
+			hand = other
 		combo.append(pick)
+		_pad_hands.append(hand)
 	return combo
 
 
@@ -205,11 +208,15 @@ func _on_drill_punch(type: String, kind: String) -> void:
 			pass
 
 
-func _pad_punch(type: String, kind: String) -> void:
+func _pad_punch(type: String, _kind_of_hit: String) -> void:
 	var heavy: bool = Player.PUNCHES[type].heavy
-	var right: bool = type == _pad_combo[_pad_at] and (not heavy or kind == "setup") and _player.combo >= _pad_at + 1
+	# Only the input is judged: the punch the coach called (and, with Shift /
+	# Ctrl + click hooks, the hand). The combo itself is built to the rules.
+	var right: bool = type == _pad_combo[_pad_at]
+	if right and heavy and not Controls.direct_punches() and not Controls.pad():
+		right = _player.last_hand() == _pad_hands[_pad_at]
 	if not right:
-		_pad_miss("SLOPPY" if heavy and type == _pad_combo[_pad_at] else "WRONG PUNCH")
+		_pad_miss("WRONG PUNCH")
 		return
 	_add_score(25 if heavy else 10)
 	_pad_at += 1
@@ -430,7 +437,10 @@ func _fill_chips() -> void:
 		var column := VBoxContainer.new()
 		column.add_theme_constant_override("separation", -2)
 		chip.add_child(column)
-		var name_label := UiTheme.title_label(type.to_upper(), 22, color.lightened(0.2) if done or next else UiTheme.MUTED)
+		var title := type.to_upper()
+		if type in ["hook", "uppercut"] and not Controls.direct_punches() and not Controls.pad():
+			title = "%s %s" % ["L" if _pad_hands[i] == "left" else "R", title]  # Shift / Ctrl + that hand's click.
+		var name_label := UiTheme.title_label(title, 22, color.lightened(0.2) if done or next else UiTheme.MUTED)
 		name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		column.add_child(name_label)
 		var key := _coach_label(13, UiTheme.MUTED)
@@ -442,6 +452,9 @@ func _fill_chips() -> void:
 
 
 func _show_results() -> void:
+	# The fight's over: with the player still "fighting", the controller's menu
+	# cursor stays hidden (Pad) and the buttons can't be reached.
+	_player.active = false
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	var dim := ColorRect.new()
 	dim.color = Color(0, 0, 0, 0.6)
@@ -490,3 +503,4 @@ func _show_results() -> void:
 	back.custom_minimum_size = Vector2(180, 52)
 	back.pressed.connect(_go_to_camp)
 	buttons.add_child(back)
+	again.grab_focus.call_deferred()

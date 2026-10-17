@@ -785,12 +785,8 @@ static func _glow_material(color: Color) -> StandardMaterial3D:
 
 func _update_label() -> void:
 	var text := "%s\n%d / %d" % [display_name, ceili(hp), int(max_hp)]
-	# The armor that still stops your punches (after Can Opener), shown only
-	# when it's at least 1: "Armor 0" says nothing.
-	var stops := roundi(armor * (1.0 - GameState.get_armor_pierce()))
+	# Armor isn't shown (2026-10-17): the gear on the body says it.
 	var lines := []
-	if stops >= 1:
-		lines.append("Armor %d" % stops)
 	if damage_reduction >= 0.01:
 		lines.append("-%d%% damage" % roundi(damage_reduction * 100))
 	if not lines.is_empty():

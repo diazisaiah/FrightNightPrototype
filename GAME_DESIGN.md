@@ -1037,7 +1037,7 @@ Camp's **Daily** button (a READY badge while any reward is unclaimed) opens thre
 
 | Drill | How it plays | Scoring | Gets harder by |
 |---|---|---|---|
-| **Pad Work** | The coach calls a combo as punch chips (with your keys); throw it in order before the clock runs out. Hooks and uppercuts must be set up, and the combo must stay alive. A wrong or sloppy punch, or the clock running out, costs a life (3 lives). | 10 a punch, 25 a set-up heavy, plus (40 + 15 a punch) x (1 + time left) x (1 + 5% a level) per combo | Combos grow from 2 punches to 6 (heavies from level 3); the clock shrinks 5% a level down to 0.9s |
+| **Pad Work** | The coach calls a combo as punch chips (with your keys); throw it in order before the clock runs out. Only the input is judged (2026-10-17): a wrong punch (or, with Shift / Ctrl + click hooks, the wrong hand, shown as L / R on the chip) or the clock running out costs a life (3 lives). | 10 a punch, 25 a set-up heavy, plus (40 + 15 a punch) x (1 + time left) x (1 + 5% a level) per combo | Combos grow from 2 punches to 6 (heavies from level 3); the clock shrinks 5% a level down to 0.9s |
 | **Slip Line** | The dummy follows you round the ring and throws; dodge it. Getting hit costs a life (3 lives). | 12 a dodge (25 clean) + 2 a level; counters 30 + 3 a level | A new level every 5 dodges: longer combos (2, 3, then 4 punches), less warning (full, color, pose, fight speed), windups 3.5% faster a level down to 30% |
 | **Heavy Bags** | 60 seconds to knock bags off a three-bag rack (Wii Sports style). Bags swing on their chains and fly off when knocked out. | 10 per base punch of damage dealt (set-up heavies hit hardest), plus 100 + 25 a bag for each one knocked off | Each new bag has 14 + 2.5 x (bags knocked) base punches of HP |
 
@@ -1046,7 +1046,43 @@ Camp's **Daily** button (a READY badge while any reward is unclaimed) opens thre
 - Heavy Bags caps at 1.5x.
 - The difficulty floors (0.9s for a 6-punch combo, 30% windups at fight speed) are where it gets too hard for a human, around level 40.
 
+**Pad Work fixes (2026-10-17).** Correct inputs were being marked wrong, for two reasons:
+- The drill checked the player's combo count, which stops growing after 4 plain jabs/crosses in a row (the "mix it up" rule).
+- The generator could call a combo like jab, hook, cross. The hook comes from the right hand, so the cross was the same hand twice.
+
+Now the generator tracks hands (jab left, cross right, a hook or uppercut from the hand that didn't punch last). Every called combo alternates hands (one double jab allowed) and sets up every heavy. A regression test throws 1,800 combos through the player's rules.
+
+**Results card (2026-10-17).** Again and Back to camp didn't work on a controller: the player still counted as fighting, so the menu cursor stayed hidden. The results card now ends the fight and focuses Again. The drill picker cards are bigger, with the status and best score on their own lines.
+
 Saved as `drills: {drill: {best, day}}`; the day is your own clock's date.
+
+## Emotes and your fighter's body [Built 2026-10-17]
+
+Hold **Emote** (G; View / Create on a controller) for the emote wheel, steer with the mouse or right stick, and let go on a dance. The camera pulls out to third person (about 0.35s, Destiny style) around your fighter. The mouse or right stick orbits the camera. Moving, punching, dodging, jumping, the ultimate or getting hit ends the dance and glides the camera back. Emoting works mid-fight; you're open while you dance. A quick tap repeats your last dance (or stops one). On a controller, a tap opens the map where there is one (the Crypt, the tutorial's dummy cycling), since the map gave up its own button.
+
+**Dances** (`emotes.gd`, keyframed poses eased in a loop, mirrored with `Emotes.mirror`):
+- The Default
+- Dab
+- Nae Nae
+- Floss
+- Take the L
+- Griddy (heel taps, then the goggles)
+- Horse Ride (reins hop, then the lasso)
+- Running Man
+- Bros. Shuffle (the Mario & Luigi dance: fists bouncing at the chest, knock-kneed sway, alternating fist pumps)
+
+**The body** (`player_body.gd`) is voxel blocks like the enemies, dressed after each card:
+- The Mauler: bare chest, red trunks, red gloves taped white, orange eyes.
+- The Blur: dark top, violet sash, spiky hair, violet eyes.
+- The Answer: black jacket, white belt, blue gloves, ice eyes.
+- The Stray: a mop of locs, red headband with tails, green sash, taped fists, green eyes.
+- Tony: black tracksuit with white stripes, white tee, gold chain and pinky ring, beanie, stubble, red nose.
+
+It renders on its own layer, so the lantern at your eyes doesn't blow it out; a soft fill on the emote camera lights it. No crosshair while the camera's out.
+
+**Wear a hat:** click an owned hat on the Hat Rack to wear it (WEARING tag, gold border); click again to take it off. It shows on your fighter when you emote (Tony's beanie comes off for it). It's cosmetic only: every owned hat's boost already counts. Saved as `worn_hat`.
+
+**Enemy labels (2026-10-17):** the Armor number is gone from enemy name tags; the gear on the body says it. The damage-reduction line stays.
 
 ## Launch readiness [In progress, 2026-10-15]
 

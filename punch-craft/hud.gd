@@ -114,6 +114,9 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_pulse_time += delta
+	# No crosshair while the camera's out for an emote.
+	var camera := get_viewport().get_camera_3d()
+	_crosshair.visible = camera == null or not camera.is_in_group("emote_cam")
 	# Edges throb red when knuckles are under 30%.
 	var danger := clampf((0.3 - _knuckle_ratio) / 0.3, 0.0, 1.0)
 	_low_health_vignette.self_modulate.a = danger * (0.5 + 0.25 * sin(_pulse_time * 6.0))

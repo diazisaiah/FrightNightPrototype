@@ -108,6 +108,7 @@ var _drill_at := 0
 
 
 func _ready() -> void:
+	add_to_group("map_scene")  # A tap of the controller emote button opens the map.
 	Sfx.play_music("camp")
 	Enemy.max_attackers = 1
 	$Moon.shadow_enabled = Settings.get_value("shadows") and not Settings.use_web_profile()

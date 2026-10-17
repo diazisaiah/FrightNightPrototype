@@ -696,7 +696,8 @@ func _pick(title: String, options: Array, callback: Callable, subtitle := "") ->
 			continue  # Sealed tiers aren't shown until they open.
 		var accent: Color = DeadLeagueRules.boss(option.tier - 1).accent
 		var card := Button.new()
-		card.custom_minimum_size = Vector2(200, 230)
+		var card_size: Vector2 = option.get("card_size", Vector2(200, 230))
+		card.custom_minimum_size = card_size
 		card.disabled = not option.open
 		var face := UiTheme.raised(Color(0.06, 0.05, 0.08, 0.96), Color(accent, 0.75), 2, 12)
 		var hover := UiTheme.raised(Color(accent.darkened(0.75), 0.98), accent.lightened(0.2), 3, 12)
@@ -714,7 +715,7 @@ func _pick(title: String, options: Array, callback: Callable, subtitle := "") ->
 		inside.add_theme_constant_override("separation", 10)
 		inside.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		card.add_child(inside)
-		var number := UiTheme.title_label(option.get("number", "%d" % option.tier), 64, accent.lightened(0.2) if option.open else UiTheme.BORDER)
+		var number := UiTheme.title_label(option.get("number", "%d" % option.tier), option.get("number_size", 64), accent.lightened(0.2) if option.open else UiTheme.BORDER)
 		number.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		inside.add_child(number)
 		var label := UiTheme.title_label(option.name, 22, UiTheme.TEXT if option.open else UiTheme.MUTED.darkened(0.3))
@@ -724,8 +725,13 @@ func _pick(title: String, options: Array, callback: Callable, subtitle := "") ->
 			var detail := _label(option.detail, 14, UiTheme.MUTED)
 			detail.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			detail.custom_minimum_size.x = 176
+			detail.custom_minimum_size.x = card_size.x - 24
 			inside.add_child(detail)
+		for line in option.get("lines", []):
+			var extra := _label(line[0], 15, line[1])
+			extra.add_theme_font_override("font", UiTheme.bold_font())
+			extra.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			inside.add_child(extra)
 		if not option.open:
 			var holder := _label("SEALED BY\n" + DeadLeagueRules.boss(option.tier - 2).name, 13, UiTheme.SIGIL)
 			holder.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -770,9 +776,11 @@ func _pick_drill() -> void:
 	for id in DRILLS:
 		var card: Array = DRILL_CARDS[id]
 		var best := int(GameState.drills.get(id, {}).get("best", 0))
-		var status := "REWARD READY" if GameState.drill_ready(id) else "PRACTICE"
-		options.append({"name": card[1], "number": card[0], "tier": 1, "open": true, "value": id,
-			"detail": "%s\n%s\nBEST  %d" % [card[2], status, best]})
+		var ready := GameState.drill_ready(id)
+		options.append({"name": card[1], "number": card[0], "number_size": 40, "tier": 1, "open": true, "value": id,
+			"card_size": Vector2(260, 290), "detail": card[2],
+			"lines": [["REWARD READY" if ready else "PRACTICE", UiTheme.GOOD if ready else UiTheme.MUTED],
+				["BEST  %d" % best, UiTheme.TEXT]]})
 	_pick("DAILY DRILLS", options, func(id: String) -> void:
 		GameState.drill_pick = id
 		GameState.save_game()
@@ -940,6 +948,10 @@ func _build_hat_rack() -> Control:
 	header.add_child(_hat_title)
 	_hat_yonkers = UiTheme.title_label("", 22, Items.RARITIES.legendary.color)
 	header.add_child(_hat_yonkers)
+	var tip := _label("Click a hat to wear it. Hold %s in a fight to emote and see it." % Controls.key_name("emote"), 13, UiTheme.MUTED)
+	column.add_child(tip)
+	Controls.watch(tip, func() -> void:
+		tip.text = "Click a hat to wear it. Hold %s in a fight to emote and see it." % Controls.key_name("emote"))
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -977,7 +989,17 @@ func _hat_card(id: String) -> Control:
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	card.add_theme_stylebox_override("panel", UiTheme.box(Color(tint.darkened(0.8), 0.6) if have else Color(0, 0, 0, 0.35),
 			Color(tint, 0.8) if have else Color(1, 1, 1, 0.08), 2 if have else 1, 10, 8.0))
-	card.tooltip_text = info.desc if have else "???"
+	card.tooltip_text = (info.desc + "\nClick to wear it (you'll see it when you emote).") if have else "???"
+	if have:
+		var worn := GameState.worn_hat == id
+		if worn:
+			card.add_theme_stylebox_override("panel", UiTheme.box(Color(tint.darkened(0.7), 0.8), UiTheme.GOLD, 3, 10, 8.0))
+		card.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		card.gui_input.connect(func(event: InputEvent) -> void:
+			if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+				GameState.wear_hat(id)
+				Sfx.play("tick")
+				_refresh_hat_rack())
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 2)
 	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1001,6 +1023,11 @@ func _hat_card(id: String) -> Control:
 		boost.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		boost.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		column.add_child(boost)
+		if GameState.worn_hat == id:
+			var wearing := _label("WEARING", 12, UiTheme.GOLD)
+			wearing.add_theme_font_override("font", UiTheme.bold_font())
+			wearing.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			column.add_child(wearing)
 		if int(GameState.hats[id]) > 1:
 			var count := _label("x%d" % int(GameState.hats[id]), 12, UiTheme.MUTED)
 			count.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

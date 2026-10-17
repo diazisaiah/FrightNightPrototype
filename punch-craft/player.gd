@@ -283,6 +283,31 @@ var _fov_tween: Tween
 ## The class ultimate and its meter.
 var ult: Ult
 
+## Emotes: hold the emote key for the wheel (EmoteWheel), let go on a dance.
+## The camera pulls out to third person around your fighter (PlayerBody) until
+## you move, punch, dodge, jump, fire the ultimate or get hit. A quick tap
+## repeats the last dance (on a controller it opens the map where there is one).
+const EMOTE_CAM_DISTANCE := 2.7
+const EMOTE_CAM_TIME := 0.35
+const EMOTE_TAP := 0.25
+## The camera looks at this height on your fighter.
+const EMOTE_FOCUS := 1.1
+const EMOTE_STOPS := ["punch_left", "punch_right", "punch_hook", "punch_uppercut", "slip_left", "slip_right",
+		"jump", "ultimate", "roll_left_key", "roll_right_key", "back_step_key", "dash_key"]
+## The dance going on ("" for none).
+var emote := ""
+var _last_emote := "default"
+var _body: PlayerBody
+var _emote_cam: Camera3D
+## Where the emote camera sits: yaw around you (0 = behind) and pitch (up).
+var _emote_orbit := Vector2.ZERO
+## 0 = first person, 1 = all the way out.
+var _emote_out := 0.0
+var _wheel: EmoteWheel
+## How long the emote key has been held (-1: the wheel is closed).
+var _wheel_time := -1.0
+var _wheel_pad := false
+
 @onready var _camera: Camera3D = $Camera3D
 @onready var _punch_ray: RayCast3D = $Camera3D/PunchRay
 @onready var _fists: Fists = $Camera3D/Fists
@@ -299,10 +324,30 @@ func _ready() -> void:
 	Settings.changed.connect(func() -> void: _camera.fov = Settings.fov())
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	# The lantern lights the world, not the hands (they have their own light).
-	$Camera3D/Lantern.light_cull_mask &= ~Fists.HAND_LAYER
+	$Camera3D/Lantern.light_cull_mask &= ~(Fists.HAND_LAYER | PlayerBody.LAYER)
 	ult = Ult.new()
 	ult.player = self
 	add_child(ult)
+	_body = PlayerBody.new()
+	_body.visible = false
+	add_child(_body)
+	_emote_cam = Camera3D.new()
+	_emote_cam.top_level = true
+	_emote_cam.near = 0.05
+	_emote_cam.add_to_group("emote_cam")
+	add_child(_emote_cam)
+	var fill := OmniLight3D.new()
+	fill.light_cull_mask = PlayerBody.LAYER
+	fill.light_color = Color(1.0, 0.9, 0.82)
+	fill.light_energy = 0.9
+	fill.omni_range = 8.0
+	fill.position = Vector3(0.6, 0.5, 0)
+	_emote_cam.add_child(fill)
+	var wheel_layer := CanvasLayer.new()
+	wheel_layer.layer = 40
+	add_child(wheel_layer)
+	_wheel = EmoteWheel.new()
+	wheel_layer.add_child(_wheel)
 
 
 ## Fight input is live: the mouse is captured, or you're on a controller.
@@ -324,8 +369,21 @@ func _stick_look(delta: float) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if not active:
 		return
+	if event.is_action("emote") and not event.is_echo():
+		if event.is_pressed():
+			_open_wheel(event is InputEventJoypadButton or event is InputEventJoypadMotion)
+		else:
+			_close_wheel()
+		get_viewport().set_input_as_handled()
+		return
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		var sensitivity := MOUSE_SENSITIVITY * Settings.mouse_sensitivity()
+		if _wheel_time >= 0.0:
+			_wheel.steer(_wheel.pointer + event.relative)
+			return
+		if emote != "":
+			_orbit_emote_cam(event.relative * sensitivity)
+			return
 		rotate_y(-event.relative.x * sensitivity)
 		_camera.rotate_x(-event.relative.y * sensitivity)
 		_camera.rotation.x = clampf(_camera.rotation.x, deg_to_rad(-89), deg_to_rad(89))
@@ -338,6 +396,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		# your own keys; empty in the Shift/Ctrl + click scheme otherwise).
 		for type in ["hook", "uppercut"]:
 			if event.is_action_pressed("punch_" + type):
+				_stop_emote()
 				if ult.mode == "time_stop":
 					ult.answer_direct(type)
 				elif not ult.busy():
@@ -349,10 +408,19 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _process(delta: float) -> void:
 	_update_camera_shake(delta)
+	_update_emote(delta)
 	if not active:
 		return
 	Pad.mark_fighting()
-	_stick_look(delta)
+	if _wheel_time >= 0.0:
+		_steer_wheel(delta)
+	elif emote != "":
+		var look := Input.get_vector("look_left", "look_right", "look_up", "look_down", 0.15)
+		_orbit_emote_cam(look * STICK_LOOK_SPEED * float(Settings.get_value("stick_sensitivity")) * delta)
+	else:
+		_stick_look(delta)
+	if emote != "" and _live_input() and _emote_interrupted():
+		_stop_emote()
 	if ult.busy():
 		return  # Temporal Break / Highlight Reel take over the controls.
 
@@ -458,6 +526,7 @@ func _physics_process(delta: float) -> void:
 ## (Berserker super armor absorbed it) or "hit".
 ## attacker: the enemy throwing it, for melee attacks (Thorns hits it back).
 func receive_attack(amount: float, from: Vector3, attack: String, attacker: Node3D = null) -> String:
+	_stop_emote()
 	_last_attacker = attacker as Enemy
 	# Wise Up: an enraged monster hits Tony harder.
 	if _last_attacker and _last_attacker.is_taunted():
@@ -667,6 +736,7 @@ func _lose_knuckles(amount: float) -> void:
 ## tips over onto the floor. The HUD handles the red, then black. Takes
 ## KNOCKOUT_TIME.
 func knock_out() -> void:
+	_stop_emote(true)
 	Pad.rumble(0.8, 1.0, 0.6)
 	active = false
 	_set_combo(0)
@@ -691,6 +761,136 @@ func knock_out() -> void:
 	fall.parallel().tween_property(self, "_ko_pos:y", floor_drop + 0.05, 0.1).set_ease(Tween.EASE_OUT)
 	fall.tween_property(self, "_ko_roll", 1.4 * side, 0.18).set_ease(Tween.EASE_IN)
 	fall.parallel().tween_property(self, "_ko_pos:y", floor_drop, 0.18).set_ease(Tween.EASE_IN)
+
+
+# --- Emotes --------------------------------------------------------------------------
+
+func _open_wheel(pad: bool) -> void:
+	if _wheel_time >= 0.0 or ult.busy():
+		return
+	_wheel_time = 0.0
+	_wheel_pad = pad
+	_wheel.steer(Vector2.ZERO)
+	_wheel.hint = "Let go to dance  -  tap for %s" % Emotes.name_of(_last_emote)
+
+
+## Letting go of the emote key: dance the picked one. A quick tap with nothing
+## picked repeats the last dance (stops a dance; on a controller, opens the map
+## where there is one and Map has no button of its own).
+func _close_wheel() -> void:
+	if _wheel_time < 0.0:
+		return
+	var held := _wheel_time
+	_wheel_time = -1.0
+	_wheel.visible = false
+	var pick := _wheel.picked()
+	if pick != "":
+		start_emote(pick)
+	elif held <= EMOTE_TAP:
+		if emote != "":
+			_stop_emote()
+		elif not (_wheel_pad and _tap_map()):
+			start_emote(_last_emote)
+
+
+func _steer_wheel(delta: float) -> void:
+	_wheel_time += delta
+	_wheel.visible = _wheel_time > 0.12 or _wheel.selected >= 0
+	var stick := Input.get_vector("look_left", "look_right", "look_up", "look_down", 0.2)
+	if stick.length() > 0.5:
+		_wheel.steer(stick * EmoteWheel.RADIUS)
+
+
+func _tap_map() -> bool:
+	if Controls._primary_pad("map") != null or get_tree().get_nodes_in_group("map_scene").is_empty():
+		return false
+	for pressed in [true, false]:
+		var event := InputEventAction.new()
+		event.action = "map"
+		event.pressed = pressed
+		Input.parse_input_event(event)
+	return true
+
+
+## Starts a dance (an Emotes id) and pulls the camera out.
+func start_emote(id: String) -> void:
+	if not active or ult.busy() or not Emotes.NAMES.has(id):
+		return
+	if _emote_out <= 0.0:
+		_emote_orbit = Vector2(PI * 0.78, 0.18)
+		_emote_cam.global_transform = _camera.global_transform
+	emote = id
+	_last_emote = id
+	_buffered_hand = ""
+	_pad_sprint = false
+	_body.visible = true
+	_body.play(id)
+	_fists.visible = false
+	_emote_cam.fov = _camera.fov
+	_emote_cam.make_current()
+
+
+## Ends the dance; the camera glides back in (snap: at once).
+func _stop_emote(snap := false) -> void:
+	if emote == "" and not snap:
+		return
+	emote = ""
+	_body.stop()
+	if snap:
+		_emote_out = 0.0
+		_finish_emote_cam()
+
+
+func _emote_interrupted() -> bool:
+	for action in EMOTE_STOPS:
+		if Input.is_action_just_pressed(action):
+			return true
+	return Input.get_vector("move_left", "move_right", "move_forward", "move_back").length() > 0.3
+
+
+func _orbit_emote_cam(turn: Vector2) -> void:
+	_emote_orbit.x -= turn.x
+	_emote_orbit.y = clampf(_emote_orbit.y + turn.y * (-1.0 if Settings.get_value("invert_y") else 1.0), -0.25, 1.1)
+
+
+## Moves the emote camera between your eyes and its orbit spot.
+func _update_emote(delta: float) -> void:
+	if emote != "" and (not active or ult.busy()):
+		_stop_emote(not active)
+	if emote == "" and _emote_out <= 0.0:
+		return
+	_emote_out = move_toward(_emote_out, 1.0 if emote != "" else 0.0, delta / EMOTE_CAM_TIME)
+	if emote == "" and _emote_out <= 0.0:
+		_finish_emote_cam()
+		return
+	var blend := smoothstep(0.0, 1.0, _emote_out)
+	_emote_cam.global_transform = _camera.global_transform.interpolate_with(_emote_orbit_spot(), blend)
+
+
+func _finish_emote_cam() -> void:
+	if _emote_cam.current:
+		_camera.make_current()
+	_body.visible = false
+	_fists.visible = true
+
+
+## The orbit spot, pulled in where a wall is in the way.
+func _emote_orbit_spot() -> Transform3D:
+	var focus := global_position + Vector3.UP * EMOTE_FOCUS
+	var yaw := rotation.y + _emote_orbit.x
+	var pitch := _emote_orbit.y
+	var away := (Vector3(sin(yaw), 0, cos(yaw)) * cos(pitch) + Vector3.UP * sin(pitch)) * EMOTE_CAM_DISTANCE
+	var spot := focus + away
+	var query := PhysicsRayQueryParameters3D.create(focus, spot, 1, [get_rid()])
+	var hit := get_world_3d().direct_space_state.intersect_ray(query)
+	if not hit.is_empty():
+		spot = hit.position - away.normalized() * 0.25
+	return Transform3D(Basis.IDENTITY, spot).looking_at(focus, Vector3.UP)
+
+
+## The hand of the last punch that landed.
+func last_hand() -> String:
+	return _last_hand
 
 
 func get_combo_multiplier() -> float:
