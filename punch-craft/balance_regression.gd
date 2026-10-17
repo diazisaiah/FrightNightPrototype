@@ -158,8 +158,21 @@ func _test_progression_webs() -> void:
 		if tier.ring_power != "":
 			_check(int(GameState.UPGRADES[tier.ring_power].ring) == i + 2, "%s must open with contender %d's seal" % [tier.ring_power, i + 1])
 		_check(int(GameState.UPGRADES[tier.trophy].ring) == i + 2, "Trophy %s must sit in ring %d" % [tier.trophy, i + 2])
-	_check(GameState.UPGRADE_VERSION == 6 and GameState.V5_PRICES.size() > 50 and GameState.V4_PRICES.size() > 50,
+	_check(GameState.UPGRADE_VERSION == 7 and GameState.V5_PRICES.size() > 50 and GameState.V4_PRICES.size() > 50,
 			"The spoke web must refund version-4 and version-5 saves at their old prices")
+	# v6 -> v7 (prices tamed): levels are kept and the difference comes back.
+	var bought := {"wrapped_knuckles": 1, "dmg_1": 5, "hp_1": 5, "dmg_2": 3}
+	var tamed = load("res://game_state.gd").new()
+	tamed._reset_fields()
+	tamed._load_upgrades(bought)
+	tamed._refund_price_drop(bought, GameState.V6_PRICES)
+	var expected := 0
+	for id in bought:
+		for level in bought[id]:
+			expected += maxi(0, roundi(GameState.V6_PRICES[id][0] * pow(GameState.V6_PRICES[id][1], level)) - roundi(GameState.UPGRADES[id].cost * pow(GameState.UPGRADES[id].cost_growth, level)))
+	_check(tamed.upgrade_levels.get("dmg_1", 0) == 5 and tamed.upgrade_levels.get("dmg_2", 0) == 3, "Taming prices keeps every bought level")
+	_check(expected > 0 and tamed.resources.coins == expected, "Taming prices refunds the difference (%d, expected %d)" % [tamed.resources.coins, expected])
+	tamed.free()
 	_check(GameState.SKILL_VERSION == 2, "Skill web v2 must refund every older skill point")
 
 	# A maxed version-3 web comes back at its old (pre-ring) prices, about 43k,
@@ -326,7 +339,8 @@ func _test_climb_economy() -> void:
 		var bouts := ring_cost * Progression.PAR_SHARE / per_bout
 		print("Tier %d: par %.1f dmg / %.0f ehp, ring %d coins, ~%.1f good bouts to reach par" % [tier, par.damage, par.ehp, ring_cost, bouts])
 		# Tier 1 is meant to be quick (the first upgrades must come fast).
-		_check(bouts >= (2.0 if tier == 1 else 3.0) and bouts <= 14.0, "Tier %d should take a handful of good bouts to reach par, got %.1f" % [tier, bouts])
+		# Tamed 2026-10-17: about 2 good bouts for ring 1, about 3 for the rest.
+		_check(bouts >= (1.5 if tier == 1 else 2.2) and bouts <= 4.0, "Tier %d should take about 3 good bouts to reach par, got %.1f" % [tier, bouts])
 	# Under par: the same tier's numbers with only 60% of the upgrades.
 	var full := Progression.par(3)
 	var under := _par_with_share(3, 0.6)

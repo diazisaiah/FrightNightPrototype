@@ -1056,6 +1056,25 @@ Now the generator tracks hands (jab left, cross right, a hook or uppercut from t
 
 Saved as `drills: {drill: {best, day}}`; the day is your own clock's date.
 
+## Tamer upgrade prices [Built 2026-10-17]
+
+Upgrade costs climbed too fast. Two changes in `tools/coin_web.py`:
+- **Level growth:** spokes went from 1.45x to 1.22x per level; side nodes and trophies from 1.6x to 1.3x.
+- **Ring prices:** reaching par in a ring now takes about 2.7 good bouts of that division's pay (ring 1 about 2), down from 4 to 5.6 and rising.
+
+| Ring | Before | Now |
+|---|---|---|
+| 1 | 5.4k | 4.3k |
+| 2 | 44k | 29k |
+| 3 | 255k | 152k |
+| 4 | 1.45M | 763k |
+| 5 | 7.9M | 3.9M |
+| 6 | 43M | 18.6M |
+
+Maxing the Coffin Crown went from about 19M to about 7.3M.
+
+**Existing saves (upgrade version 7):** saves from version 6 keep every level they bought and get back what each level cost over its new price (`_refund_price_drop`, `V6_PRICES`), with a notice. Older saves respec as before.
+
 ## Emotes and your fighter's body [Built 2026-10-17]
 
 Hold **Emote** (G; View / Create on a controller, plus D-pad down in Weenie Hut Junior Mode, where it's free; in Pro Gamer Mode it's the back step) for the emote wheel, steer with the mouse or right stick, and let go on a dance. The camera pulls out to third person (about 0.35s, Destiny style) around your fighter. The mouse or right stick orbits the camera. Moving, punching, dodging, jumping, the ultimate or getting hit ends the dance and glides the camera back. Emoting works mid-fight; you're open while you dance. A quick tap repeats your last dance (or stops one). On a controller, a tap opens the map where there is one (the Crypt, the tutorial's dummy cycling), since the map gave up its own button.

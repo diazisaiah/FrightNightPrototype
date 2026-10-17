@@ -18,14 +18,15 @@ import sys
 
 # Spoke tiers: price of level 1 by ring, and what a level gives.
 SPOKE_BASE = {1: 20, 2: 120, 3: 330, 4: 800, 5: 2000, 6: 5200}
-SPOKE_GROWTH = 1.45
+SPOKE_GROWTH = 1.22
 # Side nodes: price of level 1 by ring.
 SIDE_BASE = {1: 30, 2: 160, 3: 420, 4: 950, 5: 2300, 6: 9000}
-SIDE_GROWTH = 1.6
-# Every price in a ring is scaled so each ring costs about 4-6 good bouts of
-# that tier's pay (ring 1 about 2.5), on the pay ladder where each division
-# pays ~5x the last (checked by balance_regression).
-PRICE_SCALE = {1: 3.78, 2: 3.75, 3: 5.93, 4: 14.1, 5: 44.1, 6: 83.8}
+SIDE_GROWTH = 1.3
+# Every price in a ring is scaled so reaching par in a ring takes about 2.7
+# good bouts of that tier's pay (ring 1 about 2), on the pay ladder where each
+# division pays ~5x the last (checked by balance_regression). Tamed 2026-10-17:
+# was 4-6 bouts with steeper level growth (spokes 1.45, sides and trophies 1.6).
+PRICE_SCALE = {1: 4.2, 2: 3.39, 3: 4.74, 4: 9.87, 5: 29.4, 6: 55.9}
 
 NODES = []
 
@@ -150,7 +151,7 @@ TROPHY = [
     ("coffin_crown", "The Coffin Crown", "crown", 6, 5, {"damage": 5, "max_knuckles": 40, "defense": 3}, "Trophy: heavy is the head. Raw power for the endless dark."),
 ]
 for tid, name, icon, ring, levels, effects, desc in TROPHY:
-    node(tid, name, icon, (-1, ring), ["def_%d" % ring], ring, levels, effects, desc, cost=SIDE_BASE[ring] * 1.6, growth=1.6, medallion=True)
+    node(tid, name, icon, (-1, ring), ["def_%d" % ring], ring, levels, effects, desc, cost=SIDE_BASE[ring] * 1.6, growth=1.3, medallion=True)
 
 # --- Off the money spoke (north, x = 0) ---
 node("sparring_partner", "Sparring Partner", "crossed_gloves", (1, -1), ["gold_1"], 1, 3, {"xp_bonus": 0.1}, "Learn faster: more XP.")
