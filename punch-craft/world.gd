@@ -328,9 +328,10 @@ func _spawn_scaling() -> Dictionary:
 ## Night-only scaling (used for the boss, whose base stats already fit a full
 ## bar). night defaults to the current one.
 ## The Climb's scaling at this bout of the division (Progression): bout by
-## bout it climbs from the last contender's par build to this one's.
+## bout it climbs from the last contender's par build toward this one's, a
+## fifth of a tier a bout (Progression.arena_difficulty); pay climbs faster.
 func _night_scaling(night := -1) -> Dictionary:
-	return Progression.enemy_scaling(_position(night))
+	return Progression.enemy_scaling(_position(night), Progression.arena_difficulty(_division, _night if night < 0 else night))
 
 
 func _boss_scaling() -> Dictionary:

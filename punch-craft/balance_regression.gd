@@ -31,6 +31,7 @@ func _run() -> void:
 	_test_class_balance()
 	_test_emotes_and_hats()
 	_test_pad_work_combos()
+	_test_gentler_ramp()
 	if _failures.is_empty():
 		print("BALANCE REGRESSION: PASS")
 		get_tree().quit(0)
@@ -626,3 +627,21 @@ func _test_pad_work_combos() -> void:
 				last_type = type
 				last_set_up = set_up
 	drill.free()
+
+
+## Arena bouts and Crypt floors get tougher slower than they pay (2026-10-17),
+## and bosses shake off a freeze in half a second.
+func _test_gentler_ramp() -> void:
+	for division in range(1, Progression.TIER_COUNT + 1):
+		_check(is_equal_approx(Progression.arena_difficulty(division, 1), Progression.arena_position(division, 1)), "Bout 1 starts at the last contender's par")
+		_check(Progression.arena_difficulty(division, 3) < Progression.arena_position(division, 3) - 0.2, "Bout 3 monsters trail its pay")
+	# A run from bracket 1 reaches the Bellman's par only at the end of floor 4
+	# (it used to be most of the way to the Headless's by then).
+	_check(is_equal_approx(Progression.crypt_difficulty(4, 1), 1.0) and Progression.crypt_difficulty(4, 1) < Progression.crypt_position(4) - 0.5, "Crypt floors climb a quarter tier each")
+	_check(is_equal_approx(Progression.crypt_difficulty(3, 3, 0.0), 1.0), "A bracket-2 run starts at the Bellman's par")
+	var boss := Enemy.new()
+	boss.is_boss = true
+	_check(boss.chill_length(5.0) <= Enemy.BOSS_CHILL_TIME, "Bosses shake off a freeze in half a second")
+	boss.is_boss = false
+	_check(boss.chill_length(5.0) == 5.0, "Other monsters stay frozen as long as Frost says")
+	boss.free()

@@ -590,7 +590,7 @@ func _boss_kind() -> String:
 ## (Progression.crypt_position).
 func _scaling(room: Dictionary) -> Dictionary:
 	var progress := _room_progress(room)
-	var scaling := Progression.enemy_scaling(_position(progress))
+	var scaling := Progression.enemy_scaling(_position(progress), Progression.crypt_difficulty(_floor, _start_floor, progress))
 	scaling.speed = 1.0 + 0.2 * progress
 	return scaling
 
@@ -615,7 +615,7 @@ func _spawn_point() -> Vector3:
 func _spawn_enemy(entry: Dictionary, at: Vector3) -> void:
 	var kind: String = entry.kind
 	var enemy: Enemy = _scene(kind).instantiate()
-	var night_only := Progression.enemy_scaling(_position())
+	var night_only := Progression.enemy_scaling(_position(), Progression.crypt_difficulty(_floor, _start_floor))
 	var is_boss_kind: bool = kind in BOSS_CYCLE
 	enemy.setup(_player, entry.armored, night_only if is_boss_kind else _scaling(_current_room))
 	enemy.set_meta("kind", kind)

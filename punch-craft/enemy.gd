@@ -113,6 +113,9 @@ var _burn_time := 0.0
 var _burn_tick := 0.0
 var _scaling := {}
 var _chill_time := 0.0
+## Bosses (Arena, Crypt, Dead League) shake off a freeze in half a second
+## (2026-10-17): chained Frost kept them slowed through whole fights.
+const BOSS_CHILL_TIME := 0.5
 var _chill_amount := 0.0
 var _poison_stacks := 0
 var _poison_per_stack := 0.0
@@ -401,10 +404,15 @@ func _check_stuck(desired: Vector3, delta: float) -> void:
 
 
 ## Slowed for a while (Frost Slip): amount 0-1 of its pace lost.
+## How long a freeze holds: bosses shake it off in BOSS_CHILL_TIME.
+func chill_length(duration: float) -> float:
+	return minf(duration, BOSS_CHILL_TIME) if is_boss else duration
+
+
 func chill(duration: float, amount: float) -> void:
 	if _dead:
 		return
-	_chill_time = maxf(_chill_time, duration)
+	_chill_time = maxf(_chill_time, chill_length(duration))
 	_chill_amount = maxf(_chill_amount, amount)
 	DamagePopup.spawn(get_parent(), "CHILLED", FROST_COLOR, 36, global_position + Vector3(0, 2.0, 0))
 	HitFx.burst(get_parent(), global_position + Vector3(0, 1.2, 0), Vector3.UP, FROST_COLOR, 10, 2.0, true, 0.05)

@@ -196,8 +196,10 @@ static func par_at(x: float) -> Dictionary:
 
 ## Enemy scaling at a position on the climb: HP grows with par damage (fights
 ## take as many punches) and damage with par knuckle HP (hits hurt as much).
-static func enemy_scaling(x: float) -> Dictionary:
-	var at := par_at(x)
+## difficulty (when given) is the position the enemies are built for; x still
+## sets the pay. The Arena and Crypt ramp gentler than they pay (2026-10-17).
+static func enemy_scaling(x: float, difficulty := -1.0) -> Dictionary:
+	var at := par_at(x if difficulty < 0.0 else difficulty)
 	return {"hp": at.damage / BASE_DAMAGE, "damage": at.ehp / BASE_KNUCKLES, "speed": 1.0, "reward": pay(x), "xp": xp_pay(x), "position": x}
 
 
@@ -227,6 +229,28 @@ static func xp_pay(x: float) -> float:
 ## You farm below par and face the contender at it.
 static func arena_position(division: int, bout: int) -> float:
 	return (division - 1) + clampf(float(bout - 1) / BOUTS_PER_DIVISION, 0.0, float(BOUTS_PER_DIVISION - 1) / BOUTS_PER_DIVISION)
+
+
+## How tough an Arena bout's monsters are (2026-10-17): bout 1 at the last
+## contender's par, then a fifth of a tier a bout (was a third), so bout 3 is
+## 40% of the way to this division's contender. Pay still uses arena_position.
+const ARENA_RAMP := 0.2
+
+
+static func arena_difficulty(division: int, bout: int) -> float:
+	return (division - 1) + clampf(bout - 1, 0, BOUTS_PER_DIVISION - 1) * ARENA_RAMP
+
+
+## How tough a Crypt floor is (2026-10-17): a run starts at its bracket's
+## base (the last contender's par) and climbs a quarter of a tier a floor,
+## however deep it goes (it used to jump a whole tier every two floors).
+## progress is 0-1 through the floor. Pay still uses crypt_position.
+const CRYPT_RAMP := 0.25
+
+
+static func crypt_difficulty(floor_number: int, start_floor: int, progress := 1.0) -> float:
+	var start_tier := ceili(start_floor / float(FLOORS_PER_TIER))
+	return (start_tier - 1) + (floor_number - start_floor + clampf(progress, 0.0, 1.0)) * CRYPT_RAMP
 
 
 ## Crypt: a tier's first floor climbs to 40% of the way to its contender's

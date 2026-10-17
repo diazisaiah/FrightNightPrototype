@@ -1056,6 +1056,16 @@ Now the generator tracks hands (jab left, cross right, a hook or uppercut from t
 
 Saved as `drills: {drill: {best, day}}`; the day is your own clock's date.
 
+## Gentler difficulty ramp [Built 2026-10-17]
+
+Crypt floors and Arena bouts got too hard too fast. Monsters are now built for a position on the climb that trails what the fight pays, using `Progression.enemy_scaling(x, difficulty)`.
+
+- **Arena** (`arena_difficulty`): bout 1 sits at the last contender's par. Each bout climbs a fifth of a tier (was a third), so bout 3 is 40% of the way to the contender, not 67%. Pay still climbs 1.5x a bout.
+- **Crypt** (`crypt_difficulty`): a run starts at its bracket's base and climbs a quarter of a tier a floor, however deep it goes. It used to jump a whole tier every two floors, so a bracket-1 run was at the Headless's par by floor 3. Now it reaches the Bellman's par at the end of floor 4. Pay and gear still follow the floor number, so going deep pays well.
+- Contenders are unchanged: still at par, now with specials.
+
+**Freeze on bosses:** Frost slows by up to 85% for 2s (+3s from upgrades) and reapplies on every set-up heavy, so bosses stayed slowed through whole fights. Every boss (Arena, Crypt, Dead League) now shakes a freeze off in 0.5s (`Enemy.BOSS_CHILL_TIME`). Other monsters keep the full time.
+
 ## Contender specials [Built 2026-10-17]
 
 Two contenders went down back to back. Each Dead League contender now has signature moves on top of the boxing (`dead_league_boss.gd`, Specials).
