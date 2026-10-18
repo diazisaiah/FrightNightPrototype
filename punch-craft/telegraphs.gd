@@ -56,7 +56,8 @@ func show_lane(from: Vector3, to: Vector3, width: float, color := DANGER) -> voi
 		return
 	var mid := from + flat * 0.5
 	mid.y = enemy.global_position.y + 0.05
-	var basis := Basis.looking_at(flat.normalized(), Vector3.UP).scaled(Vector3(width, 1, flat.length()))
+	# Stretch in the lane's own frame (width across, length along), then turn it.
+	var basis := Basis.looking_at(flat.normalized(), Vector3.UP) * Basis.from_scale(Vector3(width, 1, flat.length()))
 	_mark.global_transform = Transform3D(basis, mid)
 	_mark_material.albedo_color = Color(color, _mark_material.albedo_color.a)
 	_mark.visible = true
