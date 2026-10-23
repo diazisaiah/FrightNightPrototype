@@ -35,6 +35,11 @@ var values := DEFAULTS.duplicate()
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	# In a browser, Esc leaves full screen. Chromium browsers (Chrome, Edge,
+	# Opera) let a full-screen page keep Esc (Keyboard Lock): it pauses, and
+	# holding Esc leaves full screen. Elsewhere P pauses (Controls).
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("if (navigator.keyboard && navigator.keyboard.lock) { navigator.keyboard.lock(['Escape']).catch(function () {}); }", true)
 	# One look everywhere: every menu, HUD screen, dropdown and dialog. Merged
 	# into Godot's default theme, since a theme set on the window stops at
 	# CanvasLayers (the HUD).

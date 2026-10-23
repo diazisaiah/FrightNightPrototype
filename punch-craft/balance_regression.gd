@@ -568,6 +568,7 @@ func _test_emotes_and_hats() -> void:
 	Settings.values.pad_bindings = {}
 	Controls.apply()
 	_check(_keys("emote") == [KEY_G], "G emotes")
+	_check(_keys("pause") == [KEY_P, KEY_ESCAPE], "P pauses (hints show it), and so does Esc")
 	var old_assist = Settings.values.assist_mode
 	Settings.values.assist_mode = "pro"
 	Controls.apply()

@@ -1063,6 +1063,14 @@ Now the generator tracks hands (jab left, cross right, a hook or uppercut from t
 
 Saved as `drills: {drill: {best, day}}`; the day is your own clock's date.
 
+## Pausing without leaving full screen [Built 2026-10-23]
+
+In a browser, Esc also leaves full screen and frees the mouse, and a page normally can't stop that.
+- **P pauses** too, everywhere. It's the key the hints show; Esc still works.
+- **Chromium browsers** (Chrome, Edge, Opera): the game asks for Esc with the Keyboard Lock API (`Settings._ready`). In full screen, Esc then just pauses, and **holding** Esc leaves full screen (the browser says so).
+- Firefox and Safari don't support Keyboard Lock, so use P there.
+- Keyboard Lock may be refused inside an embedded frame (itch's player); P always works.
+
 ## Deeper tiers: places, veterans and music [Built 2026-10-17]
 
 - **Places** (`themes.gd`, `arena_scenery.gd`, Crypt `_theme_decor`): each tier has its own look, music and hazard.

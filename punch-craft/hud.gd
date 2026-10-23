@@ -1,7 +1,7 @@
 class_name Hud
 extends CanvasLayer
 ## In-run HUD: knuckle HP, level/XP, coins, night progress, combo, kill feed, damage
-## flash, the pause menu (Esc) and the end-of-run summary.
+## flash, the pause menu (P or Esc) and the end-of-run summary.
 
 signal end_run_requested
 signal back_to_camp_requested

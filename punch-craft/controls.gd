@@ -187,6 +187,9 @@ static func apply() -> void:
 	_add_key("map", KEY_M)
 	if junior() or dodges() != "keys":
 		_add_key("map", KEY_TAB)
+	# P first (what hints show): in a browser, Esc also leaves full screen and
+	# frees the mouse (Settings asks Chromium browsers to hand it to the game).
+	_add_key("pause", KEY_P)
 	_add_key("pause", KEY_ESCAPE)
 	_add_key("emote", KEY_G)
 	# The controller layout, then your own controller bindings over it. In
