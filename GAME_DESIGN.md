@@ -1063,6 +1063,57 @@ Now the generator tracks hands (jab left, cross right, a hook or uppercut from t
 
 Saved as `drills: {drill: {best, day}}`; the day is your own clock's date.
 
+## Achievements, the Endless Arena and the Playground [Built 2026-10-23]
+
+**Achievements unlock emotes** (`achievements.gd`, `toast.gd`). The Default is free; every other dance is earned, and the wheel only shows the ones you have (locked things are hidden). Earning one pops a toast at the top.
+
+| Achievement | How | Emote |
+|---|---|---|
+| Hat Trick | Pop your first hat | Dab |
+| Grave Diver | Clear a Crypt floor | Griddy |
+| Seal Breaker | Beat a Dead League contender | Floss |
+| Flurry | Land a 25-hit combo | Running Man |
+| Drill Sergeant | Finish a daily drill | Nae Nae |
+| Veteran Slayer | Knock out a veteran | Take the L |
+| No End in Sight | 50 knockouts in the Endless Arena | Horse Ride |
+| Legend | Find a legendary hat | Bros. Shuffle |
+
+Older saves get what they'd already earned, quietly, when camp loads. The list and which emote each gives are expected to change as emotes are added.
+
+**The Endless Arena** unlocks after the Crown Division's third bout, as an ENDLESS card in that division's bout picker. It's in the Colosseum and is all about score:
+- No progress bar and no champion.
+- Every **25 knockouts** starts a new wave: monsters get tougher (difficulty climbs 0.3 of a tier a wave past the Crown par, pay 0.25 a wave), you get the wave heal, and a **mini-boss** steps in.
+- Any spawn has a **2%** chance of being a mini-boss too. A mini-boss is an elite veteran (Swift, Brutal, Ironclad or Hulking) with 3x health.
+- **Score:** 10 a knockout, 150 a mini-boss. Best score saved (`endless_best`).
+- **Pay:** kills pay as usual, plus a purse at the end of score x pay x 0.3.
+
+**The Playground** (`playground/`) is a separate Godot project for testing.
+- `sync.py` mirrors the game into `playground/project/` (generated, ignored by git) and adds `src/`.
+- The project has its own name, so its own save.
+- `run_playground.bat` (or `.sh`, `-e` for the editor) syncs and launches it.
+- It opens on the training ring with a dev panel (F1): fighter, hat, every emote, spawn anything at any tier (veterans, bosses, contenders), freeze enemies, force any special on the nearest boxer, give and select a power line, god mode, fill the ultimate, +5 levels, replay tips, and arena theme backdrops.
+
+## Ability loadouts [Planned, 2026-10-23]
+
+Each fighter gets alternate abilities, unlocked by class level, that you equip in place of the defaults. Two slots:
+- **Passive** (the class trait, e.g. the Mauler's super armor, the Answer's Perfect Counter).
+- **Ultimate** (Inferno Uppercut, Temporal Break, Riposte Stance, Highlight Reel, Big Mouth).
+
+**Proposal:**
+- Level 10 unlocks a second passive and level 20 a second ultimate; more can come later.
+- Picked in camp (a Loadout card on the class's skill page) and locked during a run.
+- Each alternate is a sidegrade, not an upgrade: a different way to play, tuned to the same POWER budget (`power_rating.gd`).
+- Skill web nodes that only feed one ability say so, and still count toward the class.
+
+**First ideas:**
+- The Answer: alt passive **Slip Stream** (each perfect dodge in a row speeds your next counter). Alt ultimate **Mirror Match** (for 6s every hit you take is reflected back, then a counter window).
+- The Mauler: alt passive **Bull Rush** (sprinting into an enemy shoulder-checks it). Alt ultimate **Earthshaker**, a stomp that staggers everything near you (not a floor punch).
+- The Blur: alt passive **Afterimage** (every 10th hit leaves a ghost that repeats it). Alt ultimate **Speed Demon** (double speed, no knuckle cost, 5s).
+- The Stray: alt passive **Wall Run**. Alt ultimate **Chain Dash** (dash between enemies, punching each).
+- Tony: alt passive **Connected** (Fuggedaboudit also heals). Alt ultimate **Sit-Down** (everyone nearby is taunted to him at once).
+
+Needs approval before building.
+
 ## Mini tutorials and one power at a time [Built 2026-10-23]
 
 **Freeze-frame mini tutorials** (`tutorial.gd`): the screen dims except a spotlight on one thing (a spot in the world or a control), with a card. Each plays once per save (`GameState.tips_seen`), and only one per scene, so a round is never interrupted twice (chained follow-ups are the exception).
