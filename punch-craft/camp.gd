@@ -52,9 +52,12 @@ func _ready() -> void:
 
 
 ## Camp's mini tutorials (Tutorial), each once: after your first hat, the
-## Hat Rack.
+## Hat Rack; a new passive or ultimate, the Loadout.
 func _camp_tips() -> void:
-	if not is_inside_tree() or not Tutorial.seen("hat_first") or GameState.hats.is_empty():
+	if not is_inside_tree():
+		return
+	if not Tutorial.seen("hat_first") or GameState.hats.is_empty() or Tutorial.seen("hat_rack"):
+		_ability_tip()
 		return
 	var first := Tutorial.open(self, "hat_rack", "YOUR FIRST HAT!", "Every hat you take ends up on your Hat Rack. Open it here.",
 			_tab_buttons["Hats"], func() -> bool: return _pages["Hats"].visible, false)
@@ -233,6 +236,13 @@ func _build_tabs() -> Control:
 		GameState.save_game()
 		Loading.go("res://title.tscn"))
 	tabs.add_child(menu)
+	# Loadout: the fighter's passive and ultimate (once there's a choice).
+	if _ability_choices() > 2:
+		_loadout_button = Button.new()
+		_loadout_button.text = "Loadout"
+		_loadout_button.tooltip_text = "Pick your fighter's passive and ultimate."
+		_loadout_button.pressed.connect(_open_loadout)
+		tabs.add_child(_loadout_button)
 	var training := Button.new()
 	training.text = "Training" if GameState.tutorial_done else "Tutorial"
 	training.pressed.connect(_start_training)
@@ -450,6 +460,133 @@ func _power_tip(kind: String) -> void:
 	Tutorial.open(self, "power_select", "YOU UNLOCKED A POWER!",
 			"Powers are big upgrades you make stronger as you climb. You can only have one selected at a time, so pick the one you want working.\n\nSelect %s here." % power_name,
 			buy, func() -> bool: return GameState.power_pick != "", false, true)
+
+
+# --- Loadout ---------------------------------------------------------------------------
+
+var _loadout_button: Button
+var _loadout_layer: CanvasLayer
+var _loadout_opened := false
+
+
+## How many passives and ultimates the fighter has unlocked.
+func _ability_choices() -> int:
+	var count := 0
+	for entry in Abilities.passives(GameState.player_class) + Abilities.ultimates(GameState.player_class):
+		if Abilities.unlocked(GameState.player_class, entry.id, GameState.level):
+			count += 1
+	return count
+
+
+## A newly unlocked ability: point at the Loadout.
+func _ability_tip() -> void:
+	if _loadout_button == null:
+		return
+	for slot in ["passive", "ultimate"]:
+		var list: Array = Abilities.passives(GameState.player_class) if slot == "passive" else Abilities.ultimates(GameState.player_class)
+		for i in range(1, list.size()):
+			var entry: Dictionary = list[i]
+			if not Abilities.unlocked(GameState.player_class, entry.id, GameState.level):
+				continue
+			if Tutorial.open(self, "ability_" + entry.id, "NEW %s: %s" % [slot.to_upper(), String(entry.name).to_upper()],
+					"%s\n\nEquip it in your Loadout. Your skill web adapts to whatever you pick." % entry.desc,
+					_loadout_button, func() -> bool: return _loadout_opened, false) != null:
+				return
+
+
+func _open_loadout() -> void:
+	_loadout_opened = true
+	if _loadout_layer:
+		_loadout_layer.queue_free()
+	_loadout_layer = CanvasLayer.new()
+	_loadout_layer.layer = 50
+	add_child(_loadout_layer)
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.72)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_loadout_layer.add_child(dim)
+	dim.gui_input.connect(func(event: InputEvent) -> void:
+		if event is InputEventMouseButton and event.pressed:
+			_close_loadout())
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	dim.add_child(center)
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 14)
+	center.add_child(column)
+	var heading := UiTheme.title_label("LOADOUT  ·  %s" % GameState.fighter_name().to_upper(), 40, UiTheme.GOLD)
+	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	column.add_child(heading)
+	for slot in ["passive", "ultimate"]:
+		var label := UiTheme.title_label(slot.to_upper(), 20, UiTheme.MUTED)
+		column.add_child(label)
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 12)
+		row.alignment = BoxContainer.ALIGNMENT_CENTER
+		column.add_child(row)
+		var list: Array = Abilities.passives(GameState.player_class) if slot == "passive" else Abilities.ultimates(GameState.player_class)
+		var equipped := GameState.passive() if slot == "passive" else GameState.ultimate()
+		for entry in list:
+			if Abilities.unlocked(GameState.player_class, entry.id, GameState.level):
+				row.add_child(_ability_card(slot, entry, entry.id == equipped))
+	var done := Button.new()
+	done.text = "Done"
+	done.theme_type_variation = "PrimaryButton"
+	done.custom_minimum_size = Vector2(180, 48)
+	done.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	done.pressed.connect(_close_loadout)
+	column.add_child(done)
+
+
+func _close_loadout() -> void:
+	if _loadout_layer:
+		_loadout_layer.queue_free()
+		_loadout_layer = null
+	_refresh()
+
+
+func _ability_card(slot: String, entry: Dictionary, equipped: bool) -> Button:
+	var tint: Color = GameState.fighter_color()
+	var card := Button.new()
+	card.custom_minimum_size = Vector2(250, 230)
+	card.add_theme_stylebox_override("normal", UiTheme.raised(Color(0.06, 0.05, 0.08, 0.96), UiTheme.GOLD if equipped else Color(tint, 0.5), 3 if equipped else 2, 12))
+	card.add_theme_stylebox_override("hover", UiTheme.raised(Color(tint.darkened(0.75), 0.98), tint.lightened(0.2), 3, 12))
+	card.add_theme_stylebox_override("pressed", UiTheme.raised(Color(tint.darkened(0.75), 0.98), tint.lightened(0.2), 3, 12))
+	var inside := VBoxContainer.new()
+	inside.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	inside.offset_left = 14
+	inside.offset_right = -14
+	inside.offset_top = 12
+	inside.offset_bottom = -12
+	inside.add_theme_constant_override("separation", 8)
+	inside.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card.add_child(inside)
+	var icon := IconView.new()
+	icon.icon = entry.icon
+	icon.color = tint.lightened(0.2)
+	icon.custom_minimum_size = Vector2(54, 54)
+	icon.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	inside.add_child(icon)
+	var name_label := UiTheme.title_label(String(entry.name).to_upper(), 20, UiTheme.TEXT)
+	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	inside.add_child(name_label)
+	var desc := _label(entry.desc, 13, UiTheme.MUTED)
+	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	desc.custom_minimum_size.x = 220
+	inside.add_child(desc)
+	if equipped:
+		var tag := _label("EQUIPPED", 13, UiTheme.GOLD)
+		tag.add_theme_font_override("font", UiTheme.bold_font())
+		tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		inside.add_child(tag)
+	card.pressed.connect(func() -> void:
+		if GameState.equip_ability(slot, entry.id):
+			Sfx.play("unlock", -6.0, 1.3)
+			_open_loadout())
+	return card
 
 
 ## The detail panel's icon pops after a purchase.
