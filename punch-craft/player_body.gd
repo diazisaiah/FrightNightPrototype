@@ -25,6 +25,9 @@ const LOOKS := {
 	"wise_guy": {"top": Color(0.07, 0.07, 0.08), "sleeve": Color(0.07, 0.07, 0.08), "pants": Color(0.07, 0.07, 0.08),
 		"belt": Color(0.07, 0.07, 0.08), "shoes": Color(0.92, 0.92, 0.9), "glove": Color(0.9, 0.88, 0.84),
 		"cuff": Color(0.9, 0.88, 0.84), "hair": Color(0.07, 0.07, 0.08), "eyes": Color.BLACK, "bulk": 1.08},
+	"elementalist": {"top": "skin", "sleeve": Color(0.1, 0.09, 0.11), "pants": Color(0.1, 0.09, 0.11),
+		"belt": Color(0.86, 0.84, 0.8), "shoes": Color(0.08, 0.07, 0.08), "glove": Color(0.9, 0.88, 0.83),
+		"cuff": Color(0.9, 0.88, 0.83), "hair": Color(0.93, 0.93, 0.91), "eyes": Color.BLACK, "bulk": 1.15},
 }
 const HEAD := 0.3
 ## The body renders on its own layer: the lantern at your eyes would blow it
@@ -250,6 +253,14 @@ func _dress_torso(torso: Node3D, b: float) -> void:
 			_box(torso, Vector3(0.05, 0.42, 0.02), Color(0.2, 0.2, 0.24), Vector3(0.05, 0.32, front), Vector3(0, 0, 0.35))
 		"free_runner":
 			_box(torso, Vector3(0.08, 0.24, 0.03), _color("belt"), Vector3(-0.15, -0.08, front), Vector3(0, 0, -0.15))
+		"elementalist":
+			# The open robe's edges (white trim) over a bare, heavy chest.
+			var shade := _skin.darkened(0.12)
+			_box(torso, Vector3(0.16, 0.11, 0.02), shade, Vector3(-0.08, 0.42, front))
+			_box(torso, Vector3(0.16, 0.11, 0.02), shade, Vector3(0.08, 0.42, front))
+			for side in [-1.0, 1.0]:
+				_box(torso, Vector3(0.07, 0.5, 0.03), Color(0.1, 0.09, 0.11), Vector3(0.19 * side, 0.26, front))
+				_box(torso, Vector3(0.02, 0.5, 0.032), Color(0.86, 0.84, 0.8), Vector3(0.155 * side, 0.26, front - 0.002))
 		"wise_guy":
 			# White tee in the open zip, white stripes down the front, the gold chain.
 			_box(torso, Vector3(0.14, 0.2, 0.02), Color(0.92, 0.92, 0.9), Vector3(0, 0.44, front))
@@ -276,6 +287,14 @@ func _face(head: Node3D, b: float) -> void:
 			_box(head, Vector3(HEAD * b - 0.02, 0.09, 0.02), _skin.darkened(0.3), Vector3(0, 0.1, front))  # Stubble.
 		"berserker":
 			_box(head, Vector3(0.12, 0.025, 0.02), Color(0.2, 0.08, 0.06), Vector3(0, 0.1, front))  # A scowl.
+		"elementalist":
+			# A long white beard and moustache, bushy white brows.
+			var white := Color(0.93, 0.93, 0.91)
+			_box(head, Vector3(HEAD * b - 0.02, 0.16, 0.05), white, Vector3(0, 0.03, front - 0.01))
+			_box(head, Vector3(0.18, 0.16, 0.05), white, Vector3(0, -0.1, front - 0.02))
+			_box(head, Vector3(0.14, 0.03, 0.03), white, Vector3(0, 0.13, front - 0.015))
+			for side in [-1.0, 1.0]:
+				_box(head, Vector3(0.09, 0.03, 0.03), white, Vector3(0.065 * side, y + 0.045, front - 0.01))
 
 
 func _hair(head: Node3D, b: float) -> void:
@@ -308,6 +327,13 @@ func _hair(head: Node3D, b: float) -> void:
 			_box(head, Vector3(0.04, 0.2, 0.03), red, Vector3(-0.04, top - 0.16, HEAD * 0.5 + 0.03), Vector3(0.6, 0, 0.2))
 			_box(head, Vector3(0.04, 0.24, 0.03), red, Vector3(0.04, top - 0.18, HEAD * 0.5 + 0.04), Vector3(0.7, 0, -0.15))
 			_crown = 0.14
+		"elementalist":
+			# Long white hair swept back, down past the neck.
+			_box(head, Vector3(HEAD * b + 0.03, 0.07, HEAD + 0.03), hair, Vector3(0, top, 0.01))
+			_box(head, Vector3(HEAD * b + 0.03, 0.3, 0.06), hair, Vector3(0, top - 0.18, HEAD * 0.5 + 0.02))
+			for side in [-1.0, 1.0]:
+				_box(head, Vector3(0.05, 0.22, HEAD * 0.7), hair, Vector3((HEAD * b * 0.5 + 0.02) * side, top - 0.12, 0.04))
+			_crown = 0.04
 		"wise_guy":
 			_box(head, Vector3(HEAD * b + 0.02, 0.05, HEAD + 0.02), hair, Vector3(0, top - 0.06, 0.02))
 			_beanie = Node3D.new()

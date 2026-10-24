@@ -41,6 +41,7 @@ const NAMES := {
 	"berserker": "INFERNO UPPERCUT", "combo_master": "TEMPORAL BREAK",
 	"counter_master": "RIPOSTE STANCE", "free_runner": "HIGHLIGHT REEL",
 	"wise_guy": "BIG MOUTH",
+	"elementalist": "ELEMENTAL FISTS",
 }
 ## One line each, for the class picker.
 const DESCRIPTIONS := {
@@ -49,6 +50,7 @@ const DESCRIPTIONS := {
 	"counter_master": "Riposte Stance: for 4 seconds every attack is slipped for you and answered with a counter hook.",
 	"free_runner": "Streak like lightning from enemy to enemy in view, punching each, and finish with a leaping haymaker.",
 	"wise_guy": "Insult the monster you're looking at. It comes only for you, hits 50% harder and takes double damage from you. Refills fast.",
+	"elementalist": "For 10 seconds every punch can throw a fireball, an icicle, lightning or a blood heal.",
 }
 ## The equipped ultimate's name (Abilities), for the HUD.
 static func equipped_name() -> String:
@@ -104,6 +106,22 @@ const HYPE_SPEED := 1.6
 const HYPE_DAMAGE := 2.0
 const FAMILY_TIME := 10.0
 const FAMILY_SIZE := 3
+## The Catalyst. Elemental Fists: each landed punch rolls each element
+## (SPELL_CHANCE, up to SPELL_CHANCE_MAX with skills).
+const SPELL_TIME := 10.0
+const SPELL_CHANCE := 0.15
+const SPELL_CHANCE_MAX := 0.25
+const SPELL_FIRE := 1.6
+const SPELL_ICE := 1.1
+const SPELL_LIGHTNING := 3.0
+const SPELL_JUMPS := 3
+const SPELL_HEAL := 0.3
+## Flame Burst: a ring of fire around him.
+const BURST_RADIUS := 6.0
+const BURST_DAMAGE := 5.0
+const BURST_BURN := 0.8
+const BURST_BURN_TIME := 5.0
+const BURST_COLOR := Color(1.0, 0.4, 0.06)
 const RIPOSTE_RANGE := 3.2
 # Free Runner
 const REEL_TARGETS := 5
@@ -136,6 +154,8 @@ var _shield_time := 0.0
 var _shield_ring: MeshInstance3D
 ## Hype Train: seconds left (the player reads it for speed and bowling).
 var hype := 0.0
+## Elemental Fists time left.
+var spellfists := 0.0
 var _status := ""
 # Temporal Break
 var _time_left := 0.0
@@ -162,7 +182,7 @@ func busy() -> bool:
 
 
 func add(amount: float) -> void:
-	if busy() or _riposte > 0.0:
+	if busy() or _riposte > 0.0 or spellfists > 0.0:
 		return  # No charging while an ultimate runs.
 	var was_full := is_full()
 	if amount > 0.0:
@@ -224,7 +244,7 @@ func activate() -> void:
 	if not is_full():
 		_set_status("Ultimate not charged  (%d%%)" % int(meter), 1.2)
 		return
-	if _shield_hits > 0 or hype > 0.0 or player.unbroken_time > 0.0:
+	if _shield_hits > 0 or hype > 0.0 or player.unbroken_time > 0.0 or spellfists > 0.0:
 		return
 	match GameState.ultimate():
 		"inferno":
@@ -247,6 +267,10 @@ func activate() -> void:
 			_start_hype()
 		"the_family":
 			_start_family()
+		"elemental_fists":
+			_start_spellfists()
+		"flame_burst":
+			_flame_burst()
 
 
 ## Called by the player before an attack resolves. Returns "" to let it through,
@@ -277,6 +301,9 @@ func _process(delta: float) -> void:
 			_shield_ring.rotation.y += real_delta * 2.0
 		if _shield_time <= 0.0:
 			_shield_break()
+	if spellfists > 0.0:
+		spellfists -= real_delta
+		_set_status("ELEMENTAL FISTS  %.1fs" % maxf(spellfists, 0.0) if spellfists > 0.0 else "")
 	if hype > 0.0:
 		hype -= real_delta
 		_set_status("HYPE TRAIN  %.1fs" % maxf(hype, 0.0) if hype > 0.0 else "")
@@ -699,6 +726,72 @@ func _start_family() -> void:
 		var at := player.global_position + Vector3(cos(a), 0, sin(a)) * 1.5
 		player.get_parent().add_child(Goon.brawler(at, seconds, GameState.get_damage() * (0.8 + 0.2 * _power())))
 	player.class_event.emit("THE FAMILY")
+
+
+# --- The Catalyst ---------------------------------------------------------------------
+
+func _start_spellfists() -> void:
+	_spend()
+	spellfists = SPELL_TIME + GameState.get_effect("spell_time") + 2.0 * _power()
+	Sfx.play("fire", 0.0, 0.7)
+	player._kick_fov(6.0)
+	player.class_event.emit("ELEMENTAL FISTS")
+
+
+## A punch landed during Elemental Fists: each element rolls on its own.
+func on_landed(target: Enemy, dealt: float, hand: String) -> void:
+	if spellfists <= 0.0 or target == null or not is_instance_valid(target):
+		return
+	var chance := minf(SPELL_CHANCE + GameState.get_effect("spell_chance"), SPELL_CHANCE_MAX)
+	var strength := GameState.get_damage() * (1.0 + GameState.get_effect("spell_damage") + 0.25 * _power())
+	var camera: Camera3D = player._camera
+	var side := -1.0 if hand == "left" else 1.0
+	var fist := camera.global_position + camera.global_basis * Vector3(0.25 * side, -0.3, -0.6)
+	var ahead := -camera.global_basis.z
+	ahead.y = 0.0
+	if randf() < chance:
+		SpellBolt.fling(player.get_parent(), fist, ahead, "fire", strength * SPELL_FIRE, target)
+	if randf() < chance:
+		SpellBolt.fling(player.get_parent(), fist, ahead, "ice", strength * SPELL_ICE, target)
+	if randf() < chance and not target.is_dead():
+		Powers.chain_lightning(target, strength * SPELL_LIGHTNING, SPELL_JUMPS)
+	if randf() < chance and dealt > 0.0:
+		var amount := maxf(1.0, dealt * SPELL_HEAL)
+		player.heal(amount)
+		var at := target.global_position + Vector3(0, 1.2, 0)
+		HitFx.burst(player.get_parent(), at, (player.global_position - at).normalized(), Color(0.85, 0.05, 0.08), 16, 4.0, true, 0.05)
+		DamagePopup.spawn(player.get_parent(), "+%d" % roundi(amount), Color(0.95, 0.2, 0.25), 36, at + Vector3(0, 0.5, 0))
+
+
+## Flame Burst: fire bursts out in a ring; everything in it is hit and burns.
+func _flame_burst() -> void:
+	_spend()
+	var world := player.get_parent()
+	var center := player.global_position
+	var radius := BURST_RADIUS + GameState.get_effect("burst_radius") + _power()
+	var damage := GameState.get_damage() * BURST_DAMAGE * (1.0 + GameState.get_effect("burst_damage") + 0.25 * _power())
+	var burn := GameState.get_damage() * BURST_BURN * (1.0 + GameState.get_effect("burst_burn"))
+	Sfx.play("fire", 4.0, 0.6)
+	Sfx.play("quake", -2.0, 0.8)
+	player.shake(0.08)
+	player._kick_fov(10.0)
+	HitFx.flash(world, center + Vector3(0, 1.0, 0), BURST_COLOR, 3.0)
+	for i in 16:
+		var direction := Vector3.FORWARD.rotated(Vector3.UP, TAU * i / 16.0)
+		for ring in [0.35, 0.7, 1.0]:
+			HitFx.burst(world, center + direction * radius * ring + Vector3(0, 0.3, 0), direction + Vector3.UP * 0.8,
+					BURST_COLOR if ring < 1.0 else Color(1.0, 0.75, 0.25), 6, 4.0, true, 0.08)
+	for node in player.get_tree().get_nodes_in_group("enemies"):
+		var enemy := node as Enemy
+		if enemy == null or enemy.is_dead():
+			continue
+		var offset := enemy.global_position - center
+		offset.y = 0.0
+		if offset.length() > radius:
+			continue
+		enemy.take_hit(damage, enemy.global_position + Vector3(0, 1.0, 0), offset.normalized() * 6.0, true, "FLAME BURST")
+		enemy.ignite(burn, BURST_BURN_TIME)
+	player.class_event.emit("FLAME BURST")
 
 
 # --- Free Runner: Highlight Reel ----------------------------------------------------

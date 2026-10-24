@@ -1093,48 +1093,38 @@ Older saves get what they'd already earned, quietly, when camp loads. The list a
 - `run_playground.bat` (or `.sh`, `-e` for the editor) syncs and launches it.
 - It opens on the training ring with a dev panel (F1): fighter, hat, every emote, spawn anything at any tier (veterans, bosses, contenders), freeze enemies, force any special on the nearest boxer, give and select a power line, god mode, fill the ultimate, +5 levels, replay tips, and arena theme backdrops.
 
-## New fighter: the Elementalist [Planned 2026-10-24]
+## New fighter: The Catalyst (Elementalist) [Built 2026-10-24]
 
-A fighter built on the four Sigil powers (Fire, Frost, Storm, Blood). Everyone else runs one power at a time; he runs more, and his ultimates turn his punches into spells.
+A buff old wizard with a white beard and long white hair who put his spells into his fists (card art `art/fighter_elementalist.jpg`, versus art `art/versus/fighter_elementalist.png`). Class id `elementalist`, color pink-magenta. Tagline: "Why cast it when you can punch it?" A little less punch damage (x0.9); his power is in the Sigil powers.
 
-**The Catalyst**, class Elementalist (id `elementalist`). A buff old wizard with a white beard and long white hair who decided his spells were better spent on his fists than on casting.
+**Unlock:** offered in the Soul Shop for 80 Souls once two seals are broken (`SoulShop.FIGHTERS`, `FIGHTER_SEALS`), so he always has two powers. Hidden from the fighter picker until bought (`GameState.SHOP_CLASSES`). Buying him shows a toast; pick him from the Menu.
 
-**Unlock:** sold in the Soul Shop (`SoulShop.FIGHTERS`) once two seals are broken, so he always has at least two powers to work with. Hidden until then. Price to decide (around 80 Souls).
-
-**Passives** (unlocked at class level 1 / 5 / 15, picked in the Loadout like everyone else):
+**Passives:**
 
 | Passive | Level | What it does |
 |---|---|---|
-| Dual Sigil (default) | 1 | Select **two** owned powers at once. Both work with all their upgrades. |
-| Attunement | 5 | One power, amplified: its damage, radius, duration and proc chances are much stronger (scales with passive power). |
-| Prism | 15 | **All** owned powers at once, but only their base effect: none of their upgrades count. |
+| Dual Sigil (default) | 1 | Two owned powers at once, with all their upgrades. Select one and it joins the last pick; the older drops out (`power_pick` + `power_pick_2`). |
+| Attunement | 5 | One power at x1.5 (+5% a point of passive power): damage, burn, freeze, radius, chances, heals. Counts and switches (lightning jumps, Pyre...) aren't scaled (`GameState.AMPLIFIED`). |
+| Prism | 15 | Every owned power at once, base node only: no upgrades (+4% a point of passive power). The Select button reads "Active (base)". |
 
-**Ultimates** (level 1 / 10):
+**Ultimates:**
 
 | Ultimate | Level | What it does |
 |---|---|---|
-| Elemental Fists (default) | 1 | For about 10s, every punch that lands has a 15% chance of each (up to 25% with the skill web): a **fireball** flies from the fist (ranged, ignites what it hits), an **icicle** flies (ranged, freezes), **lightning** arcs to nearby enemies, and a **vampire** heal of a share of the damage dealt. Several can trigger on one punch. |
-| Flame Burst | 10 | A ring of fire bursts out around him (about 6m): big damage to everything in it, and they all ignite (damage over time). |
+| Elemental Fists (default) | 1 | 10s. Every landed punch rolls each element at 15% (up to 25% with skills): a **fireball** flies ahead from the fist and bursts on the first monster (splash, burn); an **icicle** flies ahead and pierces the line (freezes each); **lightning** chains to 3 more; a **blood heal** of 30% of the damage dealt (`SpellBolt`, `Ult.on_landed`). |
+| Flame Burst | 10 | A ring of fire 6m around him: 5x damage to everything in it (staggers, knocks back), and they burn (0.8x/s for 5s). |
 
-**Skill web (draft):** about 15 nodes in three branches. Each feeds his passive (they adapt to whichever is equipped, like the others):
-- **Weave:** stronger dual or prism power.
-- **Spellfists:** Elemental Fists chances from 15% to 25% each, and a longer ultimate.
-- **Kindle:** Flame Burst radius, damage and burn.
+**Skill web:**
+- **Weave** (feeds Dual Sigil; adapts to passive power for the others): Conduit, Resonance, Wellspring, Archmage capstone. Stronger powers (`power_amp`) plus some punch damage.
+- **Spellfists:** Spark Knuckles (+2% a level), Hot Hands (spell damage), Long Spell (+3s), Spellfists capstone (+4%). 15% + 6% + 4% = the 25% cap.
+- **Kindle:** Old Bones (knuckle HP), Kindle (burst damage), Wide Flames (+1.5m), Phoenix (burn, knuckle HP).
+- Ultimate Surge and Spellfists II medallions.
+- POWER rating weights his web's effects. A full web is about x1.8, like the others.
 
-**Look:** first-person hands are old, thick and veined, wrapped in tape inscribed with runes. When the ultimate is ready, the runes glow in the colors of his selected powers: ember orange, ice blue, storm violet, blood red.
-
-**Card art** (the user is making it; prompt to match the other cards): knees-up 3:4 voxel portrait. A huge, muscular old man with a long white beard and long white hair, bare-chested under an open, torn wizard's robe tied at the waist like a boxer's trunks, boxing hand wraps covered in glowing runes. One fist wreathed in fire, the other in frost and lightning, a faint red blood-mist curling around his forearm. A fighter's stance and a grin. Dark arena background with a four-color aura (ember orange, ice blue, storm violet, blood red). No readable text, no religious symbols.
-
-**Base stats (draft):** a bit less punch damage than the Mauler, average knuckle HP; his power is in the elements.
-
-**Build notes:**
-- `power_pick` becomes a list for him: two picks with Dual Sigil, one with Attunement, every owned power with Prism (upgrades off).
-- POWER rating counts his extra powers so contenders stay fair.
-- Elemental Fists projectiles reuse the fireball and arrow code: they fly from the punching fist toward the target.
-
-**Decided:** the name (The Catalyst); Elemental Fists at 15% each, up to 25% with skills (about 48% to 68% that at least one fires per punch); Flame Burst overlapping the Mauler's fire theme is fine.
-
-**Open:** his Soul Shop price (about 80 Souls proposed).
+**Look:**
+- **First person:** heavy old forearms (a vein, white hairs), a dark robe sleeve with white trim, tape wraps up the forearm and over the knuckles carved with runes. When the ultimate is ready, the right hand's runes, light and sparks glow in his first power's color and the left in his second (fire orange, frost blue, storm violet, blood red). Prism cycles through them.
+- **Third person** (emotes): bare chest in an open dark robe with white trim, long white hair and beard.
+- The demo reel shows Dual Sigil (burn + chill) and Elemental Fists (fireball, icicle, zap, heal).
 
 ## Bounties, mastery and the Crypt merchant [Built 2026-10-24]
 

@@ -27,6 +27,7 @@ const FIGHTER_LINES := {
 	"counter_master": ["Read their move.", "Turn their strength against them.", "One hit. Game over.", "Patience is a punch."],
 	"combo_master": ["Faster than the eye.", "One, two, ten.", "Time stops. Fists don't."],
 	"free_runner": ["Off the ropes, into your face.", "Catch me if you can.", "Already gone."],
+	"elementalist": ["Why cast it when you can punch it?", "Fire in one hand. Ice in the other.", "Old, not slow."],
 }
 
 

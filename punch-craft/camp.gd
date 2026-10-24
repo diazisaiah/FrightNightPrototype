@@ -680,9 +680,10 @@ func _refresh_detail(kind: String) -> void:
 	var buy: Button = detail.buy
 	if kind == "upgrade" and SkillTreeView.BRANCHES.has(id) and level > 0:
 		# Owned powers: pick the one that works.
-		var picked := GameState.power_pick == id
-		buy.text = "Selected" if picked else "Select"
-		buy.disabled = picked
+		var picked := GameState.power_selected(id)
+		var prism := GameState.is_player_class("elementalist") and GameState.passive() == "prism"
+		buy.text = "Active (base)" if prism else "Selected" if picked else "Select"
+		buy.disabled = picked or prism
 		detail.cost_row.visible = false
 		return
 	if maxed:
@@ -1423,7 +1424,9 @@ func _shop_card(index: int, offer: Dictionary) -> Control:
 		"fighter":
 			title = GameState.fighter_name(offer.id)
 			what = "FIGHTER"
-			icon_name = "fist"
+			icon_name = GameState.CLASSES[offer.id].icon
+			tint = GameState.fighter_color(offer.id)
+			lines = GameState.CLASSES[offer.id].tagline
 	var card := PanelContainer.new()
 	card.custom_minimum_size = Vector2(190, 250)
 	card.add_theme_stylebox_override("panel", UiTheme.box(Color(tint.darkened(0.8), 0.7), Color(tint, 0.8), 2, 10, 10.0))

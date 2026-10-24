@@ -19,12 +19,20 @@ const SKIN := {
 	"berserker": Color(0.56, 0.42, 0.35), "combo_master": Color(0.8, 0.6, 0.45),
 	"counter_master": Color(0.55, 0.38, 0.29), "free_runner": Color(0.5, 0.34, 0.24),
 	"wise_guy": Color(0.86, 0.64, 0.5),
+	"elementalist": Color(0.74, 0.55, 0.43),
 }
 const DEFAULT_SKIN := Color(0.85, 0.62, 0.48)
 const ACCENT := {
 	"berserker": Color(1.0, 0.42, 0.12), "combo_master": Color(0.6, 0.4, 1.0),
 	"counter_master": Color(0.35, 0.75, 1.0), "free_runner": Color(0.3, 1.0, 0.45),
 	"wise_guy": Color(1.0, 0.75, 0.2),
+	"elementalist": Color(0.95, 0.4, 0.7),
+}
+## The Catalyst's runes glow in his powers' colors (his picks; all of them
+## under Prism, taking turns).
+const POWER_COLORS := {
+	"sigil_fire": Color(1.0, 0.45, 0.1), "sigil_frost": Color(0.55, 0.85, 1.0),
+	"sigil_storm": Color(0.65, 0.45, 1.0), "sigil_blood": Color(0.95, 0.1, 0.15),
 }
 
 ## Elbow position and rotation of the right arm at rest. The left arm mirrors it.
@@ -87,12 +95,12 @@ func _ready() -> void:
 		fighter = GameState.player_class
 	_accent = ACCENT.get(fighter, Color(1.0, 0.8, 0.4))
 	_skin_color = SKIN.get(fighter, DEFAULT_SKIN)
-	for group in ["skin", "gear", "rim"]:
+	for group in ["skin", "gear", "rim", "rune_left", "rune_right"]:
 		var material := StandardMaterial3D.new()
 		material.vertex_color_use_as_albedo = true
 		material.vertex_color_is_srgb = true
 		material.roughness = 0.8
-		if group == "rim":
+		if group in ["rim", "rune_left", "rune_right"]:
 			material.emission_enabled = true
 			material.emission = _accent
 			material.emission_energy_multiplier = 0.0
@@ -191,6 +199,8 @@ func _build_arm(side: float) -> Node3D:
 			_paint_stray(side < 0.0)
 		"wise_guy":
 			_paint_tony(side < 0.0)
+		"elementalist":
+			_paint_catalyst(side < 0.0)
 		_:
 			_paint_forearm(_skin_fn(), "skin")
 			_paint_fist(_skin_fn(), _skin_fn())
@@ -485,6 +495,48 @@ func _paint_tony(_left: bool) -> void:
 	_fill(Vector3(0.021, -0.045, -0.36), Vector3(0.048, 0.035, -0.351), _solid(gold, 0.05), "rim")
 
 
+## The Catalyst: a heavy old forearm (veins, white hairs) under a dark robe
+## sleeve with white trim, white tape wraps up the forearm and over the
+## knuckles, inscribed with runes (rune_left / rune_right) that glow in his
+## powers' colors when the ultimate is ready.
+func _paint_catalyst(left: bool) -> void:
+	var skin := _skin_color
+	_fill_taper(0.14, 0.32, Vector2(0.062, 0.058), Vector2(0.068, 0.064), 0.0, _solid(Color(0.1, 0.09, 0.11)))
+	_fill_taper(0.13, 0.148, Vector2(0.064, 0.06), Vector2(0.064, 0.06), 0.0, _solid(Color(0.86, 0.84, 0.8)))
+	# A vein snaking along the top of the forearm, and the odd white hair.
+	var forearm := func(p: Vector3) -> Color:
+		if p.y > 0.0 and absf(p.x - 0.018 * sin(p.z * 55.0)) < VOXEL * 0.7:
+			return _vary(skin.darkened(0.2).lerp(Color(0.4, 0.45, 0.65), 0.2), p, 0.04)
+		if fposmod(p.x * 13.0 + p.z * 31.0 + p.y * 7.0, 0.023) < 0.0014:
+			return Color(0.92, 0.92, 0.9)
+		return _vary(skin, p, 0.09)
+	_fill_taper(-0.12, 0.13, Vector2(0.05, 0.046), Vector2(0.058, 0.054), 0.0, forearm, "skin")
+	var tape := Color(0.74, 0.71, 0.65)
+	var taped := func(p: Vector3) -> Color:
+		var c := tape
+		if fposmod(p.z + p.y * 0.35, 0.02) < VOXEL:
+			c = tape.darkened(0.25)
+		return _vary(c, p, 0.08)
+	_fill_taper(-0.29, -0.12, Vector2(0.046, 0.042), Vector2(0.05, 0.046), 0.0, taped)
+	_paint_wrist(taped, "gear", 0.004)
+	_paint_fist(taped, _skin_fn(), "gear", "skin")
+	# Runes: little glyph marks around the wraps and across the knuckles.
+	var group := "rune_left" if left else "rune_right"
+	var rune := _solid(Color(0.35, 0.3, 0.28), 0.02)
+	for ring in 3:
+		var z := -0.27 + ring * 0.05
+		for k in 7:
+			if (k + ring) % 3 == 2:
+				continue
+			var a := TAU * k / 7.0 + ring * 0.4
+			var at := Vector3(cos(a) * 0.049, sin(a) * 0.045, z)
+			var tall := VOXEL * (3.0 if k % 2 == 0 else 1.6)
+			_fill(at - Vector3(VOXEL, VOXEL, tall) * 0.9, at + Vector3(VOXEL, VOXEL, tall) * 0.9, rune, group)
+	for i in 4:
+		var x := -0.034 + i * 0.0227
+		_fill(Vector3(x - 0.005, 0.041, -0.372 + (i % 2) * 0.006), Vector3(x + 0.005, 0.05, -0.352), rune, group)
+
+
 # --- Ultimate-ready glow -----------------------------------------------------------
 
 ## Builds each hand's glow (hidden until the ultimate is ready): a light, plus
@@ -510,6 +562,7 @@ func _build_effect(arm: Node3D, side: float) -> void:
 	bit.size = Vector3.ONE * 0.007
 	bit.material = _glow(_accent, 1.4)
 	particles.mesh = bit
+	fx.bit = bit.material
 	particles.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
 	particles.emission_sphere_radius = 0.07
 	match fighter:
@@ -573,6 +626,14 @@ func _build_effect(arm: Node3D, side: float) -> void:
 			fx.bolts = bolts
 			fx.segments = segments
 			fx.side = side
+		"elementalist":  # Sparks rising off the runes.
+			particles.amount = 20
+			particles.lifetime = 0.8
+			particles.direction = Vector3.UP
+			particles.spread = 50.0
+			particles.gravity = Vector3(0, 0.4, 0)
+			particles.initial_velocity_min = 0.05
+			particles.initial_velocity_max = 0.25
 		"wise_guy":  # Gold bling: sparkles drifting off the knuckles.
 			particles.amount = 22
 			particles.lifetime = 0.7
@@ -623,13 +684,28 @@ func _update_effects(delta: float) -> void:
 	var pulse := 0.5 + 0.5 * sin(_time * 7.0)
 	var rim: StandardMaterial3D = _materials.rim
 	rim.emission_energy_multiplier = (0.6 + pulse * 0.9) if _ult_ready else 0.0
+	if fighter == "elementalist":
+		var colors := _rune_colors()
+		for i in 2:
+			var rune: StandardMaterial3D = _materials["rune_left" if i == 0 else "rune_right"]
+			rune.emission = colors[i]
+			rune.emission_energy_multiplier = (0.5 + pulse * 0.7) if _ult_ready else 0.0
+			# The hand's own light takes its rune's color too.
+			var hand_fx: Dictionary = _fx.get("left" if i == 0 else "right", {})
+			if hand_fx.has("light"):
+				(hand_fx.light as OmniLight3D).light_color = colors[i]
+				var sparks: StandardMaterial3D = hand_fx.bit
+				sparks.albedo_color = colors[i]
+				sparks.emission = colors[i]
 	_bolt_timer -= delta
 	var rebuild_bolts := _bolt_timer <= 0.0
 	if rebuild_bolts:
 		_bolt_timer = 0.06
 	for hand in _fx:
 		var fx: Dictionary = _fx[hand]
-		(fx.light as OmniLight3D).light_energy = (0.3 + pulse * 0.3) if _ult_ready else 0.0
+		# The Catalyst's pale tape washes out under a strong light.
+		var light_scale := 0.3 if fighter == "elementalist" else 1.0
+		(fx.light as OmniLight3D).light_energy = (0.3 + pulse * 0.3) * light_scale if _ult_ready else 0.0
 		var particles: CPUParticles3D = fx.particles
 		particles.emitting = _ult_ready
 		match fighter:
@@ -647,6 +723,20 @@ func _update_effects(delta: float) -> void:
 				var spinners: Array = fx.spinners
 				for i in spinners.size():
 					(spinners[i] as Node3D).rotation.z += delta * (7.0 + i * 2.5) * (1.0 if i % 2 == 0 else -1.0)
+
+
+## [left, right] rune colors: his picks (Dual Sigil), the one (Attunement),
+## or every owned power taking turns (Prism).
+func _rune_colors() -> Array:
+	var owned: Array = GameState.owned_powers()
+	if owned.is_empty():
+		return [_accent, _accent]
+	if GameState.passive() == "prism":
+		var step := int(_time * 1.5)
+		return [POWER_COLORS[owned[step % owned.size()]], POWER_COLORS[owned[(step + 1) % owned.size()]]]
+	var first: Color = POWER_COLORS.get(GameState.power_pick, _accent)
+	var second: Color = POWER_COLORS.get(GameState.power_pick_2, first) if GameState.passive() == "dual_sigil" else first
+	return [second, first]
 
 
 ## Two jagged bolts crawling along the arm's surface, rebuilt each flicker.

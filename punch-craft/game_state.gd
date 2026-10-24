@@ -72,10 +72,28 @@ const CLASSES := {
 		"desc": "Found out too late that processed meat is a carcinogen. He's punching his way out of the underworld for one more bite of that deli sandwich. Big Mouth refills fast: insult a monster and it comes only for Tony, hitting 50% harder and taking double damage from him. Fuggedaboudit waves off one hit every 10s.",
 		"mods": {"knuckles": 0.9},
 	},
+	"elementalist": {
+		"name": "Elementalist", "icon": "flame",
+		"fighter": "The Catalyst", "color": Color(0.95, 0.4, 0.7),
+		"tagline": "Why cast it when you can punch it?",
+		"traits": [["flame", "Dual Sigil", "Two powers at once."], ["bolt", "Elemental Fists", "Fire, ice, storm and blood."], ["burst", "Flame Burst", "Set the ring alight."]],
+		"bars": {"Power": 60, "Defense": 60, "Speed": 55, "Combo": 55, "Counter": 55},
+		"desc": "An old wizard who put his spells into his fists. Runs two powers at once. His ultimate turns punches into fireballs, icicles, lightning and blood.",
+		"mods": {"damage": 0.9},
+	},
 }
 ## Tony: the secret fighter, playable once all four Yonker hats are collected
 ## (tony_unlocked). Hidden from the class picker until then.
 const SECRET_CLASSES := ["wise_guy"]
+## Fighters bought in the Soul Shop (SoulShop.FIGHTERS): hidden until bought.
+const SHOP_CLASSES := ["elementalist"]
+## The Catalyst: power numbers his passive amplifies (not counts or switches).
+const AMPLIFIED := [
+	"fire_punch", "burn", "burn_time", "fire_chance", "fire_radius", "frost_punch", "frost_time", "frost_radius",
+	"brittle", "frost_chance", "chain_damage", "heal_on_kill", "counter_heal", "last_stand",
+]
+## Attunement: how much stronger the one power is (plus passive power).
+const ATTUNE := 1.5
 const DEFAULT_CLASS := "berserker"
 
 const RESOURCE_NAMES := {
@@ -909,6 +927,83 @@ const SKILL_TREES := {
 			"max_level": 1, "cost": 3, "cost_growth": 1.0, "effects": {"ult_power": 1},
 		},
 	},
+	"elementalist": {
+		"elementalist": {
+			"name": "Catalyst", "icon": "flame", "pos": Vector2(0, 0), "requires": [],
+			"desc": "Spells in the fists. Every path starts here.",
+			"max_level": 1, "cost": 1, "cost_growth": 1.0, "effects": {"damage_percent": 0.02, "knuckles_percent": 0.02},
+		},
+		"conduit": {
+			"name": "Conduit", "icon": "bolt", "pos": Vector2(1, 0), "requires": ["elementalist"],
+			"desc": "Your powers and punches hit harder.",
+			"max_level": 3, "cost": 1, "cost_growth": 1.0, "effects": {"power_amp": 0.06, "damage_percent": 0.03},
+		},
+		"resonance": {
+			"name": "Resonance", "icon": "spark", "pos": Vector2(2, 0), "requires": ["conduit"],
+			"desc": "Your powers hit even harder.",
+			"max_level": 2, "cost": 1, "cost_growth": 1.0, "effects": {"power_amp": 0.08, "damage_percent": 0.04},
+		},
+		"wellspring": {
+			"name": "Wellspring", "icon": "drop", "pos": Vector2(3, 0), "requires": ["resonance"],
+			"desc": "Deep power.",
+			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"power_amp": 0.12, "damage_percent": 0.05},
+		},
+		"archmage": {
+			"name": "Archmage", "icon": "crown", "pos": Vector2(4, 0), "requires": ["wellspring"], "ring": 2, "medallion": true,
+			"desc": "Your powers at their strongest.",
+			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"power_amp": 0.2, "damage_percent": 0.08},
+		},
+		"spark_knuckles": {
+			"name": "Spark Knuckles", "icon": "fist", "pos": Vector2(0, -1), "requires": ["elementalist"],
+			"desc": "Elemental Fists fire more often.",
+			"max_level": 3, "cost": 1, "cost_growth": 1.0, "effects": {"spell_chance": 0.02, "heavy_bonus": 0.05},
+		},
+		"hot_hands": {
+			"name": "Hot Hands", "icon": "flame", "pos": Vector2(0, -2), "requires": ["spark_knuckles"],
+			"desc": "Fireballs, icicles and lightning hit harder.",
+			"max_level": 2, "cost": 1, "cost_growth": 1.0, "effects": {"spell_damage": 0.15},
+		},
+		"long_spell": {
+			"name": "Long Spell", "icon": "clock", "pos": Vector2(0, -3), "requires": ["hot_hands"],
+			"desc": "Elemental Fists last longer.",
+			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"spell_time": 3.0},
+		},
+		"spellfists": {
+			"name": "Spellfists", "icon": "star", "pos": Vector2(0, -4), "requires": ["long_spell"], "ring": 6, "medallion": true,
+			"desc": "Elemental Fists fire far more often.",
+			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"spell_chance": 0.04, "spell_damage": 0.2},
+		},
+		"old_bones": {
+			"name": "Old Bones", "icon": "heart", "pos": Vector2(-1, 0), "requires": ["elementalist"],
+			"desc": "More knuckle HP.",
+			"max_level": 3, "cost": 1, "cost_growth": 1.0, "effects": {"knuckles_percent": 0.03},
+		},
+		"kindle": {
+			"name": "Kindle", "icon": "flame", "pos": Vector2(-2, 0), "requires": ["old_bones"],
+			"desc": "Flame Burst hits harder.",
+			"max_level": 2, "cost": 1, "cost_growth": 1.0, "effects": {"burst_damage": 0.2, "knuckles_percent": 0.02},
+		},
+		"wide_flames": {
+			"name": "Wide Flames", "icon": "burst", "pos": Vector2(-3, 0), "requires": ["kindle"],
+			"desc": "Flame Burst reaches farther.",
+			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"burst_radius": 1.5},
+		},
+		"phoenix": {
+			"name": "Phoenix", "icon": "crown", "pos": Vector2(-4, 0), "requires": ["wide_flames"], "ring": 4, "medallion": true,
+			"desc": "Flame Burst burns longer, and you can take more.",
+			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"burst_burn": 0.5, "knuckles_percent": 0.07},
+		},
+		"elementalist_surge": {
+			"name": "Ultimate Surge", "icon": "spark", "pos": Vector2(1, 1), "requires": ["elementalist"], "ring": 3, "medallion": true,
+			"desc": "Your ultimate meter fills 25% faster.",
+			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"ult_gain": 0.25},
+		},
+		"elementalist_ult_power": {
+			"name": "Spellfists II", "icon": "bolt", "pos": Vector2(-1, 1), "requires": ["elementalist"], "ring": 5, "medallion": true,
+			"desc": "Ultimate: Elemental Fists last longer and hit harder; Flame Burst too.",
+			"max_level": 1, "cost": 3, "cost_growth": 1.0, "effects": {"ult_power": 1},
+		},
+	},
 }
 
 # How each effect reads in the UI. Percent effects are stored as fractions.
@@ -949,6 +1044,13 @@ const EFFECT_FORMATS := {
 	"counter_window": "+%ss counter window",
 	"armor_charges": "+%s super armor charge(s)",
 	"passive_power": "+%s passive power",
+	"power_amp": "+%s%% power strength",
+	"spell_chance": "+%s%% Elemental Fists chance",
+	"spell_damage": "+%s%% spell damage",
+	"spell_time": "+%ss Elemental Fists",
+	"burst_damage": "+%s%% Flame Burst damage",
+	"burst_radius": "+%sm Flame Burst radius",
+	"burst_burn": "+%s%% Flame Burst burn",
 	"armor_recharge_cut": "Super armor recharges %ss faster",
 	"retaliation_bonus": "+%s%% damage on super armor counters",
 	"perfect_cooldown_cut": "Perfect counter cooldown -%ss",
@@ -1028,6 +1130,7 @@ const PERCENT_EFFECTS := [
 	"damage_percent", "knuckles_percent", "armor_absorb_reduction", "jump_bonus",
 	"shatter", "lunging_jab", "thorns", "grit", "frost_slip", "executioner", "glass_jaw", "damage_taken",
 	"last_stand", "blood_price", "ult_gain",
+	"power_amp", "spell_chance", "spell_damage", "burst_damage", "burst_burn",
 ]
 ## Effects that are on/off: their text has no number.
 const FLAG_EFFECTS := [
@@ -1125,6 +1228,8 @@ var achievements := {}
 ## The one power that works (2026-10-23): a sigil node's id ("" for none).
 ## Owning several powers, you pick one; only its line of upgrades counts.
 var power_pick := ""
+## The Catalyst's second pick (Dual Sigil): the one before the latest.
+var power_pick_2 := ""
 ## Daily drills: {drill: {"best": score, "day": "YYYY-MM-DD" of the last paid run}}.
 var drills := {}
 ## The drill picked in camp for the drills scene (not saved).
@@ -1258,6 +1363,7 @@ func _new_class_progress() -> Dictionary:
 ## any equipped Crypt items.
 func get_effect(effect: String) -> float:
 	var total := 0.0
+	var amplify := effect in AMPLIFIED and is_player_class("elementalist")
 	for kind in ["upgrade", "skill"]:
 		var nodes := tree(kind)
 		var owned := _levels(kind)
@@ -1268,7 +1374,10 @@ func get_effect(effect: String) -> float:
 			# Passive nodes feed the equipped passive instead (passive_power).
 			if kind == "skill" and Abilities.node_adapts(player_class, id, passive()):
 				continue
-			total += nodes[id].effects.get(effect, 0) * owned[id]
+			var amount: float = nodes[id].effects.get(effect, 0) * owned[id]
+			if amplify and kind == "upgrade" and amount != 0.0 and power_of(id) != "":
+				amount *= _power_scale(power_of(id))
+			total += amount
 	for slot in equipped:
 		total += equipped[slot].effects.get(effect, 0.0)
 	for blessing in blessings:
@@ -1305,19 +1414,59 @@ static func power_of(id: String) -> String:
 	return _power_cache.get(id, "")
 
 
-## Not part of a power, or part of the selected one.
+## Not part of a power, or part of the selected one. The Catalyst: two
+## selected (Dual Sigil), or every owned power's base node (Prism).
 func power_active(id: String) -> bool:
 	var root := power_of(id)
-	return root == "" or root == power_pick
+	if root == "":
+		return true
+	if is_player_class("elementalist"):
+		match passive():
+			"dual_sigil":
+				return root == power_pick or root == power_pick_2
+			"prism":
+				return id == root and upgrade_levels.get(root, 0) > 0
+	return root == power_pick
 
 
-## Picks which owned power works.
+## Whether an owned power is one of the picks (the camp's Select button).
+func power_selected(root: String) -> bool:
+	if is_player_class("elementalist"):
+		match passive():
+			"dual_sigil":
+				return root == power_pick or root == power_pick_2
+			"prism":
+				return upgrade_levels.get(root, 0) > 0
+	return root == power_pick
+
+
+## Picks which owned power works. With Dual Sigil the newest pick joins the
+## last one (the older drops out).
 func select_power(root: String) -> bool:
 	if not SkillTreeView.BRANCHES.has(root) or upgrade_levels.get(root, 0) <= 0:
 		return false
+	if is_player_class("elementalist") and passive() == "dual_sigil" and root != power_pick:
+		power_pick_2 = power_pick
 	power_pick = root
 	_commit()
 	return true
+
+
+## The Catalyst's scale on a power's numbers (AMPLIFIED): Weave nodes under
+## Dual Sigil, x1.5+ for the attuned power, a little more under Prism.
+func _power_scale(root: String) -> float:
+	if not is_player_class("elementalist"):
+		return 1.0
+	match passive():
+		"attunement":
+			return ATTUNE + 0.05 * passive_power() if root == power_pick else 1.0
+		"prism":
+			return 1.0 + 0.04 * passive_power()
+	var amp := 0.0
+	var owned := _levels("skill")
+	for id in owned:
+		amp += float(SKILL_TREES[player_class][id].effects.get("power_amp", 0.0)) * int(owned[id])
+	return 1.0 + amp
 
 
 ## Owned powers, in climb order.
@@ -1666,7 +1815,8 @@ func unlock_crypt() -> void:
 ## "The Mauler" etc.: the fighter you play as. class_id defaults to the current one.
 ## The fighters you can pick: Tony only once he's unlocked.
 func class_ids() -> Array:
-	return CLASSES.keys().filter(func(id: String) -> bool: return not id in SECRET_CLASSES or tony_unlocked)
+	return CLASSES.keys().filter(func(id: String) -> bool:
+		return (not id in SECRET_CLASSES or tony_unlocked) and (not id in SHOP_CLASSES or fighters_bought.has(id)))
 
 
 func fighter_name(class_id := "") -> String:
@@ -2001,6 +2151,7 @@ func save_game() -> void:
 		"endless_best": endless_best,
 		"achievements": achievements,
 		"power_pick": power_pick,
+		"power_pick_2": power_pick_2,
 		"drills": drills,
 		"hat_pity": hat_pity,
 		"tony_unlocked": tony_unlocked,
@@ -2078,6 +2229,7 @@ func load_game() -> void:
 	tips_seen = data.get("tips_seen", {}).duplicate() if data.get("tips_seen", {}) is Dictionary else {}
 	achievements = data.get("achievements", {}).duplicate() if data.get("achievements", {}) is Dictionary else {}
 	power_pick = String(data.get("power_pick", ""))
+	power_pick_2 = String(data.get("power_pick_2", ""))
 	shop_stock = data.get("shop_stock", []).duplicate(true) if data.get("shop_stock", []) is Array else []
 	shop_restock_at = int(data.get("shop_restock_at", -1))
 	shop_rerolls = int(data.get("shop_rerolls", 0))
@@ -2120,6 +2272,8 @@ func load_game() -> void:
 	if not power_pick in owned_powers():
 		var owned := owned_powers()
 		power_pick = owned[0] if not owned.is_empty() else ""
+	if not power_pick_2 in owned_powers() or power_pick_2 == power_pick:
+		power_pick_2 = ""
 
 	var saved_classes: Dictionary = data.get("classes", {})
 	if saved_classes.is_empty():
@@ -2352,6 +2506,7 @@ func _reset_fields() -> void:
 	endless_best = 0
 	achievements = {}
 	power_pick = ""
+	power_pick_2 = ""
 	drills = {}
 	hat_pity = 0
 	tony_unlocked = false

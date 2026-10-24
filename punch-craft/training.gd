@@ -75,6 +75,7 @@ const ULT_TIPS := {
 	"counter_master": ["Every attack gets slipped and countered for you.", "Riposte Stance"],
 	"free_runner": ["Look at the dummy, then:", "Highlight Reel"],
 	"wise_guy": ["Look at the dummy and run your mouth:", "Big Mouth"],
+	"elementalist": ["Then keep punching: the elements fly.", "Elemental Fists"],
 }
 const CUE_COLORS := {"blue": Color(0.35, 0.65, 1.0), "orange": Color(1.0, 0.6, 0.2), "red": Color(1.0, 0.3, 0.25)}
 

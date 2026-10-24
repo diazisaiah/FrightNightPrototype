@@ -1426,6 +1426,7 @@ func _land_punch(type: String, hand: String, _dashing := false, airborne := fals
 	_dash_punch_splash(target, raw_damage, hand)
 	_after_punch_passives(target, raw_damage, killed, push, forced != null)
 	_punch_specials(type, hand, target, raw_damage, counter, dash_jab, killed)
+	ult.on_landed(target, dealt, hand)
 
 	var kind := "hit"
 	if counter:

@@ -10,9 +10,9 @@ Ideas for future fighters, parked here until we're ready to build them. Nothing 
 
 ---
 
-## The Catalyst (Elementalist) [Planned 2026-10-24]
+## The Catalyst (Elementalist) [Built 2026-10-24]
 
-A buff old wizard who put his spells into his fists. Planned in GAME_DESIGN.md ("New fighter: the Elementalist"): two powers at once, Elemental Fists and Flame Burst ultimates, sold in the Soul Shop. Card art prompt is there too.
+A buff old wizard who put his spells into his fists. Built; see GAME_DESIGN.md ("New fighter: The Catalyst"): two powers at once, Elemental Fists and Flame Burst ultimates, sold in the Soul Shop. Card art prompt is there too.
 
 ## The Gambler — "Snake Eyes" [Idea, planned 2026-10-15]
 

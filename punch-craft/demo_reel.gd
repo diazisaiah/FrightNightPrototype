@@ -14,6 +14,7 @@ const SIGNATURE := {
 	"counter_master": ["Perfect Counter", "Slip the punch, then hook with the matching hand: knocked out in one."],
 	"free_runner": ["Dash Punches", "Dash forward and punch: a left Spear Jab runs through a whole line, a right Haymaker blasts them back."],
 	"wise_guy": ["Fuggedaboudit", "Once every 10 seconds, a hit that would've landed gets waved off. No damage, no flinch."],
+	"elementalist": ["Dual Sigil", "Two powers at once: his punches burst into flame and freeze what they hit."],
 }
 const EYE := Vector3(0, 1.55, 2.0)
 const DUMMY_SPOT := Vector3(0, 0.05, 0)
@@ -222,6 +223,19 @@ func _reset() -> void:
 
 func _signature(id: int) -> void:
 	match fighter:
+		"elementalist":
+			for _round in 2:
+				await _punch("jab", "left", 8.0, "")
+				await _punch("hook", "right", 16.0, "HOOK!")
+				var at := _dummy.global_position + Vector3(0, 1.2, 0)
+				HitFx.burst(_world, at, Vector3.UP, Color(1.0, 0.45, 0.1), 30, 5.0, true, 0.08)
+				HitFx.burst(_world, at, Vector3.UP, Color(0.55, 0.85, 1.0), 24, 3.5, true, 0.06)
+				_popup(_dummy, "BURN + CHILL", Color(0.95, 0.4, 0.7))
+				_dummy.ignite(3.0, 2.0)
+				Sfx.play("fire", -6.0)
+				await _wait(0.9)
+				if id != _run_id:
+					return
 		"wise_guy":
 			for attack in ["cross", "left_hook"]:
 				await _enemy_swing(attack, 0.75)
@@ -284,6 +298,19 @@ func _signature(id: int) -> void:
 
 func _ultimate(id: int) -> void:
 	match fighter:
+		"elementalist":
+			_flash(Color(0.95, 0.4, 0.7), 0.35)
+			_banner("ELEMENTAL FISTS!", Color(0.95, 0.4, 0.7))
+			await _wait(0.4)
+			for pair in [["jab", "left", Color(1.0, 0.45, 0.1), "FIREBALL"], ["cross", "right", Color(0.55, 0.85, 1.0), "ICICLE"],
+					["hook", "left", Color(0.65, 0.45, 1.0), "ZAP"], ["uppercut", "right", Color(0.95, 0.1, 0.15), "+HEAL"]]:
+				await _punch(pair[0], pair[1], 14.0, "", 0.1, 0.25, pair[0] == "uppercut")
+				var at := _dummy.global_position + Vector3(0, 1.3, 0)
+				HitFx.burst(_world, at, Vector3.UP, pair[2], 26, 5.0, true, 0.07)
+				_popup(_dummy, pair[3], pair[2])
+				if id != _run_id:
+					return
+			await _wait(1.0)
 		"wise_guy":
 			var line := Insults.insult()
 			_banner(line, GameState.fighter_color("wise_guy"))

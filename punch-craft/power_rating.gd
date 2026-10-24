@@ -35,6 +35,9 @@ const OFFENSE := {
 const POWERS := {
 	"fire_punch": 0.5, "burn": 0.4, "chain_lightning": 0.08, "frost_punch": 0.3,
 	"ult_power": 0.25, "ult_gain": 0.3,
+	# The Catalyst's web: stronger powers, Elemental Fists, Flame Burst.
+	"power_amp": 0.3, "spell_chance": 1.5, "spell_damage": 0.3, "spell_time": 0.02,
+	"burst_damage": 0.2, "burst_radius": 0.04, "burst_burn": 0.15,
 }
 ## Heals are percent of max knuckle HP (per kill, per milestone, per counter).
 const DEFENSE := {

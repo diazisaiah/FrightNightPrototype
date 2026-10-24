@@ -13,7 +13,9 @@ const GEAR_PRICE := {"common": 6, "uncommon": 12, "rare": 22, "epic": 38, "legen
 const GEAR_RARITY := {"common": 0.5, "uncommon": 0.32, "rare": 0.13, "epic": 0.04, "legendary": 0.01}
 ## Fighters for sale ({class_id: price}). Tony stays a secret (the Yonker
 ## hats); new fighters go here as they're added.
-const FIGHTERS := {}
+const FIGHTERS := {"elementalist": 80}
+## Seals a fighter needs before he's offered (the Catalyst needs two powers).
+const FIGHTER_SEALS := {"elementalist": 2}
 const REROLL_BASE := 2
 
 
@@ -43,7 +45,7 @@ static func restock() -> void:
 	for id in emotes.slice(0, EMOTE_SLOTS):
 		offers.append({"kind": "emote", "id": id, "price": EMOTE_PRICE, "sold": false})
 	for class_id in FIGHTERS:
-		if not class_id in GameState.class_ids():
+		if not class_id in GameState.class_ids() and Progression.seals_broken() >= int(FIGHTER_SEALS.get(class_id, 0)):
 			offers.append({"kind": "fighter", "id": class_id, "price": FIGHTERS[class_id], "sold": false})
 	# Only as strong as the deepest Crypt floor you've beaten (floor 1 before
 	# any), so cheesing a boss for a higher tier doesn't buy better gear.
@@ -99,5 +101,6 @@ static func buy(index: int) -> bool:
 			GameState.add_to_armory(offer.item.duplicate(true))
 		"fighter":
 			GameState.fighters_bought[offer.id] = true
+			Toast.show_on(GameState.get_tree(), "%s JOINS THE FIGHT" % GameState.fighter_name(offer.id).to_upper(), "Pick him from the Menu.")
 	GameState.save_game()
 	return true

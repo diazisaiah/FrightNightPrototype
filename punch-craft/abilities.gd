@@ -49,6 +49,14 @@ const PASSIVES := {
 		{"id": "the_take", "name": "The Take", "icon": "coin", "level": 15,
 			"desc": "Tony gets his cut: +25% coins from everything, and enraged monsters pay double."},
 	],
+	"elementalist": [
+		{"id": "dual_sigil", "name": "Dual Sigil", "icon": "flame", "level": 1,
+			"desc": "Select two of your powers at once. Both work, with all their upgrades."},
+		{"id": "attunement", "name": "Attunement", "icon": "target", "level": 5,
+			"desc": "One power, amplified: its damage, reach and chances are half again as strong."},
+		{"id": "prism", "name": "Prism", "icon": "star", "level": 15,
+			"desc": "All your powers at once, but only their base effect: no upgrades."},
+	],
 }
 
 const ULTIMATES := {
@@ -82,6 +90,12 @@ const ULTIMATES := {
 		{"id": "the_family", "name": "The Family", "icon": "crown", "level": 10,
 			"desc": "Three ghost goons in fedoras show up and brawl beside you for 10s."},
 	],
+	"elementalist": [
+		{"id": "elemental_fists", "name": "Elemental Fists", "icon": "bolt", "level": 1,
+			"desc": "For 10s every punch can throw a fireball, an icicle, lightning or a blood heal (15% each)."},
+		{"id": "flame_burst", "name": "Flame Burst", "icon": "burst", "level": 10,
+			"desc": "A ring of fire bursts out around you: big damage, and everything in it burns."},
+	],
 }
 
 ## What a point of passive power does for each passive: [per point, text].
@@ -97,6 +111,8 @@ const POWER_TEXT := {
 	"momentum": [0.1, "+%sx max momentum"],
 	"the_muscle": [0.8, "-%ss between Vinnie's grabs"],
 	"the_take": [3.0, "+%s%% coins"],
+	"attunement": [5.0, "+%s%% attuned power"],
+	"prism": [4.0, "+%s%% power (every power)"],
 }
 
 ## Skill web nodes that strengthen the passive (see above).
@@ -106,6 +122,7 @@ const PASSIVE_NODES := {
 	"combo_master": ["wide_wave", "rolling_thunder", "aftershock", "flurry"],
 	"free_runner": ["high_ground", "dive_kick"],
 	"wise_guy": ["shrug_it_off", "made_man"],
+	"elementalist": ["conduit", "resonance", "wellspring", "archmage"],
 }
 
 
