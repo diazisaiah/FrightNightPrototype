@@ -37,6 +37,60 @@ static func burst(parent: Node, at: Vector3, direction: Vector3, color: Color, a
 	particles.finished.connect(particles.queue_free)
 
 
+## Coin denominations for kill bursts, biggest first: [copper worth, color,
+## size]. Just for show: 367 coins bursts as 3 silver and 67 copper, and the
+## HUD still counts +367.
+const COINS := [
+	[1000000, Color(0.8, 0.95, 1.0), 0.16],  # Platinum
+	[10000, Color(1.0, 0.8, 0.2), 0.13],  # Gold
+	[100, Color(0.85, 0.88, 0.93), 0.11],  # Silver
+	[1, Color(0.7, 0.33, 0.16), 0.09],  # Copper
+]
+
+
+## Coins flying out of a KO, in copper, silver, gold and platinum.
+static func coins(parent: Node, at: Vector3, amount: int) -> void:
+	var left := amount
+	for coin in COINS:
+		var count := left / int(coin[0])
+		left -= count * int(coin[0])
+		if count <= 0:
+			continue
+		var particles := CPUParticles3D.new()
+		particles.one_shot = true
+		particles.explosiveness = 0.95
+		particles.amount = count
+		particles.lifetime = 0.9
+		particles.local_coords = false
+		var mesh := CylinderMesh.new()
+		mesh.top_radius = coin[2] * 0.5
+		mesh.bottom_radius = coin[2] * 0.5
+		mesh.height = coin[2] * 0.18
+		mesh.radial_segments = 10
+		mesh.rings = 1
+		var material := StandardMaterial3D.new()
+		material.albedo_color = coin[1]
+		material.metallic = 0.8
+		material.roughness = 0.3
+		material.emission_enabled = true
+		material.emission = coin[1]
+		material.emission_energy_multiplier = 0.6 if int(coin[0]) == 1 else 2.5
+		mesh.material = material
+		particles.mesh = mesh
+		particles.direction = Vector3.UP
+		particles.spread = 50.0
+		particles.initial_velocity_min = 2.5
+		particles.initial_velocity_max = 5.5
+		particles.gravity = Vector3(0, -9.8, 0)
+		particles.angular_velocity_min = -540.0
+		particles.angular_velocity_max = 540.0
+		particles.particle_flag_rotate_y = true
+		parent.add_child(particles)
+		particles.global_position = at
+		particles.emitting = true
+		particles.finished.connect(particles.queue_free)
+
+
 static var _flash_texture: GradientTexture2D
 static var _ring_texture: GradientTexture2D
 

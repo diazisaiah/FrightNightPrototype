@@ -12,7 +12,6 @@ const KNOCKBACK_DECAY := 12.0
 const TURN_SPEED := 8.0
 const RECOIL_DISTANCE := 0.18
 const RECOIL_RECOVERY := 1.2
-const COIN_COLOR := Color(1.0, 0.8, 0.2)
 const SPARK_COLOR := Color(1.0, 0.7, 0.3)
 const HEAD_MULTIPLIER := 1.3
 const HEAD_COLOR := Color(1.0, 0.85, 0.2)
@@ -964,11 +963,11 @@ func _die(push: Vector3) -> void:
 	_hp_label.visible = false
 	collision_layer = 0
 	collision_mask = 1
-	# Fling the body away from the punch and scatter coins.
+	# Fling the body away from the punch (the Arena and Crypt burst the coins
+	# they pay, HitFx.coins).
 	_knockback = push * 2.5
 	velocity.y = 3.0
 	var chest := global_position + Vector3(0, 1.2, 0)
-	HitFx.burst(get_parent(), chest, Vector3.UP, COIN_COLOR, 6 + coin_reward, 5.0, true, 0.07)
 	HitFx.burst(get_parent(), chest, push + Vector3.UP, hit_color, 25, 5.0)
 	Sfx.play_at("death", chest)
 	Sfx.play("coin", -8.0)

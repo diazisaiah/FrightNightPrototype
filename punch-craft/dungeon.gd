@@ -696,6 +696,7 @@ func _on_enemy_died(enemy: Enemy) -> void:
 	_kills += 1
 	var coins := roundi(GameState.roll_coins(enemy.coin_reward) * CRYPT_COIN_SCALE)
 	_run_coins += coins
+	HitFx.coins(enemy.get_parent(), enemy.global_position + Vector3(0, 1.2, 0), coins)
 	GameState.add_resource("coins", coins)
 	var xp := roundi(enemy.xp_reward * CRYPT_XP_SCALE * (1.0 + GameState.get_effect("xp_bonus")))
 	_run_xp += xp

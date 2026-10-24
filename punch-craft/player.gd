@@ -238,6 +238,9 @@ var _sloppy_tip_time := -100.0
 var _last_set_up := false
 ## Jabs in a row from the same hand (a double jab keeps the combo).
 var _jab_run := 0
+## Who the last punch landed on: switching to a new enemy can start on
+## either hand without dropping the combo.
+var _last_target_id := 0
 var _combo_timer := 0.0
 var _cooldown := 0.0
 var _buffered_hand := ""
@@ -1287,11 +1290,14 @@ func _land_punch(type: String, hand: String, _dashing := false, airborne := fals
 
 	# Alternating hands builds the combo; the same hand twice starts it over,
 	# except a double jab (jab, jab), after which the other hand must come
-	# next. Triple Jab (Blur skill) allows a third jab.
-	var jab_repeat := type == "jab" and _last_type == "jab" and hand == _last_hand
+	# next. Triple Jab (Blur skill) allows a third jab. Moving on to a new
+	# enemy can start on either hand.
+	var new_target := target.get_instance_id() != _last_target_id
+	_last_target_id = target.get_instance_id()
+	var jab_repeat := type == "jab" and _last_type == "jab" and hand == _last_hand and not new_target
 	_jab_run = _jab_run + 1 if jab_repeat else (1 if type == "jab" else 0)
 	var jabs_allowed := 2 + int(GameState.get_effect("double_jab"))
-	if hand == _last_hand and not (jab_repeat and _jab_run <= jabs_allowed) and unbroken_time <= 0.0:
+	if hand == _last_hand and not new_target and not (jab_repeat and _jab_run <= jabs_allowed) and unbroken_time <= 0.0:
 		combo = 0
 	_last_hand = hand
 	_last_type = type

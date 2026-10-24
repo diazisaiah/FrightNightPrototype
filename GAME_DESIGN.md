@@ -1093,6 +1093,11 @@ Older saves get what they'd already earned, quietly, when camp loads. The list a
 - `run_playground.bat` (or `.sh`, `-e` for the editor) syncs and launches it.
 - It opens on the training ring with a dev panel (F1): fighter, hat, every emote, spawn anything at any tier (veterans, bosses, contenders), freeze enemies, force any special on the nearest boxer, give and select a power line, god mode, fill the ultimate, +5 levels, replay tips, and arena theme backdrops.
 
+## Combos across enemies and coin bursts [Built 2026-10-24]
+
+- **Switching enemies keeps the combo:** the first punch on a different enemy can be from either hand. The same hand twice on one enemy still starts the combo over (double jab excepted). `player._last_target_id`.
+- **Coin bursts in denominations** (`HitFx.coins`, just for show): 100 copper = 1 silver, 100 silver = 1 gold, 100 gold = 1 platinum. A KO paying 367 bursts 3 silver and 67 copper coins, and the HUD counts +367. Bursts come from the Arena and Crypt payouts, so they show what was actually paid (bonuses included). Coins are little spinning discs: copper, silver, gold and a pale blue platinum.
+
 ## Ability loadouts and the Soul Shop [Built 2026-10-24]
 
 Each fighter has **three passives and two ultimates** (`abilities.gd`): the default of each is free, the second passive unlocks at class level **5**, the second ultimate at **10**, the third passive at **15**. You pick them in camp with the **Loadout** button (it shows up once there's a choice), never mid-run. `GameState.loadouts` keeps each fighter's picks; `passive()` / `ultimate()` / `has_passive()` / `has_ultimate()` read them.
