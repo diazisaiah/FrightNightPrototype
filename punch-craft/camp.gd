@@ -691,8 +691,13 @@ func _pick_bout(division: int) -> void:
 	for bout in range(1, mini(won + 1, Progression.BOUTS_PER_DIVISION) + 1):
 		options.append({"name": "BOUT %d" % bout, "number": "%d" % bout, "tier": division, "open": true, "value": bout,
 			"detail": ("WON" if bout <= won else "NEXT") + "   ·   x%s pay" % String.num(Progression.pay(Progression.arena_position(division, bout)) / base, 2)})
+	# After the Crown Division's third bout: the Endless Arena.
+	if division == Progression.TIER_COUNT and won >= Progression.BOUTS_PER_DIVISION:
+		options.append({"name": "ENDLESS", "number": "INF", "tier": division, "open": true, "value": 0,
+			"detail": "How long can you last?   ·   BEST %d" % GameState.endless_best})
 	_pick("%s DIVISION" % Progression.TIERS[division - 1].division.to_upper(), options, func(bout: int) -> void:
 		GameState.arena_bout_pick = bout
+		GameState.arena_endless = bout == 0
 		_start_run())
 
 

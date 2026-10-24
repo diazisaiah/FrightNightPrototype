@@ -90,6 +90,21 @@ const ARENA_RADIUS := 45.0
 const SPAWN_DISTANCE_MIN := 20.0
 const SPAWN_DISTANCE_MAX := 30.0
 const FALL_LIMIT := -20.0
+## The Endless Arena (after the Crown Division's third bout): no bar, no
+## champion, just waves. Every ENDLESS_WAVE knockouts the dead get tougher and
+## a mini-boss (an elite veteran) steps in; any spawn has a MINI_BOSS_CHANCE of
+## being one too. Score: ENDLESS_KO a knockout, ENDLESS_MINI_BOSS a mini-boss.
+const ENDLESS_WAVE := 25
+const MINI_BOSS_CHANCE := 0.02
+const ENDLESS_KO := 10
+const ENDLESS_MINI_BOSS := 150
+## Each wave climbs this far past the Crown par (difficulty), and pays this
+## much further up the ladder.
+const ENDLESS_STEP := 0.3
+const ENDLESS_PAY_STEP := 0.25
+## Ending purse: score x pay x this.
+const ENDLESS_PURSE := 0.3
+const MINI_BOSS_HP := 3.0
 const TORCH_COUNT := 8
 const DEAD_TREE_COUNT := 28
 const GRAVESTONE_COUNT := 30
@@ -116,6 +131,9 @@ var _torch_time := 0.0
 var _night := 1
 ## The Underworld Arena division (= tier of the Climb).
 var _division := 1
+var _endless := false
+var _score := 0
+var _wave := 0
 ## This division's place (Themes.ARENA).
 var _theme := {}
 ## Style tally for the current bout (the purse's grade).
@@ -134,6 +152,10 @@ var _nights_cleared_this_run := 0
 func _ready() -> void:
 	# Your kept gear comes with you (GameState.equipped).
 	_division = clampi(GameState.arena_division, 1, Progression.current_tier())
+	_endless = GameState.arena_endless
+	GameState.arena_endless = false
+	if _endless:
+		_division = Progression.TIER_COUNT
 	_theme = Themes.arena(_division)
 	Sfx.play_music(_theme.music)
 	_night = clampi(int(GameState.arena_bouts.get(str(_division), 0)) + 1, 1, Progression.BOUTS_PER_DIVISION)
@@ -187,6 +209,8 @@ func _first_night() -> bool:
 
 ## "GRAVEDIGGER DIVISION  ·  BOUT 2"
 func _bout_title() -> String:
+	if _endless:
+		return "THE ENDLESS ARENA  ·  WAVE %d  ·  SCORE %d" % [_wave + 1, _score]
 	return "%s DIVISION  ·  BOUT %d" % [Progression.TIERS[_division - 1].division.to_upper(), _night]
 
 
@@ -240,6 +264,8 @@ func _apply_first_night() -> void:
 
 
 func _kills_needed() -> int:
+	if _endless:
+		return ENDLESS_WAVE
 	return FIRST_NIGHT.kills if _first_night() else KILLS_TO_BOSS
 
 
@@ -251,7 +277,10 @@ func _process(delta: float) -> void:
 	if _spawn_timer <= 0.0 and _alive < _max_alive():
 		_spawn_timer = lerpf(SPAWN_INTERVAL_START, SPAWN_INTERVAL_END, _progress()) * (FIRST_NIGHT.spawn_slow if _first_night() else 1.0)
 		var kind := _pick_kind()
-		_spawn_enemy({"kind": kind, "armored": randf() < _armor_chance()})
+		if _endless and randf() < MINI_BOSS_CHANCE:
+			_spawn_mini_boss()
+		else:
+			_spawn_enemy({"kind": kind, "armored": randf() < _armor_chance()})
 
 
 func _exit_tree() -> void:
@@ -268,6 +297,8 @@ func _physics_process(_delta: float) -> void:
 
 ## How full the night's progress bar is, 0-1.
 func _progress() -> float:
+	if _endless:
+		return 1.0  # Full strength from the start; the waves add the rest.
 	return clampf(float(_night_kills) / _kills_needed(), 0.0, 1.0)
 
 
@@ -335,6 +366,9 @@ func _spawn_scaling() -> Dictionary:
 ## bout it climbs from the last contender's par build toward this one's, a
 ## fifth of a tier a bout (Progression.arena_difficulty); pay climbs faster.
 func _night_scaling(night := -1) -> Dictionary:
+	if _endless:
+		var top := Progression.arena_position(Progression.TIER_COUNT, Progression.BOUTS_PER_DIVISION)
+		return Progression.enemy_scaling(top + ENDLESS_PAY_STEP * _wave, Progression.TIER_COUNT - 0.6 + ENDLESS_STEP * _wave)
 	return Progression.enemy_scaling(_position(night), Progression.arena_difficulty(_division, _night if night < 0 else night))
 
 
@@ -426,6 +460,9 @@ func _on_enemy_died(enemy: Enemy) -> void:
 	_player.heal(GameState.heal_amount("heal_on_kill", _player.max_knuckles) + (FIRST_NIGHT.kill_heal if _first_night() else 0.0))
 	if _run_over or _night_won:
 		return
+	if _endless:
+		_on_endless_ko(enemy)
+		return
 	if enemy is Boss:
 		_hud.hide_boss()
 		_win_night()
@@ -440,6 +477,43 @@ func _on_enemy_died(enemy: Enemy) -> void:
 	_update_night_hud()
 
 
+## The Endless Arena: score the knockout; every wave, tougher dead and a
+## mini-boss.
+func _on_endless_ko(enemy: Enemy) -> void:
+	_night_kills += 1
+	_score += ENDLESS_MINI_BOSS if enemy.has_meta("mini_boss") else ENDLESS_KO
+	if _night_kills >= 50:
+		Achievements.earn("endless_50")
+	if _night_kills % ENDLESS_WAVE == 0:
+		_wave += 1
+		_hud.announce("WAVE %d" % (_wave + 1))
+		_hud.announce_small("They get tougher. A mini-boss steps in!", Color(1.0, 0.6, 0.3))
+		Sfx.play("wave", -2.0)
+		_player.heal(GameState.heal_amount("wave_heal", _player.max_knuckles))
+		_spawn_mini_boss()
+	_update_night_hud()
+
+
+## An elite veteran, three times the health, crowned with a name.
+func _spawn_mini_boss() -> void:
+	var scene: PackedScene = Veterans.SCENES.values().pick_random()
+	var enemy: Enemy = scene.instantiate()
+	var scaling := _spawn_scaling()
+	scaling.hp *= MINI_BOSS_HP
+	enemy.setup(_player, false, scaling)
+	enemy.set_meta("kind", "mini_boss")
+	enemy.set_meta("mini_boss", true)
+	enemy.set_meta("veteran", true)
+	enemy.position = _spawn_point()
+	_enemies.add_child(enemy)
+	enemy.make_elite(["Swift", "Brutal", "Ironclad", "Hulking"].pick_random())
+	enemy.display_name = "MINI-BOSS  " + enemy.display_name
+	enemy.died.connect(_on_enemy_died)
+	_alive += 1
+	_hud.add_feed("A mini-boss enters: %s" % enemy.display_name, Color(1.0, 0.55, 0.3))
+	Sfx.play_at("growl", enemy.global_position + Vector3.UP * 2.0, 4.0, 0.7)
+
+
 ## Every tenth of the bar: a coin bonus that grows through the night, plus
 ## upgrade heals.
 func _on_milestone(milestone: int) -> void:
@@ -452,7 +526,8 @@ func _on_milestone(milestone: int) -> void:
 
 
 func _update_night_hud() -> void:
-	_hud.set_night_progress(_bout_title(), _night_kills, _kills_needed(), _spawn_scaling().hp, _boss_spawned)
+	var kills := _night_kills % ENDLESS_WAVE if _endless else _night_kills
+	_hud.set_night_progress(_bout_title(), kills, _kills_needed(), _spawn_scaling().hp, _boss_spawned)
 
 
 ## The boss is down: the bell rings, the rest of the dead crumble and the
@@ -545,6 +620,9 @@ func _end_run(title: String, slow := true) -> void:
 	TimeFx.clear()
 	if slow:
 		TimeFx.slowmo(0.3, 0.8)
+	if _endless:
+		_end_endless(title)
+		return
 	# Knocked out mid-bout: a share of the purse for how far you got.
 	if title == "KNOCKED OUT" and not _night_won:
 		var consolation := roundi(ARENA_PURSE * Progression.pay(_position()) * KNOCKOUT_PURSE * _progress())
@@ -555,6 +633,22 @@ func _end_run(title: String, slow := true) -> void:
 		"title": "KNOCKED OUT" if title == "KNOCKED OUT" else "BACK TO CAMP",
 		"title_color": UiTheme.BAD if title == "KNOCKED OUT" else UiTheme.GOLD,
 		"subtitle": _bout_title(),
+		"rewards": {"coins": _run_coins, "xp": _run_xp, "souls": _run_souls},
+	}, "", false, "Back to camp")
+
+
+## The Endless Arena's end: the score, the best, and a purse for the score.
+func _end_endless(title: String) -> void:
+	var best := _score > GameState.endless_best
+	GameState.endless_best = maxi(GameState.endless_best, _score)
+	var purse := roundi(_score * Progression.pay(_night_scaling().position) * ENDLESS_PURSE)
+	_run_coins += purse
+	GameState.add_resource("coins", purse)
+	GameState.save_game()
+	_hud.show_results({
+		"title": "NEW BEST!" if best else ("KNOCKED OUT" if title == "KNOCKED OUT" else "BACK TO CAMP"),
+		"title_color": UiTheme.GOLD if best else UiTheme.BAD,
+		"subtitle": "SCORE %d   ·   BEST %d   ·   %d KNOCKOUTS   ·   WAVE %d" % [_score, GameState.endless_best, _night_kills, _wave + 1],
 		"rewards": {"coins": _run_coins, "xp": _run_xp, "souls": _run_souls},
 	}, "", false, "Back to camp")
 

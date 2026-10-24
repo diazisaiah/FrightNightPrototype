@@ -1099,6 +1099,10 @@ var hats := {}
 var worn_hat := ""
 ## Mini tutorials already shown (Tutorial): {id: true}.
 var tips_seen := {}
+## The Endless Arena's best score.
+var endless_best := 0
+## The next Arena run is the Endless Arena (picked in camp; not saved).
+var arena_endless := false
 ## Achievements earned (Achievements): {id: true}.
 var achievements := {}
 ## The one power that works (2026-10-23): a sigil node's id ("" for none).
@@ -1862,6 +1866,7 @@ func save_game() -> void:
 		"hats": hats,
 		"worn_hat": worn_hat,
 		"tips_seen": tips_seen,
+		"endless_best": endless_best,
 		"achievements": achievements,
 		"power_pick": power_pick,
 		"drills": drills,
@@ -1941,6 +1946,7 @@ func load_game() -> void:
 	tips_seen = data.get("tips_seen", {}).duplicate() if data.get("tips_seen", {}) is Dictionary else {}
 	achievements = data.get("achievements", {}).duplicate() if data.get("achievements", {}) is Dictionary else {}
 	power_pick = String(data.get("power_pick", ""))
+	endless_best = int(data.get("endless_best", 0))
 	worn_hat = String(data.get("worn_hat", ""))
 	if not hats.has(worn_hat):
 		worn_hat = ""
@@ -2191,6 +2197,7 @@ func _reset_fields() -> void:
 	hats = {}
 	worn_hat = ""
 	tips_seen = {}
+	endless_best = 0
 	achievements = {}
 	power_pick = ""
 	drills = {}
