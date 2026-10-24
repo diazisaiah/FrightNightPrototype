@@ -1093,6 +1093,13 @@ Older saves get what they'd already earned, quietly, when camp loads. The list a
 - `run_playground.bat` (or `.sh`, `-e` for the editor) syncs and launches it.
 - It opens on the training ring with a dev panel (F1): fighter, hat, every emote, spawn anything at any tier (veterans, bosses, contenders), freeze enemies, force any special on the nearest boxer, give and select a power line, god mode, fill the ultimate, +5 levels, replay tips, and arena theme backdrops.
 
+## Capped stats say where you stand [Built 2026-10-24]
+
+Dodge window (+25% max) and counter window (+0.5s max) have caps on the total bonus.
+- **Tooltips show your total:** "+0.12s to land a counter (you: +0.3s of +0.5s max)", or "(you're maxed at +0.5s)". Before, they only ever stated the cap.
+- **Stats page:** Dodge windows and the new Counter window row show the bonus used out of the max.
+- **Gear can't max them alone:** these two affixes no longer grow with floor depth (`Items.UNSCALED`); only rarity raises them. Boots roll counter window at 0.12 base (was 0.25, which grew past the whole cap by mid-Crypt). Floor-10 rolls top out around +0.22s and +15%.
+
 ## Camp fits any screen; League bosses press harder [Built 2026-10-24]
 
 - **Camp header and nav row shrink to fit** (`camp._fit_width`) when they're wider than the screen (points waiting, a long fighter name, Loadout and Shop), instead of pushing the camp off the right edge.

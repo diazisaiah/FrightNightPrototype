@@ -942,11 +942,11 @@ const EFFECT_FORMATS := {
 	"free_punch_chance": "%s%% chance a punch costs no knuckle HP",
 	"wave_heal": "Restore %s%% knuckle HP every tenth of the bout (and every Crypt room)",
 	"finisher_bonus": "+%s%% damage to enemies under 30%% HP",
-	"dodge_window": "+%s%% dodge windows (up to +25%% in all)",
+	"dodge_window": "+%s%% dodge windows",
 	"flinch_reduction": "-%s%% flinch time",
 	"graze_reduction": "-%s%% graze damage",
 	"counter_bonus": "+%s counter multiplier",
-	"counter_window": "+%ss to land a counter (up to +0.5s in all)",
+	"counter_window": "+%ss to land a counter",
 	"armor_charges": "+%s super armor charge(s)",
 	"passive_power": "+%s passive power",
 	"armor_recharge_cut": "Super armor recharges %ss faster",
@@ -1915,8 +1915,31 @@ func effect_text(effects: Dictionary, at_level: int) -> String:
 		if effect in PERCENT_EFFECTS:
 			value *= 100.0
 		var shown := "%d" % roundi(value) if is_equal_approx(value, roundf(value)) else ("%.2f" % value).rstrip("0")
-		parts.append(EFFECT_FORMATS.get(effect, effect + " %s") % shown)
+		parts.append(EFFECT_FORMATS.get(effect, effect + " %s") % shown + _cap_note(effect))
 	return ", ".join(parts)
+
+
+## Capped effects say where you stand: "(you: +0.3s of +0.5s max)", or
+## "(you're maxed at +0.5s)" once more of it would be wasted.
+func _cap_note(effect: String) -> String:
+	var cap: float
+	var unit: String
+	var scale := 1.0
+	match effect:
+		"counter_window":
+			cap = MAX_COUNTER_WINDOW_BONUS
+			unit = "s"
+		"dodge_window":
+			cap = MAX_DODGE_WINDOW_BONUS
+			unit = "%"
+			scale = 100.0
+		_:
+			return ""
+	var have := minf(get_effect(effect), cap)
+	var cap_text := ("%.2f" % (cap * scale)).rstrip("0").rstrip(".") + unit
+	if have >= cap - 0.001:
+		return " (you're maxed at +%s)" % cap_text
+	return " (you: +%s of +%s max)" % [("%.2f" % (have * scale)).rstrip("0").rstrip(".") + unit, cap_text]
 
 
 # --- Saving -----------------------------------------------------------------

@@ -29,6 +29,8 @@ const RARITY_WEIGHTS := [55.0, 30.0, 12.0, 3.0]
 const RARITY_SHIFT_PER_FLOOR := [-8.0, 2.0, 4.0, 2.0]
 ## Rolled values grow this much per floor deeper.
 const FLOOR_GROWTH := 0.3
+## Affixes with a cap on the total: they roll the same at any floor.
+const UNSCALED := ["counter_window", "dodge_window"]
 ## Chance a rare item swaps one of its effects for a power.
 const RARE_POWER_CHANCE := 0.35
 ## Chance an item of each rarity gets a special.
@@ -108,7 +110,7 @@ const AFFIXES := {
 	"boots": {
 		"normal": {
 			"move_speed": [0.06, 0.01], "sprint_bonus": [0.1, 0.01], "dodge_window": [0.08, 0.01],
-			"jump_bonus": [0.1, 0.01], "counter_window": [0.25, 0.05],
+			"jump_bonus": [0.1, 0.01], "counter_window": [0.12, 0.01],
 		},
 		"powers": {"ground_pound": [1.5, 0.1]},
 	},
@@ -228,7 +230,10 @@ static func _roll_with(floor_number: int, slot: String, rarity: String) -> Dicti
 	var growth := 1.0 + FLOOR_GROWTH * (floor_number - 1)
 	for effect in picks:
 		var spec: Array = pool.powers[effect] if pool.powers.has(effect) else pool.normal[effect]
-		var value: float = spec[0] * info.strength * growth * randf_range(0.85, 1.15)
+		# Capped stats (GameState.MAX_*_BONUS) don't grow deeper down, so one
+		# piece can't max them on its own; rarity still helps.
+		var depth: float = 1.0 if effect in UNSCALED else growth
+		var value: float = spec[0] * info.strength * depth * randf_range(0.85, 1.15)
 		effects[effect] = maxf(spec[1], snappedf(value, spec[1]))
 	return {
 		"slot": slot,
