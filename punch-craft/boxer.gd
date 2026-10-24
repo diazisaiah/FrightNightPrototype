@@ -23,6 +23,8 @@ const FOLLOW_UP_WINDUP := 0.4
 const COUNTER_WINDUP := 0.35
 ## Glow strength of a combo's next attack, shown ahead of time (the flash is brighter).
 const PREVIEW_GLOW := 0.55
+## Light at a glowing glove, per point of glow.
+const TELL_LIGHT := 1.6
 const FLASH_GLOW := 1.7
 const TOO_CLOSE_DISTANCE := 1.2
 const FIRST_WINDUP := {
@@ -104,6 +106,7 @@ var _evade_side := 1.0
 var _arms := {}
 var _arm_rest := {}
 var _gloves := {}
+var _tell_lights := {}
 var _weapon_glows := {}
 ## Elbow pivots: the forearm and glove (and any weapon) hang off these.
 var _forearms := {}
@@ -366,6 +369,9 @@ func _attack_uses_arm(attack: String, arm: String, power_arm := _power_arm) -> b
 ## the same way, relative to the upper arm.
 func _arm_pose(arm: String) -> Array:
 	var side := -1.0 if arm == "left" else 1.0
+	if _charging():
+		# Head down, both arms out low in front: a tackle coming.
+		return [Vector3(-0.35, 0.3 * side, 0), 0.0, Vector3(0.5, 0, 0)]
 	# Elbows tucked, gloves up by the chin.
 	var guard := [Vector3(-0.9, 0.35 * side, 0), 0.0, Vector3(2.4, 0, 0)]
 	if not (_state in [State.WINDUP, State.STRIKE]) or not _uses_arm(arm):
@@ -397,9 +403,10 @@ func _arm_pose(arm: String) -> Array:
 			return [Vector3(0.2, 1.5 * side, 0), -0.1, Vector3.ZERO] if striking \
 					else [Vector3(1.2, -1.6 * side, 0), 0.3, Vector3.ZERO]
 		"thrust":
-			# Blade drawn back at the hip, then driven straight out.
-			return [Vector3(0.05, 0.1 * side, 0), -0.5, Vector3.ZERO] if striking \
-					else [Vector3(0.15, -0.25 * side, 0), 0.35, Vector3.ZERO]
+			# Blade drawn back at the chest with its point aimed at you, then
+			# driven straight out.
+			return [Vector3(0.05, 0.05 * side, 0), -0.55, Vector3.ZERO] if striking \
+					else [Vector3(-0.95, -0.1 * side, 0), 0.45, Vector3(0.95, 0.5 * side, 0)]
 		"slash":
 			# Wound far back, then a wide sweep across.
 			return [Vector3(0.2, 1.6 * side, 0), -0.1, Vector3.ZERO] if striking \
@@ -409,9 +416,9 @@ func _arm_pose(arm: String) -> Array:
 			return [Vector3(0.1, 0.15 * side, 0), -0.4, Vector3(0.2, 0, 0)] if striking \
 					else [Vector3(-0.3, -0.2 * side, 0), 0.25, Vector3(1.4, 0, 0)]
 		"claw":
-			# Raised high and wide, then raked down across.
-			return [Vector3(-0.2, 0.8 * side, 0), -0.1, Vector3(0.2, 0, 0)] if striking \
-					else [Vector3(1.3, -1.0 * side, 0), 0.15, Vector3(0.3, 0, 0)]
+			# Out wide at shoulder height like a hook, then raked across.
+			return [Vector3(0.1, 0.7 * side, 0), -0.1, Vector3(0, 0.6 * side, 0)] if striking \
+					else [Vector3(0.2, -1.5 * side, 0), 0.15, Vector3(0, 0.4 * side, 0)]
 		"sweep":
 			# Arm straight out wide and low, then a huge flat sweep.
 			return [Vector3(0.0, 1.2 * side, 0), -0.1, Vector3.ZERO] if striking \
@@ -451,6 +458,15 @@ func _animate(delta: float, speed: float) -> void:
 		var elbow: Node3D = _forearms[arm]
 		elbow.rotation = elbow.rotation.lerp(pose[2], blend)
 		var glow := _arm_glow(arm)
+		# A light at the glove, so the tell shows even when the hand is hidden
+		# (behind the body, edge-on, under gear).
+		var light: OmniLight3D = _tell_lights.get(arm)
+		if light:
+			var energy: float = glow.get("energy", 0.0) * TELL_LIGHT
+			light.light_energy = lerpf(light.light_energy, energy, minf(1.0, 20.0 * delta))
+			if not glow.is_empty():
+				light.light_color = glow.color
+			light.visible = light.light_energy > 0.03
 		for glove: StandardMaterial3D in _glow_parts(arm):
 			if not glove.has_meta("base_color"):
 				glove.set_meta("base_color", glove.albedo_color)
@@ -486,6 +502,9 @@ func _animate(delta: float, speed: float) -> void:
 func _arm_glow(arm: String) -> Dictionary:
 	if not glow_tells:
 		return {}
+	if _charging():
+		var ramp := 1.0 if _step == "dash" else clampf(_step_time / CHARGE_WINDUP, 0.0, 1.0)
+		return {"color": Telegraphs.DANGER, "energy": lerpf(0.5, FLASH_GLOW, ramp)}
 	var winding := _state == State.WINDUP
 	if winding and _uses_arm(arm) and (_flashed or _previewed):
 		return {"color": CUES[_attack].color, "energy": FLASH_GLOW if _flashed else PREVIEW_GLOW}
@@ -493,6 +512,11 @@ func _arm_glow(arm: String) -> Dictionary:
 	if next_shown and not _queue.is_empty() and _attack_uses_arm(_queue[0], arm, _next_power_arm):
 		return {"color": CUES[_queue[0]].color, "energy": PREVIEW_GLOW}
 	return {}
+
+
+## Winding up or running a charge / dash (special).
+func _charging() -> bool:
+	return _special in ["charge", "dash"] and _step in ["aim", "dash"]
 
 
 ## Materials that light up when this arm's attack flashes (glove plus any weapon).
@@ -523,6 +547,17 @@ static func arm_to_hand(pos: Vector3) -> Vector3:
 	return pos + Vector3(0, 0, UPPER_ARM_LENGTH)
 
 
+## Gear over a hand, or a reskinned weapon (EnemyGear): lights up with that
+## arm's tells like the glove it covers.
+func add_glow_part(part: Node, material: StandardMaterial3D) -> void:
+	for arm in _forearms:
+		if (_forearms[arm] as Node).is_ancestor_of(part):
+			if not _weapon_glows.has(arm):
+				_weapon_glows[arm] = []
+			_weapon_glows[arm].append(material)
+			return
+
+
 ## Adds a weapon (staff, sword) to an arm. pos is measured from the shoulder
 ## along the arm. Its glow material lights up with the attack's tell flash.
 func _hold_weapon(arm: String, mesh: PrimitiveMesh, color: Color, pos: Vector3, rot := Vector3.ZERO) -> void:
@@ -550,6 +585,13 @@ func _build_arms(arm_material: Material, glove_color: Color, shoulder_height := 
 		glove.emission_enabled = true
 		glove.emission_energy_multiplier = 0.0
 		_part(elbow, _box(Vector3(0.16, 0.16, 0.2)), glove, arm_to_hand(Vector3(0, 0, -0.48)))
+		var light := OmniLight3D.new()
+		light.omni_range = 1.5
+		light.light_energy = 0.0
+		light.visible = false
+		light.position = arm_to_hand(Vector3(0, 0, -0.48))
+		elbow.add_child(light)
+		_tell_lights[arm] = light
 		_arms[arm] = pivot
 		_forearms[arm] = elbow
 		_arm_rest[arm] = shoulder

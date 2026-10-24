@@ -49,6 +49,8 @@ func _animate(delta: float, speed: float) -> void:
 	# See-through while phased; nearly solid while it's open.
 	var solid := _open > 0.0 or _stagger_timer > 0.0
 	var alpha := 0.85 if solid else 0.3 + 0.08 * sin(Time.get_ticks_msec() * 0.004)
+	if not solid and _state in [State.WINDUP, State.STRIKE]:
+		alpha = 0.6  # The claw coming is easy to read; still not solid.
 	for material in _ghost_materials:
 		material.albedo_color.a = lerpf(material.albedo_color.a, alpha, minf(1.0, 10.0 * delta))
 	_body.position.y = HOVER_HEIGHT * 0.3 * sin(Time.get_ticks_msec() * 0.002)

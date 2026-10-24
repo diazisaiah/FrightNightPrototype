@@ -229,11 +229,25 @@ static func _arm(enemy: Enemy, body: Dictionary, tier: int, metal: Material, tri
 	if not weapons.is_empty():
 		for part in weapons:
 			if is_instance_valid(part):
-				_set_material(part, trim if tier >= 4 else metal)
+				_set_material(part, _tell_material(enemy, part, trim if tier >= 4 else metal))
 		return
+	# Gauntlets cover the glove, so they carry its tell glow.
 	for hand in body.get("hands", []):
-		_shell(enemy, hand, Vector3(1.22, 1.22, 1.1), Vector3.ZERO, metal, Vector3.ZERO, HAND_FIT)
-		_shell(enemy, hand, Vector3(1.32, 1.32, 0.32), Vector3(0, 0, 0.5), trim, Vector3.ZERO, HAND_FIT)
+		var gauntlet := _shell(enemy, hand, Vector3(1.22, 1.22, 1.1), Vector3.ZERO, metal, Vector3.ZERO, HAND_FIT)
+		_set_material(gauntlet, _tell_material(enemy, gauntlet, metal))
+		var cuff := _shell(enemy, hand, Vector3(1.32, 1.32, 0.32), Vector3(0, 0, 0.5), trim, Vector3.ZERO, HAND_FIT)
+		_set_material(cuff, _tell_material(enemy, cuff, trim))
+
+
+## Gear on a hand: its own copy of the material, lit by the arm's tells.
+static func _tell_material(enemy: Enemy, part: Node, base: Material) -> Material:
+	if not enemy.has_method("add_glow_part") or not base is StandardMaterial3D:
+		return base
+	var material := (base as StandardMaterial3D).duplicate() as StandardMaterial3D
+	material.emission_enabled = true
+	material.emission_energy_multiplier = 0.0
+	enemy.add_glow_part(part, material)
+	return material
 
 
 ## Casters: robes in the tier's cloth, trim at the collar and hem, a circlet
@@ -257,7 +271,8 @@ static func _robe(enemy: Enemy, body: Dictionary, pieces: Array, info: Dictionar
 			_arm(enemy, body, tier, metal, trim)
 		else:
 			for hand in body.get("hands", []):
-				_shell(enemy, hand, Vector3(1.2, 0.5, 1.2), Vector3(0, 0, 0.3), trim)
+				var bracer := _shell(enemy, hand, Vector3(1.2, 0.5, 1.2), Vector3(0, 0, 0.3), trim)
+				_set_material(bracer, _tell_material(enemy, bracer, trim))
 
 
 ## A suit of armor: its own metal becomes the tier's.

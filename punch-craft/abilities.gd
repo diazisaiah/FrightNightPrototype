@@ -84,6 +84,21 @@ const ULTIMATES := {
 	],
 }
 
+## What a point of passive power does for each passive: [per point, text].
+const POWER_TEXT := {
+	"grudge": [0.15, "+%sx Grudge damage"],
+	"wrecking_ball": [0.3, "+%sx Wrecking Ball damage"],
+	"berserker": [5.0, "+%s%% Berserker damage"],
+	"phantom_step": [0.2, "-%ss Phantom Step cooldown"],
+	"dodge_chain": [5.0, "+%s%% per chained dodge"],
+	"echo_fists": [4.0, "+%s%% echo damage"],
+	"long_reach": [0.1, "+%sm reach"],
+	"head_stomp": [0.1, "+%ss stomp stun"],
+	"momentum": [0.1, "+%sx max momentum"],
+	"the_muscle": [0.8, "-%ss between Vinnie's grabs"],
+	"the_take": [3.0, "+%s%% coins"],
+}
+
 ## Skill web nodes that strengthen the passive (see above).
 const PASSIVE_NODES := {
 	"berserker": ["short_fuse", "unbreakable", "payback", "berserk"],
@@ -126,6 +141,35 @@ static func unlocked(class_id: String, id: String, class_level: int) -> bool:
 ## Whether a skill node feeds the passive (and so adapts).
 static func is_passive_node(class_id: String, node_id: String) -> bool:
 	return node_id in PASSIVE_NODES.get(class_id, [])
+
+
+## "+0.3x Grudge damage": what this much passive power does for a passive.
+static func power_text(passive: String, points: float) -> String:
+	if not POWER_TEXT.has(passive):
+		return "+%s passive power" % _num(points)
+	return POWER_TEXT[passive][1] % _num(points * float(POWER_TEXT[passive][0]))
+
+
+static func _num(value: float) -> String:
+	return ("%.2f" % value).rstrip("0").rstrip(".")
+
+
+## The skill web as it plays with this passive: nodes that adapt show the
+## passive's icon and what they give it.
+static func adapt_tree(class_id: String, nodes: Dictionary, passive: String) -> Dictionary:
+	var view := {}
+	var entry := info(class_id, passive)
+	for id in nodes:
+		var node: Dictionary = nodes[id]
+		if not node_adapts(class_id, id, passive):
+			view[id] = node
+			continue
+		var adapted := node.duplicate()
+		adapted.effects = {"passive_power": node.effects.get("passive_power", 3 if int(node.get("ring", 1)) >= 6 else 1)}
+		adapted.icon = entry.get("icon", node.icon)
+		adapted.desc = "Powers %s." % entry.get("name", "your passive")
+		view[id] = adapted
+	return view
 
 
 ## Whether that node keeps its own effect (the default passive is on, and the

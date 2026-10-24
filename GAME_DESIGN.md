@@ -1093,6 +1093,15 @@ Older saves get what they'd already earned, quietly, when camp loads. The list a
 - `run_playground.bat` (or `.sh`, `-e` for the editor) syncs and launches it.
 - It opens on the training ring with a dev panel (F1): fighter, hat, every emote, spawn anything at any tier (veterans, bosses, contenders), freeze enemies, force any special on the nearest boxer, give and select a power line, god mode, fill the ultimate, +5 levels, replay tips, and arena theme backdrops.
 
+## Clear enemy tells; skill webs follow the loadout [Built 2026-10-24]
+
+- **Tell lights:** every boxer's glowing glove carries a small light in the tell color, so a tell shows even when the hand is behind the body, edge-on or under gear.
+- **Gear keeps tells:** gear gauntlets, bracers and tiered weapons glow with the arm's tell (before, gloves gear covered the glow and weapons lost it).
+- **Bull Rush / Ghost Charge:** a tackle stance with both gloves glowing red, brighter until the rush.
+- **Possessed Armor thrust:** blade drawn back at the chest, point aimed at you, then driven straight out (was a side-on windup that read as a hook).
+- **Wraith claw:** wound out wide like a hook; the ghost goes more solid while winding up.
+- **Skill webs follow the loadout:** a node that feeds the passive shows the equipped passive's icon, "Powers <passive>." and what it gives it ("-0.2s Phantom Step cooldown"), and the web rebuilds when the passive changes (`Abilities.adapt_tree`, `POWER_TEXT`).
+
 ## Capped stats say where you stand [Built 2026-10-24]
 
 Dodge window (+25% max) and counter window (+0.5s max) have caps on the total bonus.

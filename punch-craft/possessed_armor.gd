@@ -4,17 +4,17 @@ extends Boxer
 ## blocks most punches, but the joints at its sides are open: hooks hit them
 ## for big damage that ignores armor (the glowing seams show where).
 ## Thrusts are slipped (either side), then answered with a hook; the wide
-## horizontal slash is rolled under. A thrust is telegraphed by the whole suit
-## turning side-on, sword arm drawn away from the player, then twisting back
-## square as the blade drives forward.
+## horizontal slash is rolled under. A thrust is telegraphed by the blade drawn
+## back at the hip, its point aimed at the player, then driven straight out.
 
 const COMBOS := [
 	["thrust"], ["slash"], ["thrust", "slash"], ["thrust", "thrust"], ["slash", "thrust"],
 ]
 const WEAK_SPOT_MULTIPLIER := 2.0
 const SEAM_COLOR := Color(0.7, 0.3, 1.0)
-## How far the suit turns away (sword side back) while winding up a thrust.
-const THRUST_TURN := -1.25
+## How far the suit turns its sword side back while winding up a thrust
+## (a little: the point stays on the player).
+const THRUST_TURN := -0.3
 
 
 func weak_spot_multiplier(punch_type: String) -> float:

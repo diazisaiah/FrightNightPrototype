@@ -664,10 +664,6 @@ func _refresh_detail(kind: String) -> void:
 	detail.name.text = node.name
 	detail.level.text = "Level %d / %d" % [level, node.max_level] if node.max_level > 1 else ("Owned" if level > 0 else "Not owned")
 	detail.desc.text = node.desc
-	if kind == "skill" and Abilities.is_passive_node(GameState.player_class, id) and Abilities.node_adapts(GameState.player_class, id, GameState.passive()):
-		var passive_name: String = Abilities.info(GameState.player_class, GameState.passive()).get("name", "your passive")
-		if not node.effects.has("passive_power"):
-			detail.desc.text += "\nWith %s equipped, this feeds it instead: +%d passive power a level." % [passive_name, 3 if GameState.node_ring(kind, id) >= 6 else 1]
 	detail.now.text = GameState.effect_text(node.effects, level) if level > 0 else "Nothing yet"
 	detail.next.text = "Maxed out" if maxed else GameState.effect_text(node.effects, level + 1)
 	detail.cost_row.visible = not maxed

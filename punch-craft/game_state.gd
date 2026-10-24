@@ -1212,9 +1212,20 @@ func _notification(what: int) -> void:
 
 # --- Trees and classes --------------------------------------------------------
 
-## The upgrade web, or the current class's skill web.
+## The upgrade web, or the current class's skill web as it plays with the
+## equipped passive (Abilities.adapt_tree).
 func tree(kind: String) -> Dictionary:
-	return UPGRADES if kind == "upgrade" else SKILL_TREES[player_class]
+	if kind == "upgrade":
+		return UPGRADES
+	var key := "%s/%s" % [player_class, passive()]
+	if key != _skill_view_key:
+		_skill_view_key = key
+		_skill_view = Abilities.adapt_tree(player_class, SKILL_TREES[player_class], passive())
+	return _skill_view
+
+
+var _skill_view := {}
+var _skill_view_key := ""
 
 
 func class_level(id: String) -> int:
@@ -1356,8 +1367,7 @@ func passive_power() -> float:
 	var owned := _levels("skill")
 	for id in owned:
 		if Abilities.node_adapts(player_class, id, passive()):
-			var worth: float = nodes[id].effects.get("passive_power", 3 if int(nodes[id].get("ring", 1)) >= 6 else 1)
-			total += int(owned[id]) * worth
+			total += int(owned[id]) * float(nodes[id].effects.get("passive_power", 1))
 	return total
 
 
@@ -1910,6 +1920,9 @@ func effect_text(effects: Dictionary, at_level: int) -> String:
 	for effect in effects:
 		if effect in FLAG_EFFECTS:
 			parts.append(EFFECT_FORMATS[effect])
+			continue
+		if effect == "passive_power":
+			parts.append(Abilities.power_text(passive(), effects[effect] * at_level))
 			continue
 		var value: float = effects[effect] * at_level
 		if effect in PERCENT_EFFECTS:

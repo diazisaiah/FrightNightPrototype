@@ -141,7 +141,7 @@ func _build_armor() -> void:
 ## Guard with the fists held up at head height and out in front, like the
 ## key art, instead of tucked against the chin. Punches use the normal boxer poses.
 func _arm_pose(arm: String) -> Array:
-	if not (_state in [State.WINDUP, State.STRIKE]) or not _uses_arm(arm):
+	if not _charging() and (not (_state in [State.WINDUP, State.STRIKE]) or not _uses_arm(arm)):
 		var side := -1.0 if arm == "left" else 1.0
 		return [Vector3(GUARD_SHOULDER, GUARD_SPREAD * side, 0), 0.0, Vector3(GUARD_ELBOW, 0, 0)]
 	return super(arm)

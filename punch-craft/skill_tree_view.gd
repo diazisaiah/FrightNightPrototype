@@ -128,7 +128,7 @@ func _build_nodes() -> void:
 		_views[id].queue_free()
 	_views.clear()
 	_was_visible.clear()
-	_built_for = GameState.player_class
+	_built_for = _view_key()
 	var nodes := GameState.tree(kind)
 	_branch.clear()
 	for id in nodes:
@@ -161,6 +161,11 @@ func _build_nodes() -> void:
 		_background.gradient.set_color(0, Color(accent(), 0.1))
 
 
+## Skill webs rebuild for another fighter or passive (nodes adapt to it).
+func _view_key() -> String:
+	return "%s/%s" % [GameState.player_class, GameState.passive()]
+
+
 ## The Sigil a node grows from, walking back along its requirements.
 func _find_branch(nodes: Dictionary, id: String) -> String:
 	var current := id
@@ -181,7 +186,7 @@ func select(id: String) -> void:
 
 
 func refresh() -> void:
-	if kind == "skill" and _built_for != GameState.player_class:
+	if kind == "skill" and _built_for != _view_key():
 		_build_nodes()
 		recenter()
 	var owned := 0
