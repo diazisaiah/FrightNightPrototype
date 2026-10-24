@@ -23,6 +23,10 @@ var _tier := 1
 var _god := true
 var _frozen := false
 var _theme_node: Node3D
+## The training ring (ropes, canvas and the walls that hold the player in) and
+## whether it's up. Off, you roam free like the enemies do.
+var _ring: Node3D
+var _ring_on := true
 
 
 func _ready() -> void:
@@ -37,6 +41,7 @@ func _ready() -> void:
 	Look.tune_environment($WorldEnvironment.environment, "ring")
 	_build_torches()
 	_build_ring()
+	_ring = $Decorations.get_child($Decorations.get_child_count() - 1)
 	_player.knuckles_changed.connect(_hud.set_knuckles)
 	_player.combo_changed.connect(_hud.set_combo)
 	_hud.bind_ult(_player.ult)
@@ -156,6 +161,9 @@ func _build_panel() -> void:
 		GameState.tips_seen = {}
 		_hud.announce_small("Tips will show again", UiTheme.GOLD)))
 
+	_section(box, "RING")
+	box.add_child(_check("Ring (ropes hold you in)", true, _set_ring))
+
 	_section(box, "ARENA THEME (backdrop)")
 	var themes: Array = Themes.ARENA.map(func(theme: Dictionary) -> String: return theme.id)
 	box.add_child(_options(["ring"] + themes, "ring", _set_theme))
@@ -218,7 +226,7 @@ func _spawn(count: int) -> void:
 			var boss: DeadLeagueBoss = load("res://dead_league_boss.tscn").instantiate()
 			boss.configure(index, 1)
 			boss.arena_center = Vector3(0, 0, -1.5)
-			boss.arena_limit = 3.4
+			boss.arena_limit = 3.4 if _ring_on else 38.0
 			enemy = boss
 			enemy.setup(_player, false)
 		else:
@@ -227,7 +235,7 @@ func _spawn(count: int) -> void:
 			enemy = scene.instantiate()
 			enemy.setup(_player, false, Progression.enemy_scaling(_tier - 1 + 0.4))
 			enemy.arena_center = Vector3(0, 0, -1.5)
-			enemy.arena_limit = 6.0
+			enemy.arena_limit = 6.0 if _ring_on else 38.0
 		var ahead := -_player.global_basis.z
 		ahead.y = 0.0
 		enemy.position = _player.global_position + ahead.normalized() * 5.0 + Vector3((i - count / 2.0) * 1.4, 0.1, 0)
@@ -268,6 +276,18 @@ func _give_power(root: String) -> void:
 func _set_god(on: bool) -> void:
 	_god = on
 	_player.invulnerable = false
+
+
+## Takes the ring down (or puts it back): ropes, canvas and walls. Enemies
+## that keep their distance get the whole space too.
+func _set_ring(on: bool) -> void:
+	_ring_on = on
+	_ring.visible = on
+	for body in _ring.find_children("*", "CollisionShape3D", true, false):
+		body.set_deferred("disabled", not on)
+	for enemy in $Enemies.get_children():
+		if enemy is Enemy:
+			enemy.arena_limit = (3.4 if enemy is DeadLeagueBoss else 6.0) if on else 38.0
 
 
 func _set_theme(id: String) -> void:

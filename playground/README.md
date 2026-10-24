@@ -21,6 +21,7 @@ Both sync first, so the playground always has the latest code. If Godot lives so
 - **Force a special**: makes the nearest boxer use any special move.
 - **Power**: gives a whole power line and selects it.
 - **Player**: god mode, fill the ultimate, +5 levels, replay the mini tutorials.
+- **Ring**: untick it to take the ring down (ropes and walls) and roam free like the enemies.
 - **Arena theme**: builds a division's backdrop around the ring.
 
 Add tools by editing `src/playground.gd`.
