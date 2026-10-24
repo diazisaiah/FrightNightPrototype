@@ -15,6 +15,36 @@ const VOXEL := 0.0085
 const HAND_LAYER := 2
 ## Where the fist sits along the arm (local), for effects.
 const FIST_POINT := Vector3(0, 0.0, -0.34)
+
+## The hand rig (2026-10-24): every finger is three jointed segments and the
+## thumb two, pivoting at the knuckles, so hands can open, point, cup and flick
+## (hand idles). Closed, they fold into the fist (punches look as before).
+## Painted for the right hand (the left mirrors it): +y is the back of the
+## hand, -z points out past the knuckles. The Mauler's gloves are mittens: the
+## padded front bends as one piece, and the thumb.
+const FINGER_X := [-0.034, -0.0113, 0.0114, 0.034]
+const FINGER_LENGTH := [1.0, 1.08, 1.0, 0.82]
+const KNUCKLE := Vector2(0.008, -0.362)
+const PHALANX := [0.03, 0.024, 0.02]
+const FINGER_SIZE := Vector2(0.018, 0.021)
+const CURL_CLOSED := [-1.35, -1.45, -1.0]
+const CURL_OPEN := [-0.06, -0.1, -0.05]
+## Fingers fan out this far (yaw) on an open hand, index to pinky.
+const SPREAD := [0.2, 0.07, -0.07, -0.24]
+const THUMB_PIVOT := Vector3(-0.044, -0.016, -0.33)
+const THUMB_LENGTH := [0.05, 0.035]
+const THUMB_SIZE := Vector2(0.024, 0.022)
+const THUMB_CLOSED := [Vector3(-0.39, 0.0, 0.0), Vector3(0.0, -1.4, 0.0)]
+const THUMB_OPEN := [Vector3(-0.15, 0.55, 0.0), Vector3(0.0, 0.15, 0.0)]
+const THUMB_UP := [Vector3(0.75, 0.25, 0.0), Vector3(0.15, 0.0, 0.0)]
+const MITTEN_PIVOT := Vector3(0.0, 0.03, -0.37)
+const MITTEN_OPEN := Vector3(0.6, 0.0, 0.0)
+const MITTEN_THUMB_PIVOT := Vector3(-0.06, -0.02, -0.31)
+const MITTEN_THUMB_OPEN := Vector3(0.0, 0.55, 0.0)
+## Hands touch instead of passing through: spheres (arm space) per hand.
+const CONTACT := [[Vector3(0, 0.0, -0.32), 0.042], [Vector3(0, 0.0, -0.37), 0.04]]
+const CONTACT_GLOVE := [[Vector3(0, 0.0, -0.32), 0.066], [Vector3(0, 0.0, -0.39), 0.064]]
+const CONTACT_TIPS := [Vector3(0, 0.0, -0.43), 0.03]
 const SKIN := {
 	"berserker": Color(0.56, 0.42, 0.35), "combo_master": Color(0.8, 0.6, 0.45),
 	"counter_master": Color(0.55, 0.38, 0.29), "free_runner": Color(0.5, 0.34, 0.24),
@@ -74,6 +104,15 @@ var _flinch_offset := Vector3.ZERO
 var drop := 0.0
 var _arms := {}
 var _tweens := {}
+## The rig: bone -> {parent, offset, closed, open}, and per hand the bone nodes.
+var _rig := {}
+var _bones := {"left": {}, "right": {}}
+## Voxels painted per bone (local cells): bone -> {Vector3i: [Color, group]}.
+var _bone_cells := {}
+## Voxels moved onto a bone (local positions): bone -> [[Vector3, Color, group]].
+var _bone_extra := {}
+## Each hand's shape right now (Shapes: f, f0-f3, t, tu, spread).
+var _shape := {"left": {}, "right": {}}
 var _accent := Color.WHITE
 var _skin_color := DEFAULT_SKIN
 ## Voxels being painted for the arm under construction: Vector3i -> [Color, group].
@@ -124,6 +163,18 @@ func _process(delta: float) -> void:
 	_flinch_offset = _flinch_offset.move_toward(Vector3.ZERO, 0.6 * delta)
 	position = Vector3(cos(_bob_time * 0.5) * amplitude, sin(_bob_time) * amplitude, 0) + _flinch_offset + Vector3(0, -drop, drop * 0.3)
 	_update_effects(delta)
+	if idle_playing:
+		_run_idle(delta)
+	elif _closing:
+		# Fingers ease back into fists after an idle is cut off.
+		var fist := IdleAnims.shape("fist")
+		var done := true
+		for hand in ["left", "right"]:
+			var shape := IdleAnims.blend(_shape[hand], fist, minf(1.0, 14.0 * delta))
+			_apply_shape(hand, shape)
+			if float(shape.get("f", 1.0)) < 0.99 or float(shape.get("t", 1.0)) < 0.99:
+				done = false
+		_closing = not done
 	if is_instance_valid(_idle_prop) and _idle_prop.visible:
 		_idle_prop.rotation.x += delta * 14.0 if _idle_prop.get_child_count() == 1 else 0.0
 		_idle_prop.rotation.y += delta * 3.0
@@ -181,78 +232,71 @@ var idle_playing := false
 ## No idle sounds (previews).
 var silent := false
 var _idle_prop: Node3D
-var _idle_run := 0
+## The idle, as segments: {t0, t1, from: {hand: [pos, rot, shape]}, to, spec}.
+var _idle_segments: Array = []
+var _idle_time := 0.0
+var _idle_index := -1
+## Where the prop flies from and to this segment: [hand, anchor, lift], and
+## whether it arcs.
+var _prop_from: Array = []
+var _prop_to: Array = []
+var _prop_arc := false
+## A hand's fingers are easing back into a fist.
+var _closing := false
 
 
-## Plays a hand idle once through (IdleAnims), then back to rest.
+## Plays a hand idle once through (IdleAnims), then back to rest. It runs in
+## _process (not tweens) so the hands can stop where they touch.
 func play_idle(id: String) -> void:
 	var anim: Dictionary = IdleAnims.ANIMS.get(id, {})
 	if anim.is_empty():
 		return
 	stop_idle(false)
-	idle_playing = true
-	_idle_run += 1
-	var run := _idle_run
-	var targets := {"left": IdleAnims.REST, "right": IdleAnims.REST}
-	var ends: Array = []
-	var starts: Array = []
-	var tweens := {}
 	for hand in ["left", "right"]:
 		if _tweens.has(hand):
 			(_tweens[hand] as Tween).kill()
-		tweens[hand] = create_tween()
-		_tweens[hand] = tweens[hand]
+	var state := {"left": [Vector3.ZERO, Vector3.ZERO, "fist"], "right": [Vector3.ZERO, Vector3.ZERO, "fist"]}
+	var segments: Array = []
 	var clock := 0.0
-	for key in anim.keys:
-		var seconds: float = key[0]
+	for key in anim.keys + [[0.3, {"r": IdleAnims.REST, "l": IdleAnims.REST}]]:
 		var spec: Dictionary = key[1]
-		starts.append(clock)
-		if spec.has("sfx"):
-			var sound: Array = spec.sfx
-			(tweens.right as Tween).tween_callback(func() -> void:
-				if not silent:
-					Sfx.play(sound[0], sound[1], sound[2]))
+		var from := state.duplicate(true)
 		for hand in ["left", "right"]:
 			var short := "l" if hand == "left" else "r"
-			var tween: Tween = tweens[hand]
-			if not spec.has(short):
-				tween.tween_interval(seconds)
-				continue
-			targets[hand] = spec[short]
-			var arm: Node3D = _arms[hand]
-			var mirror := -1.0 if hand == "left" else 1.0
-			if spec.get("trail", false):
-				tween.tween_callback(func() -> void: _afterimage(arm))
-			tween.tween_property(arm, "position", _mirror_pos(REST_POS, mirror) + _mirror_pos(targets[hand][0], mirror), seconds).set_trans(Tween.TRANS_SINE)
-			tween.parallel().tween_property(arm, "rotation", _mirror_rot(REST_ROT, mirror) + _mirror_rot(targets[hand][1], mirror), seconds).set_trans(Tween.TRANS_SINE)
-		ends.append(targets.duplicate())
-		clock += seconds
-	for hand in ["left", "right"]:
-		var arm: Node3D = _arms[hand]
-		var mirror := -1.0 if hand == "left" else 1.0
-		var tween: Tween = tweens[hand]
-		tween.tween_property(arm, "position", _mirror_pos(REST_POS, mirror), 0.2).set_trans(Tween.TRANS_SINE)
-		tween.parallel().tween_property(arm, "rotation", _mirror_rot(REST_ROT, mirror), 0.2)
-	(tweens.right as Tween).tween_callback(func() -> void:
-		if run == _idle_run:
-			idle_playing = false
-			_clear_prop())
+			if spec.has(short):
+				state[hand] = _idle_target(spec[short], state[hand][2])
+		segments.append({"t0": clock, "t1": clock + float(key[0]), "from": from, "to": state.duplicate(true), "spec": spec})
+		clock += float(key[0])
+	_idle_segments = segments
+	_idle_time = 0.0
+	_idle_index = -1
+	idle_playing = true
 	if anim.has("prop"):
-		_play_prop(anim.prop, starts, ends)
+		_idle_prop = _make_prop(anim.prop)
+		_idle_prop.visible = false
+		add_child(_idle_prop)
 
 
-## Cuts an idle off: hands back to rest quickly, any prop gone.
+## A key's target for one hand: [pose, shape, nudge] (IdleAnims.POSES) or
+## [pos, rot, shape]; a missing shape keeps the last one.
+func _idle_target(target: Array, last_shape: String) -> Array:
+	if target[0] is String:
+		var pose: Array = IdleAnims.POSES[target[0]]
+		var nudge: Vector3 = target[2] if target.size() > 2 else Vector3.ZERO
+		return [pose[0] + nudge, pose[1], target[1] if target.size() > 1 else last_shape]
+	return [target[0], target[1], target[2] if target.size() > 2 else last_shape]
+
+
+## Cuts an idle off: hands back to rest quickly, fingers closing, any prop gone.
 func stop_idle(ease_back := true) -> void:
-	_idle_run += 1
 	_clear_prop()
 	if not idle_playing:
 		return
 	idle_playing = false
+	_closing = true
 	if not ease_back:
 		return
 	for hand in ["left", "right"]:
-		if _tweens.has(hand):
-			(_tweens[hand] as Tween).kill()
 		var arm: Node3D = _arms[hand]
 		var mirror := -1.0 if hand == "left" else 1.0
 		var tween := create_tween()
@@ -261,45 +305,111 @@ func stop_idle(ease_back := true) -> void:
 		_tweens[hand] = tween
 
 
-## Where a hand's fist is (this node's space) with the arm at an idle offset.
-func _fist_point(hand: String, offset: Array) -> Vector3:
-	var mirror := -1.0 if hand == "left" else 1.0
-	var basis := Basis.from_euler(_mirror_rot(REST_ROT, mirror) + _mirror_rot(offset[1], mirror))
-	return _mirror_pos(REST_POS, mirror) + _mirror_pos(offset[0], mirror) + basis * FIST_POINT
+func _run_idle(delta: float) -> void:
+	_idle_time += delta
+	var last: Dictionary = _idle_segments[-1]
+	if _idle_time >= float(last.t1):
+		_end_idle()
+		return
+	var index := 0
+	while float(_idle_segments[index].t1) <= _idle_time:
+		index += 1
+	var segment: Dictionary = _idle_segments[index]
+	if index != _idle_index:
+		_idle_index = index
+		_on_segment(segment.spec)
+	var u := smoothstep(0.0, 1.0, (_idle_time - float(segment.t0)) / maxf(float(segment.t1) - float(segment.t0), 0.001))
+	for hand in ["left", "right"]:
+		var from: Array = segment.from[hand]
+		var to: Array = segment.to[hand]
+		var mirror := -1.0 if hand == "left" else 1.0
+		var arm: Node3D = _arms[hand]
+		arm.position = _mirror_pos(REST_POS, mirror) + _mirror_pos((from[0] as Vector3).lerp(to[0], u), mirror)
+		arm.rotation = _mirror_rot(REST_ROT, mirror) + _mirror_rot((from[1] as Vector3).lerp(to[1], u), mirror)
+		_apply_shape(hand, IdleAnims.blend(IdleAnims.shape(from[2]), IdleAnims.shape(to[2]), u))
+	_resolve_contact()
+	_move_prop(u)
 
 
-## The idle's prop flying between the fists along its path (IdleAnims).
-func _play_prop(spec: Dictionary, starts: Array, ends: Array) -> void:
-	_idle_prop = _make_prop(spec.kind)
-	_idle_prop.visible = false
-	add_child(_idle_prop)
-	var tween := _idle_prop.create_tween()
-	var clock := 0.0
-	var first := true
-	for step in spec.path:
-		var key: int = step[0]
-		var hand := "left" if step[1] == "l" else "right"
-		var point := _fist_point(hand, ends[key][hand]) + Vector3(0, step[2], 0)
-		var seconds: float = step[3]
-		tween.tween_interval(maxf(0.0, float(starts[key]) - clock))
-		clock = maxf(clock, float(starts[key]))
-		if first:
-			tween.tween_callback(func() -> void:
-				_idle_prop.position = point
-				_idle_prop.visible = true)
-			first = false
-			continue
-		# A little arc between the hands.
-		var mid := point + Vector3(0, 0.12, 0)
-		tween.tween_property(_idle_prop, "position", mid, seconds * 0.5).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-		tween.tween_property(_idle_prop, "position", point, seconds * 0.5).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-		clock += seconds
+func _on_segment(spec: Dictionary) -> void:
+	if spec.has("sfx") and not silent:
+		Sfx.play(spec.sfx[0], spec.sfx[1], spec.sfx[2])
+	if spec.get("trail", false):
+		for hand in ["left", "right"]:
+			if spec.has("l" if hand == "left" else "r"):
+				_afterimage(_arms[hand])
+	if is_instance_valid(_idle_prop):
+		if spec.has("prop"):
+			var to: Array = spec.prop
+			_prop_from = _prop_to if _idle_prop.visible else to
+			_prop_to = to
+			_prop_arc = to.size() > 3 and to[3]
+			_idle_prop.visible = true
+		if spec.get("hide_prop", false):
+			_idle_prop.visible = false
+
+
+func _end_idle() -> void:
+	idle_playing = false
+	_clear_prop()
+	for hand in ["left", "right"]:
+		var mirror := -1.0 if hand == "left" else 1.0
+		(_arms[hand] as Node3D).position = _mirror_pos(REST_POS, mirror)
+		(_arms[hand] as Node3D).rotation = _mirror_rot(REST_ROT, mirror)
+		_apply_shape(hand, IdleAnims.shape("fist"))
+
+
+## The hands push apart where they'd pass through each other, so they touch.
+func _resolve_contact() -> void:
+	var spheres: Array = (CONTACT_GLOVE if _rig.has("mitten") else CONTACT).duplicate()
+	var left_arm: Node3D = _arms.left
+	var right_arm: Node3D = _arms.right
+	var lefts := spheres.duplicate()
+	var rights := spheres.duplicate()
+	if float(_shape.left.get("f", 1.0)) < 0.6:
+		lefts.append(CONTACT_TIPS)
+	if float(_shape.right.get("f", 1.0)) < 0.6:
+		rights.append(CONTACT_TIPS)
+	for attempt in 3:
+		var moved := false
+		for a in lefts:
+			for b in rights:
+				var ca := left_arm.transform * _mirror_pos(a[0], -1.0)
+				var cb := right_arm.transform * (b[0] as Vector3)
+				var gap := cb - ca
+				var overlap: float = float(a[1]) + float(b[1]) - gap.length()
+				if overlap > 0.0005:
+					var push := (gap.normalized() if gap.length() > 0.0001 else Vector3.RIGHT) * overlap * 0.5
+					left_arm.position -= push
+					right_arm.position += push
+					moved = true
+		if not moved:
+			return
+
+
+## Where a prop sits on a hand: [hand ("l"/"r"), anchor, lift].
+func _anchor_point(spec: Array) -> Vector3:
+	var hand := "left" if spec[0] == "l" else "right"
+	var point: Vector3 = {"palm": Vector3(0, -0.055, -0.34), "top": Vector3(0, 0.05, -0.33),
+			"tip": Vector3(0, -0.01, -0.44), "thumb": Vector3(-0.035, 0.02, -0.4)}.get(spec[1], Vector3(0, 0, -0.34))
+	return (_arms[hand] as Node3D).transform * _mirror_pos(point, -1.0 if hand == "left" else 1.0) + Vector3(0, float(spec[2]), 0)
+
+
+func _move_prop(u: float) -> void:
+	if not is_instance_valid(_idle_prop) or not _idle_prop.visible or _prop_to.is_empty():
+		return
+	var point := _anchor_point(_prop_from).lerp(_anchor_point(_prop_to), u)
+	if _prop_arc:
+		point.y += 0.14 * sin(PI * u)
+	_idle_prop.position = point
 
 
 func _clear_prop() -> void:
 	if is_instance_valid(_idle_prop):
 		_idle_prop.queue_free()
 	_idle_prop = null
+	_prop_from = []
+	_prop_to = []
 
 
 ## coin: a spinning gold coin. skull: a little bone skull. flame: a flame
@@ -384,6 +494,9 @@ func _build_arm(side: float) -> Node3D:
 	arm.rotation = _mirror_rot(REST_ROT, side)
 	add_child(arm)
 	_grid.clear()
+	_rig.clear()
+	_bone_cells.clear()
+	_bone_extra.clear()
 	match fighter:
 		"berserker":
 			_paint_mauler()
@@ -400,7 +513,11 @@ func _build_arm(side: float) -> Node3D:
 		_:
 			_paint_forearm(_skin_fn(), "skin")
 			_paint_fist(_skin_fn(), _skin_fn())
+	if fighter == "berserker":
+		_rig_mitten()
+	_attach_loose_voxels()
 	_bake(arm, side)
+	_build_bones(arm, side)
 	_build_effect(arm, side)
 	return arm
 
@@ -520,19 +637,184 @@ func _paint_wrist(color: Callable, group := "skin", grow := 0.0) -> void:
 	_fill(Vector3(-0.042 - grow, -0.037 - grow, -0.29), Vector3(0.042 + grow, 0.037 + grow, -0.235), color, group)
 
 
-## A bare fist: block of the hand, four curled fingers with knuckle bumps, and
-## the thumb across the front. hand/fingers: colors; fingers_group for the
-## fingers' material.
-func _paint_fist(hand: Callable, fingers: Callable, hand_group := "skin", fingers_group := "skin") -> void:
-	_fill(Vector3(-0.047, -0.038, -0.35), Vector3(0.047, 0.036, -0.285), hand, hand_group, 0.006)
+## A bare hand: the palm block, then four fingers of three segments and a
+## thumb of two (the rig), painted where they sit in a closed fist so a
+## fighter's colors land where they always did. hand/fingers: colors;
+## knuckles: the first finger segments (e.g. taped), if different.
+func _paint_fist(hand: Callable, fingers: Callable, hand_group := "skin", fingers_group := "skin", knuckles := Callable(), knuckle_group := "") -> void:
+	_fill(Vector3(-0.047, -0.03, -0.358), Vector3(0.047, 0.034, -0.285), hand, hand_group, 0.006)
+	# The thumb's root, on the inner side of the palm.
+	_fill(Vector3(-0.058, -0.03, -0.345), Vector3(-0.036, -0.004, -0.3), hand, hand_group, 0.004)
 	for i in 4:
-		var x := -0.034 + i * 0.0227
-		_fill(Vector3(x - 0.011, -0.04, -0.395), Vector3(x + 0.011, 0.03, -0.344), fingers, fingers_group, 0.004)
-		# Knuckle bump on top.
-		_fill(Vector3(x - 0.009, 0.026, -0.372), Vector3(x + 0.009, 0.042, -0.342), fingers, fingers_group, 0.003)
-	# Thumb: the base on the inner side, then laid across the front of the fingers.
-	_fill(Vector3(-0.06, -0.04, -0.37), Vector3(-0.036, -0.012, -0.3), hand, hand_group, 0.004)
-	_fill(Vector3(-0.045, -0.05, -0.405), Vector3(-0.004, -0.026, -0.368), hand, hand_group, 0.004)
+		var parent := ""
+		for j in 3:
+			var bone := "f%d_%d" % [i, j]
+			var offset := Vector3(FINGER_X[i], KNUCKLE.x, KNUCKLE.y) if j == 0 else Vector3(0, 0, -PHALANX[j - 1] * FINGER_LENGTH[i])
+			_rig[bone] = {"parent": parent, "offset": offset, "closed": Vector3(CURL_CLOSED[j], 0, 0), "open": Vector3(CURL_OPEN[j], 0, 0)}
+			var color := knuckles if j == 0 and knuckles.is_valid() else fingers
+			var group := knuckle_group if j == 0 and knuckle_group != "" else fingers_group
+			_paint_bone(bone, PHALANX[j] * FINGER_LENGTH[i], FINGER_SIZE, color, group)
+			parent = bone
+	_rig["t_0"] = {"parent": "", "offset": THUMB_PIVOT, "closed": THUMB_CLOSED[0], "open": THUMB_OPEN[0]}
+	_rig["t_1"] = {"parent": "t_0", "offset": Vector3(0, 0, -THUMB_LENGTH[0]), "closed": THUMB_CLOSED[1], "open": THUMB_OPEN[1]}
+	_paint_bone("t_0", THUMB_LENGTH[0], THUMB_SIZE, hand, hand_group)
+	_paint_bone("t_1", THUMB_LENGTH[1], THUMB_SIZE, hand, hand_group)
+
+
+## A bone's closed-fist transform (painting space).
+func _closed_transform(bone: String) -> Transform3D:
+	var info: Dictionary = _rig[bone]
+	var local := Transform3D(Basis.from_euler(info.closed), info.offset)
+	return (_closed_transform(info.parent) if info.parent != "" else Transform3D.IDENTITY) * local
+
+
+## Fills a bone: a padded box from its pivot out along -Z, colored by where
+## each voxel sits in the closed fist.
+func _paint_bone(bone: String, length: float, size: Vector2, color: Callable, group: String) -> void:
+	var closed := _closed_transform(bone)
+	var cells := {}
+	var half := Vector3(size.x * 0.5, size.y * 0.5, length * 0.5 + 0.002)
+	var center := Vector3(0, 0, -length * 0.5)
+	var lo := Vector3i(((center - half) / VOXEL).floor())
+	var hi := Vector3i(((center + half) / VOXEL).ceil())
+	for x in range(lo.x, hi.x):
+		for y in range(lo.y, hi.y):
+			for z in range(lo.z, hi.z):
+				var p := (Vector3(x, y, z) + Vector3(0.5, 0.5, 0.5)) * VOXEL
+				var d := ((p - center).abs() - (half - Vector3.ONE * 0.004)).max(Vector3.ZERO)
+				if (p - center).abs().x > half.x or (p - center).abs().y > half.y or (p - center).abs().z > half.z or d.length() > 0.004:
+					continue
+				cells[Vector3i(x, y, z)] = [color.call(closed * p), group]
+	_bone_cells[bone] = cells
+
+
+## The Mauler's gloves: the padded front and the thumb come off the painted
+## glove as two bones (closed = as painted).
+func _rig_mitten() -> void:
+	_rig["mitten"] = {"parent": "", "offset": MITTEN_PIVOT, "closed": Vector3.ZERO, "open": MITTEN_OPEN}
+	_rig["t_0"] = {"parent": "", "offset": MITTEN_THUMB_PIVOT, "closed": Vector3.ZERO, "open": MITTEN_THUMB_OPEN}
+	for cell in _grid.keys():
+		var p := (Vector3(cell) + Vector3(0.5, 0.5, 0.5)) * VOXEL
+		var bone := ""
+		if p.x < -0.05 and p.z < -0.3 and p.z > -0.41:
+			bone = "t_0"
+		elif p.z < MITTEN_PIVOT.z:
+			bone = "mitten"
+		if bone == "":
+			continue
+		if not _bone_extra.has(bone):
+			_bone_extra[bone] = []
+		var entry: Array = _grid[cell]
+		_bone_extra[bone].append([_closed_transform(bone).affine_inverse() * p, entry[0], entry[1]])
+		_grid.erase(cell)
+
+
+## Anything painted out past the palm onto the fingers (taped knuckles, a ring,
+## runes) rides on the nearest finger bone.
+func _attach_loose_voxels() -> void:
+	if not _rig.has("f0_0"):
+		return
+	var ends := {}
+	for bone in _rig:
+		var closed := _closed_transform(bone)
+		ends[bone] = [closed.origin, closed * Vector3(0, 0, -0.02)]
+	for cell in _grid.keys():
+		var p := (Vector3(cell) + Vector3(0.5, 0.5, 0.5)) * VOXEL
+		if p.z > -0.36 or p.z < -0.45:
+			continue
+		var best := ""
+		var best_distance := 0.03
+		for bone in ends:
+			var a: Vector3 = ends[bone][0]
+			var b: Vector3 = ends[bone][1]
+			var t := clampf((p - a).dot(b - a) / maxf((b - a).length_squared(), 0.000001), 0.0, 1.0)
+			var distance := p.distance_to(a.lerp(b, t))
+			if distance < best_distance:
+				best_distance = distance
+				best = bone
+		if best == "":
+			continue
+		if not _bone_extra.has(best):
+			_bone_extra[best] = []
+		var entry: Array = _grid[cell]
+		_bone_extra[best].append([_closed_transform(best).affine_inverse() * p, entry[0], entry[1]])
+		_grid.erase(cell)
+
+
+## The bone nodes under the arm (closed), each with its voxels baked on.
+func _build_bones(arm: Node3D, side: float) -> void:
+	var hand := "left" if side < 0.0 else "right"
+	var nodes := {}
+	for bone in _rig:
+		var info: Dictionary = _rig[bone]
+		var node := Node3D.new()
+		node.position = _mirror_pos(info.offset, side)
+		node.rotation = _mirror_rot(info.closed, side)
+		(nodes[info.parent] if info.parent != "" else arm).add_child(node)
+		nodes[bone] = node
+		var voxels: Array = []
+		var cells: Dictionary = _bone_cells.get(bone, {})
+		var neighbours := [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, -1, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]
+		for cell in cells:
+			if neighbours.all(func(n: Vector3i) -> bool: return cells.has(cell + n)):
+				continue
+			voxels.append([(Vector3(cell) + Vector3(0.5, 0.5, 0.5)) * VOXEL, cells[cell][0], cells[cell][1]])
+		voxels.append_array(_bone_extra.get(bone, []))
+		_bake_voxels(node, voxels, side)
+	_bones[hand] = nodes
+	_shape[hand] = IdleAnims.shape("fist")
+
+
+## Voxels [[position, color, group]] as cubes under a node, one MultiMesh per group.
+func _bake_voxels(node: Node3D, voxels: Array, side: float) -> void:
+	var by_group := {}
+	for voxel in voxels:
+		if not by_group.has(voxel[2]):
+			by_group[voxel[2]] = []
+		by_group[voxel[2]].append(voxel)
+	var cube := BoxMesh.new()
+	cube.size = Vector3.ONE * VOXEL * 1.02
+	for group in by_group:
+		var list: Array = by_group[group]
+		var multimesh := MultiMesh.new()
+		multimesh.transform_format = MultiMesh.TRANSFORM_3D
+		multimesh.use_colors = true
+		multimesh.mesh = cube
+		multimesh.instance_count = list.size()
+		for i in list.size():
+			multimesh.set_instance_transform(i, Transform3D(Basis.IDENTITY, _mirror_pos(list[i][0], side)))
+			multimesh.set_instance_color(i, list[i][1])
+		var instance := MultiMeshInstance3D.new()
+		instance.multimesh = multimesh
+		instance.material_override = _materials[group]
+		instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		instance.layers = HAND_LAYER
+		node.add_child(instance)
+
+
+## Poses a hand's bones from a shape (IdleAnims.shape): f / f0-f3 finger curl
+## (1 = fist), t thumb curl, tu thumb up (0-1), spread (0-1).
+func _apply_shape(hand: String, shape: Dictionary) -> void:
+	_shape[hand] = shape
+	var side := -1.0 if hand == "left" else 1.0
+	var nodes: Dictionary = _bones[hand]
+	for bone in nodes:
+		var info: Dictionary = _rig[bone]
+		var rotation: Vector3
+		if bone.begins_with("f"):
+			var finger := int(bone.substr(1, 1))
+			var curl: float = shape.get("f%d" % finger, shape.get("f", 1.0))
+			rotation = (info.open as Vector3).lerp(info.closed, curl)
+			if bone.ends_with("_0"):
+				rotation.y = SPREAD[finger] * float(shape.get("spread", 0.0))
+		elif bone.begins_with("t"):
+			rotation = (info.open as Vector3).lerp(info.closed, float(shape.get("t", 1.0)))
+			var up := float(shape.get("tu", 0.0))
+			if up > 0.0 and not _rig.has("mitten"):
+				rotation = rotation.lerp(THUMB_UP[0] if bone == "t_0" else THUMB_UP[1], up)
+		else:
+			rotation = (info.open as Vector3).lerp(info.closed, float(shape.get("f", 1.0)))
+		(nodes[bone] as Node3D).rotation = _mirror_rot(rotation, side)
 
 
 # --- The fighters ------------------------------------------------------------------
@@ -681,11 +963,8 @@ func _paint_tony(_left: bool) -> void:
 			c = tape.darkened(0.25)
 		return _vary(c, p, 0.06)
 	_paint_wrist(taped, "gear", 0.004)
-	_paint_fist(taped, _skin_fn(), "gear", "skin")
-	# Tape over the knuckles too, fingertips bare.
-	for i in 4:
-		var x := -0.034 + i * 0.0227
-		_fill(Vector3(x - 0.012, 0.0, -0.375), Vector3(x + 0.012, 0.044, -0.34), taped, "gear", 0.003)
+	# Tape over the knuckles too (the first finger segments), fingertips bare.
+	_paint_fist(taped, _skin_fn(), "gear", "skin", taped, "gear")
 	# A gold pinky ring on each hand: Tony's got two.
 	var gold := Color(1.0, 0.78, 0.22)
 	_fill(Vector3(0.021, -0.045, -0.36), Vector3(0.048, 0.035, -0.351), _solid(gold, 0.05), "rim")

@@ -1093,12 +1093,20 @@ Older saves get what they'd already earned, quietly, when camp loads. The list a
 - `run_playground.bat` (or `.sh`, `-e` for the editor) syncs and launches it.
 - It opens on the training ring with a dev panel (F1): fighter, hat, every emote, spawn anything at any tier (veterans, bosses, contenders), freeze enemies, force any special on the nearest boxer, give and select a power line, god mode, fill the ultimate, +5 levels, replay tips, and arena theme backdrops.
 
-## Hand idles [Built 2026-10-24]
+## Hand idles [Built 2026-10-24, reworked with real hands]
 
-After 5s of doing nothing (no keys or buttons held, no movement; looking around is fine) the first-person hands play an idle, then again every 7-11s. Purely cosmetic; any input cuts it off at once. Data in `idle_anims.gd` (keyframes of arm offsets, plus a prop: a coin, a little skull or a flame), played by `Fists.play_idle`.
-- **Each fighter's own:** Mauler Knuckle Crack, Answer Tape Check, Blur Shadowbox (with afterimages), Stray Shake Out, Tony Pinky Ring, Catalyst Palm Flame (a flame hops hand to hand).
-- **Sold in the Soul Shop** (one offer per restock, 6 Souls), any fighter can wear them: Fist Bump, Coin Flip, Juggler (a skull tossed hand to hand), Drum Roll, Windmill, Stretch.
-- **Equip** per fighter in the Loadout's Hand Idle tab: each card plays the idle live on your fighter's hands (`IdlePreview`). The Loadout button shows once there's a choice of abilities or idles. Shop cards preview too.
+After 5s of doing nothing (no keys or buttons held, no movement; looking around is fine) the first-person hands play an idle, then again every 7-11s. Purely cosmetic; any input cuts it off at once and the fingers close back into fists.
+
+**Rigged hands** (`fists.gd`): every finger is three jointed segments and the thumb two, pivoting at the knuckles; closed, they fold into the same fist as before (punches unchanged). Each fighter's colors (tape, wraps, creases) are painted where they fall in the fist, and anything painted over the knuckles (Tony's tape and ring, the Catalyst's runes) rides on the nearest finger. The Mauler's boxing gloves are mittens: the padded front bends as one piece, plus the thumb.
+- **Shapes** (`IdleAnims.SHAPES`): fist, open, wide, relax, loose, cup, claw, point, gun, pinch, flick, and finger ripples.
+- **Poses** (`IdleAnims.POSES`): named arm poses worked out from where the hand should sit in view and which way the palm faces (palm to face, back of hand, palm up, side-on, fists meeting...), so the fingers are actually seen.
+- **No passing through:** idles run frame by frame (not tweens); each frame the hands push apart where they'd overlap, so fists bump and stop.
+
+**Each fighter's own:** Mauler Glove Tap (gloves bump, then a punch into his own open glove), Answer Tape Check (flexes the hand, tugs his wrist tape), Blur Shadowbox (finger ripple, then a flurry), Stray Shake Out, Tony Pinky Ring (shows the ring, rubs it with a finger), Catalyst Palm Flame (a flame in his palm, tossed hand to hand, snuffed in a fist).
+
+**Soul Shop** (one per restock, 6 Souls), any fighter: Fist Bump (bump, then blow it up), Coin Flip (thumb flick, catch), Juggler (a skull tossed palm to palm), Drum Roll, Windmill, Stretch (fingers spread and rippling), Finger Guns.
+
+**Equip** per fighter in the Loadout's Hand Idle tab, each card playing live (`IdlePreview`); shop cards preview too.
 
 ## New fighter: The Catalyst (Elementalist) [Built 2026-10-24]
 

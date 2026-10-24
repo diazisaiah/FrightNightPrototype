@@ -2,138 +2,218 @@ class_name IdleAnims
 ## Hand idles (2026-10-24): what the first-person hands do after a few
 ## seconds of doing nothing. Purely cosmetic; any action cuts one off. Each
 ## fighter has their own; more are bought in the Soul Shop and equipped per
-## fighter in the Loadout (GameState.idle_picks).
+## fighter in the Loadout (GameState.idle_picks). The hands are rigged
+## (Fists): fingers curl, spread, point and flick, and the hands stop where
+## they touch instead of passing through each other.
 ##
-## keys: [seconds, {"r": [pos, rot], "l": [pos, rot], "sfx": [sound, db, pitch],
-## "trail": true}]: offsets from the rest pose, written for the right arm (the
-## left mirrors them). An arm left out of a key holds where it was. The hands
-## return to rest after the last key.
-## prop: a little thing in the hands: kind (coin, skull, flame) and path:
-## [[key, hand, lift, seconds]]: when that key starts, it flies to that hand's
-## fist (where the key leaves it, plus lift meters up) over seconds.
+## keys: [seconds, {"r": [pose, shape] or [pos, rot, shape], "l": [...], "sfx": [sound, db,
+## pitch], "trail": true, "prop": [hand, anchor, lift, arc], "hide_prop": true}].
+## pos / rot: offsets from the rest pose, written for the right arm (the left
+## mirrors them). shape: a SHAPES name. A hand left out of a key holds; one
+## without a shape keeps its last. The hands go back to rest after the last key.
+## prop: where the idle's prop (coin, skull, flame) goes this key: to that
+## hand's anchor (palm, top, tip, thumb) plus lift meters, arcing if arc.
 
-const MEET := [Vector3(-0.13, 0.12, -0.06), Vector3(-0.05, 0.55, 0.0)]
-const MEET_TWIST := [Vector3(-0.15, 0.12, -0.06), Vector3(-0.05, 0.6, 0.4)]
-const DROP := [Vector3(0.02, -0.12, 0.05), Vector3(0.4, 0.0, 0.0)]
-const PALM_UP := [Vector3(-0.08, 0.04, -0.04), Vector3(0.45, 0.3, 2.3)]
-const REST := [Vector3.ZERO, Vector3.ZERO]
+## Hand shapes: f = all finger curl (1 = fist), f0-f3 one finger (index to
+## pinky), t = thumb curl, tu = thumb up, spread = fingers fanned.
+const SHAPES := {
+	"fist": {"f": 1.0, "t": 1.0},
+	"open": {"f": 0.0, "t": 0.0, "spread": 1.0},
+	"wide": {"f": 0.0, "t": 0.0, "spread": 1.8},
+	"relax": {"f": 0.4, "t": 0.45, "spread": 0.3},
+	"loose": {"f": 0.2, "t": 0.2, "spread": 0.6},
+	"cup": {"f": 0.55, "t": 0.5, "spread": 0.15},
+	"claw": {"f": 0.7, "t": 0.7, "spread": 0.9},
+	"point": {"f": 1.0, "f0": 0.0, "t": 1.0},
+	"gun": {"f": 1.0, "f0": 0.0, "t": 0.0},
+	"pinch": {"f": 0.8, "f0": 0.5, "t": 0.5},
+	"flick_ready": {"f": 1.0, "f0": 0.6, "t": 1.0},
+	"flick": {"f": 1.0, "f0": 0.35, "t": 0.0, "tu": 0.8},
+	"ripple0": {"f": 0.15, "f0": 0.8, "t": 0.3, "spread": 0.5},
+	"ripple1": {"f": 0.15, "f1": 0.8, "t": 0.3, "spread": 0.5},
+	"ripple2": {"f": 0.15, "f2": 0.8, "t": 0.3, "spread": 0.5},
+	"ripple3": {"f": 0.15, "f3": 0.8, "t": 0.3, "spread": 0.5},
+}
+
+const REST := [Vector3.ZERO, Vector3.ZERO, "fist"]
+
+## Arm poses by name: [pos, rot] offsets from rest for the right arm, worked
+## out from where the fist should sit in view and which way the forearm and
+## palm face (so the fingers are actually seen). A key can name one:
+## [pose, shape] or [pose, shape, nudge].
+const POSES := {
+	"palm_face": [Vector3(-0.14, -0.052, -0.146), Vector3(0.85, -0.18, 3.64)],
+	"back_face": [Vector3(-0.14, -0.052, -0.146), Vector3(0.85, -0.18, 0.5)],
+	"palm_up": [Vector3(-0.032, 0.153, -0.014), Vector3(-0.45, 0.27, 3.64)],
+	"palm_up_lift": [Vector3(-0.034, 0.169, -0.017), Vector3(-0.35, 0.27, 3.64)],
+	"gun": [Vector3(0.022, 0.176, -0.019), Vector3(-0.25, 0.37, -1.07)],
+	"gun_kick": [Vector3(-0.014, 0.081, -0.068), Vector3(0.2, 0.37, -1.07)],
+	"meet": [Vector3(0.008, 0.113, -0.046), Vector3(-0.15, 0.57, 0.3)],
+	"apart": [Vector3(0.037, 0.103, 0.002), Vector3(-0.15, 0.37, 0.3)],
+	"side_in": [Vector3(0.049, 0.14, -0.032), Vector3(-0.2, 0.52, -1.07)],
+	"low": [Vector3(0.011, 0.073, 0.106), Vector3(-0.45, -0.03, -0.3)],
+	"shake_low": [Vector3(-0.036, 0.094, 0.127), Vector3(-0.6, -0.08, -0.7)],
+	"push_out": [Vector3(-0.109, -0.003, -0.263), Vector3(0.75, -0.08, 0.5)],
+	"fist_up": [Vector3(-0.102, -0.023, -0.051), Vector3(0.6, 0.07, 1.1)],
+	"ring_show": [Vector3(-0.194, -0.057, -0.109), Vector3(0.7, -0.38, 0.8)],
+	"ring_rub": [Vector3(-0.044, -0.016, -0.099), Vector3(0.4, 0.72, 2.07)],
+	"tug": [Vector3(-0.064, 0.008, -0.048), Vector3(0.1, 0.82, 2.07)],
+}
+const UP := Vector3(0, 0.02, 0)
 
 ## Each fighter's own (always owned).
 const BASE := {
-	"berserker": "knuckle_crack", "counter_master": "tape_check", "combo_master": "shadowbox",
+	"berserker": "glove_tap", "counter_master": "tape_check", "combo_master": "shadowbox",
 	"free_runner": "shake_out", "wise_guy": "pinky_ring", "elementalist": "palm_flame",
 }
 ## Sold in the Soul Shop; any fighter can wear them.
-const SHOP := ["fist_bump", "coin_flip", "juggler", "drum_roll", "windmill", "stretch"]
+const SHOP := ["fist_bump", "coin_flip", "juggler", "drum_roll", "windmill", "stretch", "finger_guns"]
 
 const ANIMS := {
-	"knuckle_crack": {"name": "Knuckle Crack", "keys": [
-		[0.35, {"r": MEET, "l": MEET}],
-		[0.1, {"r": MEET_TWIST, "l": MEET_TWIST, "sfx": ["hit", -16.0, 2.2]}],
-		[0.12, {"r": MEET, "l": MEET}],
-		[0.1, {"r": MEET_TWIST, "l": MEET_TWIST, "sfx": ["hit", -16.0, 2.5]}],
-		[0.2, {"r": MEET, "l": MEET}],
-		[0.35, {"r": REST, "l": REST}],
+	"glove_tap": {"name": "Glove Tap", "keys": [
+		[0.3, {"r": ["meet", "fist"], "l": ["meet", "fist"], "sfx": ["hit", -16.0, 0.9]}],
+		[0.14, {"r": ["apart", "fist"], "l": ["apart", "fist"]}],
+		[0.12, {"r": ["meet", "fist"], "l": ["meet", "fist"], "sfx": ["hit", -14.0, 0.85]}],
+		[0.3, {"l": ["side_in", "open"], "r": ["apart", "fist"]}],
+		[0.12, {"r": ["meet", "fist"], "sfx": ["heavy", -12.0, 0.9]}],
+		[0.3, {"l": ["side_in", "cup"]}],
 	]},
 	"tape_check": {"name": "Tape Check", "keys": [
-		[0.4, {"r": [Vector3(-0.08, 0.1, -0.02), Vector3(0.3, 0.45, 0.6)], "l": [Vector3(-0.05, 0.05, 0.0), Vector3(0.1, 0.3, 0.0)]}],
-		[0.25, {"r": [Vector3(-0.08, 0.1, -0.02), Vector3(0.3, 0.45, 1.1)], "l": [Vector3(-0.08, 0.08, -0.03), Vector3(0.1, 0.35, 0.0)], "sfx": ["draw", -18.0, 2.0]}],
-		[0.25, {"l": [Vector3(-0.02, 0.03, 0.02), Vector3(0.05, 0.2, 0.0)]}],
-		[0.3, {"r": [Vector3(-0.08, 0.1, -0.02), Vector3(0.3, 0.45, 0.4)]}],
-		[0.12, {"r": [Vector3(0.05, -0.04, 0.0), Vector3(-0.2, -0.1, -0.3)], "l": [Vector3(0.05, -0.04, 0.0), Vector3(-0.2, -0.1, -0.3)], "sfx": ["whoosh", -16.0, 1.5]}],
-		[0.12, {"r": [Vector3(0.0, 0.02, 0.0), Vector3(0.1, 0.05, 0.2)], "l": [Vector3(0.0, 0.02, 0.0), Vector3(0.1, 0.05, 0.2)]}],
+		[0.4, {"r": ["back_face", "open"], "l": ["low", "relax"]}],
+		[0.18, {"r": ["back_face", "fist"]}],
+		[0.18, {"r": ["back_face", "wide"]}],
+		[0.18, {"r": ["back_face", "fist"]}],
+		[0.3, {"r": ["palm_face", "open"]}],
+		[0.3, {"r": ["fist_up", "fist"], "l": ["tug", "pinch"], "sfx": ["draw", -18.0, 2.0]}],
+		[0.25, {"l": ["tug", "pinch", Vector3(0.02, -0.03, 0.02)]}],
+		[0.14, {"r": ["low", "loose"], "l": ["low", "loose"], "sfx": ["whoosh", -16.0, 1.5]}],
+		[0.14, {"r": ["low", "relax", UP], "l": ["low", "relax", UP]}],
 	]},
 	"shadowbox": {"name": "Shadowbox", "keys": [
-		[0.08, {"l": [Vector3(-0.05, 0.08, -0.12), Vector3(-0.2, 0.08, 0.25)], "trail": true}],
+		[0.3, {"r": ["back_face", "ripple0"], "l": ["back_face", "ripple0"]}],
+		[0.07, {"r": ["back_face", "ripple1"], "l": ["back_face", "ripple1"]}],
+		[0.07, {"r": ["back_face", "ripple2"], "l": ["back_face", "ripple2"]}],
+		[0.07, {"r": ["back_face", "ripple3"], "l": ["back_face", "ripple3"]}],
+		[0.07, {"r": ["back_face", "ripple0"], "l": ["back_face", "ripple0"]}],
+		[0.07, {"r": ["back_face", "ripple1"], "l": ["back_face", "ripple1"]}],
+		[0.07, {"r": ["back_face", "ripple2"], "l": ["back_face", "ripple2"]}],
+		[0.07, {"r": ["back_face", "ripple3"], "l": ["back_face", "ripple3"]}],
+		[0.15, {"r": REST, "l": REST}],
+		[0.08, {"l": [Vector3(-0.05, 0.08, -0.12), Vector3(-0.2, 0.08, 0.25), "fist"], "trail": true}],
 		[0.08, {"l": REST}],
-		[0.08, {"r": [Vector3(-0.07, 0.08, -0.14), Vector3(-0.2, 0.12, 0.25)], "trail": true}],
+		[0.08, {"r": [Vector3(-0.07, 0.08, -0.14), Vector3(-0.2, 0.12, 0.25), "fist"], "trail": true}],
 		[0.08, {"r": REST}],
-		[0.08, {"l": [Vector3(-0.05, 0.08, -0.12), Vector3(-0.2, 0.08, 0.25)], "trail": true}],
-		[0.08, {"l": REST}],
-		[0.08, {"l": [Vector3(-0.05, 0.08, -0.12), Vector3(-0.2, 0.08, 0.25)], "trail": true}],
-		[0.08, {"l": REST}],
-		[0.1, {"r": [Vector3(0.02, 0.1, -0.1), Vector3(-0.3, 0.7, 0.0)], "trail": true}],
-		[0.25, {"r": REST}],
+		[0.1, {"r": [Vector3(0.02, 0.1, -0.1), Vector3(-0.3, 0.7, 0.0), "fist"], "trail": true, "sfx": ["whoosh", -14.0, 1.4]}],
 	]},
 	"shake_out": {"name": "Shake Out", "keys": [
-		[0.3, {"r": DROP, "l": DROP}],
-		[0.07, {"r": [Vector3(0.02, -0.09, 0.05), Vector3(0.4, 0.0, 0.25)], "l": [Vector3(0.02, -0.14, 0.05), Vector3(0.4, 0.0, -0.25)]}],
-		[0.07, {"r": [Vector3(0.02, -0.14, 0.05), Vector3(0.4, 0.0, -0.25)], "l": [Vector3(0.02, -0.09, 0.05), Vector3(0.4, 0.0, 0.25)]}],
-		[0.07, {"r": [Vector3(0.02, -0.09, 0.05), Vector3(0.4, 0.0, 0.25)], "l": [Vector3(0.02, -0.14, 0.05), Vector3(0.4, 0.0, -0.25)]}],
-		[0.07, {"r": [Vector3(0.02, -0.14, 0.05), Vector3(0.4, 0.0, -0.25)], "l": [Vector3(0.02, -0.09, 0.05), Vector3(0.4, 0.0, 0.25)]}],
-		[0.07, {"r": [Vector3(0.02, -0.09, 0.05), Vector3(0.4, 0.0, 0.25)], "l": [Vector3(0.02, -0.14, 0.05), Vector3(0.4, 0.0, -0.25)]}],
-		[0.25, {"r": [Vector3(0.0, 0.03, 0.0), Vector3(-0.1, 0.0, 0.0)], "l": [Vector3(0.0, 0.03, 0.0), Vector3(-0.1, 0.0, 0.0)]}],
+		[0.3, {"r": ["shake_low", "loose"], "l": ["shake_low", "loose"]}],
+		[0.07, {"r": ["shake_low", "open", Vector3(0, 0.025, 0)], "l": ["shake_low", "relax", Vector3(0, -0.02, 0)]}],
+		[0.07, {"r": ["shake_low", "relax", Vector3(0, -0.02, 0)], "l": ["shake_low", "open", Vector3(0, 0.025, 0)]}],
+		[0.07, {"r": ["shake_low", "open", Vector3(0, 0.025, 0)], "l": ["shake_low", "relax", Vector3(0, -0.02, 0)]}],
+		[0.07, {"r": ["shake_low", "relax", Vector3(0, -0.02, 0)], "l": ["shake_low", "open", Vector3(0, 0.025, 0)]}],
+		[0.07, {"r": ["shake_low", "open", Vector3(0, 0.025, 0)], "l": ["shake_low", "relax", Vector3(0, -0.02, 0)]}],
+		[0.07, {"r": ["shake_low", "relax", Vector3(0, -0.02, 0)], "l": ["shake_low", "open", Vector3(0, 0.025, 0)]}],
+		[0.25, {"r": REST, "l": REST, "sfx": ["hit", -18.0, 1.6]}],
 	]},
 	"pinky_ring": {"name": "Pinky Ring", "keys": [
-		[0.4, {"l": [Vector3(-0.08, 0.06, -0.06), Vector3(0.2, 0.4, 1.0)], "r": [Vector3(-0.06, 0.04, 0.0), Vector3(0.1, 0.3, 0.0)]}],
-		[0.12, {"r": [Vector3(-0.1, 0.08, 0.0), Vector3(0.1, 0.4, 0.0)]}],
-		[0.12, {"r": [Vector3(-0.08, 0.1, 0.01), Vector3(0.1, 0.4, 0.0)]}],
-		[0.12, {"r": [Vector3(-0.1, 0.08, 0.0), Vector3(0.1, 0.4, 0.0)]}],
-		[0.12, {"r": [Vector3(-0.08, 0.1, 0.01), Vector3(0.1, 0.4, 0.0)], "sfx": ["coin", -16.0, 1.6]}],
-		[0.4, {"r": REST}],
-		[0.35, {"l": REST}],
+		[0.4, {"l": ["ring_show", "open"], "r": ["low", "point"]}],
+		[0.25, {"r": ["ring_rub", "point"]}],
+		[0.12, {"r": ["ring_rub", "point", Vector3(0, 0.015, 0)]}],
+		[0.12, {"r": ["ring_rub", "point"]}],
+		[0.12, {"r": ["ring_rub", "point", Vector3(0, 0.015, 0)], "sfx": ["coin", -16.0, 1.6]}],
+		[0.3, {"r": ["low", "relax"], "l": ["ring_show", "wide"]}],
+		[0.3, {"l": ["ring_show", "relax"]}],
 	]},
 	"palm_flame": {"name": "Palm Flame", "keys": [
-		[0.4, {"r": PALM_UP}],
-		[0.6, {"sfx": ["fire", -14.0, 1.4]}],
-		[0.4, {"l": PALM_UP, "r": [Vector3(-0.04, 0.02, -0.02), Vector3(0.3, 0.2, 1.4)]}],
-		[0.5, {"r": REST}],
-		[0.35, {"l": REST, "sfx": ["whoosh", -18.0, 0.8]}],
-	], "prop": {"kind": "flame", "path": [[1, "r", 0.08, 0.2], [2, "l", 0.08, 0.4]]}},
+		[0.4, {"r": ["palm_up", "open"]}],
+		[0.5, {"r": ["palm_up", "claw", UP], "prop": ["r", "palm", 0.02], "sfx": ["fire", -14.0, 1.4]}],
+		[0.3, {"r": ["palm_up", "cup"], "l": ["palm_up", "cup"]}],
+		[0.45, {"prop": ["l", "palm", 0.02, true], "r": ["palm_up_lift", "open"]}],
+		[0.4, {"l": ["palm_up", "claw", UP], "r": REST}],
+		[0.15, {"l": ["palm_up", "fist"], "hide_prop": true, "sfx": ["whoosh", -16.0, 0.7]}],
+	], "prop": "flame"},
 	"fist_bump": {"name": "Fist Bump", "keys": [
-		[0.3, {"r": [Vector3(-0.1, 0.05, -0.12), Vector3(-0.2, 0.55, 0.0)], "l": [Vector3(-0.1, 0.05, -0.12), Vector3(-0.2, 0.55, 0.0)]}],
-		[0.08, {"r": [Vector3(-0.14, 0.05, -0.12), Vector3(-0.2, 0.6, 0.0)], "l": [Vector3(-0.14, 0.05, -0.12), Vector3(-0.2, 0.6, 0.0)], "sfx": ["hit", -14.0, 1.4]}],
-		[0.15, {"r": [Vector3(-0.06, 0.05, -0.1), Vector3(-0.2, 0.5, 0.0)], "l": [Vector3(-0.06, 0.05, -0.1), Vector3(-0.2, 0.5, 0.0)]}],
-		[0.08, {"r": [Vector3(-0.14, 0.05, -0.12), Vector3(-0.2, 0.6, 0.0)], "l": [Vector3(-0.14, 0.05, -0.12), Vector3(-0.2, 0.6, 0.0)], "sfx": ["hit", -14.0, 1.6]}],
-		[0.35, {"r": REST, "l": REST}],
+		[0.3, {"r": ["meet", "fist"], "l": ["meet", "fist"], "sfx": ["hit", -14.0, 1.3]}],
+		[0.15, {"r": ["apart", "fist"], "l": ["apart", "fist"]}],
+		[0.1, {"r": ["meet", "fist"], "l": ["meet", "fist"], "sfx": ["hit", -14.0, 1.5]}],
+		[0.25, {"r": ["back_face", "wide"], "l": ["back_face", "wide"], "sfx": ["whoosh", -12.0, 1.1]}],
+		[0.3, {"r": ["back_face", "loose", Vector3(0.02, -0.03, 0.0)], "l": ["back_face", "loose", Vector3(0.02, -0.03, 0.0)]}],
 	]},
 	"coin_flip": {"name": "Coin Flip", "keys": [
-		[0.3, {"r": [Vector3(-0.05, 0.04, -0.05), Vector3(0.2, 0.25, 0.3)]}],
-		[0.1, {"r": [Vector3(-0.05, 0.09, -0.06), Vector3(-0.1, 0.25, 0.3)], "sfx": ["coin", -12.0, 1.0]}],
-		[0.45, {"r": [Vector3(-0.05, 0.04, -0.05), Vector3(0.2, 0.25, 0.3)]}],
-		[0.45, {"sfx": ["coin", -14.0, 1.3]}],
-		[0.35, {"r": REST}],
-	], "prop": {"kind": "coin", "path": [[0, "r", 0.03, 0.3], [2, "r", 0.32, 0.45], [3, "r", 0.03, 0.45]]}},
+		[0.3, {"r": ["side_in", "flick_ready"], "prop": ["r", "thumb", 0.0]}],
+		[0.1, {"r": ["side_in", "flick", UP], "sfx": ["coin", -12.0, 1.0], "prop": ["r", "thumb", 0.3]}],
+		[0.45, {"r": ["palm_up", "cup"], "prop": ["r", "palm", 0.3]}],
+		[0.4, {"prop": ["r", "palm", 0.01], "sfx": ["coin", -14.0, 1.3]}],
+		[0.25, {"r": ["palm_up", "fist"]}],
+	], "prop": "coin"},
 	"juggler": {"name": "Juggler", "keys": [
-		[0.3, {"r": [Vector3(-0.06, 0.02, -0.04), Vector3(0.3, 0.3, 0.6)], "l": [Vector3(-0.06, 0.02, -0.04), Vector3(0.3, 0.3, 0.6)]}],
-		[0.1, {"r": [Vector3(-0.06, 0.07, -0.04), Vector3(0.1, 0.3, 0.6)]}],
-		[0.45, {"r": [Vector3(-0.06, 0.02, -0.04), Vector3(0.3, 0.3, 0.6)]}],
-		[0.1, {"l": [Vector3(-0.06, 0.07, -0.04), Vector3(0.1, 0.3, 0.6)]}],
-		[0.45, {"l": [Vector3(-0.06, 0.02, -0.04), Vector3(0.3, 0.3, 0.6)]}],
-		[0.1, {"r": [Vector3(-0.06, 0.07, -0.04), Vector3(0.1, 0.3, 0.6)]}],
-		[0.45, {"r": [Vector3(-0.06, 0.02, -0.04), Vector3(0.3, 0.3, 0.6)]}],
-		[0.35, {"r": REST, "l": REST}],
-	], "prop": {"kind": "skull", "path": [[0, "r", 0.05, 0.3], [2, "l", 0.05, 0.45], [4, "r", 0.05, 0.45], [6, "l", 0.05, 0.45]]}},
+		[0.3, {"r": ["palm_up", "cup"], "l": ["palm_up", "cup"], "prop": ["r", "palm", 0.03]}],
+		[0.1, {"r": ["palm_up_lift", "open"]}],
+		[0.45, {"r": ["palm_up", "cup"], "prop": ["l", "palm", 0.03, true]}],
+		[0.1, {"l": ["palm_up_lift", "open"]}],
+		[0.45, {"l": ["palm_up", "cup"], "prop": ["r", "palm", 0.03, true]}],
+		[0.1, {"r": ["palm_up_lift", "open"]}],
+		[0.45, {"r": ["palm_up", "claw"], "prop": ["l", "palm", 0.03, true]}],
+		[0.2, {"l": ["palm_up", "claw"]}],
+	], "prop": "skull"},
 	"drum_roll": {"name": "Drum Roll", "keys": [
-		[0.2, {"r": DROP, "l": DROP}],
+		[0.2, {"r": [Vector3(0.02, -0.12, 0.05), Vector3(0.4, 0.0, 0.0), "fist"], "l": [Vector3(0.02, -0.12, 0.05), Vector3(0.4, 0.0, 0.0), "fist"]}],
 		[0.06, {"r": [Vector3(0.02, -0.06, 0.04), Vector3(0.1, 0.0, 0.0)], "sfx": ["tick", -10.0, 0.6]}],
-		[0.06, {"r": DROP, "l": [Vector3(0.02, -0.06, 0.04), Vector3(0.1, 0.0, 0.0)], "sfx": ["tick", -10.0, 0.55]}],
-		[0.06, {"l": DROP, "r": [Vector3(0.02, -0.06, 0.04), Vector3(0.1, 0.0, 0.0)], "sfx": ["tick", -10.0, 0.6]}],
-		[0.06, {"r": DROP, "l": [Vector3(0.02, -0.06, 0.04), Vector3(0.1, 0.0, 0.0)], "sfx": ["tick", -10.0, 0.55]}],
-		[0.06, {"l": DROP, "r": [Vector3(0.02, -0.06, 0.04), Vector3(0.1, 0.0, 0.0)], "sfx": ["tick", -10.0, 0.6]}],
-		[0.06, {"r": DROP, "l": [Vector3(0.02, -0.06, 0.04), Vector3(0.1, 0.0, 0.0)], "sfx": ["tick", -10.0, 0.55]}],
-		[0.06, {"l": DROP, "r": [Vector3(0.02, -0.06, 0.04), Vector3(0.1, 0.0, 0.0)], "sfx": ["tick", -10.0, 0.6]}],
+		[0.06, {"r": [Vector3(0.02, -0.12, 0.05), Vector3(0.4, 0.0, 0.0)], "l": [Vector3(0.02, -0.06, 0.04), Vector3(0.1, 0.0, 0.0)], "sfx": ["tick", -10.0, 0.55]}],
+		[0.06, {"l": [Vector3(0.02, -0.12, 0.05), Vector3(0.4, 0.0, 0.0)], "r": [Vector3(0.02, -0.06, 0.04), Vector3(0.1, 0.0, 0.0)], "sfx": ["tick", -10.0, 0.6]}],
+		[0.06, {"r": [Vector3(0.02, -0.12, 0.05), Vector3(0.4, 0.0, 0.0)], "l": [Vector3(0.02, -0.06, 0.04), Vector3(0.1, 0.0, 0.0)], "sfx": ["tick", -10.0, 0.55]}],
+		[0.06, {"l": [Vector3(0.02, -0.12, 0.05), Vector3(0.4, 0.0, 0.0)], "r": [Vector3(0.02, -0.06, 0.04), Vector3(0.1, 0.0, 0.0)], "sfx": ["tick", -10.0, 0.6]}],
+		[0.06, {"r": [Vector3(0.02, -0.12, 0.05), Vector3(0.4, 0.0, 0.0)], "l": [Vector3(0.02, -0.06, 0.04), Vector3(0.1, 0.0, 0.0)], "sfx": ["tick", -10.0, 0.55]}],
+		[0.06, {"l": [Vector3(0.02, -0.12, 0.05), Vector3(0.4, 0.0, 0.0)], "r": [Vector3(0.02, -0.06, 0.04), Vector3(0.1, 0.0, 0.0)], "sfx": ["tick", -10.0, 0.6]}],
 		[0.2, {"r": [Vector3(0.0, 0.06, 0.0), Vector3(-0.3, 0.0, 0.0)], "l": [Vector3(0.0, 0.06, 0.0), Vector3(-0.3, 0.0, 0.0)]}],
 		[0.08, {"r": [Vector3(0.02, -0.14, 0.04), Vector3(0.5, 0.0, 0.0)], "l": [Vector3(0.02, -0.14, 0.04), Vector3(0.5, 0.0, 0.0)], "sfx": ["heavy", -14.0, 1.3]}],
-		[0.35, {"r": REST, "l": REST}],
 	]},
 	"windmill": {"name": "Windmill", "keys": [
-		[0.2, {"r": [Vector3(0.05, 0.15, 0.1), Vector3(1.4, -0.4, 0.0)]}],
-		[0.15, {"r": [Vector3(0.1, 0.02, 0.1), Vector3(0.2, -1.0, 0.0)], "trail": true}],
-		[0.15, {"r": [Vector3(0.03, -0.15, 0.02), Vector3(-0.8, 0.0, 0.0)]}],
-		[0.15, {"r": [Vector3(0.05, 0.15, 0.1), Vector3(1.4, -0.4, 0.0)], "sfx": ["whoosh", -12.0, 0.9]}],
-		[0.15, {"r": [Vector3(0.1, 0.02, 0.1), Vector3(0.2, -1.0, 0.0)], "trail": true}],
-		[0.15, {"r": [Vector3(0.03, -0.15, 0.02), Vector3(-0.8, 0.0, 0.0)]}],
-		[0.15, {"r": [Vector3(-0.08, 0.08, -0.16), Vector3(-0.3, 0.3, 0.4)], "sfx": ["whoosh", -10.0, 1.2]}],
-		[0.35, {"r": REST}],
+		[0.2, {"r": [Vector3(0.05, 0.15, 0.1), Vector3(1.4, -0.4, 0.0), "open"]}],
+		[0.15, {"r": [Vector3(0.1, 0.02, 0.1), Vector3(0.2, -1.0, 0.0), "open"], "trail": true}],
+		[0.15, {"r": [Vector3(0.03, -0.15, 0.02), Vector3(-0.8, 0.0, 0.0), "fist"]}],
+		[0.15, {"r": [Vector3(0.05, 0.15, 0.1), Vector3(1.4, -0.4, 0.0), "open"], "sfx": ["whoosh", -12.0, 0.9]}],
+		[0.15, {"r": [Vector3(0.1, 0.02, 0.1), Vector3(0.2, -1.0, 0.0), "open"], "trail": true}],
+		[0.15, {"r": [Vector3(0.03, -0.15, 0.02), Vector3(-0.8, 0.0, 0.0), "fist"]}],
+		[0.15, {"r": [Vector3(-0.08, 0.08, -0.16), Vector3(-0.3, 0.3, 0.4), "fist"], "sfx": ["whoosh", -10.0, 1.2]}],
 	]},
 	"stretch": {"name": "Stretch", "keys": [
-		[0.6, {"r": [Vector3(-0.04, 0.12, -0.2), Vector3(-0.4, 0.3, 0.6)], "l": [Vector3(-0.04, 0.12, -0.2), Vector3(-0.4, 0.3, 0.6)], "sfx": ["draw", -16.0, 0.7]}],
-		[0.25, {"r": [Vector3(-0.04, 0.13, -0.21), Vector3(-0.4, 0.3, 0.7)], "l": [Vector3(-0.04, 0.13, -0.21), Vector3(-0.4, 0.3, 0.7)]}],
-		[0.25, {"r": [Vector3(-0.04, 0.12, -0.2), Vector3(-0.4, 0.3, 0.6)], "l": [Vector3(-0.04, 0.12, -0.2), Vector3(-0.4, 0.3, 0.6)]}],
-		[0.5, {"r": REST, "l": REST}],
+		[0.6, {"r": ["push_out", "wide"], "l": ["push_out", "wide"], "sfx": ["draw", -16.0, 0.7]}],
+		[0.2, {"r": ["push_out", "open", Vector3(0, 0, -0.02)], "l": ["push_out", "open", Vector3(0, 0, -0.02)]}],
+		[0.15, {"r": ["push_out", "ripple0"], "l": ["push_out", "ripple3"]}],
+		[0.15, {"r": ["push_out", "ripple2"], "l": ["push_out", "ripple1"]}],
+		[0.15, {"r": ["push_out", "wide"], "l": ["push_out", "wide"]}],
+		[0.4, {"r": ["low", "loose"], "l": ["low", "loose"]}],
+	]},
+	"finger_guns": {"name": "Finger Guns", "keys": [
+		[0.3, {"r": ["gun", "gun"], "l": ["gun", "gun"]}],
+		[0.08, {"r": ["gun_kick", "gun"], "sfx": ["twang", -12.0, 1.6]}],
+		[0.2, {"r": ["gun", "gun"]}],
+		[0.08, {"l": ["gun_kick", "gun"], "sfx": ["twang", -12.0, 1.4]}],
+		[0.25, {"l": ["gun", "gun"]}],
+		[0.3, {"r": ["gun_kick", "gun"], "l": ["gun_kick", "gun"], "sfx": ["whoosh", -18.0, 0.8]}],
 	]},
 }
+
+
+## A shape with every value filled in (f0-f3, f the average, t, tu, spread).
+static func shape(id: String) -> Dictionary:
+	var base: Dictionary = SHAPES.get(id, SHAPES.fist)
+	var full := {"t": float(base.get("t", 1.0)), "tu": float(base.get("tu", 0.0)), "spread": float(base.get("spread", 0.0))}
+	var total := 0.0
+	for i in 4:
+		full["f%d" % i] = float(base.get("f%d" % i, base.get("f", 1.0)))
+		total += full["f%d" % i]
+	full["f"] = total / 4.0
+	return full
+
+
+## Between two full shapes.
+static func blend(a: Dictionary, b: Dictionary, u: float) -> Dictionary:
+	var out := {}
+	for key in b:
+		out[key] = lerpf(float(a.get(key, b[key])), float(b[key]), u)
+	return out
 
 
 static func name_of(id: String) -> String:
@@ -142,7 +222,7 @@ static func name_of(id: String) -> String:
 
 ## The fighter's own idle.
 static func base_for(class_id: String) -> String:
-	return BASE.get(class_id, "knuckle_crack")
+	return BASE.get(class_id, "glove_tap")
 
 
 ## Total seconds an idle runs.
@@ -150,7 +230,7 @@ static func length(id: String) -> float:
 	var total := 0.0
 	for key in ANIMS.get(id, {}).get("keys", []):
 		total += float(key[0])
-	return total
+	return total + 0.3
 
 
 ## What the fighter can pick: their own, then every bought one.
