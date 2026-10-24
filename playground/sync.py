@@ -15,6 +15,8 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 GAME = os.path.join(HERE, "..", "punch-craft")
 SRC = os.path.join(HERE, "src")
+## The editor plugin that re-syncs before every Play in the Godot editor.
+ADDON = os.path.join(HERE, "addon")
 OUT = os.path.join(HERE, "project")
 SKIP_DIRS = {".godot", "builds", ".git"}
 
@@ -43,6 +45,9 @@ def main():
     copied, wanted = mirror(GAME, OUT)
     extra, mine = mirror(SRC, os.path.join(OUT, "playground"))
     wanted |= {os.path.normpath(os.path.join("playground", p)) for p in mine}
+    plugin, addon = mirror(ADDON, os.path.join(OUT, "addons", "playground_sync"))
+    extra += plugin
+    wanted |= {os.path.normpath(os.path.join("addons", "playground_sync", p)) for p in addon}
     # Drop files the game no longer has (not Godot's cache).
     removed = 0
     for root, dirs, files in os.walk(OUT):
@@ -56,6 +61,8 @@ def main():
     project = open(os.path.join(GAME, "project.godot"), encoding="utf-8").read()
     project = re.sub(r'config/name=".*"', 'config/name="Fright Night Playground"', project)
     project = re.sub(r'run/main_scene=".*"', 'run/main_scene="res://playground/playground.tscn"', project)
+    if "[editor_plugins]" not in project:
+        project += '\n[editor_plugins]\n\nenabled=PackedStringArray("res://addons/playground_sync/plugin.cfg")\n'
     path = os.path.join(OUT, "project.godot")
     if not os.path.exists(path) or open(path, encoding="utf-8").read() != project:
         open(path, "w", encoding="utf-8", newline="").write(project)

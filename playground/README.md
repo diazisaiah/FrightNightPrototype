@@ -9,7 +9,7 @@ It runs the game's own code. `sync.py` mirrors `punch-craft/` into `playground/p
 - Windows: double-click `run_playground.bat` (add `-e` to open it in the Godot editor instead).
 - Bash: `bash playground/run_playground.sh` (or `-e`).
 
-Both sync first, so the playground always has the latest code. If Godot lives somewhere else, set `GODOT` to its console exe.
+Both sync first, so the playground always has the latest code. Opening `playground/project` straight from the Godot editor works too: its Playground Sync plugin (`addon/`) runs `sync.py` every time you press Play. If Godot lives somewhere else, set `GODOT` to its console exe.
 
 ## In the playground
 
