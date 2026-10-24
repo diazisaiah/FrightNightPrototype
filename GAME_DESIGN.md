@@ -1097,7 +1097,7 @@ Older saves get what they'd already earned, quietly, when camp loads. The list a
 
 A fighter built on the four Sigil powers (Fire, Frost, Storm, Blood). Everyone else runs one power at a time; he runs more, and his ultimates turn his punches into spells.
 
-**Class:** Elementalist (id `elementalist`). **Fighter name:** to decide (ideas: The Conduit, The Catalyst, The Prism).
+**The Catalyst**, class Elementalist (id `elementalist`). A buff old wizard with a white beard and long white hair who decided his spells were better spent on his fists than on casting.
 
 **Unlock:** sold in the Soul Shop (`SoulShop.FIGHTERS`) once two seals are broken, so he always has at least two powers to work with. Hidden until then. Price to decide (around 80 Souls).
 
@@ -1113,15 +1113,17 @@ A fighter built on the four Sigil powers (Fire, Frost, Storm, Blood). Everyone e
 
 | Ultimate | Level | What it does |
 |---|---|---|
-| Elemental Fists (default) | 1 | For about 10s, every punch that lands has a 10% chance of each: a **fireball** flies from the fist (ranged, ignites what it hits), an **icicle** flies (ranged, freezes), **lightning** arcs to nearby enemies, and a **vampire** heal of a share of the damage dealt. Several can trigger on one punch. |
+| Elemental Fists (default) | 1 | For about 10s, every punch that lands has a 15% chance of each (up to 25% with the skill web): a **fireball** flies from the fist (ranged, ignites what it hits), an **icicle** flies (ranged, freezes), **lightning** arcs to nearby enemies, and a **vampire** heal of a share of the damage dealt. Several can trigger on one punch. |
 | Flame Burst | 10 | A ring of fire bursts out around him (about 6m): big damage to everything in it, and they all ignite (damage over time). |
 
 **Skill web (draft):** about 15 nodes in three branches. Each feeds his passive (they adapt to whichever is equipped, like the others):
 - **Weave:** stronger dual or prism power.
-- **Spellfists:** better Elemental Fists chances, more fireballs and icicles, longer.
+- **Spellfists:** Elemental Fists chances from 15% to 25% each, and a longer ultimate.
 - **Kindle:** Flame Burst radius, damage and burn.
 
-**Look:** wraps inscribed with glowing runes. When the ultimate is ready, the runes glow in the colors of his selected powers: ember orange, ice blue, storm violet, blood red.
+**Look:** first-person hands are old, thick and veined, wrapped in tape inscribed with runes. When the ultimate is ready, the runes glow in the colors of his selected powers: ember orange, ice blue, storm violet, blood red.
+
+**Card art** (the user is making it; prompt to match the other cards): knees-up 3:4 voxel portrait. A huge, muscular old man with a long white beard and long white hair, bare-chested under an open, torn wizard's robe tied at the waist like a boxer's trunks, boxing hand wraps covered in glowing runes. One fist wreathed in fire, the other in frost and lightning, a faint red blood-mist curling around his forearm. A fighter's stance and a grin. Dark arena background with a four-color aura (ember orange, ice blue, storm violet, blood red). No readable text, no religious symbols.
 
 **Base stats (draft):** a bit less punch damage than the Mauler, average knuckle HP; his power is in the elements.
 
@@ -1130,11 +1132,9 @@ A fighter built on the four Sigil powers (Fire, Frost, Storm, Blood). Everyone e
 - POWER rating counts his extra powers so contenders stay fair.
 - Elemental Fists projectiles reuse the fireball and arrow code: they fly from the punching fist toward the target.
 
-**Open questions:**
-- His fighter name.
-- His Soul Shop price.
-- Whether 10% each is enough (about a 34% chance that at least one fires per punch).
-- Whether Flame Burst overlaps too much with the Mauler's fire theme.
+**Decided:** the name (The Catalyst); Elemental Fists at 15% each, up to 25% with skills (about 48% to 68% that at least one fires per punch); Flame Burst overlapping the Mauler's fire theme is fine.
+
+**Open:** his Soul Shop price (about 80 Souls proposed).
 
 ## Bounties, mastery and the Crypt merchant [Built 2026-10-24]
 
