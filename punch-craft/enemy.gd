@@ -943,6 +943,9 @@ func _die(push: Vector3) -> void:
 		_lesson_label = null
 	if has_meta("veteran"):
 		Achievements.earn("veteran")
+	# Tony's The Take: an enraged monster pays double.
+	if is_taunted() and GameState.has_passive("the_take"):
+		coin_reward *= 2
 	_dead = true
 	end_turn()
 	# Finish a hatted enemy with an uppercut and the hat is always yours;

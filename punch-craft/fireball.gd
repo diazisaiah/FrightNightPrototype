@@ -8,6 +8,8 @@ const COLOR := Color(1.0, 0.45, 0.1)
 ## A Lich's bolts are the same thing in purple. Set before adding to the tree.
 const BOLT_COLOR := Color(0.7, 0.35, 1.0)
 
+## Who threw it (for the Answer's Phantom Step).
+var shooter: Node3D
 var damage := 7.0
 var color := COLOR
 var _velocity := Vector3.ZERO
@@ -81,7 +83,7 @@ func _physics_process(delta: float) -> void:
 func _on_body_entered(body: Node3D) -> void:
 	if body is Player:
 		# A slipped fireball keeps flying past.
-		if body.receive_attack(damage, global_position - _velocity, "fireball") == "dodged":
+		if body.receive_attack(damage, global_position - _velocity, "fireball", shooter) == "dodged":
 			return
 	_burst()
 

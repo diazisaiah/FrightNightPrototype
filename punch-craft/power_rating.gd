@@ -28,6 +28,9 @@ const OFFENSE := {
 	"finisher_bonus": 0.3, "boss_damage": 0.3, "armor_pierce": 0.3,
 	"last_stand": 0.35, "retaliation_bonus": 0.1, "opener_bonus": 0.13, "wise_up": 0.4,
 	"shockwave_damage": 0.1, "boss_ko_bonus": 0.8,
+	# Skill points feeding the equipped passive (Abilities): each passive
+	# turns them into damage and staying power.
+	"passive_power": 0.02,
 }
 const POWERS := {
 	"fire_punch": 0.5, "burn": 0.4, "chain_lightning": 0.08, "frost_punch": 0.3,
@@ -39,6 +42,7 @@ const DEFENSE := {
 	"flinch_reduction": 0.1, "free_punch_chance": 0.6, "heal_on_kill": 0.12, "wave_heal": 0.04,
 	"counter_heal": 0.06, "fugget_heal": 0.6, "fugget_cut": 0.03, "counter_free_bonus": 0.2,
 	"armor_charges": 0.08, "armor_recharge_cut": 0.02, "armor_absorb_reduction": 0.15,
+	"passive_power": 0.025,
 }
 ## Effect caps (GameState): only what actually applies counts.
 const CAPS := {"dodge_window": 0.25, "counter_window": 0.5, "armor_pierce": 0.75}
@@ -83,6 +87,9 @@ static func player() -> int:
 		var value := GameState.get_effect(key)
 		if value != 0.0:
 			fx[key] = value
+	var passive_power := GameState.passive_power()
+	if passive_power > 0.0:
+		fx["passive_power"] = passive_power
 	return rate({
 		"damage": GameState.get_damage(), "knuckles": GameState.get_max_knuckles(),
 		"defense": GameState.get_defense(), "punch_speed": GameState.get_punch_speed(),

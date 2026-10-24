@@ -26,6 +26,7 @@ func _shoot() -> void:
 	_drawing = false
 	_cooldown = shot_cooldown
 	var fireball := Fireball.new()
+	fireball.shooter = self
 	get_parent().add_child(fireball)
 	var from := _body.to_global(Vector3(0, 1.55, -0.55))
 	var target := player.global_position + Vector3(0, 1.3, 0)

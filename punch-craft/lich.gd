@@ -131,6 +131,7 @@ func _cast() -> void:
 	for i in bolts:
 		var angle := (i - (bolts - 1) / 2.0) * BOLT_SPREAD
 		var bolt := Fireball.new()
+		bolt.shooter = self
 		bolt.color = Fireball.BOLT_COLOR
 		get_parent().add_child(bolt)
 		bolt.launch(from, from + aim.rotated(Vector3.UP, angle), BOLT_SPEED, bolt_damage * damage_multiplier)

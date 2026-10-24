@@ -45,8 +45,29 @@ const FLINCH_TIME := 0.35
 const BACK_STEP_SPEED := 9.0
 
 # Class specials.
-const SUPER_ARMOR_RECHARGE := 8.0
 const PERFECT_COUNTER_COOLDOWN := 12.0
+## Perfect Counter's extra multiplier (2026-10-24: was an instant KO).
+const PERFECT_COUNTER_BONUS := 2.5
+const GRUDGE_MULT := 3.0
+const WRECKING_DAMAGE := 2.0
+const WRECKING_RADIUS := 1.8
+const BERSERKER_MAX := 0.6
+const PHANTOM_COOLDOWN := 3.0
+const PHANTOM_BEHIND := 1.3
+const DODGE_CHAIN_STEP := 0.4
+const DODGE_CHAIN_MAX := 6
+const ECHO_SHARE := 0.3
+const ECHO_DELAY := 0.25
+const ECHO_COMBO := 0.05
+const PUNCH_REACH := 2.5
+const LONG_REACH := 3.8
+const STOMP_STUN := 1.0
+const STOMP_DAMAGE := 1.5
+const MOMENTUM_BUILD := 2.0
+const MOMENTUM_MAX := 1.0
+const MUSCLE_EVERY := 15.0
+const MUSCLE_HOLD := 2.0
+const MUSCLE_RANGE := 8.0
 const SHOCKWAVE_EVERY := 5
 const SHOCKWAVE_RADIUS := 4.0
 const SHOCKWAVE_STUN := 1.5
@@ -233,16 +254,29 @@ var _dash := Vector3.ZERO
 var _jump_requested := false
 var _back_step_origin := Vector3.INF
 var _return_time := 0.0
-var _armor_charges := 0
 ## Tony's Fuggedaboudit: seconds until it can wave off another hit.
 var _fugget_cooldown := 0.0
 const FUGGET_TIME := 10.0
 const FUGGET_METER := 8.0
-var _armor_recharge := 0.0
-## True when the ready counter came from super armor (Retaliation).
-var _counter_from_armor := false
 var _air_time := 0.0
 var _perfect_cooldown := 0.0
+## Passives (Abilities; the equipped one per fighter).
+## Grudge: the monster that last hit the Mauler, marked for a triple punch.
+var _grudge: Enemy
+var _grudge_mark: Label3D
+## Dodge Chain: dodges in a row, spent on the next punch.
+var _dodge_chain_charge := 0
+## Phantom Step: cooldown between teleports.
+var _phantom_cooldown := 0.0
+## Momentum: built by sprinting (0-1), spent by the next punch that lands.
+var _momentum := 0.0
+var _momentum_idle := 0.0
+## Head Stomp: no double stomps off the same head.
+var _stomp_cooldown := 0.0
+## The Muscle: seconds until Cousin Vinnie grabs someone.
+var _muscle_timer := 6.0
+## Unbroken (the Blur's alternate ultimate): seconds left.
+var unbroken_time := 0.0
 var _combo_freeze := 0.0
 var _class_status := ""
 var _lean_tween: Tween
@@ -324,8 +358,7 @@ func _ready() -> void:
 	_punch_ray.add_exception(self)
 	max_knuckles = GameState.get_max_knuckles()
 	knuckles = max_knuckles
-	if GameState.is_player_class("berserker"):
-		_armor_charges = _max_armor_charges()
+	_punch_ray.target_position = Vector3(0, 0, -(LONG_REACH + 0.1 * GameState.passive_power()) if GameState.has_passive("long_reach") else -PUNCH_REACH)
 	_camera.fov = Settings.fov()
 	Settings.changed.connect(func() -> void: _camera.fov = Settings.fov())
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
@@ -478,7 +511,8 @@ func _process(delta: float) -> void:
 
 
 func _physics_process(delta: float) -> void:
-	if ult.busy():
+	# Ultimates take the controls, except Temporal Break (the Blur moves in it).
+	if ult.busy() and ult.mode != "time_stop":
 		velocity = Vector3.ZERO
 		return
 	if not is_on_floor():
@@ -504,9 +538,11 @@ func _physics_process(delta: float) -> void:
 		# On a controller, clicking the stick latches sprint until you stop.
 		if input_dir.length() < 0.2:
 			_pad_sprint = false
-		if Input.is_action_pressed("sprint") or _pad_sprint:
+		if Input.is_action_pressed("sprint") or _pad_sprint or ult.hype > 0.0:
 			speed = SPRINT_SPEED * GameState.get_sprint_multiplier()
 		speed *= GameState.get_move_speed_multiplier()
+		if ult.hype > 0.0:
+			speed *= Ult.HYPE_SPEED
 
 	if _dash.length_squared() > 0.01:
 		velocity.x = _dash.x
@@ -523,6 +559,9 @@ func _physics_process(delta: float) -> void:
 
 	var was_airborne := not is_on_floor()
 	move_and_slide()
+	_check_head_stomp()
+	if ult.hype > 0.0:
+		_hype_bowl()
 	_fists.move_amount = minf(Vector2(velocity.x, velocity.z).length() / SPRINT_SPEED, 1.0)
 	_check_ground_pound(was_airborne, delta)
 
@@ -539,7 +578,7 @@ func receive_attack(amount: float, from: Vector3, attack: String, attacker: Node
 		amount *= Enemy.TAUNT_DEALT
 	if not active:
 		return "dodged"
-	var intercepted := ult.intercept_attack(attack, attacker)
+	var intercepted := ult.intercept_attack(attack, attacker, amount)
 	if intercepted != "":
 		return intercepted
 	if attack == "quake":
@@ -567,6 +606,8 @@ func receive_attack(amount: float, from: Vector3, attack: String, attacker: Node
 		_assist_side = ""
 		if move in ANSWERS.get(attack, []):
 			_on_dodge(move, since_press <= CLEAN_DODGE_TIME)
+			if attack in ["arrow", "fireball"]:
+				_phantom_step(attacker)
 			return "dodged"
 		_defense_cooldown = minf(_defense_cooldown, GRAZE_RECOVERY)
 		Sfx.play("block", -6.0, 0.7)
@@ -587,7 +628,7 @@ func receive_attack(amount: float, from: Vector3, attack: String, attacker: Node
 		class_event.emit("IRON WILL")
 		return "armored"
 	# Tony: Fuggedaboudit waves off one hit every 10s, with a quip.
-	if GameState.is_player_class("wise_guy") and _fugget_cooldown <= 0.0:
+	if GameState.is_player_class("wise_guy") and GameState.has_passive("fuggedaboudit") and _fugget_cooldown <= 0.0:
 		_fugget_cooldown = maxf(3.0, FUGGET_TIME - GameState.get_effect("fugget_cut"))
 		Sfx.play("block", -2.0, 1.25)
 		class_event.emit("FUGGEDABOUDIT!")
@@ -597,19 +638,10 @@ func receive_attack(amount: float, from: Vector3, attack: String, attacker: Node
 			heal(max_knuckles * patch_up)
 		ult.add(FUGGET_METER)
 		return "armored"
-	if _armor_charges > 0:
-		# Berserker super armor: takes the damage, but no flinch or hit feedback,
-		# and gets to counter.
-		_armor_charges -= 1
-		_armor_recharge = _armor_recharge_time()
-		_take_damage(amount * (1.0 - GameState.get_effect("armor_absorb_reduction")), attacker)
-		_ready_counter("any")
-		_counter_from_armor = true
-		ult.on_super_armor(attacker)
-		return "armored"
 	_shake = maxf(_shake, 0.08)
 	_flinch_timer = FLINCH_TIME * (1.0 - GameState.get_effect("flinch_reduction"))
 	_buffered_hand = ""
+	_on_hit_passives(attacker)
 	_set_combo(0)
 	_fists.flinch()
 	Sfx.play("hurt")
@@ -677,8 +709,6 @@ func start_fresh() -> void:
 	_clear_counter()
 	_flinch_timer = 0.0
 	_perfect_cooldown = 0.0
-	if GameState.is_player_class("berserker"):
-		_armor_charges = _max_armor_charges()
 
 
 ## Between Dead League rounds: keep the bout's attrition, but clear any stale
@@ -968,7 +998,7 @@ func _forward_dash() -> void:
 	if _forward_dash_cooldown > 0.0 or _flinch_timer > 0.0:
 		return
 	_forward_dash_cooldown = FORWARD_DASH_COOLDOWN
-	_dash_jab_time = DASH_PUNCH_WINDOW if GameState.is_player_class("free_runner") else DASH_JAB_WINDOW
+	_dash_jab_time = DASH_PUNCH_WINDOW if GameState.has_passive("dash_punches") else DASH_JAB_WINDOW
 	_dash = -global_basis.z * FORWARD_DASH_SPEED
 	_dash.y = 0.0
 	Sfx.play("whoosh", -6.0, 0.7)
@@ -1056,6 +1086,10 @@ func _return_from_back_step(delta: float) -> void:
 ## clean: pressed late, right before the hit landed.
 func _on_dodge(move: String, clean := false) -> void:
 	_defense_cooldown = 0.0  # A dodge can be chained straight into the next one.
+	if GameState.has_passive("dodge_chain"):
+		_dodge_chain_charge = mini(_dodge_chain_charge + 1, DODGE_CHAIN_MAX)
+		if _dodge_chain_charge >= 2:
+			class_event.emit("CHAIN x%d" % _dodge_chain_charge)
 	if move == "back_step":
 		_dash = Vector3.ZERO  # Dodged: head straight back in to counter.
 	Sfx.play("slip")
@@ -1100,7 +1134,6 @@ func _on_dodge_specials(move: String) -> void:
 func _ready_counter(side: String) -> void:
 	_counter_timer = COUNTER_WINDOW + GameState.get_counter_window_bonus()
 	_counter_side = side
-	_counter_from_armor = false
 	counter_ready_changed.emit(true, side)
 
 
@@ -1110,7 +1143,6 @@ func _clear_counter() -> void:
 		return
 	_counter_timer = 0.0
 	_counter_side = ""
-	_counter_from_armor = false
 	counter_ready_changed.emit(false, "")
 
 
@@ -1179,7 +1211,7 @@ func _punch(type: String, hand: String) -> void:
 	var style := ""
 	# Only the straights: a jab spears, a cross is the haymaker. Hooks and
 	# uppercuts out of a dash are just hooks and uppercuts.
-	if GameState.is_player_class("free_runner") and _dash_jab_time > 0.0 and not airborne and type in ["jab", "cross"]:
+	if GameState.has_passive("dash_punches") and _dash_jab_time > 0.0 and not airborne and type in ["jab", "cross"]:
 		style = "spear" if type == "jab" else "haymaker"
 		_dash_jab_time = 0.0
 	await get_tree().create_timer(impact, false).timeout
@@ -1244,7 +1276,6 @@ func _land_punch(type: String, hand: String, _dashing := false, airborne := fals
 			or (combo > 0 and hand != _last_hand and (after_straight or after_hook)))
 	# A counter only counts with the hand on the side you dodged to.
 	var counter := is_counter_ready() and (_counter_side == "any" or _counter_side == hand)
-	var retaliation := counter and _counter_from_armor
 	var clean := counter and _clean_counter
 	_clear_counter()
 	# A jab thrown out of a forward dash (Lunging / Spear Jab).
@@ -1260,7 +1291,7 @@ func _land_punch(type: String, hand: String, _dashing := false, airborne := fals
 	var jab_repeat := type == "jab" and _last_type == "jab" and hand == _last_hand
 	_jab_run = _jab_run + 1 if jab_repeat else (1 if type == "jab" else 0)
 	var jabs_allowed := 2 + int(GameState.get_effect("double_jab"))
-	if hand == _last_hand and not (jab_repeat and _jab_run <= jabs_allowed):
+	if hand == _last_hand and not (jab_repeat and _jab_run <= jabs_allowed) and unbroken_time <= 0.0:
 		combo = 0
 	_last_hand = hand
 	_last_type = type
@@ -1268,7 +1299,7 @@ func _land_punch(type: String, hand: String, _dashing := false, airborne := fals
 	_combo_timer = GameState.get_combo_window()
 	var plain := type in ["jab", "cross"] and not counter and not dash_jab and is_on_floor()
 	_straight_run = _straight_run + 1 if plain else 0
-	_combo_grew = _straight_run <= STRAIGHT_RUN_LIMIT
+	_combo_grew = _straight_run <= STRAIGHT_RUN_LIMIT or unbroken_time > 0.0
 	if _combo_grew:
 		_set_combo(combo + 1)
 	else:
@@ -1285,8 +1316,6 @@ func _land_punch(type: String, hand: String, _dashing := false, airborne := fals
 		raw_damage *= GameState.get_heavy_multiplier()
 	if counter:
 		raw_damage *= GameState.get_counter_multiplier(COUNTER_MULTIPLIER)
-	if retaliation:
-		raw_damage *= 1.0 + GameState.get_effect("retaliation_bonus")
 	if target_was_low:
 		raw_damage *= 1.0 + GameState.get_effect("finisher_bonus")
 	if target.is_boss:
@@ -1303,7 +1332,7 @@ func _land_punch(type: String, hand: String, _dashing := false, airborne := fals
 	var caption := ""
 	if set_up:
 		caption = type.to_upper() + "!"
-	if GameState.is_player_class("free_runner"):
+	if GameState.has_passive("dash_punches"):
 		var jump_threshold := FINISHER_HP_FRACTION + GameState.get_effect("finisher_threshold")
 		if _dash_style == "spear":
 			raw_damage *= SPEAR_JAB_MULTIPLIER + GameState.get_effect("opener_bonus")
@@ -1330,13 +1359,19 @@ func _land_punch(type: String, hand: String, _dashing := false, airborne := fals
 		if _hook_count % BONE_BREAKER_EVERY == 0:
 			crush = true
 			caption = "BONE BREAKER!"
-	# Counter Master: a matching-hand hook/uppercut counter knocks out instantly.
+	# Perfect Counter: a matching-hand hook/uppercut counter hits x2.5 harder
+	# (2026-10-24: it used to KO outright, and the Answer outclassed everyone).
 	var perfect_punch: bool = punch.heavy or GameState.has_effect("perfect_any_punch")
-	if counter and perfect_punch and GameState.is_player_class("counter_master") and _perfect_cooldown <= 0.0:
-		raw_damage = target.get_knockout_damage()
-		caption = "PERFECT KO!"
+	if counter and perfect_punch and GameState.has_passive("perfect_counter") and _perfect_cooldown <= 0.0:
+		raw_damage *= PERFECT_COUNTER_BONUS
+		caption = "PERFECT COUNTER!"
 		_perfect_cooldown = PERFECT_COUNTER_COOLDOWN - GameState.get_effect("perfect_cooldown_cut")
 		class_event.emit("PERFECT COUNTER!")
+
+	var passive := _passive_punch(target, forced != null)
+	raw_damage *= passive.mult
+	if passive.caption != "":
+		caption = passive.caption if caption == "" else caption + "\n" + passive.caption
 
 	# Weak spots (e.g. a Possessed Armor's sides, for hooks) hit harder and ignore armor.
 	var weak := target.weak_spot_multiplier(type)
@@ -1370,19 +1405,20 @@ func _land_punch(type: String, hand: String, _dashing := false, airborne := fals
 	if _dash_style == "haymaker":
 		push *= HAYMAKER_KNOCKBACK
 	# How the target flies if this punch finishes it (see Enemy.finisher).
-	var finish_level := 2 if clean or caption == "PERFECT KO!" else (1 if counter else 0)
+	var finish_level := 2 if clean or caption == "PERFECT COUNTER!" else (1 if counter else 0)
 	var finish_dir := push.normalized() if push.length() > 0.01 else -global_basis.z
 	target.finisher = {"type": _dash_style if _dash_style != "" else type, "hand": hand,
 			"level": finish_level, "dir": finish_dir, "player": self}
 	# Dive Kick: jump punches stagger.
 	var dive_kick := airborne and GameState.has_effect("dive_kick")
 	var big := forced != null and bonus > 1.0
-	var staggers := set_up or counter or dive_kick or crush or big or _dash_style == "haymaker"
+	var staggers: bool = set_up or counter or dive_kick or crush or big or _dash_style == "haymaker" or passive.stagger
 	var dealt := target.take_hit(raw_damage, hit_point, push, staggers, caption, weak > 1.0, crush)
 	var killed := target.is_dead()
 	if not killed:
 		target.finisher = {}
 	_dash_punch_splash(target, raw_damage, hand)
+	_after_punch_passives(target, raw_damage, killed, push, forced != null)
 	_punch_specials(type, hand, target, raw_damage, counter, dash_jab, killed)
 
 	var kind := "hit"
@@ -1401,7 +1437,7 @@ func _land_punch(type: String, hand: String, _dashing := false, airborne := fals
 	# A same-hand repeat resets the combo to zero; zero is divisible by every
 	# number, but it is not a combo milestone. Stalled straight-punch strings
 	# likewise do not get free repeated shockwaves.
-	if GameState.is_player_class("combo_master") and _combo_grew and combo > 0 \
+	if GameState.has_passive("rapid_combos") and _combo_grew and combo > 0 \
 			and combo % _shockwave_every() == 0:
 		_shockwave()
 	_pay_for_punch(punch, counter)
@@ -1590,12 +1626,249 @@ func _shockwave() -> void:
 	class_event.emit("SHOCKWAVE!")
 
 
-func _max_armor_charges() -> int:
-	return 1 + int(GameState.get_effect("armor_charges"))
+# --- Passives (Abilities) --------------------------------------------------------------
+
+## Extra passive power from the skill web (GameState.passive_power).
+func _pp() -> float:
+	return GameState.passive_power()
 
 
-func _armor_recharge_time() -> float:
-	return SUPER_ARMOR_RECHARGE - GameState.get_effect("armor_recharge_cut")
+## What the equipped passive does to the punch about to land: {mult, caption,
+## stagger}. Spends grudges, dodge chains and momentum.
+func _passive_punch(target: Enemy, forced: bool) -> Dictionary:
+	var result := {"mult": 1.0, "caption": "", "stagger": false}
+	if forced:
+		return result
+	match GameState.passive():
+		"grudge":
+			if target == _grudge and is_instance_valid(_grudge):
+				result.mult = GRUDGE_MULT + 0.15 * _pp()
+				result.caption = "GRUDGE!"
+				result.stagger = true
+				_clear_grudge()
+		"berserker":
+			result.mult = _berserker_mult()
+		"dodge_chain":
+			if _dodge_chain_charge > 0:
+				result.mult = 1.0 + (DODGE_CHAIN_STEP + 0.05 * _pp()) * _dodge_chain_charge
+				result.caption = "CHAIN x%d!" % _dodge_chain_charge
+				result.stagger = _dodge_chain_charge >= 3
+				_dodge_chain_charge = 0
+		"momentum":
+			if _momentum > 0.1:
+				result.mult = _momentum_mult()
+				result.caption = "MOMENTUM x%.1f!" % result.mult
+				result.stagger = _momentum >= 0.9
+				_momentum = 0.0
+	return result
+
+
+func _berserker_mult() -> float:
+	if not GameState.has_passive("berserker") or max_knuckles <= 0.0:
+		return 1.0
+	return 1.0 + (BERSERKER_MAX + 0.05 * _pp()) * clampf(1.0 - knuckles / max_knuckles, 0.0, 1.0)
+
+
+func _momentum_mult() -> float:
+	return 1.0 + (MOMENTUM_MAX + 0.1 * _pp()) * _momentum
+
+
+func _take_bonus() -> float:
+	return 0.25 + 0.03 * _pp() if GameState.has_passive("the_take") else 0.0
+
+
+## After a punch lands: echoes and wrecking balls.
+func _after_punch_passives(target: Enemy, damage: float, killed: bool, push: Vector3, forced: bool) -> void:
+	if forced:
+		return
+	match GameState.passive():
+		"echo_fists":
+			_echo(target, damage)
+		"wrecking_ball":
+			if killed:
+				_wrecking_ball(target.global_position, push)
+
+
+## A violet echo of the punch, a beat later.
+func _echo(target: Enemy, damage: float) -> void:
+	await get_tree().create_timer(ECHO_DELAY, false).timeout
+	if not is_instance_valid(target) or target.is_dead() or not active:
+		return
+	var at := target.global_position + Vector3(0, 1.3, 0)
+	target.take_hit(damage * (ECHO_SHARE + 0.04 * _pp()), at, Vector3.ZERO, false, "ECHO")
+	HitFx.burst(get_parent(), at, Vector3.UP, Color(0.7, 0.45, 1.0), 10, 3.0, true, 0.04)
+	Sfx.play_at("hit", at, -6.0, 1.5)
+	# Flurry (the Blur's capstone) with Echo Fists: echoes build the multiplier.
+	if int(GameState._levels("skill").get("flurry", 0)) > 0:
+		_rhythm = minf(_rhythm + ECHO_COMBO, RHYTHM_MAX)
+
+
+## The knocked-out monster bowls through the ones behind it.
+func _wrecking_ball(from: Vector3, push: Vector3) -> void:
+	var direction := push.normalized() if push.length() > 0.01 else -global_basis.z
+	direction.y = 0.0
+	direction = direction.normalized()
+	var hit := {}
+	for step in 3:
+		await get_tree().create_timer(0.12, false).timeout
+		if not is_inside_tree():
+			return
+		var at := from + direction * (1.6 + 1.6 * step)
+		for node in _enemies_near(at, WRECKING_RADIUS):
+			var enemy := node as Enemy
+			if enemy == null or enemy.is_dead() or hit.has(enemy):
+				continue
+			hit[enemy] = true
+			enemy.take_hit(GameState.get_damage() * (WRECKING_DAMAGE + 0.3 * _pp()), enemy.global_position + Vector3(0, 1.0, 0),
+					direction * 6.0, true, "STRIKE!")
+			HitFx.burst(get_parent(), enemy.global_position + Vector3(0, 1.0, 0), direction, Color(1.0, 0.55, 0.2), 14, 5.0, false, 0.05)
+		if not hit.is_empty() and step == 0:
+			Sfx.play_at("heavy", at, 0.0, 0.7)
+
+
+func _enemies_near(at: Vector3, radius: float) -> Array:
+	var found := []
+	var parent := get_parent()
+	for holder in [parent.get_node_or_null("Enemies"), parent]:
+		if holder == null:
+			continue
+		for node in holder.get_children():
+			var enemy := node as Enemy
+			if enemy and not enemy.is_dead() and Vector2(enemy.global_position.x - at.x, enemy.global_position.z - at.z).length() <= radius:
+				found.append(enemy)
+		if not found.is_empty():
+			break
+	return found
+
+
+## Took a clean hit: the Mauler holds a grudge; a dodge chain breaks.
+func _on_hit_passives(attacker: Node3D) -> void:
+	_dodge_chain_charge = 0
+	_momentum = 0.0
+	var enemy := attacker as Enemy
+	if GameState.has_passive("grudge") and enemy and not enemy.is_dead():
+		_clear_grudge()
+		_grudge = enemy
+		_grudge_mark = Label3D.new()
+		_grudge_mark.text = "GRUDGE"
+		_grudge_mark.modulate = Color(1.0, 0.15, 0.1)
+		_grudge_mark.position.y = 2.9 * enemy._body.scale.y
+		_grudge_mark.fixed_size = true
+		_grudge_mark.pixel_size = 0.0012
+		_grudge_mark.font_size = 34
+		_grudge_mark.outline_size = 10
+		_grudge_mark.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		_grudge_mark.no_depth_test = true
+		enemy.add_child(_grudge_mark)
+
+
+func _clear_grudge() -> void:
+	if is_instance_valid(_grudge_mark):
+		_grudge_mark.queue_free()
+	_grudge_mark = null
+	_grudge = null
+
+
+## Phantom Step: dodged a thrown attack, so appear behind whoever threw it.
+func _phantom_step(attacker: Node3D) -> void:
+	var enemy := attacker as Enemy
+	if not GameState.has_passive("phantom_step") or _phantom_cooldown > 0.0 or enemy == null or enemy.is_dead():
+		return
+	_phantom_cooldown = maxf(1.0, PHANTOM_COOLDOWN - 0.2 * _pp())
+	var away := enemy.global_position - global_position
+	away.y = 0.0
+	var spot := enemy.global_position + away.normalized() * PHANTOM_BEHIND
+	HitFx.burst(get_parent(), global_position + Vector3.UP, Vector3.UP, Color(0.45, 0.85, 1.0), 20, 3.0, true, 0.05)
+	global_position = Vector3(spot.x, enemy.global_position.y + 0.1, spot.z)
+	look_at(Vector3(enemy.global_position.x, global_position.y, enemy.global_position.z), Vector3.UP)
+	_camera.rotation.x = -0.05
+	HitFx.burst(get_parent(), global_position + Vector3.UP, Vector3.UP, Color(0.45, 0.85, 1.0), 20, 3.0, true, 0.05)
+	Sfx.play("slip", 0.0, 1.5)
+	_ready_counter("any")
+	class_event.emit("PHANTOM STEP!")
+
+
+func _update_passive_timers(delta: float) -> void:
+	_phantom_cooldown = maxf(0.0, _phantom_cooldown - delta)
+	_stomp_cooldown = maxf(0.0, _stomp_cooldown - delta)
+	if unbroken_time > 0.0:
+		unbroken_time -= delta
+		_combo_timer = maxf(_combo_timer, 0.5)
+	if is_instance_valid(_grudge) and _grudge.is_dead():
+		_clear_grudge()
+	match GameState.passive():
+		"momentum":
+			var running := (Input.is_action_pressed("sprint") or _pad_sprint) and Vector2(velocity.x, velocity.z).length() > WALK_SPEED + 0.5
+			if running:
+				_momentum = minf(_momentum + delta / MOMENTUM_BUILD, 1.0)
+				_momentum_idle = 0.0
+			else:
+				_momentum_idle += delta
+				if _momentum_idle > 1.5:
+					_momentum = maxf(0.0, _momentum - delta * 0.5)
+		"the_muscle":
+			_muscle_timer -= delta
+			if _muscle_timer <= 0.0:
+				_muscle_timer = maxf(6.0, MUSCLE_EVERY - 0.8 * _pp())
+				_cousin_vinnie()
+
+
+## Hype Train: every monster the Stray runs into goes flying.
+var _bowled := {}
+
+
+func _hype_bowl() -> void:
+	var now := Time.get_ticks_msec()
+	var ahead := Vector3(velocity.x, 0, velocity.z)
+	if ahead.length() < 1.0:
+		return
+	for enemy in _enemies_near(global_position + ahead.normalized() * 0.6, 1.3):
+		if now - int(_bowled.get(enemy, 0)) < 600:
+			continue
+		_bowled[enemy] = now
+		enemy.take_hit(GameState.get_damage() * (Ult.HYPE_DAMAGE + 0.5 * ult._power()) * get_combo_multiplier(),
+				enemy.global_position + Vector3(0, 1.0, 0), ahead.normalized() * 10.0 + Vector3.UP * 2.0, true, "BOWLED!")
+		_set_combo(combo + 1)
+		_combo_timer = GameState.get_combo_window()
+		Sfx.play("heavy", -2.0, 0.8)
+		_shake = maxf(_shake, 0.05)
+
+
+## The Muscle: Cousin Vinnie grabs the nearest monster and holds it.
+func _cousin_vinnie() -> void:
+	var nearest: Enemy
+	for enemy in _enemies_near(global_position, MUSCLE_RANGE):
+		if nearest == null or enemy.global_position.distance_to(global_position) < nearest.global_position.distance_to(global_position):
+			nearest = enemy
+	if nearest == null:
+		_muscle_timer = 1.0
+		return
+	var hold := MUSCLE_HOLD + 0.1 * _pp()
+	nearest.stun(hold)
+	var goon := Goon.make(nearest, hold)
+	get_parent().add_child(goon)
+	DamagePopup.spawn(get_parent(), "VINNIE GOT HIM!", Color(0.5, 1.0, 0.6), 40, nearest.global_position + Vector3(0, 2.4, 0))
+	ult.say(["Hold him still, Vinnie.", "Vinnie! Little help.", "That's my cousin. Say hi."].pick_random())
+
+
+## Head Stomp: landed on a monster's head, so bounce off it, stunning it.
+func _check_head_stomp() -> void:
+	if not GameState.has_passive("head_stomp") or _stomp_cooldown > 0.0:
+		return
+	for i in get_slide_collision_count():
+		var hit := get_slide_collision(i)
+		var enemy := hit.get_collider() as Enemy
+		if enemy and not enemy.is_dead() and hit.get_normal().y > 0.6:
+			_stomp_cooldown = 0.35
+			velocity.y = JUMP_VELOCITY * 1.15
+			enemy.stun(STOMP_STUN + 0.1 * _pp())
+			enemy.take_hit(GameState.get_damage() * STOMP_DAMAGE * get_combo_multiplier(), enemy.global_position + Vector3(0, 1.8, 0),
+					Vector3.ZERO, true, "STOMP!")
+			_set_combo(combo + 1)
+			_combo_timer = GameState.get_combo_window()
+			Sfx.play("heavy", -2.0, 1.3)
+			HitFx.burst(get_parent(), enemy.global_position + Vector3(0, 1.8, 0), Vector3.UP, Color(0.4, 1.0, 0.5), 16, 4.0, true, 0.05)
+			return
 
 
 func _shockwave_every() -> int:
@@ -1605,30 +1878,39 @@ func _shockwave_every() -> int:
 func _update_class_timers(delta: float) -> void:
 	_perfect_cooldown = maxf(0.0, _perfect_cooldown - delta)
 	_fugget_cooldown = maxf(0.0, _fugget_cooldown - delta)
-	# Super armor charges come back one at a time.
-	if GameState.is_player_class("berserker") and _armor_charges < _max_armor_charges():
-		_armor_recharge -= delta
-		if _armor_recharge <= 0.0:
-			_armor_charges += 1
-			_armor_recharge = _armor_recharge_time()
+	_update_passive_timers(delta)
 	var status: String = GameState.fighter_name()
-	match GameState.player_class:
+	match GameState.passive():
+		"grudge":
+			status += "  |  Grudge: " + ("MARKED" if is_instance_valid(_grudge) and not _grudge.is_dead() else "hit me first")
+		"wrecking_ball":
+			status += "  |  Wrecking Ball"
 		"berserker":
-			var max_charges := _max_armor_charges()
-			if max_charges > 1:
-				status += "  |  Super armor: %d / %d" % [_armor_charges, max_charges]
-				if _armor_charges < max_charges:
-					status += "  (next in %ds)" % ceili(_armor_recharge)
-			else:
-				status += "  |  Super armor: " + ("READY" if _armor_charges > 0 else "%ds" % ceili(_armor_recharge))
-		"counter_master":
+			status += "  |  Berserker: +%d%% damage" % roundi((_berserker_mult() - 1.0) * 100.0)
+		"perfect_counter":
 			status += "  |  Perfect counter: " + ("READY" if _perfect_cooldown <= 0.0 else "%ds" % ceili(_perfect_cooldown))
-		"combo_master":
+		"phantom_step":
+			status += "  |  Phantom step: " + ("READY" if _phantom_cooldown <= 0.0 else "%ds" % ceili(_phantom_cooldown))
+		"dodge_chain":
+			status += "  |  Dodge chain: x%d" % _dodge_chain_charge
+		"rapid_combos":
 			status += "  |  Shockwave in %d hits" % (_shockwave_every() - combo % _shockwave_every())
-		"free_runner":
+		"echo_fists":
+			status += "  |  Echo fists"
+		"long_reach":
+			status += "  |  Long reach"
+		"dash_punches":
 			status += "  |  Dash (%s) then %s spear / %s haymaker  |  jump punch weak ones" % [Controls.text("dash"), Controls.key_name("punch_left"), Controls.key_name("punch_right")]
-		"wise_guy":
+		"head_stomp":
+			status += "  |  Jump on their heads"
+		"momentum":
+			status += "  |  Momentum: x%.1f" % _momentum_mult()
+		"fuggedaboudit":
 			status += "  |  Fuggedaboudit: " + ("READY" if _fugget_cooldown <= 0.0 else "%ds" % ceili(_fugget_cooldown))
+		"the_muscle":
+			status += "  |  Vinnie in %ds" % ceili(maxf(_muscle_timer, 0.0))
+		"the_take":
+			status += "  |  The Take: +%d%% coins" % roundi(_take_bonus() * 100.0)
 	if status != _class_status:
 		_class_status = status
 		class_status_changed.emit(status)
@@ -1638,14 +1920,20 @@ func _update_class_timers(delta: float) -> void:
 ## Tells the fists what to show: special ready, ultimate ready, counter hand.
 func _update_hand_effects() -> void:
 	var ability := false
-	match GameState.player_class:
-		"berserker":
-			ability = _armor_charges > 0
-		"counter_master":
+	match GameState.passive():
+		"grudge":
+			ability = is_instance_valid(_grudge) and not _grudge.is_dead()
+		"perfect_counter":
 			ability = _perfect_cooldown <= 0.0
-		"combo_master":
+		"phantom_step":
+			ability = _phantom_cooldown <= 0.0
+		"dodge_chain":
+			ability = _dodge_chain_charge >= 3
+		"rapid_combos", "echo_fists":
 			ability = combo >= 3
-		"wise_guy":
+		"momentum":
+			ability = _momentum >= 0.9
+		"fuggedaboudit":
 			ability = _fugget_cooldown <= 0.0
 	var hot := _counter_side if is_counter_ready() else ""
 	_fists.set_power_state(ability, ult != null and ult.is_full(), hot)

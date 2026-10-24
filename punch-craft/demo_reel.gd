@@ -9,7 +9,7 @@ extends SubViewportContainer
 signal caption_changed(tag: String, move: String, how: String)
 
 const SIGNATURE := {
-	"berserker": ["Super Armor", "A clean hit lands on super armor: no flinch, and the counter comes straight back."],
+	"berserker": ["Grudge", "Whatever hits him is marked. His next punch on it hits triple and staggers."],
 	"combo_master": ["Shockwave", "Every 5th hit of a combo stuns everything nearby and freezes the combo timer."],
 	"counter_master": ["Perfect Counter", "Slip the punch, then hook with the matching hand: knocked out in one."],
 	"free_runner": ["Dash Punches", "Dash forward and punch: a left Spear Jab runs through a whole line, a right Haymaker blasts them back."],
@@ -237,9 +237,9 @@ func _signature(id: int) -> void:
 			for attack in ["cross", "right_hook"]:
 				await _enemy_swing(attack, 0.75)
 				_flash(Color(1.0, 0.45, 0.1), 0.35)
-				_popup(_dummy, "ARMORED", Color(1.0, 0.6, 0.2))
-				Sfx.play("block", -10.0, 0.8)
-				await _punch("hook", "right", 18.0, "RETALIATION")
+				_popup(_dummy, "GRUDGE", Color(1.0, 0.15, 0.1))
+				Sfx.play("hurt", -10.0, 0.8)
+				await _punch("hook", "right", 24.0, "GRUDGE!")
 				await _punch("uppercut", "left", 22.0, "UPPERCUT!")
 				await _wait(0.6)
 				if id != _run_id:

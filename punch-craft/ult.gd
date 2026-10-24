@@ -44,25 +44,36 @@ const NAMES := {
 }
 ## One line each, for the class picker.
 const DESCRIPTIONS := {
-	"berserker": "With a full meter, use your ultimate: a flaming uppercut that launches the nearest enemy and sets it alight.",
-	"combo_master": "Stop time. Throw the punches shown as fast as you can: each one lands, grows your combo and buys a little more time.",
+	"berserker": "With a full meter, leap at the nearest enemy with a flaming uppercut that launches it and sets it alight.",
+	"combo_master": "Stop time. Move freely and throw the punches shown as fast as you can: each one lands, grows your combo and buys a little more time.",
 	"counter_master": "Riposte Stance: for 4 seconds every attack is slipped for you and answered with a counter hook.",
 	"free_runner": "Streak like lightning from enemy to enemy in view, punching each, and finish with a leaping haymaker.",
 	"wise_guy": "Insult the monster you're looking at. It comes only for you, hits 50% harder and takes double damage from you. Refills fast.",
 }
+## The equipped ultimate's name (Abilities), for the HUD.
+static func equipped_name() -> String:
+	var entry := Abilities.info(GameState.player_class, GameState.ultimate())
+	return String(entry.get("name", NAMES.get(GameState.player_class, "ULTIMATE"))).to_upper()
+
+
 const FIRE_COLOR := Color(1.0, 0.3, 0.05)
 const LIGHTNING_COLOR := Color(0.6, 0.85, 1.0)
 
 # Berserker
 const INFERNO_DAMAGE := 3.0
 const INFERNO_RANGE := 3.5
+## Inferno Uppercut leaps at its target from this far (2026-10-24).
+const INFERNO_LEAP := 7.0
+const INFERNO_LEAP_TIME := 0.42
+const INFERNO_SPLASH := 2.6
 ## The Mauler's meter fills this much faster.
 const INFERNO_GAIN := 1.3
 const INFERNO_LAUNCH := 7.0
 const INFERNO_STUN := 1.6
 const INFERNO_BURN_TIME := 4.0
 # Combo Master
-const TIME_STOP_START := 3.0
+## 2026-10-24: twice as long, and the Blur can move during it.
+const TIME_STOP_START := 6.0
 const TIME_STOP_REFUND := 0.5
 const TIME_STOP_REFUND_DECAY := 0.9
 ## Each hit makes the clock run this much faster.
@@ -81,6 +92,18 @@ const PROMPTS := [
 ]
 # Counter Master
 const RIPOSTE_TIME := 4.0
+# Alternate ultimates (Abilities, 2026-10-24).
+const SHIELD_HITS := 3
+const SHIELD_TIME := 12.0
+const SHIELD_RADIUS := 4.0
+const SHIELD_BLAST := 2.0
+const FLOW_TIME := 10.0
+const UNBROKEN_TIME := 10.0
+const HYPE_TIME := 6.0
+const HYPE_SPEED := 1.6
+const HYPE_DAMAGE := 2.0
+const FAMILY_TIME := 10.0
+const FAMILY_SIZE := 3
 const RIPOSTE_RANGE := 3.2
 # Free Runner
 const REEL_TARGETS := 5
@@ -104,7 +127,15 @@ var meter := 0.0
 var mode := ""
 
 var _riposte := 0.0
-var _inferno_attacker: Enemy
+## Riposte counters back; Flow State only dodges.
+var _riposte_counters := true
+## Brimstone Shield: hits left, damage soaked, seconds left.
+var _shield_hits := 0
+var _shield_soaked := 0.0
+var _shield_time := 0.0
+var _shield_ring: MeshInstance3D
+## Hype Train: seconds left (the player reads it for speed and bowling).
+var hype := 0.0
 var _status := ""
 # Temporal Break
 var _time_left := 0.0
@@ -144,7 +175,7 @@ func add(amount: float) -> void:
 	meter_changed.emit(meter, is_full())
 	if is_full() and not was_full:
 		Sfx.play("tell", -2.0, 0.8)
-		player.class_event.emit(NAMES[GameState.player_class] + " READY  -  " + Controls.text("ultimate"))
+		player.class_event.emit(equipped_name() + " READY  -  " + Controls.text("ultimate"))
 
 
 ## Fills the meter (tutorial).
@@ -193,27 +224,42 @@ func activate() -> void:
 	if not is_full():
 		_set_status("Ultimate not charged  (%d%%)" % int(meter), 1.2)
 		return
-	match GameState.player_class:
-		"berserker":
+	if _shield_hits > 0 or hype > 0.0 or player.unbroken_time > 0.0:
+		return
+	match GameState.ultimate():
+		"inferno":
 			_try_inferno()
-		"combo_master":
+		"temporal_break":
 			_start_time_stop()
-		"counter_master":
+		"riposte":
 			_start_riposte()
-		"free_runner":
+		"highlight_reel":
 			_start_reel()
-		"wise_guy":
+		"big_mouth":
 			_big_mouth()
+		"bulwark":
+			_start_shield()
+		"flow_state":
+			_start_flow()
+		"unbroken":
+			_start_unbroken()
+		"hype_train":
+			_start_hype()
+		"the_family":
+			_start_family()
 
 
 ## Called by the player before an attack resolves. Returns "" to let it through,
 ## or what happened instead.
-func intercept_attack(attack: String, attacker: Node3D) -> String:
+func intercept_attack(attack: String, attacker: Node3D, amount := 0.0) -> String:
 	if busy():
 		return "dodged"
 	if _riposte > 0.0:
 		_riposte_dodge(attack, attacker as Enemy)
 		return "dodged"
+	if _shield_hits > 0:
+		_shield_absorb(amount)
+		return "armored"
 	return ""
 
 
@@ -221,7 +267,23 @@ func _process(delta: float) -> void:
 	var real_delta := delta / maxf(Engine.time_scale, 0.01)
 	if _riposte > 0.0:
 		_riposte -= real_delta
-		_set_status("RIPOSTE STANCE  %.1fs" % maxf(_riposte, 0.0) if _riposte > 0.0 else "")
+		var label := "RIPOSTE STANCE" if _riposte_counters else "FLOW STATE"
+		_set_status("%s  %.1fs" % [label, maxf(_riposte, 0.0)] if _riposte > 0.0 else "")
+	if _shield_hits > 0:
+		_shield_time -= real_delta
+		_set_status("BRIMSTONE SHIELD  %d  -  %.0fs" % [_shield_hits, maxf(_shield_time, 0.0)])
+		if is_instance_valid(_shield_ring):
+			_shield_ring.global_position = player.global_position + Vector3(0, 0.05, 0)
+			_shield_ring.rotation.y += real_delta * 2.0
+		if _shield_time <= 0.0:
+			_shield_break()
+	if hype > 0.0:
+		hype -= real_delta
+		_set_status("HYPE TRAIN  %.1fs" % maxf(hype, 0.0) if hype > 0.0 else "")
+	if player.unbroken_time > 0.0:
+		_set_status("UNBROKEN  %.1fs" % maxf(player.unbroken_time, 0.0))
+	elif _status.begins_with("UNBROKEN"):
+		_set_status("")
 	if mode == "time_stop":
 		_update_time_stop(real_delta)
 
@@ -330,31 +392,48 @@ func _wait(seconds: float) -> void:
 
 # --- Berserker: Inferno Uppercut ----------------------------------------------------
 
-## Super armor just took a hit: that attacker is the Inferno's first pick.
-func on_super_armor(attacker: Node3D) -> void:
-	if GameState.is_player_class("berserker"):
-		_inferno_attacker = attacker as Enemy
-
-
 ## Fires whenever the meter is full: at the last super-armor attacker if it's
 ## in reach, otherwise the nearest enemy.
 func _try_inferno() -> void:
-	var target := _inferno_attacker
-	if not is_instance_valid(target) or target.is_dead() \
-			or target.global_position.distance_to(player.global_position) > INFERNO_RANGE * (1.0 + 0.4 * _power()):
-		target = _nearest(INFERNO_RANGE * (1.0 + 0.4 * _power()))
+	var reach := INFERNO_LEAP * (1.0 + 0.3 * _power())
+	var target: Enemy = player._grudge
+	if not is_instance_valid(target) or target.is_dead() or target.global_position.distance_to(player.global_position) > reach:
+		target = _nearest(reach)
 	if target == null:
 		_set_status("Nothing in reach", 1.2)
 		return
 	_spend()
 	_set_status("")
 	_face(target)
-	TimeFx.slowmo(0.45, 0.25)
-	Sfx.play("heavy", 2.0, 0.6)
+	# The leap: an arc up and in, trailing fire, to right in front of it.
+	mode = "inferno"
+	Sfx.play("whoosh", 2.0, 0.5)
+	player._kick_fov(10.0)
+	var from := player.global_position
+	var flat := target.global_position - from
+	flat.y = 0.0
+	var to := from + flat - flat.normalized() * 1.1 if flat.length() > 1.1 else from
+	var leap := player.create_tween()
+	leap.tween_method(func(t: float) -> void:
+		player.global_position = from.lerp(to, t) + Vector3.UP * sin(t * PI) * 1.8
+		HitFx.burst(player.get_parent(), player.global_position + Vector3.UP, Vector3.DOWN, FIRE_COLOR, 2, 1.0, true, 0.04),
+		0.0, 1.0, INFERNO_LEAP_TIME)
+	await leap.finished
+	mode = ""
+	if not is_instance_valid(target) or target.is_dead():
+		return
+	TimeFx.slowmo(0.4, 0.3)
+	Sfx.play("heavy", 4.0, 0.5)
 	player._fists.play_punch("uppercut", "right", 0.1, 0.45)
 	player._animate_head("uppercut", "right", 0.1, 0.45)
 	var glove := player._camera.global_position + player._camera.global_basis * Vector3(0.3, -0.4, -0.9)
 	HitFx.burst(player.get_parent(), glove, Vector3.UP, FIRE_COLOR, 16, 1.5, true, 0.025)
+	# Landing: a ring of fire round him scorches whoever's close.
+	HitFx.burst(player.get_parent(), player.global_position + Vector3.UP * 0.2, Vector3.UP, FIRE_COLOR, 30, 6.0, true, 0.06)
+	for enemy in _alive_enemies():
+		if enemy != target and enemy.global_position.distance_to(player.global_position) <= INFERNO_SPLASH:
+			enemy.take_hit(GameState.get_damage() * 1.5, enemy.global_position + Vector3(0, 1.0, 0), (enemy.global_position - player.global_position).normalized() * 4.0, true, "SCORCHED")
+			enemy.ignite(GameState.get_damage(), INFERNO_BURN_TIME)
 	await _wait(0.1)
 	if not is_instance_valid(target) or target.is_dead():
 		return
@@ -371,7 +450,7 @@ func _try_inferno() -> void:
 	target.ignite(GameState.get_damage() * 2.0, INFERNO_BURN_TIME + 2.0 * _power())
 	# Wraiths float and bosses are too heavy: they just reel.
 	if not boss and target.collision_mask != 0:
-		target.velocity.y = INFERNO_LAUNCH
+		target.velocity.y = INFERNO_LAUNCH * 1.4
 		target.global_position.y += 0.1
 	target.stun(INFERNO_STUN)
 
@@ -503,6 +582,7 @@ func _end_time_stop() -> void:
 
 func _start_riposte() -> void:
 	_spend()
+	_riposte_counters = true
 	_riposte = RIPOSTE_TIME + 2.0 * _power()
 	Sfx.play("tell", 0.0, 1.1)
 	player.class_event.emit("RIPOSTE STANCE")
@@ -514,7 +594,7 @@ func _riposte_dodge(attack: String, attacker: Enemy) -> void:
 	var move: String = answers[0] if not answers.is_empty() else "back_step"
 	player._animate_defense(move)
 	player._on_dodge(move, true)
-	if attacker and not attacker.is_dead() \
+	if _riposte_counters and attacker and not attacker.is_dead() \
 			and attacker.global_position.distance_to(player.global_position) <= RIPOSTE_RANGE:
 		_riposte_counter(attacker)
 
@@ -530,6 +610,95 @@ func _riposte_counter(enemy: Enemy) -> void:
 	await _wait(0.08)
 	if is_instance_valid(enemy) and not enemy.is_dead() and player.active:
 		player._land_punch("hook", hand, false, false, enemy, 1.0, "RIPOSTE!")
+
+
+# --- Alternate ultimates (Abilities) ---------------------------------------------------
+
+## The Mauler's Brimstone Shield: soaks the next hits, then bursts.
+func _start_shield() -> void:
+	_spend()
+	_shield_hits = SHIELD_HITS + int(_power())
+	_shield_soaked = 0.0
+	_shield_time = SHIELD_TIME + 3.0 * _power()
+	Sfx.play("unlock", 0.0, 0.6)
+	player.class_event.emit("BRIMSTONE SHIELD")
+	_shield_ring = MeshInstance3D.new()
+	var ring := TorusMesh.new()
+	ring.inner_radius = 0.85
+	ring.outer_radius = 1.0
+	ring.material = Enemy._glow_material(FIRE_COLOR)
+	_shield_ring.mesh = ring
+	_shield_ring.top_level = true
+	player.add_child(_shield_ring)
+
+
+func _shield_absorb(amount: float) -> void:
+	_shield_hits -= 1
+	_shield_soaked += amount
+	Sfx.play("block", 0.0, 0.7)
+	player._shake = maxf(player._shake, 0.05)
+	HitFx.burst(player.get_parent(), player.global_position + Vector3.UP * 1.2, Vector3.UP, FIRE_COLOR, 12, 3.0, true, 0.04)
+	if _shield_hits <= 0:
+		_shield_break()
+
+
+## The shield bursts: everything near takes what it soaked, and burns.
+func _shield_break() -> void:
+	_shield_hits = 0
+	_set_status("")
+	if is_instance_valid(_shield_ring):
+		_shield_ring.queue_free()
+	var radius := SHIELD_RADIUS + 0.5 * _power()
+	var damage := _shield_soaked * (SHIELD_BLAST + 0.5 * _power()) + GameState.get_damage() * 3.0
+	Sfx.play("quake", 4.0, 0.7)
+	player._shake = maxf(player._shake, 0.15)
+	HitFx.burst(player.get_parent(), player.global_position + Vector3.UP, Vector3.UP, FIRE_COLOR, 60, 10.0, true, 0.08)
+	HitFx.ring(player.get_parent(), player.global_position + Vector3.UP * 0.2, Color(FIRE_COLOR, 0.8), radius)
+	for enemy in _alive_enemies():
+		var away := enemy.global_position - player.global_position
+		if away.length() <= radius:
+			enemy.take_hit(damage, enemy.global_position + Vector3(0, 1.0, 0), away.normalized() * 8.0, true, "BRIMSTONE!")
+			if not enemy.is_dead():
+				enemy.ignite(GameState.get_damage() * 1.5, INFERNO_BURN_TIME)
+	player.class_event.emit("BRIMSTONE!")
+
+
+## The Answer's Flow State: every attack slips past, for a long while.
+func _start_flow() -> void:
+	_spend()
+	_riposte_counters = false
+	_riposte = FLOW_TIME + 3.0 * _power()
+	Sfx.play("tell", 0.0, 1.3)
+	player.class_event.emit("FLOW STATE")
+
+
+## The Blur's Unbroken: every hit builds the combo, which can't drop.
+func _start_unbroken() -> void:
+	_spend()
+	player.unbroken_time = UNBROKEN_TIME + 2.0 * _power()
+	Sfx.play("tell", 0.0, 0.9)
+	player.class_event.emit("UNBROKEN")
+
+
+## The Stray's Hype Train: faster, and anything in the way goes flying.
+func _start_hype() -> void:
+	_spend()
+	hype = HYPE_TIME + _power()
+	Sfx.play("whoosh", 4.0, 0.6)
+	player._kick_fov(12.0)
+	player.class_event.emit("HYPE TRAIN!")
+
+
+## Tony's The Family: three ghost goons brawl beside him.
+func _start_family() -> void:
+	_spend()
+	say(["Boys. Get in here.", "You wanna meet the family?", "Ey! The whole family's here!"].pick_random())
+	var seconds := FAMILY_TIME + 2.0 * _power()
+	for i in FAMILY_SIZE + int(_power()):
+		var a := TAU * i / float(FAMILY_SIZE)
+		var at := player.global_position + Vector3(cos(a), 0, sin(a)) * 1.5
+		player.get_parent().add_child(Goon.brawler(at, seconds, GameState.get_damage() * (0.8 + 0.2 * _power())))
+	player.class_event.emit("THE FAMILY")
 
 
 # --- Free Runner: Highlight Reel ----------------------------------------------------

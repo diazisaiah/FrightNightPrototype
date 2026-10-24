@@ -6,6 +6,8 @@ extends Area3D
 const STUCK_TIME := 3.0
 
 var damage := 5.0
+## Who shot it (for the Answer's Phantom Step).
+var shooter: Node3D
 var _velocity := Vector3.ZERO
 var _life := 5.0
 var _stuck := false
@@ -74,7 +76,7 @@ func _on_body_entered(body: Node3D) -> void:
 		return
 	if body is Player:
 		# A slipped arrow keeps flying past.
-		if body.receive_attack(damage, global_position - _velocity, "arrow") != "dodged":
+		if body.receive_attack(damage, global_position - _velocity, "arrow", shooter) != "dodged":
 			queue_free()
 	else:
 		_stuck = true

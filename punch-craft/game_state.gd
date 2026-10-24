@@ -31,9 +31,9 @@ const CLASSES := {
 		"name": "Berserker", "icon": "hammer",
 		"fighter": "The Mauler", "color": Color(1.0, 0.42, 0.12),
 		"tagline": "Takes the hit. Gives it back.",
-		"traits": [["shield", "Super Armor", "Keep swinging."], ["burst", "Massive Damage", "Break bones."], ["flame", "Inferno Uppercut", "Launch them to hell."]],
+		"traits": [["skull", "Grudge", "Hit him once. Regret it."], ["burst", "Massive Damage", "Break bones."], ["flame", "Inferno Uppercut", "Launch them to hell."]],
 		"bars": {"Power": 95, "Defense": 80, "Speed": 40, "Combo": 35, "Counter": 55},
-		"desc": "Big damage, tough knuckles. Super armor eats one clean hit with no flinch and readies a counter (recharges every 8s). Hooks and uppercuts need no setup. Combos grow slower.",
+		"desc": "Big damage, tough knuckles. Holds a grudge: whatever hits him is marked, and his next punch on it hits triple and staggers. Hooks and uppercuts need no setup. Combos grow slower.",
 		"mods": {"damage": 1.3, "knuckles": 1.25, "defense": 3.0, "combo_step": 0.6},
 	},
 	"counter_master": {
@@ -42,7 +42,7 @@ const CLASSES := {
 		"tagline": "Every attack is a question.",
 		"traits": [["shield", "Perfect Defense", "Read their move."], ["target", "Counter Focus", "Turn their strength against them."], ["star", "Perfect Counter", "One hit. Game over."]],
 		"bars": {"Power": 55, "Defense": 70, "Speed": 60, "Combo": 45, "Counter": 100},
-		"desc": "Less damage and knuckles. Counters deal x3, dodge windows are wider, and counters have a 50% chance to cost no knuckle HP. Perfect counter: dodge, then a hook or uppercut with the matching hand KOs instantly (12s cooldown).",
+		"desc": "Less damage and knuckles. Counters deal x3, dodge windows are wider, and counters have a 50% chance to cost no knuckle HP. Perfect counter: dodge, then a hook or uppercut with the matching hand deals x2.5 more (12s cooldown).",
 		"mods": {"damage": 0.85, "knuckles": 0.9, "counter": 3.0, "dodge_window": 1.4},
 	},
 	"combo_master": {
@@ -567,28 +567,28 @@ const SKILL_TREES := {
 		},
 		"juggernaut": {
 			"name": "Juggernaut", "icon": "chestplate", "pos": Vector2(-4, 0), "requires": ["bloodthirst"], "ring": 4, "medallion": true,
-			"desc": "Super armor holds an extra hit, and hits it soaks hurt half as much.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"armor_charges": 1, "armor_absorb_reduction": 0.34},
+			"desc": "Built like a wall: more knuckle HP, and hits barely rock you.",
+			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"knuckles_percent": 0.06, "flinch_reduction": 0.25},
 		},
 		"short_fuse": {
 			"name": "Short Fuse", "icon": "clock", "pos": Vector2(0, -1), "requires": ["fury"],
-			"desc": "Super armor comes back sooner.",
-			"max_level": 3, "cost": 1, "cost_growth": 1.0, "effects": {"armor_recharge_cut": 0.5},
+			"desc": "Fuels your passive: Grudge, Wrecking Ball or Berserker hits harder.",
+			"max_level": 3, "cost": 1, "cost_growth": 1.0, "effects": {"passive_power": 1},
 		},
 		"unbreakable": {
 			"name": "Unbreakable", "icon": "shield", "pos": Vector2(0, -2), "requires": ["short_fuse"],
-			"desc": "Super armor holds more hits before it breaks.",
-			"max_level": 2, "cost": 1, "cost_growth": 1.0, "effects": {"armor_charges": 1},
+			"desc": "Fuels your passive: Grudge, Wrecking Ball or Berserker hits harder.",
+			"max_level": 2, "cost": 1, "cost_growth": 1.0, "effects": {"passive_power": 1},
 		},
 		"payback": {
 			"name": "Payback", "icon": "counter_arrow", "pos": Vector2(0, -3), "requires": ["unbreakable"],
-			"desc": "Hit back harder after super armor eats a punch.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"retaliation_bonus": 0.61},
+			"desc": "Fuels your passive: Grudge, Wrecking Ball or Berserker hits harder.",
+			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"passive_power": 1},
 		},
 		"berserk": {
 			"name": "Berserk", "icon": "rage", "pos": Vector2(0, -4), "requires": ["payback"], "ring": 6, "medallion": true,
-			"desc": "The closer you are to dropping, the harder you hit.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"last_stand": 0.21},
+			"desc": "Your passive at full fury.",
+			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"passive_power": 3},
 		},
 		"fury_surge": {
 			"name": "Ultimate Surge", "icon": "spark", "pos": Vector2(1, 1), "requires": ["fury"], "ring": 3, "medallion": true,
@@ -948,6 +948,7 @@ const EFFECT_FORMATS := {
 	"counter_bonus": "+%s counter multiplier",
 	"counter_window": "+%ss to land a counter (up to +0.5s in all)",
 	"armor_charges": "+%s super armor charge(s)",
+	"passive_power": "+%s passive power",
 	"armor_recharge_cut": "Super armor recharges %ss faster",
 	"retaliation_bonus": "+%s%% damage on super armor counters",
 	"perfect_cooldown_cut": "Perfect counter cooldown -%ss",
@@ -1099,6 +1100,8 @@ var hats := {}
 var worn_hat := ""
 ## Mini tutorials already shown (Tutorial): {id: true}.
 var tips_seen := {}
+## Ability picks per fighter (Abilities): {class: {"passive": id, "ultimate": id}}.
+var loadouts := {}
 ## The Endless Arena's best score.
 var endless_best := 0
 ## The next Arena run is the Endless Arena (picked in camp; not saved).
@@ -1237,6 +1240,9 @@ func get_effect(effect: String) -> float:
 			# Only the selected power's line counts.
 			if kind == "upgrade" and not power_active(id):
 				continue
+			# Passive nodes feed the equipped passive instead (passive_power).
+			if kind == "skill" and Abilities.node_adapts(player_class, id, passive()):
+				continue
 			total += nodes[id].effects.get(effect, 0) * owned[id]
 	for slot in equipped:
 		total += equipped[slot].effects.get(effect, 0.0)
@@ -1245,6 +1251,9 @@ func get_effect(effect: String) -> float:
 	for id in hats:
 		if Hats.CATALOG.has(id):
 			total += float(Hats.CATALOG[id].effects.get(effect, 0.0))
+	# Tony's The Take: his cut of every coin.
+	if effect == "coin_bonus" and has_passive("the_take"):
+		total += 0.25 + 0.03 * passive_power()
 	return total
 
 
@@ -1289,6 +1298,58 @@ func select_power(root: String) -> bool:
 ## Owned powers, in climb order.
 func owned_powers() -> Array:
 	return ["sigil_fire", "sigil_frost", "sigil_storm", "sigil_blood"].filter(func(root: String) -> bool: return upgrade_levels.get(root, 0) > 0)
+
+
+# --- Loadouts: passives and ultimates ------------------------------------------------
+
+## The equipped passive of the fighter being played (the default if the pick
+## isn't unlocked).
+func passive(class_id := "") -> String:
+	return _equipped(class_id if class_id != "" else player_class, "passive")
+
+
+func ultimate(class_id := "") -> String:
+	return _equipped(class_id if class_id != "" else player_class, "ultimate")
+
+
+func has_passive(id: String) -> bool:
+	return passive() == id
+
+
+func has_ultimate(id: String) -> bool:
+	return ultimate() == id
+
+
+func _equipped(class_id: String, slot: String) -> String:
+	var pick: String = loadouts.get(class_id, {}).get(slot, "")
+	var level_now := class_level(class_id) if _classes.has(class_id) else 1
+	if pick != "" and Abilities.unlocked(class_id, pick, level_now):
+		return pick
+	return Abilities.default_passive(class_id) if slot == "passive" else Abilities.default_ultimate(class_id)
+
+
+## Equips a passive or ultimate the fighter has unlocked.
+func equip_ability(slot: String, id: String) -> bool:
+	if not Abilities.unlocked(player_class, id, level):
+		return false
+	var picks: Dictionary = loadouts.get(player_class, {})
+	picks[slot] = id
+	loadouts[player_class] = picks
+	_commit()
+	return true
+
+
+## Skill points that strengthen the equipped passive (adapted passive nodes):
+## a point a level, three for a capstone.
+func passive_power() -> float:
+	var total := 0.0
+	var nodes := tree("skill")
+	var owned := _levels("skill")
+	for id in owned:
+		if Abilities.node_adapts(player_class, id, passive()):
+			var worth: float = nodes[id].effects.get("passive_power", 3 if int(nodes[id].get("ring", 1)) >= 6 else 1)
+			total += int(owned[id]) * worth
+	return total
 
 
 ## Marks a mini tutorial as shown (and saves).
@@ -1866,6 +1927,7 @@ func save_game() -> void:
 		"hats": hats,
 		"worn_hat": worn_hat,
 		"tips_seen": tips_seen,
+		"loadouts": loadouts,
 		"endless_best": endless_best,
 		"achievements": achievements,
 		"power_pick": power_pick,
@@ -1946,6 +2008,7 @@ func load_game() -> void:
 	tips_seen = data.get("tips_seen", {}).duplicate() if data.get("tips_seen", {}) is Dictionary else {}
 	achievements = data.get("achievements", {}).duplicate() if data.get("achievements", {}) is Dictionary else {}
 	power_pick = String(data.get("power_pick", ""))
+	loadouts = data.get("loadouts", {}).duplicate(true) if data.get("loadouts", {}) is Dictionary else {}
 	endless_best = int(data.get("endless_best", 0))
 	worn_hat = String(data.get("worn_hat", ""))
 	if not hats.has(worn_hat):
@@ -2197,6 +2260,7 @@ func _reset_fields() -> void:
 	hats = {}
 	worn_hat = ""
 	tips_seen = {}
+	loadouts = {}
 	endless_best = 0
 	achievements = {}
 	power_pick = ""

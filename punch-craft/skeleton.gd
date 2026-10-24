@@ -83,6 +83,7 @@ func _shoot() -> void:
 	_drawing = false
 	_cooldown = shot_cooldown
 	var arrow := Arrow.new()
+	arrow.shooter = self
 	get_parent().add_child(arrow)
 	var from := _body.to_global(Vector3(0, 1.45, -0.7))
 	var target := player.global_position + Vector3(0, 1.3, 0)

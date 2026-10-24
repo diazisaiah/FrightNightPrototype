@@ -1207,7 +1207,7 @@ func bind_ult(ult: Ult) -> void:
 	move_child(_ult_bar, below + 1)
 	move_child(_ult_gauge, below + 2)
 	_build_time_stop()
-	_ult_name = Ult.NAMES[GameState.player_class]
+	_ult_name = Ult.equipped_name()
 	ult.spoke.connect(func(line: String) -> void: say("TONY", line, GameState.fighter_color("wise_guy").lightened(0.2), 2.4))
 	ult.meter_changed.connect(_set_ult_meter)
 	ult.status_changed.connect(_set_ult_status)
