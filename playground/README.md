@@ -17,6 +17,7 @@ Both sync first, so the playground always has the latest code. If Godot lives so
 - **Fighter**: switches class (reloads the ring).
 - **Hat**: wears any hat.
 - **Emotes**: every dance, unlocked.
+- **Hand idles**: every fighter's idle and every shop idle. Click one to play it on your hands now; it's equipped too if this fighter can wear it (shop idles are all unlocked; another fighter's own idle just plays).
 - **Spawn**: any enemy at tier 1-5, five at once, or clear them. Freeze enemies to inspect them.
 - **Force a special**: makes the nearest boxer use any special move.
 - **Power**: gives a whole power line and selects it.

@@ -36,6 +36,8 @@ func _ready() -> void:
 		GameState.achievements[id] = true
 	for tip in ["hat_first", "hat_rack", "hat_rack_tour", "power_select"]:
 		GameState.tips_seen[tip] = true
+	for id in IdleAnims.SHOP:
+		GameState.idles_bought[id] = true
 	Enemy.max_attackers = 2
 	$Moon.shadow_enabled = Settings.get_value("shadows")
 	Look.tune_environment($WorldEnvironment.environment, "ring")
@@ -121,6 +123,15 @@ func _build_panel() -> void:
 			_panel.visible = false
 			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 			_player.start_emote(id)))
+
+	_section(box, "HAND IDLES (plays now; equips if this fighter can wear it)")
+	var idle_grid := GridContainer.new()
+	idle_grid.columns = 2
+	box.add_child(idle_grid)
+	for id in IdleAnims.BASE.values() + IdleAnims.SHOP:
+		idle_grid.add_child(_button(IdleAnims.name_of(id), func() -> void:
+			GameState.equip_idle(id)
+			_player._fists.play_idle(id)))
 
 	_section(box, "SPAWN")
 	var kinds: Array = BASE.keys() + Veterans.SCENES.keys()
