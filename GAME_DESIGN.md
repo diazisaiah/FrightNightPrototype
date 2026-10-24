@@ -1093,26 +1093,53 @@ Older saves get what they'd already earned, quietly, when camp loads. The list a
 - `run_playground.bat` (or `.sh`, `-e` for the editor) syncs and launches it.
 - It opens on the training ring with a dev panel (F1): fighter, hat, every emote, spawn anything at any tier (veterans, bosses, contenders), freeze enemies, force any special on the nearest boxer, give and select a power line, god mode, fill the ultimate, +5 levels, replay tips, and arena theme backdrops.
 
-## Ability loadouts [Planned, 2026-10-23]
+## Ability loadouts and the Soul Shop [Planned, 2026-10-24]
 
-Each fighter gets alternate abilities, unlocked by class level, that you equip in place of the defaults. Two slots:
-- **Passive** (the class trait, e.g. the Mauler's super armor, the Answer's Perfect Counter).
-- **Ultimate** (Inferno Uppercut, Temporal Break, Riposte Stance, Highlight Reel, Big Mouth).
+Each fighter gets **three passives and two ultimates**: the default plus two new passives, the default plus one new ultimate. They unlock at class level **5 / 10 / 15** and are picked in camp in a Loadout card, never mid-run. Each unlock gets a mini tutorial.
+- **Sidegrades, not upgrades:** each is tuned to the same POWER budget, so contenders stay fair.
+- **Skill webs adapt:** nodes that feed the passive or ultimate have a matching effect for each alternative, so skill points always count.
+- No floor punching or player ground slams.
 
-**Proposal:**
-- Level 10 unlocks a second passive and level 20 a second ultimate; more can come later.
-- Picked in camp (a Loadout card on the class's skill page) and locked during a run.
-- Each alternate is a sidegrade, not an upgrade: a different way to play, tuned to the same POWER budget (`power_rating.gd`).
-- Skill web nodes that only feed one ability say so, and still count toward the class.
+### The Mauler
+- **Super Armor is scrapped** (weak next to Fuggedaboudit). His default passive becomes **Grudge**: whatever hits you is marked with a red skull, and your next punch on it deals triple and staggers.
+- Passives:
+  - **Wrecking Ball:** monsters you knock out fly like bowling balls and smash into others.
+  - **Berserker:** the lower your knuckles, the harder you hit.
+- Ultimates:
+  - **Inferno Uppercut, reworked:** he leaps with it, launching the enemy; more dramatic.
+  - **New: a shield** that absorbs a set number of hits. When it breaks it explodes in a radius, dealing damage based on what it absorbed to every monster around.
+- His super armor skill branch is reworked for Grudge and Berserker.
 
-**First ideas:**
-- The Answer: alt passive **Slip Stream** (each perfect dodge in a row speeds your next counter). Alt ultimate **Mirror Match** (for 6s every hit you take is reflected back, then a counter window).
-- The Mauler: alt passive **Bull Rush** (sprinting into an enemy shoulder-checks it). Alt ultimate **Earthshaker**, a stomp that staggers everything near you (not a floor punch).
-- The Blur: alt passive **Afterimage** (every 10th hit leaves a ghost that repeats it). Alt ultimate **Speed Demon** (double speed, no knuckle cost, 5s).
-- The Stray: alt passive **Wall Run**. Alt ultimate **Chain Dash** (dash between enemies, punching each).
-- Tony: alt passive **Connected** (Fuggedaboudit also heals). Alt ultimate **Sit-Down** (everyone nearby is taunted to him at once).
+### The Answer (toned down: the strongest of the four)
+- **Perfect Counter and Riposte Stance** lose their instant KO and get a big counter-damage multiplier instead.
+- Passives:
+  - **Phantom Step:** dodging a ranged monster's projectile teleports you to that monster.
+  - **Dodge Chain:** each dodge in a row builds a charge, and the next punch spends it for a much stronger hit.
+- New ultimate **Flow State:** you dodge everything automatically, for much longer than Riposte Stance.
 
-Needs approval before building.
+### The Blur
+- **Temporal Break:** lasts about twice as long, and you can move during it.
+- New passive **Echo Fists:** every punch repeats a beat later as a violet echo for part of its damage. A later skill node makes echoes add +0.05 to the combo multiplier.
+- New ultimate **Unbroken** (name to confirm): for about 10s every hit counts toward the combo multiplier, and your combo can't drop.
+- Third passive: **to be decided** (the user is suggesting one).
+
+### The Stray
+- New passive **Head Stomp:** jump on a monster's head to bounce off and stun it, chaining head to head.
+- New ultimate **Hype Train:** for a few seconds you sprint about 1.6x faster (3x was too fast) and bowl over every monster you run into.
+- Third passive: **to be decided.**
+
+### Tony
+- New passive **The Muscle:** every 15s a ghostly goon, Cousin Vinnie, grabs the nearest monster and holds it for 2s.
+- New ultimate **The Family:** three ghost goons in fedoras brawl alongside Tony for 10s.
+- Third passive: **to be decided.**
+
+### The Soul Shop
+A camp shop where you spend **Souls** on:
+- **emotes:** the same dances achievements give, plus future ones (achievements still unlock theirs for free);
+- **new fighters**, as they're added;
+- **equippable gear.**
+
+The stock **refreshes after every run** (each return to camp from a fight), with a paid reroll in Souls.
 
 ## Mini tutorials and one power at a time [Built 2026-10-23]
 
