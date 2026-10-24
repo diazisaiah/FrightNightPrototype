@@ -10,6 +10,10 @@ Ideas for future fighters, parked here until we're ready to build them. Nothing 
 
 ---
 
+## The Elementalist [Planned 2026-10-24]
+
+Planned in GAME_DESIGN.md ("New fighter: the Elementalist"): two powers at once, Elemental Fists and Flame Burst ultimates, sold in the Soul Shop.
+
 ## The Gambler — "Snake Eyes" [Idea, planned 2026-10-15]
 
 > *"House always wins. I'm the house."*

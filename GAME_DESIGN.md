@@ -1093,6 +1093,49 @@ Older saves get what they'd already earned, quietly, when camp loads. The list a
 - `run_playground.bat` (or `.sh`, `-e` for the editor) syncs and launches it.
 - It opens on the training ring with a dev panel (F1): fighter, hat, every emote, spawn anything at any tier (veterans, bosses, contenders), freeze enemies, force any special on the nearest boxer, give and select a power line, god mode, fill the ultimate, +5 levels, replay tips, and arena theme backdrops.
 
+## New fighter: the Elementalist [Planned 2026-10-24]
+
+A fighter built on the four Sigil powers (Fire, Frost, Storm, Blood). Everyone else runs one power at a time; he runs more, and his ultimates turn his punches into spells.
+
+**Class:** Elementalist (id `elementalist`). **Fighter name:** to decide (ideas: The Conduit, The Catalyst, The Prism).
+
+**Unlock:** sold in the Soul Shop (`SoulShop.FIGHTERS`) once two seals are broken, so he always has at least two powers to work with. Hidden until then. Price to decide (around 80 Souls).
+
+**Passives** (unlocked at class level 1 / 5 / 15, picked in the Loadout like everyone else):
+
+| Passive | Level | What it does |
+|---|---|---|
+| Dual Sigil (default) | 1 | Select **two** owned powers at once. Both work with all their upgrades. |
+| Attunement | 5 | One power, amplified: its damage, radius, duration and proc chances are much stronger (scales with passive power). |
+| Prism | 15 | **All** owned powers at once, but only their base effect: none of their upgrades count. |
+
+**Ultimates** (level 1 / 10):
+
+| Ultimate | Level | What it does |
+|---|---|---|
+| Elemental Fists (default) | 1 | For about 10s, every punch that lands has a 10% chance of each: a **fireball** flies from the fist (ranged, ignites what it hits), an **icicle** flies (ranged, freezes), **lightning** arcs to nearby enemies, and a **vampire** heal of a share of the damage dealt. Several can trigger on one punch. |
+| Flame Burst | 10 | A ring of fire bursts out around him (about 6m): big damage to everything in it, and they all ignite (damage over time). |
+
+**Skill web (draft):** about 15 nodes in three branches. Each feeds his passive (they adapt to whichever is equipped, like the others):
+- **Weave:** stronger dual or prism power.
+- **Spellfists:** better Elemental Fists chances, more fireballs and icicles, longer.
+- **Kindle:** Flame Burst radius, damage and burn.
+
+**Look:** wraps inscribed with glowing runes. When the ultimate is ready, the runes glow in the colors of his selected powers: ember orange, ice blue, storm violet, blood red.
+
+**Base stats (draft):** a bit less punch damage than the Mauler, average knuckle HP; his power is in the elements.
+
+**Build notes:**
+- `power_pick` becomes a list for him: two picks with Dual Sigil, one with Attunement, every owned power with Prism (upgrades off).
+- POWER rating counts his extra powers so contenders stay fair.
+- Elemental Fists projectiles reuse the fireball and arrow code: they fly from the punching fist toward the target.
+
+**Open questions:**
+- His fighter name.
+- His Soul Shop price.
+- Whether 10% each is enough (about a 34% chance that at least one fires per punch).
+- Whether Flame Burst overlaps too much with the Mauler's fire theme.
+
 ## Bounties, mastery and the Crypt merchant [Built 2026-10-24]
 
 **Bounties** (`bounties.gd`, camp's Bounties tab, shown after your first bout win): three tasks at a time. Finishing one pays out at once (a toast) and rolls the next. Swap one for 2 Souls.
