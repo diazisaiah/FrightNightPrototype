@@ -145,8 +145,8 @@ func _build_ui() -> void:
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 10)
 	margin.add_child(column)
-	column.add_child(_build_header())
-	column.add_child(_build_tabs())
+	column.add_child(_fit_width(_build_header()))
+	column.add_child(_fit_width(_build_tabs()))
 
 	var page_area := Control.new()
 	page_area.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -157,6 +157,26 @@ func _build_ui() -> void:
 	_add_page(page_area, "Hats", _build_hat_rack())
 	_add_page(page_area, "Shop", _build_shop_page())
 	_add_page(page_area, "Stats", _build_stats_page())
+
+
+## Holds a row at its natural size, shrunk to fit when the screen is narrower
+## than it (points waiting, a long fighter name, new buttons), instead of
+## pushing the whole camp off the right edge.
+func _fit_width(content: Control) -> Control:
+	var holder := Control.new()
+	holder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	holder.add_child(content)
+	var fit := func() -> void:
+		var natural := content.get_combined_minimum_size()
+		var shrink := minf(1.0, holder.size.x / maxf(natural.x, 1.0)) if holder.size.x > 0.0 else 1.0
+		content.scale = Vector2(shrink, shrink)
+		content.position = Vector2.ZERO
+		content.size = Vector2(holder.size.x / shrink if holder.size.x > 0.0 else natural.x, natural.y)
+		holder.custom_minimum_size = Vector2(0, natural.y * shrink)
+	holder.resized.connect(fit)
+	content.minimum_size_changed.connect(fit)
+	fit.call_deferred()
+	return holder
 
 
 # --- Header ------------------------------------------------------------------

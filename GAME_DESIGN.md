@@ -1093,6 +1093,11 @@ Older saves get what they'd already earned, quietly, when camp loads. The list a
 - `run_playground.bat` (or `.sh`, `-e` for the editor) syncs and launches it.
 - It opens on the training ring with a dev panel (F1): fighter, hat, every emote, spawn anything at any tier (veterans, bosses, contenders), freeze enemies, force any special on the nearest boxer, give and select a power line, god mode, fill the ultimate, +5 levels, replay tips, and arena theme backdrops.
 
+## Camp fits any screen; League bosses press harder [Built 2026-10-24]
+
+- **Camp header and nav row shrink to fit** (`camp._fit_width`) when they're wider than the screen (points waiting, a long fighter name, Loadout and Shop), instead of pushing the camp off the right edge.
+- **Dead League contenders combo more often:** pauses between combos are about 35% shorter (Bellman 0.95s to 0.6s, and so on), and settling after an undodged combo is 0.45-0.8s (was 0.8-1.4s). Dodging a whole combo still leaves them open as long as before (`DeadLeagueBoss._idle_time` / `_recover_time`).
+
 ## Arena elites and champions [Built 2026-10-24]
 
 Regular Arena spawns can be **elites** (as in the Crypt: one trait, x2 health, x3 coins and XP, orange aura) or **champions** (new: two different traits, x3.5 health, x6 coins and XP, violet aura, announced in the feed with a growl). Traits: Swift, Brutal, Ironclad, Hulking.

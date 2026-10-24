@@ -83,9 +83,15 @@ func _pick_combo() -> Array:
 	return pool.pick_random()
 
 
+## Contenders keep the pressure on (2026-10-24: shorter pauses, so combos come
+## more often). Dodging a whole combo still leaves them open as long as ever.
 func _idle_time() -> float:
-	var base: float = [0.95, 0.7, 0.62, 0.85, 0.58][profile_index]
+	var base: float = [0.6, 0.48, 0.42, 0.55, 0.4][profile_index]
 	return randf_range(base * 0.75, base * 1.2) * (0.75 if _enraged else 1.0)
+
+
+func _recover_time() -> float:
+	return randf_range(0.45, 0.8)
 
 
 func _enrage() -> void:

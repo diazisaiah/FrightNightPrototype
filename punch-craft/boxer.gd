@@ -184,7 +184,7 @@ func _think(delta: float) -> Vector3:
 		State.STRIKE:
 			if _state_timer <= 0.0:
 				if _queue.is_empty():
-					_enter(State.RECOVER, _open_time if _open_time > 0.0 else randf_range(0.8, 1.4))
+					_enter(State.RECOVER, _open_time if _open_time > 0.0 else _recover_time())
 					_open_time = 0.0
 					end_turn()
 				else:
@@ -222,6 +222,12 @@ func _pick_combo() -> Array:
 ## Pause between combos.
 func _idle_time() -> float:
 	return randf_range(0.3, 0.9)
+
+
+## Settling after a combo that wasn't dodged (a dodged one leaves it open for
+## _open_time instead).
+func _recover_time() -> float:
+	return randf_range(0.8, 1.4)
 
 
 # --- Fighting -------------------------------------------------------------------
