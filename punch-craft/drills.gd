@@ -16,7 +16,7 @@ const BAG_SCENE := preload("res://heavy_bag.tscn")
 const LIVES := 3
 const BAG_TIME := 60.0
 const BAG_SLOTS := [Vector3(-1.5, 0.05, -2.9), Vector3(0, 0.05, -3.3), Vector3(1.5, 0.05, -2.9)]
-const RACK_HEIGHT := 2.75
+const RACK_HEIGHT := 3.25
 ## Pad Work: seconds for a combo at level 1, how much faster each level gets,
 ## and the floor (no human makes a 6-punch combo in 0.9s).
 const PADS_TIME := 7.0

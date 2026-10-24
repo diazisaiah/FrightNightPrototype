@@ -12,12 +12,15 @@ func _build_body() -> void:
 	var leather := _material(Color(0.42, 0.12, 0.1))
 	var band := _material(Color(0.12, 0.1, 0.1))
 	var steel := _material(Color(0.35, 0.36, 0.4), 0.6)
-	_part(_body, _cylinder(0.32, 1.25), leather, Vector3(0, 1.12, 0))
-	_part(_body, _cylinder(0.33, 0.08), band, Vector3(0, 0.6, 0))
-	_part(_body, _cylinder(0.33, 0.08), band, Vector3(0, 1.64, 0))
-	_part(_body, _cylinder(0.2, 0.08), band, Vector3(0, 1.78, 0))
+	# Hung high, so the middle of the bag is at eye level (2026-10-23). Its
+	# collision reaches the floor (heavy_bag.tscn), so it rests where it's hung:
+	# a shorter one used to sink the whole bag through the canvas.
+	_part(_body, _cylinder(0.32, 1.25), leather, Vector3(0, 1.62, 0))
+	_part(_body, _cylinder(0.33, 0.08), band, Vector3(0, 1.1, 0))
+	_part(_body, _cylinder(0.33, 0.08), band, Vector3(0, 2.14, 0))
+	_part(_body, _cylinder(0.2, 0.08), band, Vector3(0, 2.28, 0))
 	# The chain up to the rack.
-	_part(_body, _box(Vector3(0.04, 0.95, 0.04)), steel, Vector3(0, 2.28, 0))
+	_part(_body, _box(Vector3(0.04, 0.95, 0.04)), steel, Vector3(0, 2.78, 0))
 
 
 func _gear_style() -> String:
