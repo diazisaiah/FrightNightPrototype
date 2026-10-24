@@ -6,15 +6,15 @@ class_name SoulShop
 
 const EMOTE_SLOTS := 2
 const GEAR_SLOTS := 3
-const EMOTE_PRICE := 5
+const EMOTE_PRICE := 8
 ## Gear is a backup, not a way around the Crypt: mostly plain finds, priced
 ## against boss Souls (1 + tier each), with good gear rare and dear.
-const GEAR_PRICE := {"common": 4, "uncommon": 8, "rare": 15, "epic": 25, "legendary": 40}
+const GEAR_PRICE := {"common": 6, "uncommon": 12, "rare": 22, "epic": 38, "legendary": 60}
 const GEAR_RARITY := {"common": 0.5, "uncommon": 0.32, "rare": 0.13, "epic": 0.04, "legendary": 0.01}
 ## Fighters for sale ({class_id: price}). Tony stays a secret (the Yonker
 ## hats); new fighters go here as they're added.
 const FIGHTERS := {}
-const REROLL_BASE := 1
+const REROLL_BASE := 2
 
 
 ## The current offers, restocked if there's been a fight since.

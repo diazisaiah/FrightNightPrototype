@@ -13,6 +13,8 @@ signal crypt_requested
 signal item_decided(equip: bool)
 ## Gild this worn find at a Crypt altar.
 signal gild_chosen(item: Dictionary)
+## The Crypt merchant's shop: a ware's index, or -1 for the heal.
+signal ware_chosen(index: int)
 
 var _can_pause := true
 var _announce_tween: Tween
@@ -930,6 +932,7 @@ func set_prompt(text: String) -> void:
 ## Puts the Crypt minimap in the top-right corner, with the worn items below it.
 func add_minimap(map: Control) -> void:
 	add_child(map)
+	move_child(map, _item_panel.get_parent().get_index())  # Under item panels.
 	_fight_ui.append(map)
 	_equipment_box.offset_top = 270.0
 
@@ -1024,6 +1027,73 @@ func show_gild_menu(entries: Array, silver: int) -> void:
 		button.pressed.connect(func() -> void: gild_chosen.emit(item))
 		box.add_child(button)
 		cards.add_child(box)
+	var done := Button.new()
+	done.text = "Done"
+	done.custom_minimum_size = Vector2(200, 44)
+	done.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	done.pressed.connect(func() -> void:
+		_item_panel.hide()
+		_can_pause = true
+		get_tree().paused = false
+		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED)
+	column.add_child(done)
+	_can_pause = false
+	get_tree().paused = true
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	_item_panel.show()
+
+
+## The Crypt merchant's table. wares: [{item, price, sold}]; heal: {price,
+## percent, used}. Each card has its price; Done closes it.
+func show_merchant(wares: Array, heal: Dictionary, silver: int) -> void:
+	for child in _item_panel.get_children():
+		child.queue_free()
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 12)
+	_item_panel.add_child(column)
+	column.add_child(UiTheme.heading("MERCHANT", 34))
+	var purse := IconLabel.new()
+	purse.font_size = 16
+	purse.text = "%d {silver}" % silver
+	column.add_child(purse)
+	var cards := HBoxContainer.new()
+	cards.add_theme_constant_override("separation", 14)
+	cards.alignment = BoxContainer.ALIGNMENT_CENTER
+	column.add_child(cards)
+	for i in wares.size():
+		var ware: Dictionary = wares[i]
+		var box := VBoxContainer.new()
+		box.add_theme_constant_override("separation", 6)
+		box.add_child(_item_card(ware.item, "SOLD" if ware.sold else "FOR SALE", GameState.equipped.get(ware.item.slot, {})))
+		var buy := Button.new()
+		buy.custom_minimum_size = Vector2(0, 42)
+		buy.disabled = ware.sold or silver < int(ware.price)
+		IconLabel.on_button(buy, "Sold" if ware.sold else "Buy   %d {silver}" % ware.price)
+		buy.pressed.connect(func() -> void: ware_chosen.emit(i))
+		box.add_child(buy)
+		cards.add_child(box)
+	var kit := VBoxContainer.new()
+	kit.add_theme_constant_override("separation", 6)
+	var flask := PanelContainer.new()
+	flask.add_theme_stylebox_override("panel", UiTheme.box(Color(0.08, 0.08, 0.1, 0.95), Color(0.9, 0.25, 0.25), 2, 8, 14.0))
+	flask.custom_minimum_size = Vector2(170, 0)
+	flask.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	var lines := VBoxContainer.new()
+	lines.add_theme_constant_override("separation", 6)
+	flask.add_child(lines)
+	lines.add_child(UiTheme.title_label("PATCH UP", 22, Color(1.0, 0.45, 0.4)))
+	var restore := IconLabel.new()
+	restore.font_size = 16
+	restore.text = "+%d%% {knuckles}" % heal.percent
+	lines.add_child(restore)
+	kit.add_child(flask)
+	var patch_up := Button.new()
+	patch_up.custom_minimum_size = Vector2(0, 42)
+	patch_up.disabled = heal.used or silver < int(heal.price)
+	IconLabel.on_button(patch_up, "Used" if heal.used else "Buy   %d {silver}" % heal.price)
+	patch_up.pressed.connect(func() -> void: ware_chosen.emit(-1))
+	kit.add_child(patch_up)
+	cards.add_child(kit)
 	var done := Button.new()
 	done.text = "Done"
 	done.custom_minimum_size = Vector2(200, 44)

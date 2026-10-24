@@ -68,6 +68,7 @@ func _ready() -> void:
 		"hurt": _make(0.25, _hurt),
 		"death": _make(0.5, _thump.bind(110.0, 30.0, 6.0, 0.8, 10.0)),
 		"growl": _make(0.6, _growl),
+		"grunt": _make(0.35, _grunt),
 		"draw": _make(0.5, _creak),
 		"twang": _make(0.3, _twang),
 		"coin": _make(0.2, _coin),
@@ -335,6 +336,15 @@ func _growl(t: float, duration: float) -> float:
 	var saw2 := fmod(t * 97.0, 1.0) * 2.0 - 1.0
 	_lowpass = lerpf(_lowpass, saw + saw2 * 0.5 + randf_range(-0.3, 0.3), 0.15)
 	return _lowpass * envelope * tremolo
+
+
+## "Hrmph": a short, low, falling grunt (the Crypt merchant).
+func _grunt(t: float, duration: float) -> float:
+	var envelope := minf(1.0, t * 30.0) * exp(-t * 6.0)
+	_phase += TAU * lerpf(95.0, 68.0, t / duration) / MIX_RATE
+	var saw := fmod(_phase / TAU, 1.0) * 2.0 - 1.0
+	_lowpass = lerpf(_lowpass, saw + randf_range(-0.4, 0.4), 0.12)
+	return _lowpass * envelope
 
 
 func _creak(t: float, duration: float) -> float:

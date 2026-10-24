@@ -4,7 +4,7 @@ extends Control
 ## point web), Armory (kept Crypt gear) and Stats (stat points and a sheet). The class is chosen on the title screen
 ## (Menu button). Built in code because it's generated from the data in GameState.
 
-const PAGES := ["Upgrades", "Skills", "Armory", "Hats", "Shop", "Stats"]
+const PAGES := ["Upgrades", "Skills", "Armory", "Hats", "Bounties", "Shop", "Stats"]
 const WORLD := preload("res://world.gd")
 const DUNGEON := preload("res://dungeon.gd")
 const DETAIL_WIDTH := 340.0
@@ -155,6 +155,7 @@ func _build_ui() -> void:
 	_add_page(page_area, "Skills", _build_tree_page("skill"))
 	_add_page(page_area, "Armory", _build_armory_page())
 	_add_page(page_area, "Hats", _build_hat_rack())
+	_add_page(page_area, "Bounties", _build_bounty_page())
 	_add_page(page_area, "Shop", _build_shop_page())
 	_add_page(page_area, "Stats", _build_stats_page())
 
@@ -799,6 +800,7 @@ func _refresh() -> void:
 	_xp_bar.value = GameState.xp
 	_xp_label.text = "%d / %d XP" % [GameState.xp, GameState.xp_to_next()]
 	_chips.coins.set_amount(GameState.resources.get("coins", 0), _shown_once)
+	_refresh_bounties()
 	_chips.souls.set_amount(GameState.souls, _shown_once)
 	_chips.skill_points.set_amount(GameState.skill_points, _shown_once)
 	_chips.stat_points.set_amount(GameState.stat_points, _shown_once)
@@ -1246,6 +1248,110 @@ func _hat_card(id: String) -> Control:
 			var count := _label("x%d" % int(GameState.hats[id]), 12, UiTheme.MUTED)
 			count.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			column.add_child(count)
+	return card
+
+
+# --- Bounties --------------------------------------------------------------------------
+
+var _bounty_grid: HBoxContainer
+var _bounty_mastery: Label
+var _bounty_bar: ProgressBar
+var _bounty_odds: HBoxContainer
+
+
+func _build_bounty_page() -> Control:
+	var panel := PanelContainer.new()
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 12)
+	panel.add_child(column)
+	var header := HBoxContainer.new()
+	header.add_theme_constant_override("separation", 18)
+	column.add_child(header)
+	header.add_child(UiTheme.title_label("BOUNTIES", 26, UiTheme.GOLD))
+	_bounty_mastery = _label("", 18, UiTheme.TEXT)
+	_bounty_mastery.add_theme_font_override("font", UiTheme.bold_font())
+	header.add_child(_bounty_mastery)
+	_bounty_bar = ProgressBar.new()
+	_bounty_bar.show_percentage = false
+	_bounty_bar.custom_minimum_size = Vector2(220, 8)
+	_bounty_bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	header.add_child(_bounty_bar)
+	_bounty_odds = HBoxContainer.new()
+	_bounty_odds.add_theme_constant_override("separation", 14)
+	column.add_child(_bounty_odds)
+	_bounty_grid = HBoxContainer.new()
+	_bounty_grid.add_theme_constant_override("separation", 14)
+	column.add_child(_bounty_grid)
+	return panel
+
+
+func _refresh_bounties() -> void:
+	if _bounty_grid == null:
+		return
+	_tab_buttons["Bounties"].visible = Bounties.unlocked()
+	if not Bounties.unlocked():
+		return
+	var progress := Bounties.mastery_progress()
+	_bounty_mastery.text = "Mastery %d" % Bounties.mastery()
+	_bounty_bar.max_value = progress[1]
+	_bounty_bar.value = progress[0]
+	_bounty_bar.tooltip_text = "%d / %d bounty XP" % progress
+	for child in _bounty_odds.get_children():
+		child.queue_free()
+	var odds := Bounties.odds()
+	for i in Bounties.RARITIES.size():
+		var rarity: String = Bounties.RARITIES[i]
+		_bounty_odds.add_child(_label("%s %d%%" % [rarity.capitalize(), roundi(odds[i] * 100.0)], 14, Bounties.RARITY_COLORS[rarity]))
+	for child in _bounty_grid.get_children():
+		child.queue_free()
+	var active := Bounties.active()
+	for i in active.size():
+		_bounty_grid.add_child(_bounty_card(i, active[i]))
+
+
+func _bounty_card(index: int, bounty: Dictionary) -> Control:
+	var tint: Color = Bounties.RARITY_COLORS[bounty.rarity]
+	var card := PanelContainer.new()
+	card.custom_minimum_size = Vector2(300, 230)
+	card.add_theme_stylebox_override("panel", UiTheme.box(Color(tint.darkened(0.85), 0.8), Color(tint, 0.85), 2, 10, 14.0))
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 8)
+	card.add_child(column)
+	var rarity := _label(String(bounty.rarity).to_upper(), 12, tint)
+	rarity.add_theme_font_override("font", UiTheme.bold_font())
+	column.add_child(rarity)
+	var task := _label(Bounties.text(bounty), 18, UiTheme.TEXT)
+	task.add_theme_font_override("font", UiTheme.bold_font())
+	task.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	task.custom_minimum_size.x = 270
+	column.add_child(task)
+	var bar := ProgressBar.new()
+	bar.show_percentage = false
+	bar.custom_minimum_size.y = 8
+	bar.max_value = 1.0
+	bar.value = Bounties.fraction(bounty)
+	column.add_child(bar)
+	column.add_child(_label(Bounties.progress_text(bounty), 13, UiTheme.MUTED))
+	var spacer := Control.new()
+	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	column.add_child(spacer)
+	var reward := IconLabel.new()
+	reward.font_size = 16
+	var pay := "+%d {coins}" % bounty.coins
+	if int(bounty.souls) > 0:
+		pay += "   +%d {souls}" % bounty.souls
+	reward.text = pay + "   +%d XP" % bounty.xp
+	column.add_child(reward)
+	var swap := Button.new()
+	swap.custom_minimum_size.y = 36
+	IconLabel.on_button(swap, "Swap   %d {souls}" % Bounties.SWAP_SOULS)
+	swap.disabled = GameState.souls < Bounties.SWAP_SOULS
+	swap.tooltip_text = "Roll a different bounty."
+	swap.pressed.connect(func() -> void:
+		if Bounties.swap(index):
+			Sfx.play("coin", -4.0, 0.8)
+			_refresh())
+	column.add_child(swap)
 	return card
 
 

@@ -484,6 +484,7 @@ func _on_enemy_died(enemy: Enemy) -> void:
 	var kind: String = enemy.get_meta("kind", "")
 	_alive_by_kind[kind] = maxi(0, _alive_by_kind.get(kind, 0) - 1)
 	_kills += 1
+	Bounties.on_ko(enemy)
 	var coins := GameState.roll_coins(enemy.coin_reward)
 	_run_coins += coins
 	HitFx.coins(enemy.get_parent(), enemy.global_position + Vector3(0, 1.2, 0), coins)
@@ -585,6 +586,7 @@ func _win_night() -> void:
 	var grade := _grade()
 	var bonus := roundi(ARENA_PURSE * Progression.pay(_position()) * grade[2] * (1.0 + GameState.get_effect("dawn_bonus")))
 	var first_time := GameState.clear_arena_bout(_division, _night)  # Also saves.
+	Bounties.event("grade", Bounties.GRADES.find(grade[1]))
 	var first_bonus := 0
 	if first_time:
 		first_bonus = roundi(FIRST_WIN_BONUS[_night - 1] * Progression.pay(_position()))

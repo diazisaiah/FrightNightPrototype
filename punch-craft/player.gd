@@ -1430,6 +1430,7 @@ func _land_punch(type: String, hand: String, _dashing := false, airborne := fals
 	var kind := "hit"
 	if counter:
 		kind = "counter"
+		Bounties.event("counter")
 	elif set_up:
 		kind = "setup"
 	elif dealt <= 0.0:
@@ -1979,6 +1980,8 @@ func _set_combo(value: int) -> void:
 	combo = value
 	if combo >= 25:
 		Achievements.earn("combo_25")
+	if combo >= 10:
+		Bounties.event("combo", combo)
 	if combo == 0:
 		_straight_run = 0
 		_last_hand = ""

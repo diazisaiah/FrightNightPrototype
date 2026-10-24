@@ -74,7 +74,7 @@ static func announcer_line() -> String:
 const SOULS_PER_TIER := 1
 const SOULS_FIRST_CLEAR := 3
 ## Gilding (keeping) a Crypt find costs Souls and silver by rarity.
-const GILD_SOULS := {"common": 1, "uncommon": 1, "rare": 2, "epic": 3, "legendary": 5, "cursed": 3}
+const GILD_SOULS := {"common": 1, "uncommon": 2, "rare": 3, "epic": 5, "legendary": 8, "cursed": 5}
 const GILD_SILVER := {"common": 10, "uncommon": 15, "rare": 25, "epic": 40, "legendary": 60, "cursed": 40}
 ## Reforging a kept item: its numbers grow and it counts as two floors deeper.
 const REFORGE_GROWTH := 1.25
@@ -279,8 +279,8 @@ static func boss_souls(x: float, first_clear: bool) -> int:
 
 ## Souls to reroll one stat on a kept item; each reroll on it costs one more.
 static func reroll_cost(item: Dictionary) -> int:
-	return 2 + int(item.get("rerolls", 0)) + ceili(int(item.get("floor", 1)) / 3.0)
+	return 3 + 2 * int(item.get("rerolls", 0)) + ceili(int(item.get("floor", 1)) / 3.0)
 
 
 static func reforge_cost(item: Dictionary) -> int:
-	return 3 + 2 * int(item.get("reforged", 0)) + ceili(int(item.get("floor", 1)) / 2.0)
+	return 5 + 3 * int(item.get("reforged", 0)) + ceili(int(item.get("floor", 1)) / 2.0)

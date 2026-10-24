@@ -1109,6 +1109,11 @@ var emotes_bought := {}
 var fighters_bought := {}
 ## Fights finished (each return to camp from the Arena, Crypt or Dead League).
 var fights_done := 0
+## Bounties (Bounties): the three active ones, bounty XP (mastery), and
+## knockouts by kind (bounties only ask for kinds you've met).
+var bounties: Array = []
+var bounty_xp := 0
+var kills := {}
 ## Ability picks per fighter (Abilities): {class: {"passive": id, "ultimate": id}}.
 var loadouts := {}
 ## The Endless Arena's best score.
@@ -1397,6 +1402,7 @@ func unlock_tony() -> void:
 ## Returns {paid, coins, xp, best, new_best}.
 func claim_drill(drill: String, score: int, _level: int) -> Dictionary:
 	Achievements.earn("drill")
+	Bounties.event("drill")
 	var record: Dictionary = drills.get(drill, {"best": 0, "day": ""})
 	var today := Time.get_date_string_from_system()
 	var result := {"paid": false, "coins": 0, "xp": 0, "best": int(record.best), "new_best": score > int(record.best)}
@@ -1456,6 +1462,7 @@ func wear_hat(id: String) -> void:
 func add_hat(id: String) -> String:
 	if not Hats.CATALOG.has(id):
 		return ""
+	Bounties.event("hat")
 	if hats.has(id):
 		hats[id] = int(hats[id]) + 1
 		souls += Hats.DUPLICATE_SOULS[Hats.CATALOG[id].rarity]
@@ -1602,6 +1609,7 @@ func salvage(uid: int, coins: int) -> void:
 ## Records a Crypt floor's boss as beaten. Returns true the first time.
 func clear_crypt_floor(floor_number: int) -> bool:
 	Achievements.earn("crypt_floor")
+	Bounties.event("crypt_floor")
 	var first_time := floor_number > crypt_floors_cleared
 	crypt_floors_cleared = maxi(crypt_floors_cleared, floor_number)
 	_commit()
@@ -1986,6 +1994,9 @@ func save_game() -> void:
 		"emotes_bought": emotes_bought,
 		"fighters_bought": fighters_bought,
 		"fights_done": fights_done,
+		"bounties": bounties,
+		"bounty_xp": bounty_xp,
+		"kills": kills,
 		"loadouts": loadouts,
 		"endless_best": endless_best,
 		"achievements": achievements,
@@ -2073,6 +2084,9 @@ func load_game() -> void:
 	emotes_bought = data.get("emotes_bought", {}).duplicate() if data.get("emotes_bought", {}) is Dictionary else {}
 	fighters_bought = data.get("fighters_bought", {}).duplicate() if data.get("fighters_bought", {}) is Dictionary else {}
 	fights_done = int(data.get("fights_done", 0))
+	bounties = data.get("bounties", []).duplicate(true) if data.get("bounties", []) is Array else []
+	bounty_xp = int(data.get("bounty_xp", 0))
+	kills = data.get("kills", {}).duplicate() if data.get("kills", {}) is Dictionary else {}
 	loadouts = data.get("loadouts", {}).duplicate(true) if data.get("loadouts", {}) is Dictionary else {}
 	endless_best = int(data.get("endless_best", 0))
 	worn_hat = String(data.get("worn_hat", ""))
@@ -2331,6 +2345,9 @@ func _reset_fields() -> void:
 	emotes_bought = {}
 	fighters_bought = {}
 	fights_done = 0
+	bounties = []
+	bounty_xp = 0
+	kills = {}
 	loadouts = {}
 	endless_best = 0
 	achievements = {}

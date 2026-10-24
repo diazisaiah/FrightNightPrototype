@@ -1093,6 +1093,18 @@ Older saves get what they'd already earned, quietly, when camp loads. The list a
 - `run_playground.bat` (or `.sh`, `-e` for the editor) syncs and launches it.
 - It opens on the training ring with a dev panel (F1): fighter, hat, every emote, spawn anything at any tier (veterans, bosses, contenders), freeze enemies, force any special on the nearest boxer, give and select a power line, god mode, fill the ultimate, +5 levels, replay tips, and arena theme backdrops.
 
+## Bounties, mastery and the Crypt merchant [Built 2026-10-24]
+
+**Bounties** (`bounties.gd`, camp's Bounties tab, shown after your first bout win): three tasks at a time. Finishing one pays out at once (a toast) and rolls the next. Swap one for 2 Souls.
+- **Tasks:** knock out N monsters / N of a kind / elites / champions / veterans; find hats; beat the Grave Champion; clear Crypt floors; win Dead League bouts; land counters; land an N-hit combo; win an Arena bout at a grade; finish daily drills.
+- **Only what you've unlocked:** a kind only once you've knocked one out, champions from the Plague Division, veterans after your first, hats after your first, Crypt floors once it's open. Counters and combos only count in real fights.
+- **Rarity:** common / uncommon / rare / epic / legendary. Rarer asks more and pays more: coins 150 / 300 / 600 / 1100 / 2000 x the pay where you are on the climb, Souls 0 / 1 (half the time) / 3 / 6 / 12, bounty XP 10 / 22 / 45 / 90 / 180.
+- **Mastery:** bounty XP levels it (to 25; 60 x level^1.4 a level). Odds start 55 / 27 / 12 / 5 / 1% and shift each level (about 28 / 32 / 23 / 13 / 5% at 10).
+
+**Prices up** (bounties pay coins and Souls): Soul Shop emotes 8 Souls (was 5), gear 6 / 12 / 22 / 38 / 60 (was 4 / 8 / 15 / 25 / 40), rerolls start at 2. Gilding Souls 1 / 2 / 3 / 5 / 8, cursed 5. Stat reroll 3 + 2 per earlier reroll + floor/3. Reforge 5 + 3 per earlier reforge + floor/2.
+
+**The Crypt merchant:** an undead shopkeeper hunched behind a table (hooded skull, glowing eyes, a jaw that works, bony hands, a lantern). His three wares and a healing flask sit on the table. He watches you, taps the table and grunts (a new low "grunt" sound) when you walk up, now and then while you're near, and when you buy. Trading with him opens a shop panel: the three items against what you wear, and Patch Up. The minimap now sits under item panels.
+
 ## Clear enemy tells; skill webs follow the loadout [Built 2026-10-24]
 
 - **Tell lights:** every boxer's glowing glove carries a small light in the tell color, so a tell shows even when the hand is behind the body, edge-on or under gear.
@@ -1214,11 +1226,11 @@ Each fighter has **three passives and two ultimates** (`abilities.gd`): the defa
 
 ### The Soul Shop
 A **Shop** tab in camp (`soul_shop.gd`) where you spend **Souls**:
-- **2 emotes** you don't have yet, 5 Souls each. Achievements still unlock theirs free; buying one just skips ahead (`GameState.emotes_bought`).
-- **3 pieces of gear** rolled at the deepest Crypt floor you've beaten (floor 1 if none), never your tier, so cheesing a boss for a higher tier doesn't buy stronger gear. Mostly plain so the shop never replaces the Crypt: common 4 Souls (50%), uncommon 8 (32%), rare 15 (13%), epic 25 (4%), legendary 40 (1%). Bosses drop 1 + tier Souls, so a rare is several bosses' worth. Bought gear goes straight to the armory.
+- **2 emotes** you don't have yet, 8 Souls each. Achievements still unlock theirs free; buying one just skips ahead (`GameState.emotes_bought`).
+- **3 pieces of gear** rolled at the deepest Crypt floor you've beaten (floor 1 if none), never your tier, so cheesing a boss for a higher tier doesn't buy stronger gear. Mostly plain so the shop never replaces the Crypt: common 6 Souls (50%), uncommon 12 (32%), rare 22 (13%), epic 38 (4%), legendary 60 (1%). Bosses drop 1 + tier Souls, so a rare is several bosses' worth. Bought gear goes straight to the armory.
 - **Fighters**, as new ones are added (`SoulShop.FIGHTERS`; Tony stays secret).
 - **Restock after every fight:** each return to camp from the Arena, Crypt or Dead League counts (`GameState.fights_done`, counted in `Loading.go`). Sold offers stay sold until then.
-- **Reroll:** 1 Soul, +1 each time, resets on restock.
+- **Reroll:** 2 Souls, +1 each time, resets on restock.
 
 ## Mini tutorials and one power at a time [Built 2026-10-23]
 

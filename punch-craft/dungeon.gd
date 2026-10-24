@@ -142,11 +142,13 @@ var _floors_cleared_this_run := 0
 var _run_souls := 0
 var _items_found := 0
 var _silver := 0
-## What the open offer panel is for: "chest", "ware" or "shrine".
+## What the open offer panel is for: "chest" or "shrine".
 var _offer_thing: Dictionary = {}
 var _run_over := false
 var _level: Node3D
 var _materials := {}
+## The Crypt merchant on this floor (_build_merchant), or {}.
+var _merchant := {}
 var _torches: Array[OmniLight3D] = []
 var _torch_time := 0.0
 var _minimap: Minimap
@@ -181,6 +183,7 @@ func _ready() -> void:
 	_hud.end_run_requested.connect(_end_run.bind("ABANDONED"))
 	_hud.set_leave_text("Abandon run  (lose finds that aren't gilded)")
 	_hud.gild_chosen.connect(_on_gild_chosen)
+	_hud.ware_chosen.connect(_on_ware_chosen)
 	_hud.back_to_camp_requested.connect(_leave_crypt)
 	_hud.continue_requested.connect(_descend)
 	_hud.item_decided.connect(_on_item_decided)
@@ -203,6 +206,7 @@ func _process(delta: float) -> void:
 			_to_spawn -= 1
 			_spawn_enemy({"kind": _pick_kind(), "armored": randf() < _armor_chance()}, _spawn_point())
 	_update_interaction()
+	_animate_merchant(delta)
 	_update_map()
 
 
@@ -270,6 +274,7 @@ func _build_floor() -> void:
 	_alive_by_kind.clear()
 	_interactables.clear()
 	_torches.clear()
+	_merchant = {}
 	_current_room = {}
 	_player.on_floor_start()
 	# Each tier of floors has its own look, music and hazards.
@@ -694,6 +699,7 @@ func _on_enemy_died(enemy: Enemy) -> void:
 	var kind: String = enemy.get_meta("kind", "")
 	_alive_by_kind[kind] = maxi(0, _alive_by_kind.get(kind, 0) - 1)
 	_kills += 1
+	Bounties.on_ko(enemy)
 	var coins := roundi(GameState.roll_coins(enemy.coin_reward) * CRYPT_COIN_SCALE)
 	_run_coins += coins
 	HitFx.coins(enemy.get_parent(), enemy.global_position + Vector3(0, 1.2, 0), coins)
@@ -903,10 +909,9 @@ func _update_interaction() -> void:
 		match _target.kind:
 			"chest":
 				_open_chest(_target)
-			"ware":
-				_offer_ware(_target)
-			"heal":
-				_buy_heal(_target)
+			"merchant":
+				_merchant_grunt()
+				_open_merchant()
 			"shrine":
 				_offer_blessing(_target)
 			"altar":
@@ -919,10 +924,8 @@ func _prompt_for(thing: Dictionary) -> String:
 	match thing.kind:
 		"chest":
 			return _use("Open cursed chest") if thing.quality == "cursed" else _use("Open chest")
-		"ware":
-			return _use("Look at %s     %d {silver}" % [thing.item.name, thing.price])
-		"heal":
-			return _use("Patch up  +%d%% {knuckles}     %d {silver}" % [roundi(HEAL_FRACTION * 100), HEAL_PRICE])
+		"merchant":
+			return _use("Trade with the merchant")
 		"shrine":
 			return _use("Pray at the shrine")
 		"altar":
@@ -981,16 +984,6 @@ func _on_item_decided(equip: bool) -> void:
 	if item.is_empty():
 		return
 	match thing.get("kind", "chest"):
-		"ware":
-			if equip and _silver >= thing.price:
-				_silver -= thing.price
-				thing.used = true
-				var stand: Node3D = thing.node
-				stand.get_node("Ware").queue_free()
-				Sfx.play("coin")
-				_equip(item)
-				_update_info()
-			return
 		"shrine":
 			if equip:
 				thing.used = true
@@ -1107,37 +1100,180 @@ func _on_gild_chosen(item: Dictionary) -> void:
 
 # --- Merchant and shrine ------------------------------------------------------
 
-## A hooded ghoul with three wares on stands and a healer's kit.
+## An undead merchant hunched behind a table with three wares and a healing
+## flask. He watches you, taps the table and grunts; trading with him (or at
+## his table) opens his shop.
 func _build_merchant(room: Dictionary) -> void:
-	var center: Vector3 = room.center
-	var robe := _material("merchant_robe", Color(0.2, 0.16, 0.1))
-	var skin := _material("merchant_skin", Color(0.5, 0.55, 0.45))
+	var robe := _material("merchant_robe", Color(0.2, 0.15, 0.1))
+	var hood := _material("merchant_hood", Color(0.12, 0.09, 0.07))
+	var bone := _material("merchant_bone", Color(0.78, 0.74, 0.62))
+	var wood := _material("merchant_wood", Color(0.3, 0.2, 0.12))
+	var eyes := Enemy._glow_material(Color(0.5, 1.0, 0.4))
+	var root := Node3D.new()
+	root.position = room.center + Vector3(0, 0, -3.3)
+	_level.add_child(root)
+	# A hunched body in a ragged robe.
+	root.add_child(_mesh(Enemy._box(Vector3(0.8, 1.15, 0.55)), robe, Vector3(0, 0.58, 0)))
+	var torso := Node3D.new()
+	torso.position = Vector3(0, 1.1, 0)
+	torso.rotation.x = 0.3
+	root.add_child(torso)
+	torso.add_child(_mesh(Enemy._box(Vector3(0.78, 0.5, 0.52)), robe, Vector3(0, 0.25, 0)))
+	torso.add_child(_mesh(Enemy._box(Vector3(0.5, 0.18, 0.4)), hood, Vector3(0, 0.46, -0.1)))
+	# A skull in a deep hood: glowing eyes and a jaw that works when he grunts.
+	var head := Node3D.new()
+	head.position = Vector3(0, 0.62, 0.12)
+	torso.add_child(head)
+	head.add_child(_mesh(Enemy._box(Vector3(0.3, 0.28, 0.3)), bone, Vector3(0, 0.02, 0)))
+	head.add_child(_mesh(Enemy._box(Vector3(0.42, 0.4, 0.34)), hood, Vector3(0, 0.07, -0.07)))
+	for side in [-1.0, 1.0]:
+		head.add_child(_mesh(Enemy._box(Vector3(0.07, 0.05, 0.02)), eyes, Vector3(0.07 * side, 0.05, 0.155)))
+	head.add_child(_mesh(Enemy._box(Vector3(0.05, 0.05, 0.02)), _material("merchant_nose", Color(0.15, 0.12, 0.1)), Vector3(0, -0.03, 0.155)))
+	var jaw := Node3D.new()
+	jaw.position = Vector3(0, -0.12, 0.02)
+	head.add_child(jaw)
+	jaw.add_child(_mesh(Enemy._box(Vector3(0.24, 0.07, 0.24)), bone, Vector3(0, -0.03, 0.02)))
+	# Long bony arms reaching down to the table.
+	var hands: Array = []
+	for side in [-1.0, 1.0]:
+		var arm := _mesh(Enemy._box(Vector3(0.13, 0.13, 0.7)), robe, Vector3(0.36 * side, 1.25, 0.35))
+		arm.rotation.x = 0.55
+		root.add_child(arm)
+		var hand := Node3D.new()
+		hand.position = Vector3(0.36 * side, 0.98, 0.72)
+		root.add_child(hand)
+		hand.add_child(_mesh(Enemy._box(Vector3(0.16, 0.06, 0.18)), bone, Vector3.ZERO))
+		for finger in 3:
+			hand.add_child(_mesh(Enemy._box(Vector3(0.03, 0.03, 0.09)), bone, Vector3(-0.05 + finger * 0.05, -0.02, 0.12)))
+		hands.append(hand)
+	# A lantern on a crooked pole.
+	root.add_child(_mesh(Enemy._box(Vector3(0.06, 2.1, 0.06)), wood, Vector3(-0.85, 1.05, 0.1)))
+	root.add_child(_mesh(Enemy._box(Vector3(0.4, 0.05, 0.05)), wood, Vector3(-0.68, 2.08, 0.1)))
 	var lantern := _material("lantern", Color(1.0, 0.75, 0.3))
 	lantern.emission_enabled = true
 	lantern.emission = Color(1.0, 0.7, 0.3)
 	lantern.emission_energy_multiplier = 3.0
-	var keeper := StaticBody3D.new()
-	keeper.position = center + Vector3(0, 0, -3.5)
-	_level.add_child(keeper)
-	keeper.add_child(_mesh(Enemy._box(Vector3(0.7, 1.4, 0.5)), robe, Vector3(0, 0.7, 0)))
-	keeper.add_child(_mesh(Enemy._box(Vector3(0.36, 0.4, 0.36)), robe, Vector3(0, 1.62, 0)))
-	keeper.add_child(_mesh(Enemy._box(Vector3(0.22, 0.22, 0.04)), skin, Vector3(0, 1.6, 0.17)))
-	keeper.add_child(_mesh(Enemy._box(Vector3(0.14, 0.2, 0.14)), lantern, Vector3(0.45, 1.1, 0.25)))
-	keeper.rotation.y = PI
-	_add_solid(keeper, Vector3(0.7, 1.8, 0.5), Vector3(0, 0.9, 0))
+	root.add_child(_mesh(Enemy._box(Vector3(0.14, 0.2, 0.14)), lantern, Vector3(-0.5, 1.88, 0.1)))
 	var light := OmniLight3D.new()
 	light.light_color = Color(1.0, 0.7, 0.35)
 	light.light_energy = 1.8
 	light.omni_range = 6.0
-	light.position = keeper.position + Vector3(0, 2.0, 1.0)
-	_level.add_child(light)
+	light.position = Vector3(-0.5, 1.8, 0.6)
+	root.add_child(light)
+	_add_solid(root, Vector3(0.8, 1.9, 0.6), Vector3(0, 0.95, 0))
+	# His table, with the wares and a flask on it.
+	var table := StaticBody3D.new()
+	table.position = root.position + Vector3(0, 0, 0.95)
+	_level.add_child(table)
+	_block(table, Vector3(3.0, 0.12, 0.9), Vector3(0, 0.86, 0), wood)
+	for x in [-1.35, 1.35]:
+		for z in [-0.35, 0.35]:
+			table.add_child(_mesh(Enemy._box(Vector3(0.1, 0.8, 0.1)), wood, Vector3(x, 0.4, z)))
+	_add_solid(table, Vector3(3.0, 0.9, 0.9), Vector3(0, 0.45, 0))
+	var wares: Array = []
 	for i in 3:
 		var item := _merchant_item()
-		var price: int = WARE_PRICES.get(item.rarity, 20)
-		var stand := _stand(center + Vector3(-2.5 + i * 2.5, 0, -0.5), Items.rarity_color(item))
-		_interactables.append({"node": stand, "kind": "ware", "item": item, "price": price, "used": false})
-	var kit := _stand(center + Vector3(0, 0, 2.5), Color(0.9, 0.2, 0.2))
-	_interactables.append({"node": kit, "kind": "heal", "used": false})
+		var token := _ware_token(item, Vector3(-1.1 + i * 0.75, 1.05, 0.05))
+		table.add_child(token)
+		wares.append({"item": item, "price": int(WARE_PRICES.get(item.rarity, 20)), "sold": false, "token": token})
+	var flask := Node3D.new()
+	flask.position = Vector3(1.15, 1.04, 0.05)
+	table.add_child(flask)
+	var potion := StandardMaterial3D.new()
+	potion.albedo_color = Color(0.9, 0.15, 0.15)
+	potion.emission_enabled = true
+	potion.emission = Color(0.9, 0.15, 0.15)
+	potion.emission_energy_multiplier = 2.0
+	flask.add_child(_mesh(Enemy._box(Vector3(0.16, 0.2, 0.16)), potion, Vector3(0, 0, 0)))
+	flask.add_child(_mesh(Enemy._box(Vector3(0.07, 0.08, 0.07)), potion, Vector3(0, 0.14, 0)))
+	flask.add_child(_mesh(Enemy._box(Vector3(0.08, 0.04, 0.08)), wood, Vector3(0, 0.2, 0)))
+	_merchant = {"root": root, "head": head, "jaw": jaw, "hands": hands, "wares": wares, "flask": flask,
+			"heal_used": false, "grunt_in": 0.0, "near": false, "jaw_time": 0.0, "time": 0.0}
+	_interactables.append({"node": table, "kind": "merchant", "used": false})
+
+
+## A ware on the table: a small glowing piece in its rarity's color.
+func _ware_token(item: Dictionary, at: Vector3) -> Node3D:
+	var color := Items.rarity_color(item)
+	var glow := StandardMaterial3D.new()
+	glow.albedo_color = color
+	glow.emission_enabled = true
+	glow.emission = color
+	glow.emission_energy_multiplier = 2.2
+	var token := Node3D.new()
+	token.position = at
+	var size: Vector3 = {"gloves": Vector3(0.18, 0.14, 0.2), "wraps": Vector3(0.22, 0.08, 0.16),
+			"boots": Vector3(0.14, 0.16, 0.24), "charm": Vector3(0.12, 0.12, 0.04)}.get(item.slot, Vector3.ONE * 0.16)
+	token.add_child(_mesh(Enemy._box(size), glow, Vector3.ZERO))
+	return token
+
+
+## Breathing, watching you, tapping the table, and grunting now and then.
+func _animate_merchant(delta: float) -> void:
+	if _merchant.is_empty():
+		return
+	var root: Node3D = _merchant.root
+	_merchant.time += delta
+	var time: float = _merchant.time
+	var to_player := root.to_local(_player.global_position)
+	var near := to_player.length() < 8.0
+	var head: Node3D = _merchant.head
+	var look := clampf(atan2(to_player.x, to_player.z), -0.8, 0.8) if near else sin(time * 0.4) * 0.4
+	head.rotation.y = lerp_angle(head.rotation.y, look, minf(1.0, 4.0 * delta))
+	head.rotation.x = sin(time * 1.3) * 0.05
+	root.scale.y = 1.0 + sin(time * 1.6) * 0.012
+	for i in _merchant.hands.size():
+		var hand: Node3D = _merchant.hands[i]
+		hand.position.y = 0.98 + maxf(0.0, sin(time * 5.0 + i * 1.4)) * 0.035 * (1.0 if i == 0 else 0.4)
+	for ware in _merchant.wares:
+		if not ware.sold:
+			(ware.token as Node3D).rotation.y += delta * 0.8
+	# A grunt when you walk up, then every so often while you're near.
+	if near and not _merchant.near:
+		_merchant_grunt()
+	elif near:
+		_merchant.grunt_in -= delta
+		if _merchant.grunt_in <= 0.0:
+			_merchant_grunt()
+	_merchant.near = near
+	_merchant.jaw_time = maxf(0.0, _merchant.jaw_time - delta)
+	var jaw: Node3D = _merchant.jaw
+	jaw.rotation.x = absf(sin(_merchant.jaw_time * 26.0)) * 0.4 if _merchant.jaw_time > 0.0 else 0.0
+
+
+func _merchant_grunt(pitch := 1.0) -> void:
+	var head: Node3D = _merchant.head
+	Sfx.play_at("grunt", head.global_position, -2.0, pitch * randf_range(0.85, 1.1))
+	_merchant.jaw_time = 0.35
+	_merchant.grunt_in = randf_range(5.0, 9.0)
+
+
+func _open_merchant() -> void:
+	var wares: Array = _merchant.wares.map(func(ware: Dictionary) -> Dictionary: return {"item": ware.item, "price": ware.price, "sold": ware.sold})
+	_hud.show_merchant(wares, {"price": HEAL_PRICE, "percent": roundi(HEAL_FRACTION * 100), "used": _merchant.heal_used}, _silver)
+
+
+func _on_ware_chosen(index: int) -> void:
+	if index < 0:
+		if _merchant.heal_used or _silver < HEAL_PRICE:
+			return
+		_silver -= HEAL_PRICE
+		_merchant.heal_used = true
+		(_merchant.flask as Node3D).queue_free()
+		_player.heal(_player.max_knuckles * HEAL_FRACTION)
+		Sfx.play("heal", 0.0, 1.1)
+	else:
+		var ware: Dictionary = _merchant.wares[index]
+		if ware.sold or _silver < int(ware.price):
+			return
+		_silver -= int(ware.price)
+		ware.sold = true
+		(ware.token as Node3D).queue_free()
+		Sfx.play("coin")
+		_equip(ware.item)
+	_merchant_grunt(1.25)
+	_update_info()
+	_open_merchant()
 
 
 func _merchant_item() -> Dictionary:
@@ -1147,46 +1283,6 @@ func _merchant_item() -> Dictionary:
 	while item.rarity == "common":
 		item = Items.roll(_floor)
 	return item
-
-
-## A stone stand with a glowing token on top (named "Ware", removed when sold).
-func _stand(at: Vector3, color: Color) -> Node3D:
-	var stand := StaticBody3D.new()
-	stand.position = at
-	_level.add_child(stand)
-	_block(stand, Vector3(0.7, 0.9, 0.7), Vector3(0, 0.45, 0), _material("stone", _theme.wall))
-	var glow := StandardMaterial3D.new()
-	glow.albedo_color = color
-	glow.emission_enabled = true
-	glow.emission = color
-	glow.emission_energy_multiplier = 2.5
-	var ware := _mesh(Enemy._box(Vector3(0.3, 0.3, 0.3)), glow, Vector3(0, 1.15, 0))
-	ware.name = "Ware"
-	ware.rotation = Vector3(0.6, 0.6, 0)
-	stand.add_child(ware)
-	return stand
-
-
-func _offer_ware(ware: Dictionary) -> void:
-	var item: Dictionary = ware.item
-	_pending_item = item
-	_offer_thing = ware
-	var affordable: bool = _silver >= ware.price
-	var accept := ("Buy   %d {silver}" % ware.price) if affordable else ("Need %d {silver}  (you have %d)" % [ware.price, _silver])
-	_hud.show_item_offer(item, GameState.equipped.get(item.slot, {}), 0, accept, "Leave it", affordable)
-
-
-func _buy_heal(kit: Dictionary) -> void:
-	if _silver < HEAL_PRICE:
-		_hud.announce_small("Need %d {silver}" % HEAL_PRICE, Color(1.0, 0.5, 0.4))
-		return
-	_silver -= HEAL_PRICE
-	kit.used = true
-	var stand: Node3D = kit.node
-	stand.get_node("Ware").queue_free()
-	_player.heal(_player.max_knuckles * HEAL_FRACTION)
-	Sfx.play("heal", 0.0, 1.1)
-	_update_info()
 
 
 ## An altar with a pale flame: trade a quarter of your max knuckle HP (taken
