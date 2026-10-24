@@ -24,11 +24,14 @@ static func stock() -> Array:
 	return GameState.shop_stock
 
 
-## Stock priced before the current price list (unsold gear), restocked so old
-## bargains don't linger.
+## Unsold gear from older rules (another price, or deeper than the Crypt
+## you've beaten), restocked so it doesn't linger.
 static func _stale() -> bool:
 	for offer in GameState.shop_stock:
-		if offer.kind == "gear" and not offer.sold and int(offer.price) != int(GEAR_PRICE.get(offer.item.rarity, -1)):
+		if offer.kind != "gear" or offer.sold:
+			continue
+		if int(offer.price) != int(GEAR_PRICE.get(offer.item.rarity, -1)) \
+				or int(offer.item.get("floor", 1)) > maxi(1, GameState.crypt_floors_cleared):
 			return true
 	return false
 
@@ -42,7 +45,9 @@ static func restock() -> void:
 	for class_id in FIGHTERS:
 		if not class_id in GameState.class_ids():
 			offers.append({"kind": "fighter", "id": class_id, "price": FIGHTERS[class_id], "sold": false})
-	var floor_number := maxi(2, Progression.current_tier() * Progression.FLOORS_PER_TIER)
+	# Only as strong as the deepest Crypt floor you've beaten (floor 1 before
+	# any), so cheesing a boss for a higher tier doesn't buy better gear.
+	var floor_number := maxi(1, GameState.crypt_floors_cleared)
 	for i in GEAR_SLOTS:
 		var rarity := _pick_rarity()
 		var item: Dictionary = Items._roll_with(floor_number, Items.SLOTS.pick_random(), rarity)

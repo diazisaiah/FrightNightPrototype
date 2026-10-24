@@ -1171,7 +1171,7 @@ Each fighter has **three passives and two ultimates** (`abilities.gd`): the defa
 ### The Soul Shop
 A **Shop** tab in camp (`soul_shop.gd`) where you spend **Souls**:
 - **2 emotes** you don't have yet, 5 Souls each. Achievements still unlock theirs free; buying one just skips ahead (`GameState.emotes_bought`).
-- **3 pieces of gear** rolled for your tier, mostly plain so the shop never replaces the Crypt: common 4 Souls (50%), uncommon 8 (32%), rare 15 (13%), epic 25 (4%), legendary 40 (1%). Bosses drop 1 + tier Souls, so a rare is several bosses' worth. Bought gear goes straight to the armory.
+- **3 pieces of gear** rolled at the deepest Crypt floor you've beaten (floor 1 if none), never your tier, so cheesing a boss for a higher tier doesn't buy stronger gear. Mostly plain so the shop never replaces the Crypt: common 4 Souls (50%), uncommon 8 (32%), rare 15 (13%), epic 25 (4%), legendary 40 (1%). Bosses drop 1 + tier Souls, so a rare is several bosses' worth. Bought gear goes straight to the armory.
 - **Fighters**, as new ones are added (`SoulShop.FIGHTERS`; Tony stays secret).
 - **Restock after every fight:** each return to camp from the Arena, Crypt or Dead League counts (`GameState.fights_done`, counted in `Loading.go`). Sold offers stay sold until then.
 - **Reroll:** 1 Soul, +1 each time, resets on restock.
