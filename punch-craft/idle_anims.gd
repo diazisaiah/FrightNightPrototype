@@ -13,6 +13,7 @@ class_name IdleAnims
 ## without a shape keeps its last. The hands go back to rest after the last key.
 ## prop: where the idle's prop (coin, skull, flame) goes this key: to that
 ## hand's anchor (palm, top, tip, thumb) plus lift meters, arcing if arc.
+## hold: a prop gripped in each fist the whole time (a bone for drumsticks).
 
 ## Hand shapes: f = all finger curl (1 = fist), f0-f3 one finger (index to
 ## pinky), t = thumb curl, tu = thumb up, spread = fingers fanned.
@@ -26,6 +27,9 @@ const SHAPES := {
 	"claw": {"f": 0.7, "t": 0.7, "spread": 0.9},
 	"point": {"f": 1.0, "f0": 0.0, "t": 1.0},
 	"gun": {"f": 1.0, "f0": 0.0, "t": 0.0},
+	"gun_fire": {"f": 1.0, "f0": 0.0, "t": 0.6},
+	"pinky_up": {"f": 0.85, "f3": 0.0, "t": 0.8},
+	"pinky_wiggle": {"f": 0.85, "f3": 0.4, "t": 0.8},
 	"pinch": {"f": 0.8, "f0": 0.5, "t": 0.5},
 	"flick_ready": {"f": 1.0, "f0": 0.6, "t": 1.0},
 	"flick": {"f": 1.0, "f0": 0.35, "t": 0.0, "tu": 0.8},
@@ -42,12 +46,16 @@ const REST := [Vector3.ZERO, Vector3.ZERO, "fist"]
 ## palm face (so the fingers are actually seen). A key can name one:
 ## [pose, shape] or [pose, shape, nudge].
 const POSES := {
-	"palm_face": [Vector3(-0.14, -0.052, -0.146), Vector3(0.85, -0.18, 3.64)],
+	"palm_face": [Vector3(-0.14, -0.052, -0.146), Vector3(0.85, -0.18, -2.64)],
 	"back_face": [Vector3(-0.14, -0.052, -0.146), Vector3(0.85, -0.18, 0.5)],
-	"palm_up": [Vector3(-0.032, 0.153, -0.014), Vector3(-0.45, 0.27, 3.64)],
-	"palm_up_lift": [Vector3(-0.034, 0.169, -0.017), Vector3(-0.35, 0.27, 3.64)],
-	"gun": [Vector3(0.022, 0.176, -0.019), Vector3(-0.25, 0.37, -1.07)],
-	"gun_kick": [Vector3(-0.014, 0.081, -0.068), Vector3(0.2, 0.37, -1.07)],
+	"palm_up": [Vector3(-0.032, 0.153, -0.014), Vector3(-0.45, 0.27, -2.64)],
+	"palm_up_lift": [Vector3(-0.034, 0.169, -0.017), Vector3(-0.35, 0.27, -2.64)],
+	"gun": [Vector3(-0.007, 0.093, -0.007), Vector3(-0.15, 0.02, -1.07)],
+	"gun_kick": [Vector3(-0.021, 0.008, -0.066), Vector3(0.25, 0.02, -1.07)],
+	"ring_turn": [Vector3(-0.194, -0.057, -0.109), Vector3(0.7, -0.38, 0.25)],
+	"nose_in": [Vector3(-0.227, -0.049, -0.141), Vector3(1.5, -0.13, -1.07)],
+	"nose_near": [Vector3(-0.201, -0.12, -0.11), Vector3(1.1, -0.1, -1.07)],
+	"nose_out": [Vector3(-0.143, -0.1, -0.082), Vector3(0.65, -0.06, -1.07)],
 	"meet": [Vector3(0.008, 0.113, -0.046), Vector3(-0.15, 0.57, 0.3)],
 	"apart": [Vector3(0.037, 0.103, 0.002), Vector3(-0.15, 0.37, 0.3)],
 	"side_in": [Vector3(0.049, 0.14, -0.032), Vector3(-0.2, 0.52, -1.07)],
@@ -56,8 +64,8 @@ const POSES := {
 	"push_out": [Vector3(-0.109, -0.003, -0.263), Vector3(0.75, -0.08, 0.5)],
 	"fist_up": [Vector3(-0.102, -0.023, -0.051), Vector3(0.6, 0.07, 1.1)],
 	"ring_show": [Vector3(-0.194, -0.057, -0.109), Vector3(0.7, -0.38, 0.8)],
-	"ring_rub": [Vector3(-0.044, -0.016, -0.099), Vector3(0.4, 0.72, 2.07)],
-	"tug": [Vector3(-0.064, 0.008, -0.048), Vector3(0.1, 0.82, 2.07)],
+	"ring_rub": [Vector3(-0.044, -0.016, -0.099), Vector3(0.4, 0.72, -1.07)],
+	"tug": [Vector3(-0.064, 0.008, -0.048), Vector3(0.1, 0.82, -1.07)],
 }
 const UP := Vector3(0, 0.02, 0)
 
@@ -67,7 +75,7 @@ const BASE := {
 	"free_runner": "shake_out", "wise_guy": "pinky_ring", "elementalist": "palm_flame",
 }
 ## Sold in the Soul Shop; any fighter can wear them.
-const SHOP := ["fist_bump", "coin_flip", "juggler", "drum_roll", "windmill", "stretch", "finger_guns"]
+const SHOP := ["fist_bump", "coin_flip", "juggler", "drum_roll", "windmill", "stretch", "finger_guns", "nose_pick"]
 
 const ANIMS := {
 	"glove_tap": {"name": "Glove Tap", "keys": [
@@ -90,15 +98,12 @@ const ANIMS := {
 		[0.14, {"r": ["low", "relax", UP], "l": ["low", "relax", UP]}],
 	]},
 	"shadowbox": {"name": "Shadowbox", "keys": [
-		[0.3, {"r": ["back_face", "ripple0"], "l": ["back_face", "ripple0"]}],
-		[0.07, {"r": ["back_face", "ripple1"], "l": ["back_face", "ripple1"]}],
-		[0.07, {"r": ["back_face", "ripple2"], "l": ["back_face", "ripple2"]}],
-		[0.07, {"r": ["back_face", "ripple3"], "l": ["back_face", "ripple3"]}],
-		[0.07, {"r": ["back_face", "ripple0"], "l": ["back_face", "ripple0"]}],
-		[0.07, {"r": ["back_face", "ripple1"], "l": ["back_face", "ripple1"]}],
-		[0.07, {"r": ["back_face", "ripple2"], "l": ["back_face", "ripple2"]}],
-		[0.07, {"r": ["back_face", "ripple3"], "l": ["back_face", "ripple3"]}],
-		[0.15, {"r": REST, "l": REST}],
+		[0.2, {"r": ["low", "loose"], "l": ["low", "loose"]}],
+		[0.07, {"r": ["low", "loose", Vector3(0, 0.02, 0)], "l": ["low", "loose", Vector3(0, -0.015, 0)]}],
+		[0.07, {"r": ["low", "loose", Vector3(0, -0.015, 0)], "l": ["low", "loose", Vector3(0, 0.02, 0)]}],
+		[0.07, {"r": ["low", "loose", Vector3(0, 0.02, 0)], "l": ["low", "loose", Vector3(0, -0.015, 0)]}],
+		[0.07, {"r": ["low", "loose", Vector3(0, -0.015, 0)], "l": ["low", "loose", Vector3(0, 0.02, 0)]}],
+		[0.12, {"r": REST, "l": REST, "sfx": ["hit", -18.0, 1.7]}],
 		[0.08, {"l": [Vector3(-0.05, 0.08, -0.12), Vector3(-0.2, 0.08, 0.25), "fist"], "trail": true}],
 		[0.08, {"l": REST}],
 		[0.08, {"r": [Vector3(-0.07, 0.08, -0.14), Vector3(-0.2, 0.12, 0.25), "fist"], "trail": true}],
@@ -116,12 +121,14 @@ const ANIMS := {
 		[0.25, {"r": REST, "l": REST, "sfx": ["hit", -18.0, 1.6]}],
 	]},
 	"pinky_ring": {"name": "Pinky Ring", "keys": [
-		[0.4, {"l": ["ring_show", "open"], "r": ["low", "point"]}],
-		[0.25, {"r": ["ring_rub", "point"]}],
-		[0.12, {"r": ["ring_rub", "point", Vector3(0, 0.015, 0)]}],
-		[0.12, {"r": ["ring_rub", "point"]}],
-		[0.12, {"r": ["ring_rub", "point", Vector3(0, 0.015, 0)], "sfx": ["coin", -16.0, 1.6]}],
-		[0.3, {"r": ["low", "relax"], "l": ["ring_show", "wide"]}],
+		[0.4, {"l": ["ring_show", "open"], "r": ["low", "relax"]}],
+		[0.25, {"l": ["ring_show", "pinky_up"]}],
+		[0.3, {"l": ["ring_turn", "pinky_up"]}],
+		[0.3, {"l": ["ring_show", "pinky_up"], "sfx": ["coin", -16.0, 1.6]}],
+		[0.1, {"l": ["ring_show", "pinky_wiggle"]}],
+		[0.1, {"l": ["ring_show", "pinky_up"]}],
+		[0.1, {"l": ["ring_show", "pinky_wiggle"]}],
+		[0.1, {"l": ["ring_show", "pinky_up"], "sfx": ["coin", -18.0, 1.9]}],
 		[0.3, {"l": ["ring_show", "relax"]}],
 	]},
 	"palm_flame": {"name": "Palm Flame", "keys": [
@@ -156,7 +163,7 @@ const ANIMS := {
 		[0.45, {"r": ["palm_up", "claw"], "prop": ["l", "palm", 0.03, true]}],
 		[0.2, {"l": ["palm_up", "claw"]}],
 	], "prop": "skull"},
-	"drum_roll": {"name": "Drum Roll", "keys": [
+	"drum_roll": {"name": "Drum Roll", "hold": "bone", "keys": [
 		[0.2, {"r": [Vector3(0.02, -0.12, 0.05), Vector3(0.4, 0.0, 0.0), "fist"], "l": [Vector3(0.02, -0.12, 0.05), Vector3(0.4, 0.0, 0.0), "fist"]}],
 		[0.06, {"r": [Vector3(0.02, -0.06, 0.04), Vector3(0.1, 0.0, 0.0)], "sfx": ["tick", -10.0, 0.6]}],
 		[0.06, {"r": [Vector3(0.02, -0.12, 0.05), Vector3(0.4, 0.0, 0.0)], "l": [Vector3(0.02, -0.06, 0.04), Vector3(0.1, 0.0, 0.0)], "sfx": ["tick", -10.0, 0.55]}],
@@ -185,13 +192,24 @@ const ANIMS := {
 		[0.15, {"r": ["push_out", "wide"], "l": ["push_out", "wide"]}],
 		[0.4, {"r": ["low", "loose"], "l": ["low", "loose"]}],
 	]},
+	"nose_pick": {"name": "Nose Pick", "keys": [
+		[0.35, {"r": ["nose_near", "point"]}],
+		[0.25, {"r": ["nose_in", "point"], "sfx": ["draw", -20.0, 1.8]}],
+		[0.12, {"r": ["nose_in", "point", Vector3(0.005, 0.008, 0)]}],
+		[0.12, {"r": ["nose_in", "point"]}],
+		[0.3, {"r": ["nose_out", "point"], "prop": ["r", "index", 0.0]}],
+		[0.25, {"r": ["nose_out", "flick_ready"], "prop": ["r", "index", 0.0]}],
+		[0.1, {"r": ["nose_out", "flick"], "prop": ["r", "fling", 0.0, true], "sfx": ["whoosh", -16.0, 1.8]}],
+		[0.35, {"r": ["nose_out", "relax"], "hide_prop": true}],
+	], "prop": "booger"},
 	"finger_guns": {"name": "Finger Guns", "keys": [
-		[0.3, {"r": ["gun", "gun"], "l": ["gun", "gun"]}],
-		[0.08, {"r": ["gun_kick", "gun"], "sfx": ["twang", -12.0, 1.6]}],
+		[0.3, {"r": ["gun", "gun"]}],
+		[0.08, {"r": ["gun_kick", "gun_fire"], "sfx": ["twang", -12.0, 1.6]}],
 		[0.2, {"r": ["gun", "gun"]}],
-		[0.08, {"l": ["gun_kick", "gun"], "sfx": ["twang", -12.0, 1.4]}],
 		[0.25, {"l": ["gun", "gun"]}],
-		[0.3, {"r": ["gun_kick", "gun"], "l": ["gun_kick", "gun"], "sfx": ["whoosh", -18.0, 0.8]}],
+		[0.08, {"l": ["gun_kick", "gun_fire"], "sfx": ["twang", -12.0, 1.4]}],
+		[0.2, {"l": ["gun", "gun"]}],
+		[0.3, {"r": ["gun_kick", "point"], "l": ["gun_kick", "point"], "sfx": ["whoosh", -18.0, 0.8]}],
 	]},
 }
 

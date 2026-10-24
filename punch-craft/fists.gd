@@ -232,6 +232,8 @@ var idle_playing := false
 ## No idle sounds (previews).
 var silent := false
 var _idle_prop: Node3D
+## Props gripped in the fists for the whole idle (IdleAnims hold).
+var _held: Array[Node3D] = []
 ## The idle, as segments: {t0, t1, from: {hand: [pos, rot, shape]}, to, spec}.
 var _idle_segments: Array = []
 var _idle_time := 0.0
@@ -275,6 +277,13 @@ func play_idle(id: String) -> void:
 		_idle_prop = _make_prop(anim.prop)
 		_idle_prop.visible = false
 		add_child(_idle_prop)
+	if anim.has("hold"):
+		for hand in ["left", "right"]:
+			var held := _make_prop(anim.hold)
+			held.position = _mirror_pos(Vector3(0, -0.005, -0.36), -1.0 if hand == "left" else 1.0)
+			held.rotation = Vector3(-0.35, 0, 0)
+			(_arms[hand] as Node3D).add_child(held)
+			_held.append(held)
 
 
 ## A key's target for one hand: [pose, shape, nudge] (IdleAnims.POSES) or
@@ -345,6 +354,10 @@ func _on_segment(spec: Dictionary) -> void:
 			_prop_to = to
 			_prop_arc = to.size() > 3 and to[3]
 			_idle_prop.visible = true
+		else:
+			# Nothing new: it stays in the hand it landed in.
+			_prop_from = _prop_to
+			_prop_arc = false
 		if spec.get("hide_prop", false):
 			_idle_prop.visible = false
 
@@ -391,7 +404,11 @@ func _resolve_contact() -> void:
 func _anchor_point(spec: Array) -> Vector3:
 	var hand := "left" if spec[0] == "l" else "right"
 	var point: Vector3 = {"palm": Vector3(0, -0.055, -0.34), "top": Vector3(0, 0.05, -0.33),
-			"tip": Vector3(0, -0.01, -0.44), "thumb": Vector3(-0.035, 0.02, -0.4)}.get(spec[1], Vector3(0, 0, -0.34))
+			"tip": Vector3(0, -0.01, -0.44), "index": Vector3(-0.034, 0.005, -0.44), "thumb": Vector3(-0.035, 0.02, -0.4)}.get(spec[1], Vector3(0, 0, -0.34))
+	if spec[1] == "fling":
+		# Flicked off the fingertip, off into the distance.
+		point = Vector3(-0.034, 0.005, -0.44)
+		return (_arms[hand] as Node3D).transform * _mirror_pos(point, -1.0 if hand == "left" else 1.0) + Vector3(-0.25, 0.2, -1.1)
 	return (_arms[hand] as Node3D).transform * _mirror_pos(point, -1.0 if hand == "left" else 1.0) + Vector3(0, float(spec[2]), 0)
 
 
@@ -405,6 +422,10 @@ func _move_prop(u: float) -> void:
 
 
 func _clear_prop() -> void:
+	for held in _held:
+		if is_instance_valid(held):
+			held.queue_free()
+	_held.clear()
 	if is_instance_valid(_idle_prop):
 		_idle_prop.queue_free()
 	_idle_prop = null
@@ -434,6 +455,26 @@ func _make_prop(kind: String) -> Node3D:
 			var gold := _glow(Color(1.0, 0.8, 0.2), 0.6)
 			gold.metallic = 0.8
 			part.call(coin, gold)
+		"booger":
+			var green := StandardMaterial3D.new()
+			green.albedo_color = Color(0.45, 0.62, 0.18)
+			green.roughness = 0.2
+			var blob := BoxMesh.new()
+			blob.size = Vector3(0.011, 0.009, 0.011)
+			part.call(blob, green)
+		"bone":
+			# A long bone gripped like a drumstick: a shaft out past the
+			# knuckles with a knobbed end each side.
+			var white := StandardMaterial3D.new()
+			white.albedo_color = Color(0.88, 0.85, 0.76)
+			var shaft := BoxMesh.new()
+			shaft.size = Vector3(0.014, 0.014, 0.2)
+			part.call(shaft, white, Vector3(0, 0, -0.06))
+			for end in [0.04, -0.16]:
+				for side in [-1.0, 1.0]:
+					var knob := BoxMesh.new()
+					knob.size = Vector3(0.016, 0.02, 0.022)
+					part.call(knob, white, Vector3(0.008 * side, 0, end))
 		"skull":
 			var bone := StandardMaterial3D.new()
 			bone.albedo_color = Color(0.86, 0.83, 0.74)
@@ -659,6 +700,21 @@ func _paint_fist(hand: Callable, fingers: Callable, hand_group := "skin", finger
 	_rig["t_1"] = {"parent": "t_0", "offset": Vector3(0, 0, -THUMB_LENGTH[0]), "closed": THUMB_CLOSED[1], "open": THUMB_OPEN[1]}
 	_paint_bone("t_0", THUMB_LENGTH[0], THUMB_SIZE, hand, hand_group)
 	_paint_bone("t_1", THUMB_LENGTH[1], THUMB_SIZE, hand, hand_group)
+
+
+## A ring around a finger bone, near its base (part of that bone, so it
+## moves with the finger). Glows with the ultimate (rim).
+func _ring(bone: String, color: Color) -> void:
+	var cells: Dictionary = _bone_cells.get(bone, {})
+	var half := FINGER_SIZE * 0.5
+	for x in range(-4, 4):
+		for y in range(-4, 4):
+			for z in range(-3, 0):
+				var p := (Vector3(x, y, z) + Vector3(0.5, 0.5, 0.5)) * VOXEL + Vector3(0, 0, -0.01)
+				var outside := absf(p.x) > half.x - 0.001 or absf(p.y) > half.y - 0.001
+				if outside and absf(p.x) <= half.x + VOXEL * 1.2 and absf(p.y) <= half.y + VOXEL * 1.2:
+					cells[Vector3i((p / VOXEL).floor())] = [_vary(color, p, 0.05), "rim"]
+	_bone_cells[bone] = cells
 
 
 ## A bone's closed-fist transform (painting space).
@@ -966,8 +1022,7 @@ func _paint_tony(_left: bool) -> void:
 	# Tape over the knuckles too (the first finger segments), fingertips bare.
 	_paint_fist(taped, _skin_fn(), "gear", "skin", taped, "gear")
 	# A gold pinky ring on each hand: Tony's got two.
-	var gold := Color(1.0, 0.78, 0.22)
-	_fill(Vector3(0.021, -0.045, -0.36), Vector3(0.048, 0.035, -0.351), _solid(gold, 0.05), "rim")
+	_ring("f3_0", Color(1.0, 0.78, 0.22))
 
 
 ## The Catalyst: a heavy old forearm (veins, white hairs) under a dark robe

@@ -1100,11 +1100,12 @@ After 5s of doing nothing (no keys or buttons held, no movement; looking around 
 **Rigged hands** (`fists.gd`): every finger is three jointed segments and the thumb two, pivoting at the knuckles; closed, they fold into the same fist as before (punches unchanged). Each fighter's colors (tape, wraps, creases) are painted where they fall in the fist, and anything painted over the knuckles (Tony's tape and ring, the Catalyst's runes) rides on the nearest finger. The Mauler's boxing gloves are mittens: the padded front bends as one piece, plus the thumb.
 - **Shapes** (`IdleAnims.SHAPES`): fist, open, wide, relax, loose, cup, claw, point, gun, pinch, flick, and finger ripples.
 - **Poses** (`IdleAnims.POSES`): named arm poses worked out from where the hand should sit in view and which way the palm faces (palm to face, back of hand, palm up, side-on, fists meeting...), so the fingers are actually seen.
+- **Palms turn the natural way** (supination: thumb outward) when they go palm up or palm to face.
 - **No passing through:** idles run frame by frame (not tweens); each frame the hands push apart where they'd overlap, so fists bump and stop.
 
-**Each fighter's own:** Mauler Glove Tap (gloves bump, then a punch into his own open glove), Answer Tape Check (flexes the hand, tugs his wrist tape), Blur Shadowbox (finger ripple, then a flurry), Stray Shake Out, Tony Pinky Ring (shows the ring, rubs it with a finger), Catalyst Palm Flame (a flame in his palm, tossed hand to hand, snuffed in a fist).
+**Each fighter's own:** Mauler Glove Tap (gloves bump, then a punch into his own open glove), Answer Tape Check (flexes the hand, tugs his wrist tape), Blur Shadowbox (shakes his wrists loose, snaps into fists, then a flurry), Stray Shake Out, Tony Pinky Ring (curls his other fingers to show the gold band on his pinky, turns the hand, wiggles it), Catalyst Palm Flame (a flame in his palm, tossed hand to hand, snuffed in a fist).
 
-**Soul Shop** (one per restock, 6 Souls), any fighter: Fist Bump (bump, then blow it up), Coin Flip (thumb flick, catch), Juggler (a skull tossed palm to palm), Drum Roll, Windmill, Stretch (fingers spread and rippling), Finger Guns.
+**Soul Shop** (one per restock, 6 Souls), any fighter: Fist Bump (bump, then blow it up), Coin Flip (thumb flick, catch), Juggler (a skull tossed palm to palm), Drum Roll (a bone in each fist for drumsticks), Windmill, Stretch (fingers spread and rippling), Finger Guns (one hand then the other, the thumb drops like a hammer), Nose Pick (the index finger goes up past the camera, then flicks a booger away).
 
 **Equip** per fighter in the Loadout's Hand Idle tab, each card playing live (`IdlePreview`); shop cards preview too.
 
