@@ -4,7 +4,7 @@ extends Control
 ## point web), Armory (kept Crypt gear) and Stats (stat points and a sheet). The class is chosen on the title screen
 ## (Menu button). Built in code because it's generated from the data in GameState.
 
-const PAGES := ["Upgrades", "Skills", "Armory", "Hats", "Stats"]
+const PAGES := ["Upgrades", "Skills", "Armory", "Hats", "Shop", "Stats"]
 const WORLD := preload("res://world.gd")
 const DUNGEON := preload("res://dungeon.gd")
 const DETAIL_WIDTH := 340.0
@@ -155,6 +155,7 @@ func _build_ui() -> void:
 	_add_page(page_area, "Skills", _build_tree_page("skill"))
 	_add_page(page_area, "Armory", _build_armory_page())
 	_add_page(page_area, "Hats", _build_hat_rack())
+	_add_page(page_area, "Shop", _build_shop_page())
 	_add_page(page_area, "Stats", _build_stats_page())
 
 
@@ -258,7 +259,7 @@ func _build_tabs() -> Control:
 	var league := Button.new()
 	league.text = "Dead League"
 	league.tooltip_text = "1v1 bouts against the contenders. Each first win breaks a seal on your upgrade web."
-	league.custom_minimum_size = Vector2(125, 40)
+	league.custom_minimum_size = Vector2(0, 40)
 	league.add_theme_color_override("font_color", UiTheme.GOLD)
 	league.pressed.connect(_start_dead_league)
 	tabs.add_child(league)
@@ -266,8 +267,8 @@ func _build_tabs() -> Control:
 		var start := Button.new()
 		start.text = mode[0]
 		start.theme_type_variation = "PrimaryButton"
-		start.custom_minimum_size = Vector2(140, 40)
-		start.add_theme_font_size_override("font_size", 19)
+		start.custom_minimum_size = Vector2(104, 40)
+		start.add_theme_font_size_override("font_size", 18)
 		start.pressed.connect(mode[1])
 		tabs.add_child(start)
 		# Locked things stay hidden: the Crypt appears with the Bellman's seal,
@@ -788,6 +789,7 @@ func _refresh() -> void:
 	_night_label.add_theme_color_override("font_color", UiTheme.GOLD)
 	_refresh_armory()
 	_refresh_hat_rack()
+	_refresh_shop()
 
 	for kind in _trees:
 		var tree: SkillTreeView = _trees[kind]
@@ -1225,6 +1227,121 @@ func _hat_card(id: String) -> Control:
 			var count := _label("x%d" % int(GameState.hats[id]), 12, UiTheme.MUTED)
 			count.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			column.add_child(count)
+	return card
+
+
+# --- Soul Shop -------------------------------------------------------------------------
+
+var _shop_grid: GridContainer
+var _shop_reroll: Button
+
+
+func _build_shop_page() -> Control:
+	var panel := PanelContainer.new()
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 12)
+	panel.add_child(column)
+	var header := HBoxContainer.new()
+	column.add_child(header)
+	var title := UiTheme.title_label("SOUL SHOP", 26, UiTheme.GOLD)
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header.add_child(title)
+	_shop_reroll = Button.new()
+	_shop_reroll.pressed.connect(func() -> void:
+		if SoulShop.reroll():
+			Sfx.play("coin", -4.0, 0.8)
+			_refresh_shop()
+		else:
+			Sfx.play("deny", -10.0))
+	header.add_child(_shop_reroll)
+	column.add_child(_label("Spend Souls on emotes and gear. New stock after every fight.", 14, UiTheme.MUTED))
+	_shop_grid = GridContainer.new()
+	_shop_grid.columns = 5
+	_shop_grid.add_theme_constant_override("h_separation", 12)
+	_shop_grid.add_theme_constant_override("v_separation", 12)
+	column.add_child(_shop_grid)
+	return panel
+
+
+func _refresh_shop() -> void:
+	if _shop_grid == null:
+		return
+	for child in _shop_grid.get_children():
+		child.queue_free()
+	var offers := SoulShop.stock()
+	for i in offers.size():
+		_shop_grid.add_child(_shop_card(i, offers[i]))
+	_shop_reroll.text = "Reroll  (%d Souls)" % SoulShop.reroll_price()
+	_shop_reroll.disabled = GameState.souls < SoulShop.reroll_price()
+	_chips.souls.set_amount(GameState.souls, true)
+
+
+func _shop_card(index: int, offer: Dictionary) -> Control:
+	var tint := UiTheme.SIGIL
+	var title := ""
+	var what := ""
+	var lines := ""
+	var icon_name := "star"
+	match offer.kind:
+		"emote":
+			title = Emotes.name_of(offer.id)
+			what = "EMOTE"
+			lines = "A dance for the wheel."
+			icon_name = "swoosh"
+		"gear":
+			var item: Dictionary = offer.item
+			tint = Items.RARITIES[item.rarity].color
+			title = item.name
+			what = "%s  %s" % [String(item.rarity).to_upper(), String(item.slot).to_upper()]
+			lines = GameState.effect_text(item.effects, 1)
+			icon_name = {"gloves": "glove", "wraps": "wraps", "boots": "boot", "charm": "medal"}.get(item.slot, "chest")
+		"fighter":
+			title = GameState.fighter_name(offer.id)
+			what = "FIGHTER"
+			icon_name = "fist"
+	var card := PanelContainer.new()
+	card.custom_minimum_size = Vector2(190, 250)
+	card.add_theme_stylebox_override("panel", UiTheme.box(Color(tint.darkened(0.8), 0.7), Color(tint, 0.8), 2, 10, 10.0))
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 6)
+	card.add_child(column)
+	var icon := IconView.new()
+	icon.icon = icon_name
+	icon.color = tint.lightened(0.2)
+	icon.custom_minimum_size = Vector2(48, 48)
+	icon.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	column.add_child(icon)
+	var name_label := _label(title, 15, UiTheme.TEXT)
+	name_label.add_theme_font_override("font", UiTheme.bold_font())
+	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	column.add_child(name_label)
+	var kind_label := _label(what, 11, tint.lightened(0.2))
+	kind_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	column.add_child(kind_label)
+	var detail := _label(lines, 12, UiTheme.GOOD if offer.kind == "gear" else UiTheme.MUTED)
+	detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	detail.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	detail.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	column.add_child(detail)
+	var buy := Button.new()
+	buy.custom_minimum_size.y = 40
+	if offer.sold:
+		buy.text = "SOLD"
+		buy.disabled = true
+	elif GameState.souls < int(offer.price):
+		buy.text = "%d Souls" % int(offer.price)
+		buy.disabled = true
+	else:
+		buy.text = "Buy  ·  %d Souls" % int(offer.price)
+		buy.theme_type_variation = "PrimaryButton"
+	buy.pressed.connect(func() -> void:
+		if SoulShop.buy(index):
+			Sfx.play("unlock", -6.0, 1.2)
+			if offer.kind == "gear":
+				_refresh_armory()
+			_refresh_shop())
+	column.add_child(buy)
 	return card
 
 

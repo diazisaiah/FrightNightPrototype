@@ -40,6 +40,10 @@ func go(path: String) -> void:
 	if _busy:
 		return
 	_busy = true
+	# Back to camp from a fight: the Soul Shop restocks (SoulShop).
+	var from := get_tree().current_scene.scene_file_path if get_tree().current_scene else ""
+	if path.ends_with("camp.tscn") and (from.ends_with("world.tscn") or from.ends_with("dungeon.tscn") or from.ends_with("dead_league_arena.tscn")):
+		GameState.fights_done += 1
 	get_tree().paused = false
 	_build(_pick(path))
 	_screen.modulate.a = 0.0

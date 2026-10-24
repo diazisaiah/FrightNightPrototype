@@ -1100,6 +1100,15 @@ var hats := {}
 var worn_hat := ""
 ## Mini tutorials already shown (Tutorial): {id: true}.
 var tips_seen := {}
+## The Soul Shop (SoulShop): its offers, when they were stocked (fights_done
+## then) and rerolls since; what's been bought.
+var shop_stock: Array = []
+var shop_restock_at := -1
+var shop_rerolls := 0
+var emotes_bought := {}
+var fighters_bought := {}
+## Fights finished (each return to camp from the Arena, Crypt or Dead League).
+var fights_done := 0
 ## Ability picks per fighter (Abilities): {class: {"passive": id, "ultimate": id}}.
 var loadouts := {}
 ## The Endless Arena's best score.
@@ -1350,6 +1359,15 @@ func passive_power() -> float:
 			var worth: float = nodes[id].effects.get("passive_power", 3 if int(nodes[id].get("ring", 1)) >= 6 else 1)
 			total += int(owned[id]) * worth
 	return total
+
+
+## A kept item straight into the armory (the Soul Shop's gear).
+func add_to_armory(item: Dictionary) -> void:
+	item.uid = _next_uid
+	_next_uid += 1
+	item.erase("found")
+	armory.append(item)
+	changed.emit()
 
 
 ## Marks a mini tutorial as shown (and saves).
@@ -1927,6 +1945,12 @@ func save_game() -> void:
 		"hats": hats,
 		"worn_hat": worn_hat,
 		"tips_seen": tips_seen,
+		"shop_stock": shop_stock,
+		"shop_restock_at": shop_restock_at,
+		"shop_rerolls": shop_rerolls,
+		"emotes_bought": emotes_bought,
+		"fighters_bought": fighters_bought,
+		"fights_done": fights_done,
 		"loadouts": loadouts,
 		"endless_best": endless_best,
 		"achievements": achievements,
@@ -2008,6 +2032,12 @@ func load_game() -> void:
 	tips_seen = data.get("tips_seen", {}).duplicate() if data.get("tips_seen", {}) is Dictionary else {}
 	achievements = data.get("achievements", {}).duplicate() if data.get("achievements", {}) is Dictionary else {}
 	power_pick = String(data.get("power_pick", ""))
+	shop_stock = data.get("shop_stock", []).duplicate(true) if data.get("shop_stock", []) is Array else []
+	shop_restock_at = int(data.get("shop_restock_at", -1))
+	shop_rerolls = int(data.get("shop_rerolls", 0))
+	emotes_bought = data.get("emotes_bought", {}).duplicate() if data.get("emotes_bought", {}) is Dictionary else {}
+	fighters_bought = data.get("fighters_bought", {}).duplicate() if data.get("fighters_bought", {}) is Dictionary else {}
+	fights_done = int(data.get("fights_done", 0))
 	loadouts = data.get("loadouts", {}).duplicate(true) if data.get("loadouts", {}) is Dictionary else {}
 	endless_best = int(data.get("endless_best", 0))
 	worn_hat = String(data.get("worn_hat", ""))
@@ -2260,6 +2290,12 @@ func _reset_fields() -> void:
 	hats = {}
 	worn_hat = ""
 	tips_seen = {}
+	shop_stock = []
+	shop_restock_at = -1
+	shop_rerolls = 0
+	emotes_bought = {}
+	fighters_bought = {}
+	fights_done = 0
 	loadouts = {}
 	endless_best = 0
 	achievements = {}

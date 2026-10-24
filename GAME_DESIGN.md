@@ -1093,53 +1093,88 @@ Older saves get what they'd already earned, quietly, when camp loads. The list a
 - `run_playground.bat` (or `.sh`, `-e` for the editor) syncs and launches it.
 - It opens on the training ring with a dev panel (F1): fighter, hat, every emote, spawn anything at any tier (veterans, bosses, contenders), freeze enemies, force any special on the nearest boxer, give and select a power line, god mode, fill the ultimate, +5 levels, replay tips, and arena theme backdrops.
 
-## Ability loadouts and the Soul Shop [Planned, 2026-10-24]
+## Ability loadouts and the Soul Shop [Built 2026-10-24]
 
-Each fighter gets **three passives and two ultimates**: the default plus two new passives, the default plus one new ultimate. They unlock at class level **5 / 10 / 15** and are picked in camp in a Loadout card, never mid-run. Each unlock gets a mini tutorial.
-- **Sidegrades, not upgrades:** each is tuned to the same POWER budget, so contenders stay fair.
-- **Skill webs adapt:** nodes that feed the passive or ultimate have a matching effect for each alternative, so skill points always count.
+Each fighter has **three passives and two ultimates** (`abilities.gd`): the default of each is free, the second passive unlocks at class level **5**, the second ultimate at **10**, the third passive at **15**. You pick them in camp with the **Loadout** button (it shows up once there's a choice), never mid-run. `GameState.loadouts` keeps each fighter's picks; `passive()` / `ultimate()` / `has_passive()` / `has_ultimate()` read them.
+- **Mini tutorial:** each new unlock gets a camp pointer at the Loadout button ("NEW PASSIVE: ...") until you open it.
+- **Skill webs adapt:** the nodes that fed the default passive (`Abilities.PASSIVE_NODES`) give **passive power** to whichever passive is equipped instead (+1 a level, +3 for a capstone, or the node's own `passive_power`). The detail panel says so. Every new passive scales with passive power (`player._pp()`), and POWER counts it (OFFENSE 0.02, DEFENSE 0.025 a point), so full webs still rate the same.
 - No floor punching or player ground slams.
 
 ### The Mauler
-- **Super Armor is scrapped** (weak next to Fuggedaboudit). His default passive becomes **Grudge**: whatever hits you is marked with a red skull, and your next punch on it deals triple and staggers.
-- Passives:
-  - **Wrecking Ball:** monsters you knock out fly like bowling balls and smash into others.
-  - **Berserker:** the lower your knuckles, the harder you hit.
-- Ultimates:
-  - **Inferno Uppercut, reworked:** he leaps with it, launching the enemy; more dramatic.
-  - **New: a shield** that absorbs a set number of hits. When it breaks it explodes in a radius, dealing damage based on what it absorbed to every monster around.
-- His super armor skill branch is reworked for Grudge and Berserker.
+- **Super armor is gone.** His default passive is **Grudge**: whatever hits you is marked with a red skull, and your next punch on it deals **x3** and staggers. His old super armor nodes (Short Fuse, Unbreakable, Payback, Berserk) feed passive power for all his passives; Juggernaut is now +6% knuckle HP and 25% less flinch.
 
-### The Answer (toned down: the strongest of the four)
-- **Perfect Counter and Riposte Stance** lose their instant KO and get a big counter-damage multiplier instead.
-- Passives:
-  - **Phantom Step:** dodging a ranged monster's projectile teleports you to that monster.
-  - **Dodge Chain:** each dodge in a row builds a charge, and the next punch spends it for a much stronger hit.
-- New ultimate **Flow State:** you dodge everything automatically, for much longer than Riposte Stance.
+| Passive | Level | What it does |
+|---|---|---|
+| Grudge | 1 | Hit him, get marked: next punch on you x3 and staggers. |
+| Wrecking Ball | 5 | A monster you KO flies like a bowling ball, smashing everything along its path for 2x damage. |
+| Berserker | 15 | Up to +60% damage as knuckle HP runs out. |
+
+| Ultimate | Level | What it does |
+|---|---|---|
+| Inferno Uppercut | 1 | Now **leaps** up to 7 m at the grudge target (or the nearest monster), then the flaming uppercut; the landing splash sets everything nearby alight. |
+| Brimstone Shield | 10 | A burning shield soaks the next 3 hits (12s). When it breaks it explodes (4 m) for 2x what it absorbed. |
+
+### The Answer (toned down)
+- **Perfect Counter** no longer KOs: it deals **x2.5** more, so Riposte Stance's counters no longer KO either.
+
+| Passive | Level | What it does |
+|---|---|---|
+| Perfect Counter | 1 | Dodge, then a matching-hand hook or uppercut: x2.5 (every 12s). |
+| Phantom Step | 5 | Dodge an arrow, fireball or bolt and you appear 1.3 m behind the shooter, counter ready (every 3s). |
+| Dodge Chain | 15 | Every dodge in a row adds +40% to your next punch (up to 6); the punch spends it. |
+
+| Ultimate | Level | What it does |
+|---|---|---|
+| Riposte Stance | 1 | Every attack slipped and answered with a counter hook, for a few seconds. |
+| Flow State | 10 | 10s of dodging everything automatically; punch freely. |
 
 ### The Blur
-- **Temporal Break:** lasts about twice as long, and you can move during it.
-- New passive **Echo Fists:** every punch repeats a beat later as a violet echo for part of its damage. A later skill node makes echoes add +0.05 to the combo multiplier.
-- New ultimate **Unbroken** (name to confirm): for about 10s every hit counts toward the combo multiplier, and your combo can't drop.
-- Third passive: **to be decided** (the user is suggesting one).
+- **Temporal Break** now starts with 6s (about twice as long) and you can **move** while time is stopped.
+
+| Passive | Level | What it does |
+|---|---|---|
+| Rapid Combos | 1 | Every 5th hit stuns everything nearby and holds the combo timer. |
+| Echo Fists | 5 | Every punch repeats 0.25s later as a violet echo for 30% damage. With the **Flurry** node, echoes add +0.05 to the combo multiplier. |
+| Long Reach | 15 | Punches reach 3.8 m instead of 2.5 m. |
+
+| Ultimate | Level | What it does |
+|---|---|---|
+| Temporal Break | 1 | Time stops; hit the prompts to land hits and buy back time. |
+| Unbroken | 10 | For 10s every hit grows the combo multiplier and the combo can't drop. |
 
 ### The Stray
-- New passive **Head Stomp:** jump on a monster's head to bounce off and stun it, chaining head to head.
-- New ultimate **Hype Train:** for a few seconds you sprint about 1.6x faster (3x was too fast) and bowl over every monster you run into.
-- Third passive: **to be decided.**
+
+| Passive | Level | What it does |
+|---|---|---|
+| Dash Punches | 1 | Spear Jab and Haymaker out of a dash. |
+| Head Stomp | 5 | Land on a monster's head: bounce off, stun it 1s, deal 1.5x; chain head to head. |
+| Momentum | 15 | Sprinting builds momentum (up to x2); your next punch that lands spends it as a multiplier. It fades if you stand still. |
+
+| Ultimate | Level | What it does |
+|---|---|---|
+| Highlight Reel | 1 | Blue lightning dash from monster to monster, ending in a leaping haymaker. |
+| Hype Train | 10 | For 6s you run 1.6x faster and bowl over every monster you run into for 2x damage. |
 
 ### Tony
-- New passive **The Muscle:** every 15s a ghostly goon, Cousin Vinnie, grabs the nearest monster and holds it for 2s.
-- New ultimate **The Family:** three ghost goons in fedoras brawl alongside Tony for 10s.
-- Third passive: **to be decided.**
+
+| Passive | Level | What it does |
+|---|---|---|
+| Fuggedaboudit | 1 | Wave off one hit every 10s, with a quip. |
+| The Muscle | 5 | Every 15s Cousin Vinnie, a ghostly goon in a fedora, grabs the nearest monster (within 8 m) and holds it 2s. |
+| The Take | 15 | +25% coins from everything (more with passive power), and enraged monsters pay double. |
+
+| Ultimate | Level | What it does |
+|---|---|---|
+| Big Mouth | 1 | Insult a monster: it comes only for you, hits harder and takes double. |
+| The Family | 10 | Three ghost goons in green suits and fedoras brawl beside you for 10s (`goon.gd`). |
 
 ### The Soul Shop
-A camp shop where you spend **Souls** on:
-- **emotes:** the same dances achievements give, plus future ones (achievements still unlock theirs for free);
-- **new fighters**, as they're added;
-- **equippable gear.**
-
-The stock **refreshes after every run** (each return to camp from a fight), with a paid reroll in Souls.
+A **Shop** tab in camp (`soul_shop.gd`) where you spend **Souls**:
+- **2 emotes** you don't have yet, 5 Souls each. Achievements still unlock theirs free; buying one just skips ahead (`GameState.emotes_bought`).
+- **3 pieces of gear** rolled for your tier: rare 3, epic 6, legendary 10 Souls (55% / 35% / 10%). Bought gear goes straight to the armory.
+- **Fighters**, as new ones are added (`SoulShop.FIGHTERS`; Tony stays secret).
+- **Restock after every fight:** each return to camp from the Arena, Crypt or Dead League counts (`GameState.fights_done`, counted in `Loading.go`). Sold offers stay sold until then.
+- **Reroll:** 1 Soul, +1 each time, resets on restock.
 
 ## Mini tutorials and one power at a time [Built 2026-10-23]
 

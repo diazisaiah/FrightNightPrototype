@@ -28,7 +28,7 @@ static func emotes() -> Array:
 
 
 static func emote_unlocked(emote: String) -> bool:
-	if emote in FREE_EMOTES:
+	if emote in FREE_EMOTES or GameState.emotes_bought.has(emote):
 		return true
 	for id in LIST:
 		if LIST[id].emote == emote and has(id):

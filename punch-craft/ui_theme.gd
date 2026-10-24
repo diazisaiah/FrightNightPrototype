@@ -138,14 +138,14 @@ static func make() -> Theme:
 	# Page tabs: flat, with a glowing gold underline on the open one.
 	theme.set_type_variation("TabButton", "Button")
 	var tab_normal := box(Color.TRANSPARENT, Color.TRANSPARENT, 0, 0, 0.0)
-	_set_margins(tab_normal, 18, 10)
+	_set_margins(tab_normal, 12, 10)
 	var tab_pressed := box(Color(1, 0.8, 0.4, 0.06), GOLD, 0, 0, 0.0)
 	tab_pressed.border_width_bottom = 3
 	tab_pressed.shadow_color = Color(GOLD, 0.25)
 	tab_pressed.shadow_size = 6
-	_set_margins(tab_pressed, 18, 10)
+	_set_margins(tab_pressed, 12, 10)
 	var tab_hover := box(Color(1, 1, 1, 0.05), Color.TRANSPARENT, 0, 0, 0.0)
-	_set_margins(tab_hover, 18, 10)
+	_set_margins(tab_hover, 12, 10)
 	theme.set_stylebox("normal", "TabButton", tab_normal)
 	theme.set_stylebox("hover", "TabButton", tab_hover)
 	theme.set_stylebox("pressed", "TabButton", tab_pressed)
