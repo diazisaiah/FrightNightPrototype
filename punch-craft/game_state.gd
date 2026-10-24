@@ -1097,6 +1097,11 @@ var hats := {}
 ## The hat your fighter wears (seen when you emote), "" for none. Cosmetic:
 ## every hat's boost counts once it's on the rack.
 var worn_hat := ""
+## Mini tutorials already shown (Tutorial): {id: true}.
+var tips_seen := {}
+## The one power that works (2026-10-23): a sigil node's id ("" for none).
+## Owning several powers, you pick one; only its line of upgrades counts.
+var power_pick := ""
 ## Daily drills: {drill: {"best": score, "day": "YYYY-MM-DD" of the last paid run}}.
 var drills := {}
 ## The drill picked in camp for the drills scene (not saved).
@@ -1223,6 +1228,9 @@ func get_effect(effect: String) -> float:
 		var nodes := tree(kind)
 		var owned := _levels(kind)
 		for id in owned:
+			# Only the selected power's line counts.
+			if kind == "upgrade" and not power_active(id):
+				continue
 			total += nodes[id].effects.get(effect, 0) * owned[id]
 	for slot in equipped:
 		total += equipped[slot].effects.get(effect, 0.0)
@@ -1232,6 +1240,55 @@ func get_effect(effect: String) -> float:
 		if Hats.CATALOG.has(id):
 			total += float(Hats.CATALOG[id].effects.get(effect, 0.0))
 	return total
+
+
+# --- Powers: one at a time ---------------------------------------------------------------
+
+## The power (sigil node id) an upgrade belongs to, or "" for none.
+static var _power_cache := {}
+
+
+static func power_of(id: String) -> String:
+	if _power_cache.is_empty():
+		for node_id in UPGRADES:
+			var current: String = node_id
+			var root := ""
+			for i in 20:
+				if SkillTreeView.BRANCHES.has(current):
+					root = current
+					break
+				var requires: Array = UPGRADES[current].requires
+				if requires.is_empty():
+					break
+				current = requires[0]
+			_power_cache[node_id] = root
+	return _power_cache.get(id, "")
+
+
+## Not part of a power, or part of the selected one.
+func power_active(id: String) -> bool:
+	var root := power_of(id)
+	return root == "" or root == power_pick
+
+
+## Picks which owned power works.
+func select_power(root: String) -> bool:
+	if not SkillTreeView.BRANCHES.has(root) or upgrade_levels.get(root, 0) <= 0:
+		return false
+	power_pick = root
+	_commit()
+	return true
+
+
+## Owned powers, in climb order.
+func owned_powers() -> Array:
+	return ["sigil_fire", "sigil_frost", "sigil_storm", "sigil_blood"].filter(func(root: String) -> bool: return upgrade_levels.get(root, 0) > 0)
+
+
+## Marks a mini tutorial as shown (and saves).
+func mark_tip(id: String) -> void:
+	tips_seen[id] = true
+	_commit()
 
 
 ## Tony joins the roster (the fourth Yonker, or the secret code in Settings).
@@ -1796,6 +1853,8 @@ func save_game() -> void:
 		"crypt_tier": crypt_tier,
 		"hats": hats,
 		"worn_hat": worn_hat,
+		"tips_seen": tips_seen,
+		"power_pick": power_pick,
 		"drills": drills,
 		"hat_pity": hat_pity,
 		"tony_unlocked": tony_unlocked,
@@ -1870,6 +1929,8 @@ func load_game() -> void:
 		for id in saved_hats:
 			hats[id] = int(saved_hats[id])
 	hat_pity = int(data.get("hat_pity", 0))
+	tips_seen = data.get("tips_seen", {}).duplicate() if data.get("tips_seen", {}) is Dictionary else {}
+	power_pick = String(data.get("power_pick", ""))
 	worn_hat = String(data.get("worn_hat", ""))
 	if not hats.has(worn_hat):
 		worn_hat = ""
@@ -1897,6 +1958,10 @@ func load_game() -> void:
 			_refund_old_web(data.get("upgrades", {}), old_sigils)
 	else:
 		_load_upgrades(data.get("upgrades", {}))
+	# Saves from before one-power-at-a-time keep their first power working.
+	if not power_pick in owned_powers():
+		var owned := owned_powers()
+		power_pick = owned[0] if not owned.is_empty() else ""
 
 	var saved_classes: Dictionary = data.get("classes", {})
 	if saved_classes.is_empty():
@@ -2115,6 +2180,8 @@ func _reset_fields() -> void:
 	crypt_tier = 1
 	hats = {}
 	worn_hat = ""
+	tips_seen = {}
+	power_pick = ""
 	drills = {}
 	hat_pity = 0
 	tony_unlocked = false

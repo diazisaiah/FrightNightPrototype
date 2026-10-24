@@ -42,9 +42,27 @@ func _ready() -> void:
 	if GameState.crypt_reveal_pending:
 		await _play_crypt_reveal()
 	if GameState.upgrade_notice != "":
-		GameDialog.open(self, "A NEW CLIMB", GameState.upgrade_notice, ["Let's go"])
+		var notice := GameDialog.open(self, "A NEW CLIMB", GameState.upgrade_notice, ["Let's go"])
 		GameState.upgrade_notice = ""
 		GameState.save_game()
+		notice.chosen.connect(func(_index: int) -> void: _camp_tips.call_deferred())
+	else:
+		_camp_tips()
+
+
+## Camp's mini tutorials (Tutorial), each once: after your first hat, the
+## Hat Rack.
+func _camp_tips() -> void:
+	if not is_inside_tree() or not Tutorial.seen("hat_first") or GameState.hats.is_empty():
+		return
+	var first := Tutorial.open(self, "hat_rack", "YOUR FIRST HAT!", "Every hat you take ends up on your Hat Rack. Open it here.",
+			_tab_buttons["Hats"], func() -> bool: return _pages["Hats"].visible, false)
+	if first == null:
+		return
+	first.finished.connect(func() -> void:
+		Tutorial.open(self, "hat_rack_tour", "THE HAT RACK",
+				"Every hat gives a small boost that's yours for good, worn or not, so collect them all!\n\nClick a hat to wear it, and hold %s in a fight to emote and show it off." % Controls.key_name("emote"),
+				_hat_grid, Callable(), false, true))
 
 
 ## Back from breaking the Bellman's seal: the menus fall away, the camera
@@ -396,7 +414,17 @@ func _buy_selected(kind: String) -> void:
 	var id := tree.selected_id
 	var node: Dictionary = GameState.tree(kind)[id]
 	var before := GameState.node_level(kind, id)
+	# An owned power's button selects it instead (one power at a time).
+	if kind == "upgrade" and SkillTreeView.BRANCHES.has(id) and before > 0:
+		if GameState.select_power(id):
+			Sfx.play("unlock", -6.0, 1.3)
+			tree.celebrate(id)
+			_refresh_detail(kind)
+		return
 	if GameState.buy_node(kind, id):
+		if kind == "upgrade" and SkillTreeView.BRANCHES.has(id) and GameState.power_pick == "":
+			_refresh_detail(kind)
+			_power_tip(kind)
 		tree.celebrate(id)
 		_pulse_detail(kind)
 		var awakened: bool = node.get("medallion", false) and before == 0
@@ -412,6 +440,15 @@ func _buy_selected(kind: String) -> void:
 		_shake(_details[kind].cost_row)
 		if GameState.node_sealed_by(kind, id) == "":
 			_chips["coins" if kind == "upgrade" else "skill_points"].deny()
+
+
+## The first power bought: a pointer at Select until it's picked.
+func _power_tip(kind: String) -> void:
+	var buy: Button = _details[kind].buy
+	var power_name: String = _trees[kind].branch_name(_trees[kind].selected_id).capitalize()
+	Tutorial.open(self, "power_select", "YOU UNLOCKED A POWER!",
+			"Powers are big upgrades you make stronger as you climb. You can only have one selected at a time, so pick the one you want working.\n\nSelect %s here." % power_name,
+			buy, func() -> bool: return GameState.power_pick != "", false, true)
 
 
 ## The detail panel's icon pops after a purchase.
@@ -461,6 +498,8 @@ func _refresh_detail(kind: String) -> void:
 	elif node.max_level == 1:
 		role = "KEYSTONE"
 	detail.branch.text = ("%s POWER  ·  %s" % [where, role]) if where != "" and not SkillTreeView.BRANCHES.has(id) else role
+	if kind == "upgrade" and not GameState.power_active(id):
+		detail.branch.text += "  ·  NOT SELECTED"
 	detail.branch.add_theme_color_override("font_color", tint)
 	detail.level.add_theme_color_override("font_color", tint)
 	detail.name.text = node.name
@@ -479,6 +518,13 @@ func _refresh_detail(kind: String) -> void:
 	detail.cost.text = cost_text
 
 	var buy: Button = detail.buy
+	if kind == "upgrade" and SkillTreeView.BRANCHES.has(id) and level > 0:
+		# Owned powers: pick the one that works.
+		var picked := GameState.power_pick == id
+		buy.text = "Selected" if picked else "Select"
+		buy.disabled = picked
+		detail.cost_row.visible = false
+		return
 	if maxed:
 		buy.text = "Maxed"
 		buy.disabled = true

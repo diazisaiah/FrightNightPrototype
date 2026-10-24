@@ -1063,6 +1063,25 @@ Now the generator tracks hands (jab left, cross right, a hook or uppercut from t
 
 Saved as `drills: {drill: {best, day}}`; the day is your own clock's date.
 
+## Mini tutorials and one power at a time [Built 2026-10-23]
+
+**Freeze-frame mini tutorials** (`tutorial.gd`): the screen dims except a spotlight on one thing (a spot in the world or a control), with a card. Each plays once per save (`GameState.tips_seen`), and only one per scene, so a round is never interrupted twice (chained follow-ups are the exception).
+- A **card** ("Got it") pauses the game.
+- A **pointer** has no button: only the spotlit control can be clicked, and it closes when its condition is met.
+
+The tips so far:
+- **First hatted monster** (`hat_first`, `Enemy._check_hat_lesson`): when a hatted monster is within 12 m and on screen, the game freezes on its hat. "Knock it off with an uppercut... This one only goes down to an uppercut." That monster gets "UPPERCUT IT! (your keys)" over its head and can't be finished by anything but an uppercut (it holds at 1 HP), so the hat always drops.
+- **Camp, after your first hat** (`hat_rack`, then `hat_rack_tour`): a pointer at the Hats tab, then a card on the rack (boosts are for good, worn or not, collect them all, click to wear, emote to show it off).
+- **First power bought** (`power_select`): "You unlocked a power!" with a pointer at Select until you press it.
+
+**One power at a time:** Fire, Storm, Frost and Blood each work only while selected (`GameState.power_pick`, `power_of`, `power_active`).
+- An owned power's Buy button becomes **Select** ("Selected" when it's the one).
+- Its line's nodes say "NOT SELECTED" when it isn't.
+- Buying deeper nodes still upgrades it.
+- Saves from before keep their first owned power selected.
+
+**Heavy bags** hang at eye level. The bag's collision now reaches the floor; before, gravity sank every bag 0.3 m into the canvas.
+
 ## Pausing without leaving full screen [Built 2026-10-23]
 
 In a browser, Esc also leaves full screen and frees the mouse, and a page normally can't stop that.

@@ -32,6 +32,7 @@ func _run() -> void:
 	_test_emotes_and_hats()
 	_test_pad_work_combos()
 	_test_gentler_ramp()
+	_test_one_power()
 	if _failures.is_empty():
 		print("BALANCE REGRESSION: PASS")
 		get_tree().quit(0)
@@ -648,3 +649,36 @@ func _test_gentler_ramp() -> void:
 	boss.is_boss = false
 	_check(boss.chill_length(5.0) == 5.0, "Other monsters stay frozen as long as Frost says")
 	boss.free()
+
+
+## Powers work one at a time (2026-10-23): only the selected power's line
+## counts, older saves keep their first power, and Select needs it owned.
+func _test_one_power() -> void:
+	GameState._reset_fields()
+	_check(GameState.power_of("sigil_fire") == "sigil_fire" and GameState.power_of("hotter_flames") == "sigil_fire", "Fire's line belongs to Fire")
+	_check(GameState.power_of("dmg_1") == "", "Spoke upgrades belong to no power")
+	_check(not GameState.select_power("sigil_fire"), "A power you don't own can't be selected")
+	GameState.upgrade_levels = {"sigil_fire": 1, "hotter_flames": 3, "sigil_frost": 1, "deep_freeze": 3}
+	var fire_only := 0.0
+	var frost_only := 0.0
+	GameState.select_power("sigil_fire")
+	fire_only = GameState.get_effect("burn_damage") + GameState.get_effect("frost_punch")
+	_check(GameState.get_effect("frost_punch") == 0.0, "An unselected power does nothing")
+	GameState.select_power("sigil_frost")
+	frost_only = GameState.get_effect("frost_punch")
+	_check(frost_only > 0.0 and GameState.power_active("deep_freeze") and not GameState.power_active("hotter_flames"), "Selecting Frost turns Frost on and Fire off")
+	# An old save with two powers and no pick keeps its first one working.
+	GameState.save_game()
+	var raw := FileAccess.get_file_as_string(GameState.save_path)
+	var data: Dictionary = JSON.parse_string(raw)
+	data.erase("power_pick")
+	var file := FileAccess.open(GameState.save_path, FileAccess.WRITE)
+	file.store_string(JSON.stringify(data))
+	file.close()
+	GameState.load_game()
+	_check(GameState.power_pick == "sigil_fire", "Older saves keep their first power selected (got %s)" % GameState.power_pick)
+	GameState._reset_fields()
+	_check(not Tutorial.seen("hat_first"), "Tips start unseen")
+	GameState.mark_tip("hat_first")
+	_check(Tutorial.seen("hat_first"), "A tip shows once")
+	GameState._reset_fields()

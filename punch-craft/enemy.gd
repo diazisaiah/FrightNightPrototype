@@ -88,6 +88,11 @@ var _taunt_time := 0.0
 var _taunt_fx: Node3D
 ## The hat this enemy wears (Hats.CATALOG id), or "".
 var hat := ""
+## The first hatted monster you meet (Tutorial "hat_first"): the game freezes
+## on its hat, and it can only be finished by an uppercut (so the hat comes off).
+var hat_lesson := false
+var _lesson_check := 0.0
+var _lesson_label: Label3D
 var _hat_node: Node3D
 var player: Player
 ## Multiplies the damage this enemy's attacks deal. Grows with the wave.
@@ -234,6 +239,7 @@ func _physics_process(delta: float) -> void:
 	var desired := Vector3.ZERO
 	var pace := 1.0
 	if not _dead:
+		_check_hat_lesson(delta)
 		_flash_timer -= delta
 		if _flash_timer <= 0.0:
 			_set_flash(false)
@@ -660,10 +666,46 @@ func _wear_hat() -> void:
 		Hats.sparkles(_hat_node, Hats.color(hat), 0.3)
 
 
+## The first time a hatted monster is close and on screen: freeze on its hat,
+## explain uppercuts, and mark it (UPPERCUT IT! over its head).
+func _check_hat_lesson(delta: float) -> void:
+	if hat == "" or hat_lesson or Tutorial.seen("hat_first") or not is_instance_valid(player) or not player.active:
+		return
+	_lesson_check -= delta
+	if _lesson_check > 0.0:
+		return
+	_lesson_check = 0.25
+	var camera := get_viewport().get_camera_3d()
+	var head := global_position + Vector3.UP * head_height * _body.scale.y
+	if camera == null or global_position.distance_to(player.global_position) > 12.0 or not camera.is_position_in_frustum(head):
+		return
+	var uppercut := Controls.text("uppercut")
+	var tip := Tutorial.open(self, "hat_first", "A MONSTER IN A HAT!",
+			"Knock it off with an uppercut (%s) and the hat is yours to keep. Finish a hatted monster with an uppercut and the hat always comes off.\n\nThis one only goes down to an uppercut." % uppercut,
+			_hat_node if _hat_node else self)
+	if tip == null:
+		return
+	hat_lesson = true
+	_lesson_label = Label3D.new()
+	_lesson_label.text = "UPPERCUT IT!  (%s)" % uppercut
+	_lesson_label.modulate = Color(1.0, 0.82, 0.35)
+	_lesson_label.position.y = 2.75 * _body.scale.y
+	_lesson_label.fixed_size = true
+	_lesson_label.pixel_size = 0.0012
+	_lesson_label.font_size = 34
+	_lesson_label.outline_size = 10
+	_lesson_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	_lesson_label.no_depth_test = true
+	add_child(_lesson_label)
+
+
 ## The hat flies off spinning, then the game pauses for the popup.
 func _pop_hat() -> void:
 	var id := hat
 	hat = ""
+	if _lesson_label:
+		_lesson_label.queue_free()
+		_lesson_label = null
 	if _hat_node == null or not is_instance_valid(_hat_node):
 		HatPopup.open(get_tree(), id)
 		return
@@ -890,6 +932,15 @@ var _wait_sign := 1.0
 
 
 func _die(push: Vector3) -> void:
+	# The hat lesson's monster only goes down to an uppercut.
+	if hat_lesson and hat != "" and finisher.get("type", "") != "uppercut":
+		hp = 1.0
+		_update_label()
+		DamagePopup.spawn(get_parent(), "UPPERCUT IT!", Color(1.0, 0.8, 0.3), 42, global_position + Vector3(0, 2.3 * _body.scale.y, 0))
+		return
+	if _lesson_label:
+		_lesson_label.queue_free()
+		_lesson_label = null
 	_dead = true
 	end_turn()
 	# Finish a hatted enemy with an uppercut and the hat is always yours;
