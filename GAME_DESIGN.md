@@ -1096,9 +1096,10 @@ Older saves get what they'd already earned, quietly, when camp loads. The list a
 ## Capped stats say where you stand [Built 2026-10-24]
 
 Dodge window (+25% max) and counter window (+0.5s max) have caps on the total bonus.
-- **Tooltips show your total:** "+0.12s to land a counter (you: +0.3s of +0.5s max)", or "(you're maxed at +0.5s)". Before, they only ever stated the cap.
+- **Tooltips show your total against the cap:** "+0.12s counter window (0.3/0.5s)", or "(maxed)".
 - **Stats page:** Dodge windows and the new Counter window row show the bonus used out of the max.
 - **Gear can't max them alone:** these two affixes no longer grow with floor depth (`Items.UNSCALED`); only rarity raises them. Boots roll counter window at 0.12 base (was 0.25, which grew past the whole cap by mid-Crypt). Floor-10 rolls top out around +0.22s and +15%.
+- **The Answer's skills:** Patience is +0.05s a level (was +0.15s) and Read the Fight +0.05s (was +0.1s), so his web gives 0.15s of the 0.5s cap instead of 0.4s.
 
 ## Camp fits any screen; League bosses press harder [Built 2026-10-24]
 
