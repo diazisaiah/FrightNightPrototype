@@ -37,6 +37,7 @@ func _ready() -> void:
 	theme = UiTheme.make()
 	_build_ui()
 	GameState.changed.connect(_refresh)
+	Achievements.catch_up()
 	_show_page("Upgrades")
 	_refresh()
 	if GameState.crypt_reveal_pending:

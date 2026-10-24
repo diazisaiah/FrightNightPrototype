@@ -1099,6 +1099,8 @@ var hats := {}
 var worn_hat := ""
 ## Mini tutorials already shown (Tutorial): {id: true}.
 var tips_seen := {}
+## Achievements earned (Achievements): {id: true}.
+var achievements := {}
 ## The one power that works (2026-10-23): a sigil node's id ("" for none).
 ## Owning several powers, you pick one; only its line of upgrades counts.
 var power_pick := ""
@@ -1301,6 +1303,7 @@ func unlock_tony() -> void:
 ## pays coins and XP for the score (scaled to your Arena division's pay).
 ## Returns {paid, coins, xp, best, new_best}.
 func claim_drill(drill: String, score: int, _level: int) -> Dictionary:
+	Achievements.earn("drill")
 	var record: Dictionary = drills.get(drill, {"best": 0, "day": ""})
 	var today := Time.get_date_string_from_system()
 	var result := {"paid": false, "coins": 0, "xp": 0, "best": int(record.best), "new_best": score > int(record.best)}
@@ -1366,6 +1369,9 @@ func add_hat(id: String) -> String:
 		_commit()
 		return "duplicate"
 	hats[id] = 1
+	Achievements.earn("first_hat")
+	if Hats.CATALOG[id].rarity == "legendary":
+		Achievements.earn("legendary_hat")
 	var result := "new"
 	if not tony_unlocked and Hats.LEGENDARIES.all(func(legend: String) -> bool: return hats.has(legend)):
 		tony_unlocked = true
@@ -1502,6 +1508,7 @@ func salvage(uid: int, coins: int) -> void:
 
 ## Records a Crypt floor's boss as beaten. Returns true the first time.
 func clear_crypt_floor(floor_number: int) -> bool:
+	Achievements.earn("crypt_floor")
 	var first_time := floor_number > crypt_floors_cleared
 	crypt_floors_cleared = maxi(crypt_floors_cleared, floor_number)
 	_commit()
@@ -1680,6 +1687,7 @@ func record_dead_league_result(boss_id: String, grade: String, score: int) -> bo
 	var first_clear := not bool(dead_league_clears.get(boss_id, false))
 	if first_clear:
 		dead_league_clears[boss_id] = true
+		Achievements.earn("first_contender")
 		if boss_id == CRYPT_SEAL and not crypt_unlocked:
 			unlock_crypt()
 	var previous: Dictionary = dead_league_best.get(boss_id, {})
@@ -1854,6 +1862,7 @@ func save_game() -> void:
 		"hats": hats,
 		"worn_hat": worn_hat,
 		"tips_seen": tips_seen,
+		"achievements": achievements,
 		"power_pick": power_pick,
 		"drills": drills,
 		"hat_pity": hat_pity,
@@ -1930,6 +1939,7 @@ func load_game() -> void:
 			hats[id] = int(saved_hats[id])
 	hat_pity = int(data.get("hat_pity", 0))
 	tips_seen = data.get("tips_seen", {}).duplicate() if data.get("tips_seen", {}) is Dictionary else {}
+	achievements = data.get("achievements", {}).duplicate() if data.get("achievements", {}) is Dictionary else {}
 	power_pick = String(data.get("power_pick", ""))
 	worn_hat = String(data.get("worn_hat", ""))
 	if not hats.has(worn_hat):
@@ -2181,6 +2191,7 @@ func _reset_fields() -> void:
 	hats = {}
 	worn_hat = ""
 	tips_seen = {}
+	achievements = {}
 	power_pick = ""
 	drills = {}
 	hat_pity = 0

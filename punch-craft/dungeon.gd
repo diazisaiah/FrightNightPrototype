@@ -636,6 +636,8 @@ func _spawn_enemy(entry: Dictionary, at: Vector3) -> void:
 	# Deeper floors send veterans (tougher versions with a big move).
 	var veteran := Veterans.pick(kind, _tier()) if not kind in BOSS_CYCLE and kind != "mimic" else null
 	var enemy: Enemy = (veteran if veteran else _scene(kind)).instantiate()
+	if veteran:
+		enemy.set_meta("veteran", true)
 	var night_only := Progression.enemy_scaling(_position(), Progression.crypt_difficulty(_floor, _start_floor))
 	var is_boss_kind: bool = kind in BOSS_CYCLE
 	enemy.setup(_player, entry.armored, night_only if is_boss_kind else _scaling(_current_room))

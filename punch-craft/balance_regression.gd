@@ -682,3 +682,14 @@ func _test_one_power() -> void:
 	GameState.mark_tip("hat_first")
 	_check(Tutorial.seen("hat_first"), "A tip shows once")
 	GameState._reset_fields()
+	# Emotes: The Default is free, the rest come from achievements.
+	_check(Achievements.emotes() == ["default"], "Only The Default to start (got %s)" % [Achievements.emotes()])
+	GameState.add_hat("party_hat")
+	_check(Achievements.has("first_hat") and "dab" in Achievements.emotes(), "Your first hat earns Hat Trick and the Dab")
+	var taught := {}
+	for id in Achievements.LIST:
+		var emote: String = Achievements.LIST[id].emote
+		_check(Emotes.NAMES.has(emote) and not taught.has(emote), "Each achievement teaches its own real dance (%s)" % id)
+		taught[emote] = true
+	_check(taught.size() + Achievements.FREE_EMOTES.size() == Emotes.ORDER.size(), "Every dance can be earned")
+	GameState._reset_fields()

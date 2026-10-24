@@ -352,6 +352,8 @@ func _spawn_enemy(entry: Dictionary, at := Vector3.INF) -> void:
 	# Deeper divisions send veterans (tougher versions with a big move).
 	var veteran := Veterans.pick(kind, _division) if kind != "boss" and not _first_night() else null
 	var enemy: Enemy = (veteran if veteran else SCENES[kind]).instantiate()
+	if veteran:
+		enemy.set_meta("veteran", true)
 	enemy.setup(_player, entry.armored, _boss_scaling() if kind == "boss" else _spawn_scaling())
 	enemy.set_meta("kind", kind)
 	# Position before entering the tree so it never overlaps the player at the origin.

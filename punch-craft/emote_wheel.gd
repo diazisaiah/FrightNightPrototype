@@ -1,6 +1,6 @@
 class_name EmoteWheel
 extends Control
-## The emote wheel: a ring of dances (Emotes.ORDER) around the middle of the
+## The emote wheel: a ring of the dances you've unlocked (Achievements) round the middle of the
 ## screen. The player steers it (mouse or stick) and lets go of the emote key
 ## to dance. Drawn, not built from controls, so it never takes the mouse.
 
@@ -14,6 +14,12 @@ var selected := -1
 ## Where the pointer leans (pixels from the center, up to RADIUS).
 var pointer := Vector2.ZERO
 var hint := ""
+## The dances on the wheel (refreshed each time it opens).
+var _dances: Array = ["default"]
+
+
+func refresh_dances() -> void:
+	_dances = Achievements.emotes()
 
 
 func _ready() -> void:
@@ -28,19 +34,19 @@ func steer(lean: Vector2) -> void:
 	if pointer.length() < DEAD_ZONE:
 		selected = -1
 	else:
-		var count := Emotes.ORDER.size()
+		var count := maxi(_dances.size(), 1)
 		var angle := fposmod(atan2(pointer.x, -pointer.y) + PI / count, TAU)
 		selected = int(angle / TAU * count) % count
 	queue_redraw()
 
 
 func picked() -> String:
-	return Emotes.ORDER[selected] if selected >= 0 else ""
+	return _dances[selected] if selected >= 0 and selected < _dances.size() else ""
 
 
 func _draw() -> void:
 	var center := size * 0.5
-	var count := Emotes.ORDER.size()
+	var count := maxi(_dances.size(), 1)
 	var font := UiTheme.bold_font()
 	draw_circle(center, RADIUS + 16.0, Color(0, 0, 0, 0.7))
 	for i in count:
@@ -56,7 +62,9 @@ func _draw() -> void:
 			var a := lerpf(to, from, step / 12.0)
 			points.append(center + Vector2(sin(a), -cos(a)) * INNER)
 		draw_colored_polygon(points, Color(UiTheme.GOLD, 0.95) if lit else Color(UiTheme.PANEL_LIGHT, 0.95))
-		var label := Emotes.name_of(Emotes.ORDER[i])
+		if i >= _dances.size():
+			break
+		var label := Emotes.name_of(_dances[i])
 		var spot := center + Vector2(sin(mid), -cos(mid)) * (INNER + RADIUS) * 0.5
 		var font_size := 15
 		var width := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x

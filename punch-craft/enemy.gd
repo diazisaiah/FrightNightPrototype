@@ -941,6 +941,8 @@ func _die(push: Vector3) -> void:
 	if _lesson_label:
 		_lesson_label.queue_free()
 		_lesson_label = null
+	if has_meta("veteran"):
+		Achievements.earn("veteran")
 	_dead = true
 	end_turn()
 	# Finish a hatted enemy with an uppercut and the hat is always yours;

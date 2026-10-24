@@ -778,6 +778,7 @@ func _open_wheel(pad: bool) -> void:
 		return
 	_wheel_time = 0.0
 	_wheel_pad = pad
+	_wheel.refresh_dances()
 	_wheel.steer(Vector2.ZERO)
 	_wheel.hint = "Let go to dance  -  tap for %s" % Emotes.name_of(_last_emote)
 
@@ -822,7 +823,7 @@ func _tap_map() -> bool:
 
 ## Starts a dance (an Emotes id) and pulls the camera out.
 func start_emote(id: String) -> void:
-	if not active or ult.busy() or not Emotes.NAMES.has(id):
+	if not active or ult.busy() or not Emotes.NAMES.has(id) or not Achievements.emote_unlocked(id):
 		return
 	if _emote_out <= 0.0:
 		_emote_orbit = Vector2(PI * 0.78, 0.18)
@@ -1682,6 +1683,8 @@ func _kick_fov(amount: float) -> void:
 
 func _set_combo(value: int) -> void:
 	combo = value
+	if combo >= 25:
+		Achievements.earn("combo_25")
 	if combo == 0:
 		_straight_run = 0
 		_last_hand = ""
