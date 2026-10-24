@@ -7,8 +7,10 @@ class_name SoulShop
 const EMOTE_SLOTS := 2
 const GEAR_SLOTS := 3
 const EMOTE_PRICE := 5
-const GEAR_PRICE := {"rare": 3, "epic": 6, "legendary": 10}
-const GEAR_RARITY := {"rare": 0.55, "epic": 0.35, "legendary": 0.1}
+## Gear is a backup, not a way around the Crypt: mostly plain finds, priced
+## against boss Souls (1 + tier each), with good gear rare and dear.
+const GEAR_PRICE := {"common": 4, "uncommon": 8, "rare": 15, "epic": 25, "legendary": 40}
+const GEAR_RARITY := {"common": 0.5, "uncommon": 0.32, "rare": 0.13, "epic": 0.04, "legendary": 0.01}
 ## Fighters for sale ({class_id: price}). Tony stays a secret (the Yonker
 ## hats); new fighters go here as they're added.
 const FIGHTERS := {}
@@ -17,9 +19,18 @@ const REROLL_BASE := 1
 
 ## The current offers, restocked if there's been a fight since.
 static func stock() -> Array:
-	if GameState.shop_stock.is_empty() or GameState.shop_restock_at != GameState.fights_done:
+	if GameState.shop_stock.is_empty() or GameState.shop_restock_at != GameState.fights_done or _stale():
 		restock()
 	return GameState.shop_stock
+
+
+## Stock priced before the current price list (unsold gear), restocked so old
+## bargains don't linger.
+static func _stale() -> bool:
+	for offer in GameState.shop_stock:
+		if offer.kind == "gear" and not offer.sold and int(offer.price) != int(GEAR_PRICE.get(offer.item.rarity, -1)):
+			return true
+	return false
 
 
 static func restock() -> void:
@@ -48,7 +59,7 @@ static func _pick_rarity() -> String:
 		roll -= GEAR_RARITY[rarity]
 		if roll <= 0.0:
 			return rarity
-	return "rare"
+	return "common"
 
 
 static func reroll_price() -> int:
