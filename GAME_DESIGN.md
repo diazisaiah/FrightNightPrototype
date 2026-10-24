@@ -1104,6 +1104,7 @@ Dodge window (+25% max) and counter window (+0.5s max) have caps on the total bo
 ## Camp fits any screen; League bosses press harder [Built 2026-10-24]
 
 - **Camp header and nav row shrink to fit** (`camp._fit_width`) when they're wider than the screen (points waiting, a long fighter name, Loadout and Shop), instead of pushing the camp off the right edge.
+- **Contenders slip and counter:** between combos, a punch can be slipped ("SLIPPED", combo broken), then a counter punch comes back: dodge it and counter. 15/20/25/30/35% by contender, +5% a round, +10% at the final bell, at most once per 1.5s. Never mid-combo, mid-special, while reeling from a hit or while left open (`DeadLeagueBoss.try_evade`).
 - **Dead League contenders combo more often:** pauses between combos are about 35% shorter (Bellman 0.95s to 0.6s, and so on), and settling after an undodged combo is 0.45-0.8s (was 0.8-1.4s). Dodging a whole combo still leaves them open as long as before (`DeadLeagueBoss._idle_time` / `_recover_time`).
 
 ## Arena elites and champions [Built 2026-10-24]

@@ -9,6 +9,12 @@ extends Boss
 
 const ROUND_HP := [1.0, 1.16, 1.34]
 const ROUND_DAMAGE := [1.0, 1.08, 1.17]
+## Slipping your punches between combos, then countering (dodge it and counter
+## back). Chance per contender, +5% a round, +10% at the final bell; at most
+## once every EVADE_COOLDOWN.
+const EVADE_CHANCE := [0.15, 0.2, 0.25, 0.3, 0.35]
+const EVADE_TIME := 0.3
+const EVADE_COOLDOWN := 1.5
 ## Body scale per profile: the Bellman and the Coffin King are the big ones.
 const BODY_SCALE := [1.45, 1.25, 1.2, 1.22, 1.38]
 const RIM_SHADER := """
@@ -85,6 +91,29 @@ func _pick_combo() -> Array:
 
 ## Contenders keep the pressure on (2026-10-24: shorter pauses, so combos come
 ## more often). Dodging a whole combo still leaves them open as long as ever.
+var _evade_cooldown := 0.0
+
+
+func _physics_process(delta: float) -> void:
+	super(delta)
+	_evade_cooldown -= delta
+
+
+## Only between combos (never mid-combo, mid-special, reeling or left open).
+func try_evade(_punch_type: String, hand: String) -> bool:
+	if _state != State.IDLE or _special != "" or _evade_cooldown > 0.0 or _stagger_timer > 0.0 or is_dead():
+		return false
+	var chance: float = EVADE_CHANCE[profile_index] + 0.05 * (round_number - 1) + (0.1 if _enraged else 0.0)
+	if randf() >= chance:
+		return false
+	_evade_cooldown = EVADE_COOLDOWN
+	_evade_side = 1.0 if hand == "left" else -1.0
+	_queue.clear()
+	_enter(State.EVADE, EVADE_TIME)
+	DamagePopup.spawn(get_parent(), "SLIPPED", SLIP_COLOR, 44, global_position + Vector3(0, 2.6, 0))
+	return true
+
+
 func _idle_time() -> float:
 	var base: float = [0.6, 0.48, 0.42, 0.55, 0.4][profile_index]
 	return randf_range(base * 0.75, base * 1.2) * (0.75 if _enraged else 1.0)
