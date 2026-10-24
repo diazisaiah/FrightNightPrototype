@@ -1215,6 +1215,9 @@ var fights_done := 0
 ## Bounties (Bounties): the three active ones, bounty XP (mastery), and
 ## knockouts by kind (bounties only ask for kinds you've met).
 var bounties: Array = []
+## Hand idles (IdleAnims): each fighter's pick, and the ones bought.
+var idle_picks := {}
+var idles_bought := {}
 var bounty_xp := 0
 var kills := {}
 ## Ability picks per fighter (Abilities): {class: {"passive": id, "ultimate": id}}.
@@ -1509,6 +1512,20 @@ func equip_ability(slot: String, id: String) -> bool:
 	var picks: Dictionary = loadouts.get(player_class, {})
 	picks[slot] = id
 	loadouts[player_class] = picks
+	_commit()
+	return true
+
+
+## The current fighter's hand idle (their own unless they've picked another).
+func idle_anim() -> String:
+	var id: String = idle_picks.get(player_class, "")
+	return id if id in IdleAnims.choices(player_class) else IdleAnims.base_for(player_class)
+
+
+func equip_idle(id: String) -> bool:
+	if not id in IdleAnims.choices(player_class):
+		return false
+	idle_picks[player_class] = id
 	_commit()
 	return true
 
@@ -2145,6 +2162,8 @@ func save_game() -> void:
 		"fighters_bought": fighters_bought,
 		"fights_done": fights_done,
 		"bounties": bounties,
+		"idle_picks": idle_picks,
+		"idles_bought": idles_bought,
 		"bounty_xp": bounty_xp,
 		"kills": kills,
 		"loadouts": loadouts,
@@ -2238,6 +2257,8 @@ func load_game() -> void:
 	fights_done = int(data.get("fights_done", 0))
 	bounties = data.get("bounties", []).duplicate(true) if data.get("bounties", []) is Array else []
 	bounty_xp = int(data.get("bounty_xp", 0))
+	idle_picks = data.get("idle_picks", {}).duplicate() if data.get("idle_picks", {}) is Dictionary else {}
+	idles_bought = data.get("idles_bought", {}).duplicate() if data.get("idles_bought", {}) is Dictionary else {}
 	kills = data.get("kills", {}).duplicate() if data.get("kills", {}) is Dictionary else {}
 	loadouts = data.get("loadouts", {}).duplicate(true) if data.get("loadouts", {}) is Dictionary else {}
 	endless_best = int(data.get("endless_best", 0))
@@ -2501,6 +2522,8 @@ func _reset_fields() -> void:
 	fights_done = 0
 	bounties = []
 	bounty_xp = 0
+	idle_picks = {}
+	idles_bought = {}
 	kills = {}
 	loadouts = {}
 	endless_best = 0

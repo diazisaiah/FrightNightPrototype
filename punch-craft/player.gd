@@ -513,7 +513,34 @@ func _process(delta: float) -> void:
 		_buffered_hand = ""
 
 
+## Hand idles (IdleAnims): after IDLE_DELAY seconds of doing nothing the
+## hands play the equipped idle, then again every IDLE_GAP seconds or so.
+## Any input cuts it off (looking around doesn't).
+const IDLE_DELAY := 5.0
+const IDLE_GAP := Vector2(7.0, 11.0)
+var _idle_for := 0.0
+var _idle_next := IDLE_DELAY
+
+
+func _update_idle(delta: float) -> void:
+	var doing := not active or emote != "" or ult.busy() or Input.is_anything_pressed() \
+			or Input.get_vector("move_left", "move_right", "move_forward", "move_back").length() > 0.2 \
+			or Vector2(velocity.x, velocity.z).length() > 0.5
+	if doing:
+		_idle_for = 0.0
+		_idle_next = IDLE_DELAY
+		if _fists.idle_playing:
+			_fists.stop_idle()
+		return
+	_idle_for += delta
+	if _idle_for >= _idle_next and not _fists.idle_playing:
+		var id := GameState.idle_anim()
+		_fists.play_idle(id)
+		_idle_next = _idle_for + IdleAnims.length(id) + randf_range(IDLE_GAP.x, IDLE_GAP.y)
+
+
 func _physics_process(delta: float) -> void:
+	_update_idle(delta)
 	# Ultimates take the controls, except Temporal Break (the Blur moves in it).
 	if ult.busy() and ult.mode != "time_stop":
 		velocity = Vector3.ZERO

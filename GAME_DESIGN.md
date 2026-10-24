@@ -1093,6 +1093,13 @@ Older saves get what they'd already earned, quietly, when camp loads. The list a
 - `run_playground.bat` (or `.sh`, `-e` for the editor) syncs and launches it.
 - It opens on the training ring with a dev panel (F1): fighter, hat, every emote, spawn anything at any tier (veterans, bosses, contenders), freeze enemies, force any special on the nearest boxer, give and select a power line, god mode, fill the ultimate, +5 levels, replay tips, and arena theme backdrops.
 
+## Hand idles [Built 2026-10-24]
+
+After 5s of doing nothing (no keys or buttons held, no movement; looking around is fine) the first-person hands play an idle, then again every 7-11s. Purely cosmetic; any input cuts it off at once. Data in `idle_anims.gd` (keyframes of arm offsets, plus a prop: a coin, a little skull or a flame), played by `Fists.play_idle`.
+- **Each fighter's own:** Mauler Knuckle Crack, Answer Tape Check, Blur Shadowbox (with afterimages), Stray Shake Out, Tony Pinky Ring, Catalyst Palm Flame (a flame hops hand to hand).
+- **Sold in the Soul Shop** (one offer per restock, 6 Souls), any fighter can wear them: Fist Bump, Coin Flip, Juggler (a skull tossed hand to hand), Drum Roll, Windmill, Stretch.
+- **Equip** per fighter in the Loadout's Hand Idle tab: each card plays the idle live on your fighter's hands (`IdlePreview`). The Loadout button shows once there's a choice of abilities or idles. Shop cards preview too.
+
 ## New fighter: The Catalyst (Elementalist) [Built 2026-10-24]
 
 A buff old wizard with a white beard and long white hair who put his spells into his fists (card art `art/fighter_elementalist.jpg`, versus art `art/versus/fighter_elementalist.png`). Class id `elementalist`, color pink-magenta. Tagline: "Why cast it when you can punch it?" A little less punch damage (x0.9); his power is in the Sigil powers.
@@ -1259,7 +1266,8 @@ Each fighter has **three passives and two ultimates** (`abilities.gd`): the defa
 
 ### The Soul Shop
 A **Shop** tab in camp (`soul_shop.gd`) where you spend **Souls**:
-- **2 emotes** you don't have yet, 8 Souls each. Achievements still unlock theirs free; buying one just skips ahead (`GameState.emotes_bought`).
+- **2 emotes** you don't have yet, 8 Souls each.
+- **1 hand idle** you don't have yet, 6 Souls (Hand idles). Achievements still unlock theirs free; buying one just skips ahead (`GameState.emotes_bought`).
 - **3 pieces of gear** rolled at the deepest Crypt floor you've beaten (floor 1 if none), never your tier, so cheesing a boss for a higher tier doesn't buy stronger gear. Mostly plain so the shop never replaces the Crypt: common 6 Souls (50%), uncommon 12 (32%), rare 22 (13%), epic 38 (4%), legendary 60 (1%). Bosses drop 1 + tier Souls, so a rare is several bosses' worth. Bought gear goes straight to the armory.
 - **Fighters**, as new ones are added (`SoulShop.FIGHTERS`; Tony stays secret).
 - **Restock after every fight:** each return to camp from the Arena, Crypt or Dead League counts (`GameState.fights_done`, counted in `Loading.go`). Sold offers stay sold until then.

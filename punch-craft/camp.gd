@@ -258,8 +258,8 @@ func _build_tabs() -> Control:
 		GameState.save_game()
 		Loading.go("res://title.tscn"))
 	tabs.add_child(menu)
-	# Loadout: the fighter's passive and ultimate (once there's a choice).
-	if _ability_choices() > 2:
+	# Loadout: the fighter's passive, ultimate and hand idle (once there's a choice).
+	if _ability_choices() > 2 or IdleAnims.choices(GameState.player_class).size() > 1:
 		_loadout_button = Button.new()
 		_loadout_button.text = "Loadout"
 		_loadout_button.tooltip_text = "Pick your fighter's passive and ultimate."
@@ -489,6 +489,8 @@ func _power_tip(kind: String) -> void:
 var _loadout_button: Button
 var _loadout_layer: CanvasLayer
 var _loadout_opened := false
+## The Loadout's page: "abilities" or "idle".
+var _loadout_tab := "abilities"
 
 
 ## How many passives and ultimates the fighter has unlocked.
@@ -540,7 +542,23 @@ func _open_loadout() -> void:
 	var heading := UiTheme.title_label("LOADOUT  ·  %s" % GameState.fighter_name().to_upper(), 40, UiTheme.GOLD)
 	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(heading)
-	for slot in ["passive", "ultimate"]:
+	var tabs := HBoxContainer.new()
+	tabs.alignment = BoxContainer.ALIGNMENT_CENTER
+	tabs.add_theme_constant_override("separation", 8)
+	column.add_child(tabs)
+	for tab in [["abilities", "Abilities"], ["idle", "Hand Idle"]]:
+		var button := Button.new()
+		button.text = tab[1]
+		button.theme_type_variation = "TabButton"
+		button.toggle_mode = true
+		button.button_pressed = _loadout_tab == tab[0]
+		button.pressed.connect(func() -> void:
+			_loadout_tab = tab[0]
+			_open_loadout())
+		tabs.add_child(button)
+	if _loadout_tab == "idle":
+		_idle_cards(column)
+	for slot in ([] if _loadout_tab == "idle" else ["passive", "ultimate"]):
 		var label := UiTheme.title_label(slot.to_upper(), 20, UiTheme.MUTED)
 		column.add_child(label)
 		var row := HBoxContainer.new()
@@ -559,6 +577,45 @@ func _open_loadout() -> void:
 	done.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	done.pressed.connect(_close_loadout)
 	column.add_child(done)
+
+
+## The hand idles the fighter can pick, each playing on a loop.
+func _idle_cards(column: VBoxContainer) -> void:
+	column.add_child(_label("What your hands do while you wait.", 15, UiTheme.MUTED))
+	var grid := GridContainer.new()
+	grid.columns = 4
+	grid.add_theme_constant_override("h_separation", 12)
+	grid.add_theme_constant_override("v_separation", 12)
+	column.add_child(grid)
+	var tint := GameState.fighter_color()
+	for id in IdleAnims.choices(GameState.player_class):
+		var equipped: bool = id == GameState.idle_anim()
+		var card := Button.new()
+		card.custom_minimum_size = Vector2(230, 170)
+		card.add_theme_stylebox_override("normal", UiTheme.raised(Color(0.06, 0.05, 0.08, 0.96), UiTheme.GOLD if equipped else Color(tint, 0.5), 3 if equipped else 2, 12))
+		card.add_theme_stylebox_override("hover", UiTheme.raised(Color(tint.darkened(0.75), 0.98), tint.lightened(0.2), 3, 12))
+		card.add_theme_stylebox_override("pressed", UiTheme.raised(Color(tint.darkened(0.75), 0.98), tint.lightened(0.2), 3, 12))
+		var inside := VBoxContainer.new()
+		inside.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		inside.offset_left = 8
+		inside.offset_right = -8
+		inside.offset_top = 8
+		inside.offset_bottom = -8
+		inside.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		card.add_child(inside)
+		var preview := IdlePreview.new()
+		preview.idle_id = id
+		preview.custom_minimum_size = Vector2(214, 118)
+		inside.add_child(preview)
+		var name_label := _label(IdleAnims.name_of(id) + ("   ·   EQUIPPED" if equipped else ""), 15, UiTheme.GOLD if equipped else UiTheme.TEXT)
+		name_label.add_theme_font_override("font", UiTheme.bold_font())
+		name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		inside.add_child(name_label)
+		card.pressed.connect(func() -> void:
+			if GameState.equip_idle(id):
+				Sfx.play("unlock", -8.0, 1.4)
+				_open_loadout())
+		grid.add_child(card)
 
 
 func _close_loadout() -> void:
@@ -1380,9 +1437,9 @@ func _build_shop_page() -> Control:
 		else:
 			Sfx.play("deny", -10.0))
 	header.add_child(_shop_reroll)
-	column.add_child(_label("Spend Souls on emotes and gear. New stock after every fight.", 14, UiTheme.MUTED))
+	column.add_child(_label("Emotes, hand idles and gear. New stock after every fight.", 14, UiTheme.MUTED))
 	_shop_grid = GridContainer.new()
-	_shop_grid.columns = 5
+	_shop_grid.columns = 7
 	_shop_grid.add_theme_constant_override("h_separation", 12)
 	_shop_grid.add_theme_constant_override("v_separation", 12)
 	column.add_child(_shop_grid)
@@ -1421,6 +1478,10 @@ func _shop_card(index: int, offer: Dictionary) -> Control:
 			what = "%s  %s" % [String(item.rarity).to_upper(), String(item.slot).to_upper()]
 			lines = GameState.effect_text(item.effects, 1)
 			icon_name = {"gloves": "glove", "wraps": "wraps", "boots": "boot", "charm": "medal"}.get(item.slot, "chest")
+		"idle":
+			title = IdleAnims.name_of(offer.id)
+			what = "HAND IDLE"
+			lines = "What your hands do while you wait."
 		"fighter":
 			title = GameState.fighter_name(offer.id)
 			what = "FIGHTER"
@@ -1428,17 +1489,23 @@ func _shop_card(index: int, offer: Dictionary) -> Control:
 			tint = GameState.fighter_color(offer.id)
 			lines = GameState.CLASSES[offer.id].tagline
 	var card := PanelContainer.new()
-	card.custom_minimum_size = Vector2(190, 250)
+	card.custom_minimum_size = Vector2(164, 250)
 	card.add_theme_stylebox_override("panel", UiTheme.box(Color(tint.darkened(0.8), 0.7), Color(tint, 0.8), 2, 10, 10.0))
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 6)
 	card.add_child(column)
-	var icon := IconView.new()
-	icon.icon = icon_name
-	icon.color = tint.lightened(0.2)
-	icon.custom_minimum_size = Vector2(48, 48)
-	icon.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	column.add_child(icon)
+	if offer.kind == "idle":
+		var preview := IdlePreview.new()
+		preview.idle_id = offer.id
+		preview.custom_minimum_size = Vector2(166, 92)
+		column.add_child(preview)
+	else:
+		var icon := IconView.new()
+		icon.icon = icon_name
+		icon.color = tint.lightened(0.2)
+		icon.custom_minimum_size = Vector2(48, 48)
+		icon.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		column.add_child(icon)
 	var name_label := _label(title, 15, UiTheme.TEXT)
 	name_label.add_theme_font_override("font", UiTheme.bold_font())
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

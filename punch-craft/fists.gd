@@ -124,6 +124,9 @@ func _process(delta: float) -> void:
 	_flinch_offset = _flinch_offset.move_toward(Vector3.ZERO, 0.6 * delta)
 	position = Vector3(cos(_bob_time * 0.5) * amplitude, sin(_bob_time) * amplitude, 0) + _flinch_offset + Vector3(0, -drop, drop * 0.3)
 	_update_effects(delta)
+	if is_instance_valid(_idle_prop) and _idle_prop.visible:
+		_idle_prop.rotation.x += delta * 14.0 if _idle_prop.get_child_count() == 1 else 0.0
+		_idle_prop.rotation.y += delta * 3.0
 
 
 ## Knocks both fists down and back when the player takes a clean hit.
@@ -169,6 +172,199 @@ func play_punch(type: String, hand: String, impact_time: float, total_time: floa
 	if fighter == "combo_master":
 		for i in 3:
 			get_tree().create_timer(windup_time + strike_time * (0.3 + i * 0.3), false).timeout.connect(_afterimage.bind(arm))
+
+
+# --- Idles (IdleAnims) --------------------------------------------------------------
+
+## True while an idle is playing.
+var idle_playing := false
+## No idle sounds (previews).
+var silent := false
+var _idle_prop: Node3D
+var _idle_run := 0
+
+
+## Plays a hand idle once through (IdleAnims), then back to rest.
+func play_idle(id: String) -> void:
+	var anim: Dictionary = IdleAnims.ANIMS.get(id, {})
+	if anim.is_empty():
+		return
+	stop_idle(false)
+	idle_playing = true
+	_idle_run += 1
+	var run := _idle_run
+	var targets := {"left": IdleAnims.REST, "right": IdleAnims.REST}
+	var ends: Array = []
+	var starts: Array = []
+	var tweens := {}
+	for hand in ["left", "right"]:
+		if _tweens.has(hand):
+			(_tweens[hand] as Tween).kill()
+		tweens[hand] = create_tween()
+		_tweens[hand] = tweens[hand]
+	var clock := 0.0
+	for key in anim.keys:
+		var seconds: float = key[0]
+		var spec: Dictionary = key[1]
+		starts.append(clock)
+		if spec.has("sfx"):
+			var sound: Array = spec.sfx
+			(tweens.right as Tween).tween_callback(func() -> void:
+				if not silent:
+					Sfx.play(sound[0], sound[1], sound[2]))
+		for hand in ["left", "right"]:
+			var short := "l" if hand == "left" else "r"
+			var tween: Tween = tweens[hand]
+			if not spec.has(short):
+				tween.tween_interval(seconds)
+				continue
+			targets[hand] = spec[short]
+			var arm: Node3D = _arms[hand]
+			var mirror := -1.0 if hand == "left" else 1.0
+			if spec.get("trail", false):
+				tween.tween_callback(func() -> void: _afterimage(arm))
+			tween.tween_property(arm, "position", _mirror_pos(REST_POS, mirror) + _mirror_pos(targets[hand][0], mirror), seconds).set_trans(Tween.TRANS_SINE)
+			tween.parallel().tween_property(arm, "rotation", _mirror_rot(REST_ROT, mirror) + _mirror_rot(targets[hand][1], mirror), seconds).set_trans(Tween.TRANS_SINE)
+		ends.append(targets.duplicate())
+		clock += seconds
+	for hand in ["left", "right"]:
+		var arm: Node3D = _arms[hand]
+		var mirror := -1.0 if hand == "left" else 1.0
+		var tween: Tween = tweens[hand]
+		tween.tween_property(arm, "position", _mirror_pos(REST_POS, mirror), 0.2).set_trans(Tween.TRANS_SINE)
+		tween.parallel().tween_property(arm, "rotation", _mirror_rot(REST_ROT, mirror), 0.2)
+	(tweens.right as Tween).tween_callback(func() -> void:
+		if run == _idle_run:
+			idle_playing = false
+			_clear_prop())
+	if anim.has("prop"):
+		_play_prop(anim.prop, starts, ends)
+
+
+## Cuts an idle off: hands back to rest quickly, any prop gone.
+func stop_idle(ease_back := true) -> void:
+	_idle_run += 1
+	_clear_prop()
+	if not idle_playing:
+		return
+	idle_playing = false
+	if not ease_back:
+		return
+	for hand in ["left", "right"]:
+		if _tweens.has(hand):
+			(_tweens[hand] as Tween).kill()
+		var arm: Node3D = _arms[hand]
+		var mirror := -1.0 if hand == "left" else 1.0
+		var tween := create_tween()
+		tween.tween_property(arm, "position", _mirror_pos(REST_POS, mirror), 0.12)
+		tween.parallel().tween_property(arm, "rotation", _mirror_rot(REST_ROT, mirror), 0.12)
+		_tweens[hand] = tween
+
+
+## Where a hand's fist is (this node's space) with the arm at an idle offset.
+func _fist_point(hand: String, offset: Array) -> Vector3:
+	var mirror := -1.0 if hand == "left" else 1.0
+	var basis := Basis.from_euler(_mirror_rot(REST_ROT, mirror) + _mirror_rot(offset[1], mirror))
+	return _mirror_pos(REST_POS, mirror) + _mirror_pos(offset[0], mirror) + basis * FIST_POINT
+
+
+## The idle's prop flying between the fists along its path (IdleAnims).
+func _play_prop(spec: Dictionary, starts: Array, ends: Array) -> void:
+	_idle_prop = _make_prop(spec.kind)
+	_idle_prop.visible = false
+	add_child(_idle_prop)
+	var tween := _idle_prop.create_tween()
+	var clock := 0.0
+	var first := true
+	for step in spec.path:
+		var key: int = step[0]
+		var hand := "left" if step[1] == "l" else "right"
+		var point := _fist_point(hand, ends[key][hand]) + Vector3(0, step[2], 0)
+		var seconds: float = step[3]
+		tween.tween_interval(maxf(0.0, float(starts[key]) - clock))
+		clock = maxf(clock, float(starts[key]))
+		if first:
+			tween.tween_callback(func() -> void:
+				_idle_prop.position = point
+				_idle_prop.visible = true)
+			first = false
+			continue
+		# A little arc between the hands.
+		var mid := point + Vector3(0, 0.12, 0)
+		tween.tween_property(_idle_prop, "position", mid, seconds * 0.5).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		tween.tween_property(_idle_prop, "position", point, seconds * 0.5).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		clock += seconds
+
+
+func _clear_prop() -> void:
+	if is_instance_valid(_idle_prop):
+		_idle_prop.queue_free()
+	_idle_prop = null
+
+
+## coin: a spinning gold coin. skull: a little bone skull. flame: a flame
+## with a glow and rising sparks.
+func _make_prop(kind: String) -> Node3D:
+	var prop := Node3D.new()
+	var part := func(mesh: PrimitiveMesh, material: Material, at := Vector3.ZERO) -> void:
+		mesh.material = material
+		var instance := MeshInstance3D.new()
+		instance.mesh = mesh
+		instance.position = at
+		instance.layers = HAND_LAYER
+		instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		prop.add_child(instance)
+	match kind:
+		"coin":
+			var coin := CylinderMesh.new()
+			coin.top_radius = 0.02
+			coin.bottom_radius = 0.02
+			coin.height = 0.004
+			coin.radial_segments = 12
+			var gold := _glow(Color(1.0, 0.8, 0.2), 0.6)
+			gold.metallic = 0.8
+			part.call(coin, gold)
+		"skull":
+			var bone := StandardMaterial3D.new()
+			bone.albedo_color = Color(0.86, 0.83, 0.74)
+			var dark := StandardMaterial3D.new()
+			dark.albedo_color = Color(0.08, 0.06, 0.06)
+			var box := BoxMesh.new()
+			box.size = Vector3(0.05, 0.045, 0.05)
+			part.call(box, bone)
+			var jaw := BoxMesh.new()
+			jaw.size = Vector3(0.035, 0.015, 0.035)
+			part.call(jaw, bone, Vector3(0, -0.028, 0.006))
+			for side in [-1.0, 1.0]:
+				var eye := BoxMesh.new()
+				eye.size = Vector3(0.012, 0.012, 0.004)
+				part.call(eye, dark, Vector3(0.011 * side, 0.004, 0.026))
+		"flame":
+			var color := Color(1.0, 0.5, 0.12)
+			var core := BoxMesh.new()
+			core.size = Vector3(0.028, 0.04, 0.028)
+			part.call(core, _glow(color, 4.0))
+			var light := OmniLight3D.new()
+			light.light_cull_mask = HAND_LAYER
+			light.light_color = color
+			light.light_energy = 0.6
+			light.omni_range = 0.4
+			prop.add_child(light)
+			var sparks := CPUParticles3D.new()
+			sparks.amount = 16
+			sparks.lifetime = 0.4
+			sparks.direction = Vector3.UP
+			sparks.spread = 25.0
+			sparks.gravity = Vector3(0, 0.3, 0)
+			sparks.initial_velocity_min = 0.05
+			sparks.initial_velocity_max = 0.15
+			sparks.layers = HAND_LAYER
+			var bit := BoxMesh.new()
+			bit.size = Vector3.ONE * 0.008
+			bit.material = _glow(Color(1.0, 0.7, 0.2), 3.0)
+			sparks.mesh = bit
+			prop.add_child(sparks)
+	return prop
 
 
 ## 0 = healthy, 1 = knuckles about to break: bare skin reddens.

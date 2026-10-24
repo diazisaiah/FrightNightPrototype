@@ -7,6 +7,9 @@ class_name SoulShop
 const EMOTE_SLOTS := 2
 const GEAR_SLOTS := 3
 const EMOTE_PRICE := 8
+## Hand idles (IdleAnims.SHOP).
+const IDLE_SLOTS := 1
+const IDLE_PRICE := 6
 ## Gear is a backup, not a way around the Crypt: mostly plain finds, priced
 ## against boss Souls (1 + tier each), with good gear rare and dear.
 const GEAR_PRICE := {"common": 6, "uncommon": 12, "rare": 22, "epic": 38, "legendary": 60}
@@ -29,6 +32,10 @@ static func stock() -> Array:
 ## Unsold gear from older rules (another price, or deeper than the Crypt
 ## you've beaten), restocked so it doesn't linger.
 static func _stale() -> bool:
+	# Stock from before hand idles were sold.
+	var unowned_idles := IdleAnims.SHOP.any(func(id: String) -> bool: return not GameState.idles_bought.has(id))
+	if unowned_idles and not GameState.shop_stock.any(func(offer: Dictionary) -> bool: return offer.kind == "idle"):
+		return true
 	for offer in GameState.shop_stock:
 		if offer.kind != "gear" or offer.sold:
 			continue
@@ -44,6 +51,10 @@ static func restock() -> void:
 	emotes.shuffle()
 	for id in emotes.slice(0, EMOTE_SLOTS):
 		offers.append({"kind": "emote", "id": id, "price": EMOTE_PRICE, "sold": false})
+	var idles: Array = IdleAnims.SHOP.filter(func(id: String) -> bool: return not GameState.idles_bought.has(id))
+	idles.shuffle()
+	for id in idles.slice(0, IDLE_SLOTS):
+		offers.append({"kind": "idle", "id": id, "price": IDLE_PRICE, "sold": false})
 	for class_id in FIGHTERS:
 		if not class_id in GameState.class_ids() and Progression.seals_broken() >= int(FIGHTER_SEALS.get(class_id, 0)):
 			offers.append({"kind": "fighter", "id": class_id, "price": FIGHTERS[class_id], "sold": false})
@@ -97,6 +108,8 @@ static func buy(index: int) -> bool:
 	match offer.kind:
 		"emote":
 			GameState.emotes_bought[offer.id] = true
+		"idle":
+			GameState.idles_bought[offer.id] = true
 		"gear":
 			GameState.add_to_armory(offer.item.duplicate(true))
 		"fighter":
