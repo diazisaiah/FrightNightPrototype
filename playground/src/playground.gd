@@ -23,6 +23,9 @@ var _tier := 1
 var _god := true
 var _frozen := false
 var _theme_node: Node3D
+## Hand idles: the last one clicked, replayed while Loop is on.
+var _idle_pick := ""
+var _idle_loop := false
 ## The training ring (ropes, canvas and the walls that hold the player in) and
 ## whether it's up. Off, you roam free like the enemies do.
 var _ring: Node3D
@@ -69,6 +72,8 @@ func _process(delta: float) -> void:
 		_torches[i].light_energy = 2.2 + sin(_torch_time * 11.0 + i * 1.7) * 0.25
 	if _god:
 		_player.knuckles = _player.max_knuckles
+	if _idle_loop and _idle_pick != "" and not _player._fists.idle_playing:
+		_player._fists.play_idle(_idle_pick)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -125,11 +130,13 @@ func _build_panel() -> void:
 			_player.start_emote(id)))
 
 	_section(box, "HAND IDLES (plays now; equips if this fighter can wear it)")
+	box.add_child(_check("Loop the last one", false, func(on: bool) -> void: _idle_loop = on))
 	var idle_grid := GridContainer.new()
 	idle_grid.columns = 2
 	box.add_child(idle_grid)
 	for id in IdleAnims.BASE.values() + IdleAnims.SHOP:
 		idle_grid.add_child(_button(IdleAnims.name_of(id), func() -> void:
+			_idle_pick = id
 			GameState.equip_idle(id)
 			_player._fists.play_idle(id)))
 
