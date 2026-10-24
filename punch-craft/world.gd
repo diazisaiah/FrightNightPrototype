@@ -105,6 +105,17 @@ const ENDLESS_PAY_STEP := 0.25
 ## Ending purse: score x pay x this.
 const ENDLESS_PURSE := 0.3
 const MINI_BOSS_HP := 3.0
+## Elites and champions among the Arena's regular spawns, by division
+## (Gravedigger to Crown). Champions start in the Plague Division. Not on the
+## first bout, nor among escorts and summons. Toward the bar an elite counts as
+## ELITE_BAR knockouts and a champion CHAMPION_BAR; in the Endless Arena they
+## score ENDLESS_ELITE / ENDLESS_CHAMPION.
+const ELITE_CHANCE := [0.04, 0.06, 0.08, 0.1, 0.12]
+const CHAMPION_CHANCE := [0.0, 0.0, 0.0, 0.025, 0.04]
+const ELITE_BAR := 2
+const CHAMPION_BAR := 3
+const ENDLESS_ELITE := 30
+const ENDLESS_CHAMPION := 75
 const TORCH_COUNT := 8
 const DEAD_TREE_COUNT := 28
 const GRAVESTONE_COUNT := 30
@@ -280,7 +291,19 @@ func _process(delta: float) -> void:
 		if _endless and randf() < MINI_BOSS_CHANCE:
 			_spawn_mini_boss()
 		else:
-			_spawn_enemy({"kind": kind, "armored": randf() < _armor_chance()})
+			_spawn_enemy({"kind": kind, "armored": randf() < _armor_chance(), "rank": _roll_rank()})
+
+
+## "champion", "elite" or "" for a regular spawn (ELITE_CHANCE).
+func _roll_rank() -> String:
+	if _first_night():
+		return ""
+	var roll := randf()
+	if roll < CHAMPION_CHANCE[_division - 1]:
+		return "champion"
+	if roll < CHAMPION_CHANCE[_division - 1] + ELITE_CHANCE[_division - 1]:
+		return "elite"
+	return ""
 
 
 func _exit_tree() -> void:
@@ -393,6 +416,16 @@ func _spawn_enemy(entry: Dictionary, at := Vector3.INF) -> void:
 	# Position before entering the tree so it never overlaps the player at the origin.
 	enemy.position = _spawn_point() if at == Vector3.INF else at
 	_enemies.add_child(enemy)
+	match entry.get("rank", ""):
+		"elite":
+			enemy.make_elite(Enemy.ELITE_TRAITS.pick_random())
+			enemy.set_meta("elite", true)
+		"champion":
+			var traits: Array = Enemy.ELITE_TRAITS.duplicate()
+			traits.shuffle()
+			enemy.make_champion(traits.slice(0, 2))
+			_hud.add_feed("A champion enters: %s" % enemy.display_name, Enemy.CHAMPION_COLOR.lightened(0.3))
+			Sfx.play_at("growl", enemy.global_position + Vector3.UP * 2.0, 2.0, 0.8)
 	enemy.died.connect(_on_enemy_died)
 	if enemy is Boss:
 		enemy.summon_requested.connect(_on_boss_summon.bind(enemy))
@@ -469,7 +502,7 @@ func _on_enemy_died(enemy: Enemy) -> void:
 		_win_night()
 		return
 	if not _boss_spawned:
-		_night_kills += 1
+		_night_kills += CHAMPION_BAR if enemy.has_meta("champion") else ELITE_BAR if enemy.has_meta("elite") else 1
 		while _milestone < MILESTONES - 1 and _progress() >= float(_milestone + 1) / MILESTONES:
 			_milestone += 1
 			_on_milestone(_milestone)
@@ -482,7 +515,8 @@ func _on_enemy_died(enemy: Enemy) -> void:
 ## mini-boss.
 func _on_endless_ko(enemy: Enemy) -> void:
 	_night_kills += 1
-	_score += ENDLESS_MINI_BOSS if enemy.has_meta("mini_boss") else ENDLESS_KO
+	_score += ENDLESS_MINI_BOSS if enemy.has_meta("mini_boss") else ENDLESS_CHAMPION if enemy.has_meta("champion") \
+			else ENDLESS_ELITE if enemy.has_meta("elite") else ENDLESS_KO
 	if _night_kills >= 50:
 		Achievements.earn("endless_50")
 	if _night_kills % ENDLESS_WAVE == 0:
@@ -507,7 +541,7 @@ func _spawn_mini_boss() -> void:
 	enemy.set_meta("veteran", true)
 	enemy.position = _spawn_point()
 	_enemies.add_child(enemy)
-	enemy.make_elite(["Swift", "Brutal", "Ironclad", "Hulking"].pick_random())
+	enemy.make_elite(Enemy.ELITE_TRAITS.pick_random())
 	enemy.display_name = "MINI-BOSS  " + enemy.display_name
 	enemy.died.connect(_on_enemy_died)
 	_alive += 1

@@ -1093,6 +1093,22 @@ Older saves get what they'd already earned, quietly, when camp loads. The list a
 - `run_playground.bat` (or `.sh`, `-e` for the editor) syncs and launches it.
 - It opens on the training ring with a dev panel (F1): fighter, hat, every emote, spawn anything at any tier (veterans, bosses, contenders), freeze enemies, force any special on the nearest boxer, give and select a power line, god mode, fill the ultimate, +5 levels, replay tips, and arena theme backdrops.
 
+## Arena elites and champions [Built 2026-10-24]
+
+Regular Arena spawns can be **elites** (as in the Crypt: one trait, x2 health, x3 coins and XP, orange aura) or **champions** (new: two different traits, x3.5 health, x6 coins and XP, violet aura, announced in the feed with a growl). Traits: Swift, Brutal, Ironclad, Hulking.
+
+| Division | Elite | Champion |
+|---|---|---|
+| Gravedigger | 4% | none |
+| Bone | 6% | none |
+| Ghost | 8% | none |
+| Plague | 10% | 2.5% |
+| Crown (and Endless) | 12% | 4% |
+
+- Never on the very first bout, and never the Grave Champion's escorts or summons.
+- **Worth the trouble:** toward the bout bar an elite counts as 2 knockouts and a champion as 3. In the Endless Arena they score 30 and 75 (a knockout is 10).
+- `world.gd` `ELITE_CHANCE` / `CHAMPION_CHANCE`, `Enemy.make_champion`.
+
 ## Combos across enemies and coin bursts [Built 2026-10-24]
 
 - **Switching enemies keeps the combo:** the first punch on a different enemy can be from either hand. The same hand twice on one enemy still starts the combo over (double jab excepted). `player._last_target_id`.

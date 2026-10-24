@@ -28,7 +28,7 @@ const LAYOUTS := {
 }
 const PILLAR_SIZE := 1.3
 ## One fight room per floor holds an elite: a buffed enemy with a trait.
-const ELITE_TRAITS := ["Swift", "Brutal", "Ironclad", "Hulking"]
+const ELITE_TRAITS := Enemy.ELITE_TRAITS
 const ELITE_MIN_DEPTH := 2
 const WALL_HEIGHT := 4.5
 const WALL_THICKNESS := 0.6

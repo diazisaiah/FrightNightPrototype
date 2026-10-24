@@ -20,6 +20,12 @@ const BODY_COLOR := Color(0.65, 0.85, 1.0)
 const ELITE_HP := 2.0
 const ELITE_REWARD := 3
 const ELITE_COLOR := Color(1.0, 0.6, 0.15)
+const ELITE_TRAITS := ["Swift", "Brutal", "Ironclad", "Hulking"]
+## Champions (the Arena, Plague Division and up): an elite with two traits,
+## much more health and a violet aura.
+const CHAMPION_HP := 3.5
+const CHAMPION_REWARD := 6
+const CHAMPION_COLOR := Color(0.75, 0.3, 1.0)
 ## Ironclad elites: flat armor plus a share of every hit shrugged off, so they
 ## stay tough however hard the player hits.
 const IRONCLAD_ARMOR := 5.0
@@ -350,6 +356,30 @@ func is_dead() -> bool:
 ## (bigger, much more HP). Call after it's in the tree.
 func make_elite(trait_name: String) -> void:
 	max_hp *= ELITE_HP
+	_apply_trait(trait_name)
+	hp = max_hp
+	coin_reward *= ELITE_REWARD
+	xp_reward *= ELITE_REWARD
+	display_name = "%s %s" % [trait_name, display_name]
+	_special_look(ELITE_COLOR, 1.6)
+	_update_label()
+
+
+## A champion: two different traits and CHAMPION_HP health.
+func make_champion(traits: Array) -> void:
+	max_hp *= CHAMPION_HP
+	for trait_name in traits:
+		_apply_trait(trait_name)
+	hp = max_hp
+	coin_reward *= CHAMPION_REWARD
+	xp_reward *= CHAMPION_REWARD
+	display_name = "Champion %s %s %s" % [traits[0], traits[1], display_name]
+	set_meta("champion", true)
+	_special_look(CHAMPION_COLOR, 2.4)
+	_update_label()
+
+
+func _apply_trait(trait_name: String) -> void:
 	match trait_name:
 		"Swift":
 			move_speed *= 1.35
@@ -363,24 +393,23 @@ func make_elite(trait_name: String) -> void:
 		"Hulking":
 			max_hp *= 1.5
 			_body.scale *= 1.2
-	hp = max_hp
-	coin_reward *= ELITE_REWARD
-	xp_reward *= ELITE_REWARD
-	display_name = "%s %s" % [trait_name, display_name]
+
+
+## The glowing aura and tint of an elite or champion.
+func _special_look(color: Color, energy: float) -> void:
 	var aura := OmniLight3D.new()
-	aura.light_color = ELITE_COLOR
-	aura.light_energy = 1.6
+	aura.light_color = color
+	aura.light_energy = energy
 	aura.omni_range = 3.0
 	aura.position.y = 1.2
 	add_child(aura)
 	for mesh in _meshes:
 		var glow := StandardMaterial3D.new()
 		glow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		glow.albedo_color = Color(ELITE_COLOR, 0.12)
+		glow.albedo_color = Color(color, 0.12)
 		glow.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 		mesh.material_overlay = glow
 		mesh.set_meta("elite_overlay", glow)
-	_update_label()
 
 
 ## Walking into a wall or block: slide sideways around it for a moment.
