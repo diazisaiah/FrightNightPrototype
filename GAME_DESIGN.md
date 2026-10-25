@@ -1507,17 +1507,15 @@ A restyle for each fighter, after the reference art in `art/alternate_skins/` (`
 Replaces the skill webs and the four stats. Why: every skill got bought eventually (33 points, maxed by level 34), so two players with the same fighter ended up identical; most skills and stats were number bumps that the coin web and gear already give; Looting was a trap; and a level-up gave nothing to try.
 
 ### The card draw (replaces the skill web)
-- **Each fighter has a deck** of about 30 cards: ~20 of their own plus ~10 shared ones every fighter can draw.
-- **Every level-up draws 3 cards; you keep 1.** The other two go back in the deck. Over a climb you take roughly 30 of the draws, so no two runs of a fighter end up with the same hand.
-- **Rarities:**
-  - Common: solid, simple (often ranked I-III, drawn again to rank up).
-  - Rare: changes how a move works.
-  - Epic: a build-defining signature.
-  - Legendary: the old capstones. They only enter the deck when their Dead League seal breaks, so every contender win adds new possibilities.
-- **Cards change how you fight, not just numbers.** For example:
-  - The Answer: Ice Water (counters freeze the target), Two Answers (a perfect counter earns a free second one), Read Twice (a clean dodge shortens the counter cooldown).
-  - The Mauler: Short Fuse (super armor builds the Inferno meter faster), Wrecking Ball (staggered enemies take a shove that knocks others down), Bloodthirst (each hit you absorb heals a little on your next landed punch).
+- **Each fighter has their own deck of 40 cards** (20 different cards):
+  - **20 commons:** 5 cards, 4 copies each. Each copy you draw ranks it up (I-IV).
+  - **10 rares:** 5 cards, 2 copies each (ranks I-II).
+  - **5 epics:** one copy each.
+  - **5 legendaries:** one copy each, and each joins the deck only when its Dead League seal breaks (one per contender), so every contender win adds a new possibility.
+- **Every level-up draws 3 different cards; you keep 1.** The other two go back in the deck. Draws are even across the copies left, so commons come up most; legendaries count double once they're in. By the Coffin King's par (level 29) you've kept about 28 of the 40, so no two runs of a fighter end up with the same hand.
+- **No copies of other systems.** A card never gives what a Sigil power (burn, freeze, lightning, heal on kill), the coin web or gear already gives. Cards build on the fighter's own kit: their moves, passive, ultimate and signature mechanic (the Mauler's super armor, the Answer's counters, the Blur's combo and shockwaves, the Stray's movement, Tony's taunts, the Catalyst's spells). The decks are designed one fighter at a time, next.
 - **Tags** (Counter, Dodge, Combo, Power, Ultimate, Movement) show what a card plays into. Possibly later: set bonuses for collecting several of one tag.
+- **Old seal skills:** the capstones and ultimate nodes the skill webs kept behind seals become cards (mostly the legendaries).
 - **When you draw:** level-ups mid-fight don't interrupt. The results screen and camp show "DRAW (n)". The draw screen flips 3 cards face up and you pick one. Unspent draws wait.
 - **The Skills page becomes the Deck page:** your cards laid out by tag with their ranks, the count drawn against the deck size, and undrawn cards face down (locked things stay hidden).
 - **Costs:**
@@ -1527,17 +1525,23 @@ Replaces the skill webs and the four stats. Why: every skill got bought eventual
 - **Loadout stays separate:** passives and ultimates still unlock by level. Cards can power them (like the passive-power nodes now).
 
 ### Attributes (replace the four stats)
-- **3 points a level** across five attributes, each a small steady bonus per point plus a perk at 10, 20 and 30 points:
-  - **Power:** +% damage. Perks like heavier set-up shots, more stagger, crits.
-  - **Grit:** +% knuckle HP and defense. Perks like a free hit to absorb, last-stand toughness.
-  - **Speed:** punch and move speed. Perks like faster dash recovery, longer combo time.
-  - **Technique:** dodge and counter windows (within the caps). Perks like a counter-window bump after a clean dodge.
-  - **Fortune:** coins, XP and better loot. A real tradeoff: no fighting power, but faster progress.
+**3 points a level** across five attributes, **30 points max in each**. Every point gives a small steady bonus, and 10, 20 and 30 points each unlock a perk. At the Coffin King's par (level 29) you have 84 points, enough to max two attributes and go partway in a third, or spread out for more perks, but never everything (maxing all five takes 150 points, level 51).
+
+| Attribute | Every point | 10: | 20: | 30: |
+|---|---|---|---|---|
+| **Power** | +1% damage | **Heavy Hands:** staggers you cause last 30% longer | **Follow Through:** a punch that knocks a monster out carries half its leftover damage to the nearest monster within 3m | **Knockout Blow:** every 6th punch you land in a combo hits for double and staggers ("KNOCKOUT BLOW!") |
+| **Grit** | +1.5% max knuckle HP | **Iron Knuckles:** punches cost 20% less knuckle HP | **Granite Chin:** after you're hit, the next hit within 2s deals half (no beatdowns) | **Get Up:** once a bout, a knockout blow leaves you at 15% knuckle HP instead, untouchable for 2s |
+| **Speed** | +0.6% punch speed, +0.4% move speed | **Quick Feet:** dodges and dashes recover 20% faster | **Tempo:** each punch landed in a combo makes the next 2% faster, up to +20% (resets when the combo drops) | **Blur Step:** a clean dodge makes you 30% faster, moving and punching, for 2s |
+| **Technique** | +0.4% dodge window, +0.005s counter window (within the caps) | **Read the Tell:** attack tells flash 0.08s earlier | **Clean Break:** a clean dodge makes the attacker stumble for 0.5s | **Precision:** a counter thrown within 0.5s of a clean dodge deals double |
+| **Fortune** | +2% coins, +1% XP | **Pickpocket:** elites and champions burst with 3x their coins | **Soul Collector:** bosses drop +1 Soul | **Hat Trick:** monsters wear hats twice as often |
+
+- **Fortune is the tradeoff:** no fighting power, but faster progress (more coins, Souls and hats, and hats are permanent boosts).
 - **Resetting attributes** costs coins, scaled to your tier.
+- **Notes:** Get Up is once per bout and has no stun, unlike the Crypt's Long Count gear (once a floor, stuns everything). Technique's per-point bonus and perks count toward the dodge (+25%) and counter (+0.5s) caps like everything else.
 
 ### Balance
 - **Raw power comes from the coin web and gear.** Cards give style, attributes give a lean.
-- **POWER rates cards and attributes; par assumes a typical hand** (average card value per level, attribute points split across the combat attributes), so enemies and contenders still match a fair build, and `balance_regression` keeps every fighter within range.
+- **POWER rates cards and attributes; par assumes a typical hand** (average card value per level, attribute points split evenly across Power, Grit, Speed and Technique), so enemies and contenders still match a fair build, and `balance_regression` keeps every fighter within range. A Fortune build is knowingly a bit under par.
 
 ### Old saves
 - Every skill point comes back as draws, one per level gained, and every stat point comes back to spend on attributes. Camp explains it once.
@@ -1545,7 +1549,7 @@ Replaces the skill webs and the four stats. Why: every skill got bought eventual
 ### Phases
 1. The card system: card data (effects use the same effect keys as today's skills), deck, draw, reroll and swap, the draw screen, the Deck page, save migration.
 2. Attributes and their perks; the Stats page rebuilt.
-3. Six decks of cards (one per fighter, Tony and the Catalyst included) plus the shared cards.
+3. Six decks of cards, one per fighter (Tony and the Catalyst included), designed and reviewed one fighter at a time.
 4. Balance: POWER, par and the regression checks.
 
 ## Multiplayer: the Versus ladder and co-op [Planned 2026-10-25]
