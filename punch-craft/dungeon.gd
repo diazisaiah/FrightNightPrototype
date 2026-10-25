@@ -1922,7 +1922,7 @@ func _material(key: String, color: Color, metallic := 0.0) -> StandardMaterial3D
 # --- Run end ----------------------------------------------------------------
 
 func _on_leveled_up(new_level: int) -> void:
-	_hud.announce_small("LEVEL UP!", Color(0.5, 0.9, 1))
+	_hud.announce_small("LEVEL UP!  +1 CARD", Color(0.5, 0.9, 1))
 
 
 ## Knuckles broke: fall to the floor, then the results.

@@ -931,7 +931,7 @@ func _refresh() -> void:
 	_chips.coins.set_amount(GameState.resources.get("coins", 0), _shown_once)
 	_refresh_bounties()
 	_chips.souls.set_amount(GameState.souls, _shown_once)
-	_chips.draws.set_amount(GameState.draws, _shown_once)
+	_chips.draws.set_amount(GameState.usable_draws(), _shown_once)
 	_chips.attribute_points.set_amount(GameState.attribute_points, _shown_once)
 	_shown_once = true
 	# Your POWER: every stat, upgrade, skill and item in one number.
@@ -949,7 +949,8 @@ func _refresh() -> void:
 			tree.selected_id = GameState.tree(kind).keys()[0]
 			tree.refresh()
 		_refresh_detail(kind)
-	_tab_buttons["Deck"].text = "Deck  (%d)" % GameState.draws if GameState.draws > 0 else "Deck"
+	var draws := GameState.usable_draws()
+	_tab_buttons["Deck"].text = "Deck  (%d)" % draws if draws > 0 else "Deck"
 	_tab_buttons["Attributes"].text = "Attributes  (%d)" % GameState.attribute_points if GameState.attribute_points > 0 else "Attributes"
 	_refresh_attributes()
 	_refresh_sheet()

@@ -38,6 +38,7 @@ func _build() -> void:
 	add_theme_stylebox_override("hover", UiTheme.raised(face.lightened(0.06), rim.lightened(0.25), 3, 12))
 	add_theme_stylebox_override("pressed", UiTheme.raised(face.lightened(0.1), rim.lightened(0.35), 3, 12))
 	add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	clip_contents = true
 	_inside = VBoxContainer.new()
 	_inside.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	for side in ["left", "right"]:
@@ -94,7 +95,9 @@ func _build() -> void:
 			pips.add_child(pip)
 		_inside.add_child(pips)
 	var shown_rank := rank + 1 if mode == "offer" else maxi(rank, 1)
-	var body := _label(Cards.offer_text(card, rank) if mode == "offer" else Cards.text(card, shown_rank), 13 if big else 11, UiTheme.MUTED.lightened(0.15))
+	var words := Cards.offer_text(card, rank) if mode == "offer" else Cards.text(card, shown_rank)
+	# The long ones (most epics) go a size down on the small tiles.
+	var body := _label(words, 13 if big else (10 if words.length() > 95 else 11), UiTheme.MUTED.lightened(0.15))
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	body.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -104,10 +107,6 @@ func _build() -> void:
 		footer = "NEW" if rank == 0 else "RANK %s" % Cards.roman(rank + 1)
 	elif copies > 1:
 		footer = "RANK %s" % Cards.roman(rank)
-	if card.has("upgrades"):
-		var entry := Abilities.info(fighter, card.upgrades)
-		if not entry.is_empty() and footer == "":
-			footer = String(entry.name).to_upper()
 	if footer != "":
 		var foot := _label(footer, 12, rim.lightened(0.2) if mode == "offer" and rank == 0 else UiTheme.GOLD)
 		foot.add_theme_font_override("font", UiTheme.bold_font())

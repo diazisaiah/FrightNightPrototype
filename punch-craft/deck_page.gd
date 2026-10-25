@@ -100,7 +100,7 @@ func refresh() -> void:
 		return
 	var fighter := GameState.player_class
 	var deck := Cards.deck(fighter)
-	var draws := GameState.draws
+	var draws := GameState.usable_draws()
 	_title.text = "DECK  ·  %s" % GameState.fighter_name().to_upper()
 	var shown := 0
 	for id in deck:
@@ -163,8 +163,9 @@ func _refresh_detail() -> void:
 	swap.visible = true
 	var cost := GameState.swap_cost(_selected)
 	swap.text = "Swap  ·  %d Souls" % cost
-	swap.disabled = GameState.souls < cost or GameState.draws > 0
-	swap.tooltip_text = "Draw your waiting cards first." if GameState.draws > 0 else "Give back one rank of this card for a fresh draw."
+	var waiting := GameState.usable_draws() > 0
+	swap.disabled = GameState.souls < cost or waiting
+	swap.tooltip_text = "Draw your waiting cards first." if waiting else "Give back one rank of this card for a fresh draw."
 
 
 func _swap() -> void:

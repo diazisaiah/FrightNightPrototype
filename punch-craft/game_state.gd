@@ -1677,7 +1677,7 @@ func swap_cost(id: String) -> int:
 ## Give back one rank of a card for a fresh draw (without it on the table).
 func swap_card(id: String) -> bool:
 	var progress := _current()
-	if card_rank(id) <= 0 or souls < swap_cost(id) or progress.draws > 0:
+	if card_rank(id) <= 0 or souls < swap_cost(id) or usable_draws() > 0:
 		return false
 	souls -= swap_cost(id)
 	progress.cards[id] = card_rank(id) - 1
@@ -1687,6 +1687,8 @@ func swap_card(id: String) -> bool:
 	var without: Dictionary = progress.cards.duplicate()
 	without[id] = Cards.copies(Cards.info(player_class, id))
 	progress.offer = Cards.draw(player_class, without, 3, dead_league_clears)
+	if progress.offer.is_empty():
+		progress.offer = Cards.draw(player_class, progress.cards, 3, dead_league_clears)
 	progress.rerolls = 0
 	_commit()
 	return true
@@ -1707,6 +1709,12 @@ func redraft() -> bool:
 	progress.rerolls = 0
 	_commit()
 	return true
+
+
+## Draws the deck can fill now. Past about level 40 there are more draws than
+## cards; the rest wait for a swap, a redraft or a seal.
+func usable_draws() -> int:
+	return mini(draws, Cards.left_in_deck(player_class, cards, dead_league_clears))
 
 
 func cards_kept() -> int:

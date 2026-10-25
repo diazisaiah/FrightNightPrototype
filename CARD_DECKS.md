@@ -1,4 +1,4 @@
-# Fright Night — Card Decks [Draft 2026-10-25]
+# Fright Night — Card Decks [Built 2026-10-25]
 
 Each fighter's deck for level-up draws (see "Level-ups: the card draw and attributes" in GAME_DESIGN.md). Every deck is 40 cards (20 different cards):
 
@@ -9,175 +9,175 @@ Each fighter's deck for level-up draws (see "Level-ups: the card draw and attrib
 
 **The rule:** no card gives what a Sigil power (burn, freeze, lightning, heal on kill) does, or copies a coin-web or gear special or an attribute perk. Commons can give plain stats (damage, knuckle HP, speed); everything else builds on the fighter's own kit.
 
-Numbers are first guesses, to be tuned against POWER and par.
+Numbers are tuned against POWER and par (`balance_report.gd`): every fighter's typical hand is worth about the same. The tables below are generated from `punch-craft/cards.gd`, so they match the game.
 
-**Shared legendary, Ultimate Surge:** your ultimate starts every bout a quarter full, and refunds a quarter when it ends. Every deck has it as the Southpaw legendary (the old seal skill).
+**Shared legendary, Ultimate Surge:** your ultimate starts every bout a quarter full, and using it gives a quarter back. Every deck has it as the Southpaw legendary (the old seal skill).
 
 ---
 
 ## The Mauler
 
-Grudge / Wrecking Ball / Berserker, Inferno Uppercut / Brimstone Shield. A brawler who takes the hit and gives it back.
+Grudge / Wrecking Ball / Berserker / Inferno Uppercut / Brimstone Shield. A brawler who takes the hit and gives it back.
 
-**Commons (I-IV)**
-| Card | Per rank |
-|---|---|
-| **Payback** | Your first punch after taking a hit deals +12% |
-| **Thick Hide** | Hits deal 2% less to you |
-| **Short Fuse** | Taking a hit fills your ultimate by 3% |
-| **Heavy Hitter** | +4% damage |
-| **Mob Magnet** | +2% damage for each monster within 3m (up to 4) |
+**Commons (ranks I/II/III/IV)**
+| Card | Tag | Effect |
+|---|---|---|
+| **Payback** | Power | Your first punch after taking a hit deals +12/24/36/48% |
+| **Heavy Hitter** | Power | +4/8/12/16% damage |
+| **Thick Hide** | Defense | Hits deal 2/4/6/8% less to you |
+| **Short Fuse** | Ultimate | Taking a hit fills your ultimate by 3/6/9/12 |
+| **Mob Magnet** | Power | +2/4/6/8% damage for every monster within 3m (up to 4) |
 
 **Rares (I-II)**
-| Card | I | II |
-|---|---|---|
-| **Hold the Line** | Hits make you flinch half as long | Hits can't make you flinch |
-| **Lights Out** | Staggered monsters take +20% from you | +40% |
-| **Haymaker Swing** | Hooks also hit every monster in an arc in front of you for half damage | A wider arc, for full damage |
-| **Shoulder Charge** | Dashing into a monster knocks it down for 1s | And hits it for 2x your base damage |
-| **Second Breath** | Below 30% knuckle HP, punches cost nothing | Below 40% |
+| Card | Tag | I | II |
+|---|---|---|---|
+| **Hold the Line** | Defense | Hits make you flinch half as long | Hits can't make you flinch |
+| **Lights Out** | Power | Staggered monsters take +20% from you | Staggered monsters take +40% from you |
+| **Haymaker Swing** | Power | Hooks also hit every monster in a wide arc in front of you, for half | Hooks also hit every monster in a wider arc in front of you, for full damage |
+| **Shoulder Charge** | Movement | Dashing into a monster knocks it down for 1s | Dashing into a monster knocks it down for 1s and hits it for 2x your base damage |
+| **Second Breath** | Rage | Below 30% knuckle HP, punches cost nothing | Below 40% knuckle HP, punches cost nothing |
 
 **Epics**
 | Card | Upgrades | Effect |
 |---|---|---|
-| **Blood Feud** | Grudge | Every hit from the same monster adds +1x to your Grudge punch on it, and the Grudge punch staggers everything near it |
-| **Strike!** | Wrecking Ball | Bowled monsters are knocked down for 2s, and a strike of 3+ fills 25% of your ultimate |
-| **Red Mist** | Berserker | Berserker's bonus also gives up to +40% punch speed |
-| **Inferno II** | Inferno Uppercut | After the first uppercut lands, you leap at a second monster |
-| **Brimstone Wall** | Brimstone Shield | The shield holds twice as many hits, and every hit it soaks hits the attacker back for your base damage |
+| **Blood Feud** | Grudge | Grudge: every hit from the marked monster adds +1x to your Grudge punch on it, and the Grudge punch staggers everything within 3m |
+| **Strike!** | Wrecking Ball | Wrecking Ball: bowled monsters are knocked down for 2s, and a strike of 3 or more fills a quarter of your ultimate |
+| **Red Mist** | Berserker | Berserker: the lower your knuckles, the faster you punch too (up to +40%) |
+| **Inferno II** | Inferno Uppercut | Inferno Uppercut: after it lands, you leap at a second monster |
+| **Brimstone Wall** | Brimstone Shield | Brimstone Shield: holds twice as many hits, and every hit it soaks hits the attacker back for your base damage |
 
 **Legendaries**
 | Seal | Card | Effect |
 |---|---|---|
 | Bellman | **Thrill of the Fight** | Every monster within 4m makes hits deal 5% less to you (up to 25%) |
 | Headless | **Juggernaut** | Above half knuckle HP, hits deal 25% less and can't make you flinch |
-| Southpaw | **Ultimate Surge** | (shared) |
+| Southpaw | **Ultimate Surge** | Every bout starts with your ultimate a quarter full, and using it gives a quarter back |
 | Plague Doctor | **Avalanche** | Every 4th punch you land shoves every monster in front of you back and staggers them |
-| Coffin King | **Berserk** | Once a bout, dropping below 50% knuckle HP makes you hit twice as hard and take half damage for 8s |
+| Coffin King | **Berserk** | Once a bout, dropping below half knuckle HP makes you hit twice as hard and take half damage for 8s |
 
 ---
 
 ## The Answer
 
-Slips, rolls and back steps; counters off a dodge. Perfect Counter / Phantom Step / Dodge Chain, Riposte Stance / Flow State.
+Perfect Counter / Phantom Step / Dodge Chain / Riposte Stance / Flow State. Slips, rolls and back steps; counters off a dodge.
 
-**Commons (I-IV)**
-| Card | Per rank |
-|---|---|
-| **Closing Statement** | Counters against the last attack of a monster's combo deal +15% |
-| **Exploit** | A monster stays open 0.15s longer after you dodge its whole combo |
-| **Iron Chin** | +5% max knuckle HP |
-| **Stinging Jab** | Jabbing a monster within 1s of dodging it delays its next attack by 0.1s |
-| **Answered** | Counters fill your ultimate 6% more |
+**Commons (ranks I/II/III/IV)**
+| Card | Tag | Effect |
+|---|---|---|
+| **Closing Statement** | Counter | Counters against the last attack of a monster's combo deal +20/40/60/80% |
+| **Exploit** | Counter | A monster stays open 0.2/0.4/0.6/0.8s longer after you dodge its whole combo |
+| **Iron Chin** | Defense | +6/12/18/24% max knuckle HP |
+| **Stinging Jab** | Dodge | Jabbing a monster within 1s of dodging it delays its next attack by 0.1/0.2/0.3/0.4s |
+| **Answered** | Ultimate | Counters fill your ultimate 8/16/24/32% more |
 
 **Rares (I-II)**
-| Card | I | II |
-|---|---|---|
-| **Two Answers** | A counter that knocks out its target makes your next punch on the nearest monster a counter too, no dodge needed | Chains twice |
-| **Turnabout** | Counters stagger the target | And every monster within 2m |
-| **Read Twice** | A clean dodge shortens Perfect Counter's cooldown by 1s | By 2s |
-| **Return to Sender** | Dodging an arrow, fireball or bolt throws it back at the thrower for half its damage | Full damage |
-| **Crowd Reader** | Dodging one attack also counts as dodging any other attack landing within 0.3s | Within 0.6s, and your counter can hit any of them |
+| Card | Tag | I | II |
+|---|---|---|---|
+| **Two Answers** | Counter | A counter that knocks out its target makes your next punch a counter too, no dodge needed | A counter that knocks out its target makes your next punch a counter too, up to twice in a row |
+| **Turnabout** | Counter | Counters stun the target for 0.6s | Counters stun the target for 1.2s and stagger every monster within 2m of it |
+| **Read Twice** | Counter | A clean dodge cuts Perfect Counter's cooldown by 1s | A clean dodge cuts Perfect Counter's cooldown by 2s |
+| **Return to Sender** | Dodge | Dodging an arrow, fireball or bolt sends it back at the thrower for 2x your base damage | Dodging an arrow, fireball or bolt sends it back at the thrower for 4x your base damage |
+| **Crowd Reader** | Dodge | Dodging an attack also dodges any other attack landing within 0.3s | Dodging an attack also dodges any other attack landing within 0.6s |
 
 **Epics**
 | Card | Upgrades | Effect |
 |---|---|---|
-| **Checkmate** | Perfect Counter | A Perfect Counter on a monster under 40% HP knocks it out (bosses: takes 15% of their max HP) |
-| **Ghost Walk** | Phantom Step | Phantom Step works on melee attacks too, every 6s |
-| **Stored Answers** | Dodge Chain | Each punch spends one dodge instead of all of them, and chains go up to 10 |
-| **Riposte II** | Riposte Stance | Lasts 50% longer, and every automatic counter is a Perfect Counter |
-| **Untouchable** | Flow State | Every punch that lands while it lasts extends it by 0.2s |
+| **Checkmate** | Perfect Counter | Perfect Counter: on a monster under 40% HP it knocks it out (a boss loses 15% of its max HP) |
+| **Ghost Walk** | Phantom Step | Phantom Step: works on melee attacks too, every 6s |
+| **Stored Answers** | Dodge Chain | Dodge Chain: each punch spends one dodge instead of all of them, and chains go up to 10 |
+| **Riposte II** | Riposte Stance | Riposte Stance: lasts 50% longer, and every counter in it is a Perfect Counter |
+| **Untouchable** | Flow State | Flow State: every punch that lands while it lasts adds 0.2s |
 
 **Legendaries**
 | Seal | Card | Effect |
 |---|---|---|
-| Bellman | **Free Flow** | Back steps set up counters too: a straight after a back step is a counter |
+| Bellman | **Free Flow** | A counter keeps your counter ready for one more punch |
 | Headless | **Precision Strike** | Perfect Counters work with any punch |
-| Southpaw | **Ultimate Surge** | (shared) |
-| Plague Doctor | **Mirror Match** | After a counter, the next attack aimed at you within 1s is slipped automatically |
-| Coffin King | **The Last Word** | Every 10th counter in a bout slows time for 3s, and every counter in it is perfect |
+| Southpaw | **Ultimate Surge** | Every bout starts with your ultimate a quarter full, and using it gives a quarter back |
+| Plague Doctor | **Mirror Match** | After a counter, the next attack aimed at you within 1s is slipped for you |
+| Coffin King | **The Last Word** | Every 10th counter in a bout slows time for 3s, and every counter in it is a Perfect Counter |
 
 ---
 
 ## The Blur
 
-Fast hands and a growing combo. Rapid Combos / Echo Fists / Long Reach, Temporal Break / Unbroken.
+Rapid Combos / Echo Fists / Long Reach / Temporal Break / Unbroken. Long combos, fast hands, shockwaves.
 
-**Commons (I-IV)**
-| Card | Per rank |
-|---|---|
-| **Second Gear** | At x5 combo or higher, +4% punch speed |
-| **Bounce Back** | Getting hit drops your combo to 40% / 55% / 70% / 85% of it instead of to nothing |
-| **Through and Through** | Punches also hit the monster right behind your target for 10% |
-| **Endurance** | +5% max knuckle HP |
-| **Speed Bag** | The first 5 hits of each combo come 6% faster |
+**Commons (ranks I/II/III/IV)**
+| Card | Tag | Effect |
+|---|---|---|
+| **Second Gear** | Combo | From the 5th hit of a combo, +4/8/12/16% punch speed |
+| **Bounce Back** | Combo | Getting hit leaves 40/55/70/85% of your combo instead of none |
+| **Through and Through** | Power | Punches also hit the monster right behind your target for 10/20/30/40% |
+| **Endurance** | Defense | +5/10/15/20% max knuckle HP |
+| **Speed Bag** | Combo | The first 5 hits of each combo come 6/12/18/24% faster |
 
 **Rares (I-II)**
-| Card | I | II |
-|---|---|---|
-| **Thousand Fists** | At x20 combo, every punch throws an extra hit | From x15 |
-| **Ricochet** | When the monster you're comboing goes down, the combo timer refills and your next punch dashes you to the nearest monster | Dashes twice as far |
-| **Rhythm Guard** | Every 8th hit in a combo slips the next attack aimed at you | Every 6th |
-| **Afterimage** | Your dodges leave a violet afterimage that punches once for your base damage | Twice |
-| **Stun Lock** | A staggered monster stays staggered while you keep hitting it, up to 1s | Up to 2s |
+| Card | Tag | I | II |
+|---|---|---|---|
+| **Thousand Fists** | Combo | From the 20th hit of a combo, every punch throws an extra hit for half | From the 15th hit of a combo, every punch throws an extra hit for half |
+| **Ricochet** | Combo | When a monster you're comboing goes down, the combo timer refills and your next punch dashes you to the nearest monster within 5m | When a monster you're comboing goes down, the combo timer refills and your next punch dashes you to the nearest monster within 10m |
+| **Rhythm Guard** | Dodge | Every 8th hit in a combo slips the next attack aimed at you | Every 6th hit in a combo slips the next attack aimed at you |
+| **Afterimage** | Dodge | A dodge leaves a violet afterimage that punches the attacker for your base damage | A dodge leaves a violet afterimage that punches the attacker twice for your base damage |
+| **Stun Lock** | Combo | A staggered monster stays staggered while you keep hitting it, up to 1s | A staggered monster stays staggered while you keep hitting it, up to 2s |
 
 **Epics**
 | Card | Upgrades | Effect |
 |---|---|---|
-| **Aftershock** | Rapid Combos | The 5th-hit stun also hits everything it stuns for your base damage, and holds the timer 2s |
-| **Double Echo** | Echo Fists | Echoes echo once more, for half |
-| **Spear Hands** | Long Reach | Punches at the edge of your reach hit 30% harder and push the monster back out of its range |
-| **Temporal Break II** | Temporal Break | Every prompt you hit grows your combo by 3, and the break lasts 30% longer |
-| **Unbroken II** | Unbroken | When it ends, your combo multiplier stays until the combo drops on its own |
+| **Aftershock** | Rapid Combos | Rapid Combos: the stun also hits everything it stuns for your base damage, and holds the combo timer 2s |
+| **Double Echo** | Echo Fists | Echo Fists: echoes echo once more, for half |
+| **Spear Hands** | Long Reach | Long Reach: punches at the edge of your reach hit 30% harder and push the monster back out of its range |
+| **Temporal Break II** | Temporal Break | Temporal Break: every prompt you hit grows your combo by 3, and the break lasts 30% longer |
+| **Unbroken II** | Unbroken | Unbroken: lasts 50% longer, and your combo timer runs twice as long for 5s after it ends |
 
 **Legendaries**
 | Seal | Card | Effect |
 |---|---|---|
 | Bellman | **Flurry** | Every 25th hit in a combo unleashes 8 lightning-fast hits on the target |
 | Headless | **Perpetual Motion** | Your combo timer pauses while you dodge and for 1s after |
-| Southpaw | **Ultimate Surge** | (shared) |
-| Plague Doctor | **Blur** | At x30 combo you move 20% faster, and 1 in 5 attacks aimed at you goes straight through you |
+| Southpaw | **Ultimate Surge** | Every bout starts with your ultimate a quarter full, and using it gives a quarter back |
+| Plague Doctor | **Blur** | From the 30th hit of a combo you move 20% faster, and 1 in 5 attacks aimed at you goes straight through you |
 | Coffin King | **Fifty Before They Blink** | Reaching a 50-hit combo slows time for 3s (once a combo) |
 
 ---
 
 ## The Stray
 
-Sprint, dash and jump; never where they swing. Dash Punches / Head Stomp / Momentum, Highlight Reel / Hype Train.
+Dash Punches / Head Stomp / Momentum / Highlight Reel / Hype Train. Always moving: dashes, jumps, hits from behind.
 
-**Commons (I-IV)**
-| Card | Per rank |
-|---|---|
-| **Rubber Legs** | Dashes cover 8% more ground |
-| **Cheap Shot** | Punches from behind or the side deal +10% |
-| **Hang Time** | Jump punches deal +10% |
-| **Stride** | +5% move and sprint speed |
-| **Opportunist** | +8% damage to monsters winding up an attack |
+**Commons (ranks I/II/III/IV)**
+| Card | Tag | Effect |
+|---|---|---|
+| **Rubber Legs** | Movement | Dashes cover 8/16/24/32% more ground |
+| **Cheap Shot** | Power | Punches from behind or the side deal +10/20/30/40% |
+| **Hang Time** | Movement | Jump punches deal +15/30/45/60% |
+| **Stride** | Movement | +5/10/15/20% move and sprint speed |
+| **Opportunist** | Power | +10/20/30/40% damage to monsters winding up an attack |
 
 **Rares (I-II)**
-| Card | I | II |
-|---|---|---|
-| **Dive Kick** | Jump punches stagger | And knock the monster back |
-| **Vault** | Dashing into a monster vaults you over it, to its back | And your next punch on it deals double |
-| **Blindside** | Your first punch on a monster that isn't facing you deals double | Triple |
-| **Ghost Step** | Dashing through an attack dodges it | And refunds the dash |
-| **Slick** | Getting hit while sprinting is only a graze (half damage) | Once every 3s it's a full dodge |
+| Card | Tag | I | II |
+|---|---|---|---|
+| **Dive Kick** | Movement | Jump punches stagger | Jump punches stagger and knock the monster back |
+| **Vault** | Movement | Dashing into a monster vaults you over it, to its back | Dashing into a monster vaults you over it, and your next punch on it deals double |
+| **Blindside** | Power | Your first punch on a monster that isn't facing you deals double | Your first punch on a monster that isn't facing you deals triple |
+| **Ghost Step** | Dodge | Dashing through an attack dodges it | Dashing through an attack dodges it and gives the dash straight back |
+| **Slick** | Dodge | Getting hit while sprinting only grazes you (half damage) | Getting hit while sprinting only grazes you (half damage), and every 3s one is a full dodge |
 
 **Epics**
 | Card | Upgrades | Effect |
 |---|---|---|
-| **Spear Line** | Dash Punches | Spear Jab reaches twice as far and staggers; Haymaker's blast throws monsters into others |
-| **Bounce House** | Head Stomp | Each bounce in a chain deals +50%, and a chain of 3 refreshes your dash |
-| **Full Tilt** | Momentum | Momentum goes up to x3, and a punch spends only half of it |
-| **Director's Cut** | Highlight Reel | Hits 3 more monsters, and every hit staggers |
-| **Express** | Hype Train | Lasts 1s longer for every monster you bowl over (up to +6s) |
+| **Spear Line** | Dash Punches | Dash Punches: Spear Jab reaches twice as far and staggers; Haymaker's blast throws monsters into the ones behind them |
+| **Bounce House** | Head Stomp | Head Stomp: each bounce in a chain deals 50% more than the last, and a chain of 3 gives your dash back |
+| **Full Tilt** | Momentum | Momentum: goes up to x3, and a punch spends only half of it |
+| **Director's Cut** | Highlight Reel | Highlight Reel: hits 3 more monsters, and every hit stuns them for 1s |
+| **Express** | Hype Train | Hype Train: lasts 1s longer for every monster you bowl over (up to +6s) |
 
 **Legendaries**
 | Seal | Card | Effect |
 |---|---|---|
-| Bellman | **High Ground** | Punches while you're in the air or above the monster deal +40% |
-| Headless | **Parkour** | Jump off any monster's head, and a landed punch gives your air jump back |
-| Southpaw | **Ultimate Surge** | (shared) |
+| Bellman | **High Ground** | Punches thrown in the air or from above the monster deal +50% |
+| Headless | **Parkour** | You bounce off any monster's head you land on, stunning it for 0.5s, and a jump punch that lands gives your dash back |
+| Southpaw | **Ultimate Surge** | Every bout starts with your ultimate a quarter full, and using it gives a quarter back |
 | Plague Doctor | **Never Where They Swing** | While sprinting, every 3rd attack aimed at you misses |
 | Coffin King | **Free Running** | Every 5s of nonstop moving makes your next punch triple damage and a stagger |
 
@@ -185,82 +185,83 @@ Sprint, dash and jump; never where they swing. Dash Punches / Head Stomp / Momen
 
 ## Tony
 
-Taunts and enraged monsters. Fuggedaboudit / The Muscle / The Take, Big Mouth / The Family.
+Fuggedaboudit / The Muscle / The Take / Big Mouth / The Family. Enrages monsters (they take double from him) and works the crowd.
 
-**Commons (I-IV)**
-| Card | Per rank |
-|---|---|
-| **Trash Talk** | Enraged monsters stay mad 1s longer |
-| **Below the Belt** | Body shots on enraged monsters deal +12% |
-| **Nice to Meet Ya** | Your first punch on each monster deals +15% |
-| **Shrug It Off** | A monster that hits you is enraged for 1s |
-| **Tough Guy** | +5% max knuckle HP |
+**Commons (ranks I/II/III/IV)**
+| Card | Tag | Effect |
+|---|---|---|
+| **Trash Talk** | Rage | Enraged monsters stay mad 1/2/3/4s longer |
+| **Below the Belt** | Power | Body shots on enraged monsters deal +12/24/36/48% |
+| **Nice to Meet Ya** | Power | Your first punch on each monster deals +15/30/45/60% |
+| **Shrug It Off** | Rage | A monster that hits you is enraged for 1/2/3/4s |
+| **Tough Guy** | Defense | +5/10/15/20% max knuckle HP |
 
 **Rares (I-II)**
-| Card | I | II |
-|---|---|---|
-| **Say It To My Face** | Every 4th punch you land enrages the target | Every 3rd |
-| **Bada Bing** | Knocking out an enraged monster enrages the nearest one | The nearest two |
-| **Made Man** | Fuggedaboudit stuns the monster whose hit you waved off for 1s | 2s |
-| **Vinnie's Cousin** | Vinnie holds monsters 1s longer, and you deal +25% to a held monster | +50% |
-| **Heavy Hands** | Hooks and uppercuts on enraged monsters stagger | And knock them back |
+| Card | Tag | I | II |
+|---|---|---|---|
+| **Say It To My Face** | Rage | Every 4th punch you land enrages the target for 4s | Every 3rd punch you land enrages the target for 4s |
+| **Bada Bing** | Rage | Knocking out an enraged monster enrages the nearest one | Knocking out an enraged monster enrages the nearest two |
+| **Made Man** | Defense | Fuggedaboudit stuns the monster whose hit you waved off for 1s | Fuggedaboudit stuns the monster whose hit you waved off for 2s |
+| **Vinnie's Cousin** | Power | Vinnie holds monsters 1s longer, and you deal +25% to a monster he's holding | Vinnie holds monsters 1s longer, and you deal +50% to a monster he's holding |
+| **Wake-Up Call** | Rage | Set-up hooks and uppercuts on enraged monsters stun them for 0.6s | Set-up hooks and uppercuts on enraged monsters stun them for 0.6s and knock them back |
 
 **Epics**
 | Card | Upgrades | Effect |
 |---|---|---|
-| **Fuggedaboudit II** | Fuggedaboudit | Waves off two hits in a row, and recharges 3s faster |
-| **The Whole Crew** | The Muscle | Vinnie grabs two monsters and cracks their heads together |
-| **Skim Off the Top** | The Take | Enraged monsters pay triple, and knocking one out enrages the nearest monster |
-| **Big Mouth II** | Big Mouth | Insults every monster in front of you, not just one |
-| **Family Reunion** | The Family | A fourth goon shows up, and they stay 5s longer |
+| **Fuggedaboudit II** | Fuggedaboudit | Fuggedaboudit: waves off two hits in a row, and recharges 3s faster |
+| **The Whole Crew** | The Muscle | The Muscle: Vinnie grabs two monsters and cracks their heads together (2x your base damage each) |
+| **Skim Off the Top** | The Take | The Take: enraged monsters pay triple, and knocking one out enrages the nearest monster |
+| **Big Mouth II** | Big Mouth | Big Mouth: insults every monster in front of you, not just one |
+| **Family Reunion** | The Family | The Family: a fourth goon shows up, and they stay 5s longer |
 
 **Legendaries**
 | Seal | Card | Effect |
 |---|---|---|
 | Bellman | **Last Word** | Knocking out an enraged monster scares every monster within 4m off for 2s |
-| Headless | **Untouchable** | While any monster is enraged, everything else deals 25% less to you |
-| Southpaw | **Ultimate Surge** | (shared) |
+| Headless | **Untouchable** | While any monster is enraged, the rest deal 25% less to you |
+| Southpaw | **Ultimate Surge** | Every bout starts with your ultimate a quarter full, and using it gives a quarter back |
 | Plague Doctor | **Respect** | Bosses and contenders are enraged by your first punch on them |
-| Coffin King | **Capo** | An enraged monster you hit turns on the nearest other monster for 2s (once each) |
+| Coffin King | **Capo** | An enraged monster you hit slugs the nearest other monster for 3x your base damage and leaves you alone for 2s (once each) |
 
 ---
 
 ## The Catalyst
 
-Powers in his fists. Dual Sigil / Attunement / Prism, Elemental Fists / Flame Burst. His cards strengthen the powers he has selected; they never give him one he hasn't bought or picked.
+Dual Sigil / Attunement / Prism / Elemental Fists / Flame Burst. Punches that set off his Sigil powers.
 
-**Commons (I-IV)**
-| Card | Per rank |
-|---|---|
-| **Conduit** | Your selected powers are 5% stronger |
-| **Spellfist** | Elemental Fists lasts 1s longer |
-| **Old Iron** | +4% damage |
-| **Afterglow** | Punches within 1s of a power triggering deal +10% |
-| **Runic Wraps** | Every 15th / 13th / 11th / 9th punch triggers one of your selected powers |
+**Commons (ranks I/II/III/IV)**
+| Card | Tag | Effect |
+|---|---|---|
+| **Conduit** | Spell | Your selected powers are 5/10/15/20% stronger |
+| **Spellfist** | Ultimate | Elemental Fists lasts 1/2/3/4s longer |
+| **Old Iron** | Power | +4/8/12/16% damage |
+| **Afterglow** | Spell | Punches within 1s of a power going off deal +10/20/30/40% |
+| **Runic Wraps** | Spell | Every 15/13/11/9th punch you land sets off one of your selected powers |
 
 **Rares (I-II)**
-| Card | I | II |
-|---|---|---|
-| **Resonance** | Two different powers hitting the same monster within 2s stagger it | And it takes +20% for 3s |
-| **Overflow** | Power damage beyond what kills a monster spills to the nearest one, at half | In full |
-| **Ward** | Every power trigger gives you a ward that soaks 3% of your max knuckle HP (stacks to 3) | 5% |
-| **Focus** | With only one power selected, it triggers 10% more often | 20% |
-| **Twin Cast** | Power triggers have a 15% chance to fire twice | 30% |
+| Card | Tag | I | II |
+|---|---|---|---|
+| **Resonance** | Spell | Two different powers hitting the same monster within 2s stagger it | Two different powers hitting the same monster within 2s stagger it, and it takes +20% from you for 3s |
+| **Overflow** | Spell | Power damage beyond what knocks a monster out spills to the nearest one, at half | Power damage beyond what knocks a monster out spills to the nearest one |
+| **Ward** | Defense | Every time a power goes off you gain a ward that soaks 3% of your max knuckle HP (stacks to 3) | Every time a power goes off you gain a ward that soaks 5% of your max knuckle HP (stacks to 3) |
+| **Focus** | Spell | With only one power selected, any punch has a 10% chance to set it off | With only one power selected, any punch has a 20% chance to set it off |
+| **Twin Cast** | Spell | Powers have a 15% chance to go off twice | Powers have a 30% chance to go off twice |
 
 **Epics**
 | Card | Upgrades | Effect |
 |---|---|---|
-| **Sigil Weave** | Dual Sigil | When both your powers hit the same monster, it bursts for your base damage |
-| **Deep Attunement** | Attunement | The attuned power is 25% stronger, and every trigger makes you 10% faster for 2s |
-| **Spectrum** | Prism | Each different power you trigger in a row adds +10% damage, up to +40% |
-| **Elemental Fists II** | Elemental Fists | Each element's chance is 20%, and every spell hits a second monster |
-| **Flame Burst II** | Flame Burst | The ring of fire pulses twice |
+| **Sigil Weave** | Dual Sigil | Dual Sigil: when both your powers hit the same monster within 2s, it bursts for 2x your base damage |
+| **Deep Attunement** | Attunement | Attunement: the attuned power is 25% stronger, and every time it goes off you're 10% faster for 2s |
+| **Spectrum** | Prism | Prism: each different power you set off in a row adds +10% damage, up to +40% |
+| **Elemental Fists II** | Elemental Fists | Elemental Fists: each element's chance is 20%, and every spell hits a second monster |
+| **Flame Burst II** | Flame Burst | Flame Burst: the ring of fire goes off twice |
 
 **Legendaries**
 | Seal | Card | Effect |
 |---|---|---|
 | Bellman | **Archmage** | Your powers are 30% stronger while your ultimate is over half full |
 | Headless | **Living Conduit** | Select one more power, whatever your passive |
-| Southpaw | **Ultimate Surge** | (shared) |
-| Plague Doctor | **Elemental Body** | Getting hit triggers one of your selected powers on the attacker (once a second) |
-| Coffin King | **Grand Unification** | Every 20th power trigger sets off the base effect of every power you've bought, all at once |
+| Southpaw | **Ultimate Surge** | Every bout starts with your ultimate a quarter full, and using it gives a quarter back |
+| Plague Doctor | **Elemental Body** | Getting hit sets off one of your selected powers on the attacker (once a second) |
+| Coffin King | **Grand Unification** | Every 20th time a power goes off, every power you own goes off too |
+

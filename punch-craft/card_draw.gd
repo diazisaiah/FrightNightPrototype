@@ -75,7 +75,7 @@ func _deal() -> void:
 	_busy = true
 	for child in _row.get_children():
 		child.queue_free()
-	var waiting := GameState.draws
+	var waiting := GameState.usable_draws()
 	_sub.text = "%s  ·  %d draw%s waiting" % [GameState.fighter_name(), waiting, "" if waiting == 1 else "s"]
 	_refresh_reroll()
 	var holders := []
