@@ -205,9 +205,29 @@ func _process(delta: float) -> void:
 			_spawn_timer = SPAWN_INTERVAL
 			_to_spawn -= 1
 			_spawn_enemy({"kind": _pick_kind(), "armored": randf() < _armor_chance()}, _spawn_point())
+		_recount(delta)
 	_update_interaction()
 	_animate_merchant(delta)
 	_update_map()
+
+
+## Once a second, counts who's really still standing: if the count ever
+## drifts, the room still opens when the last one falls.
+var _recount_timer := 1.0
+
+
+func _recount(delta: float) -> void:
+	_recount_timer -= delta
+	if _recount_timer > 0.0:
+		return
+	_recount_timer = 1.0
+	var living := 0
+	for node in _enemies.get_children():
+		if node is Enemy and not (node as Enemy).is_dead():
+			living += 1
+	_alive = living
+	if living == 0 and _to_spawn == 0 and _current_room.type != "boss":
+		_clear_room(_current_room)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -249,11 +269,18 @@ func _physics_process(_delta: float) -> void:
 	if _player.global_position.y < FALL_LIMIT:
 		_player.global_position = _rooms[0].center + Vector3(0, 1, 0)
 		_player.velocity = Vector3.ZERO
-	# Anything that ends up under the floor (pushed through a wall, summoned
-	# outside) goes back into the fight, so a room can always be cleared.
+	# Anything that ends up under the floor, outside the sealed room or inside
+	# a solid block (pushed through a wall, a Lich's blink, a Wraith drifting
+	# off) goes back into the fight, so a room can always be cleared. Wraiths
+	# float through blocks on purpose.
+	if _current_room.is_empty() or _current_room.state != "fighting":
+		return
 	for node in _enemies.get_children():
 		var enemy := node as Enemy
-		if enemy and not enemy.is_dead() and enemy.global_position.y < -5.0 and not _current_room.is_empty():
+		if enemy == null or enemy.is_dead():
+			continue
+		var at := enemy.global_position
+		if at.y < -5.0 or not _inside_room(_current_room, at, -0.5) or (_in_solid(_current_room, at) and not enemy is Wraith):
 			enemy.global_position = _spawn_point()
 			enemy.velocity = Vector3.ZERO
 
