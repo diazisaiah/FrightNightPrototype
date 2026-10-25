@@ -39,8 +39,11 @@ var _look := {}
 var _skin := Color()
 var _joints := {}
 var _hat: Node3D
-## Things that sit on top of the head (hair, beanie): a hat goes above them.
-var _crown := 0.0
+## Hats sit at this height on the head (just over the skull). Hair above it
+## is built on its own part, hidden while a hat's on, so the hat sits down
+## in the hair instead of floating on top of it.
+const HAT_SEAT := 0.37
+var _hair_top: Node3D
 var _beanie: Node3D
 
 var _keys: Array = []
@@ -167,13 +170,16 @@ func wear_hat(id: String) -> void:
 	if _hat and is_instance_valid(_hat):
 		_hat.queue_free()
 	_hat = null
+	var bare := id == "" or not Hats.CATALOG.has(id)
 	if _beanie:
-		_beanie.visible = id == "" or not Hats.CATALOG.has(id)
-	if id == "" or not Hats.CATALOG.has(id):
+		_beanie.visible = bare
+	if _hair_top:
+		_hair_top.visible = bare
+	if bare:
 		return
 	var u := HEAD * _bulk() * Hats.SIZE * (Hats.FRUIT_SIZE if id == "fruit_hat" else 1.0)
 	_hat = Hats.build(id, u)
-	_hat.position = Vector3(0, HEAD + (0.0 if fighter == "wise_guy" else _crown), 0)
+	_hat.position = Vector3(0, HAT_SEAT, 0)
 	_joints.head.add_child(_hat)
 	_set_layer(_hat)
 	var spin := _hat.get_node_or_null("Spin")
@@ -244,7 +250,9 @@ func _build() -> void:
 	var head := _pivot("head", torso, Vector3(0, 0.57, 0))
 	_head(head)
 	_face(head)
+	var hair_from := _ops.size()
 	_hair(head)
+	_split_hair(head, hair_from)
 	for side in [-1.0, 1.0]:
 		var key := "l" if side < 0 else "r"
 		var shoulder := _pivot(key + "s", torso, Vector3((0.22 * b + 0.07) * side, 0.49, 0))
@@ -252,6 +260,28 @@ func _build() -> void:
 		_arm(shoulder, elbow, side)
 	for node in _parts:
 		_ops.append(["bake", node, {}])
+
+
+## Moves the hair above HAT_SEAT (painted by the ops from index from on) to
+## its own part, so a hat can hide it.
+func _split_hair(head: Node3D, from: int) -> void:
+	_hair_top = Node3D.new()
+	_hair_top.name = "HairTop"
+	head.add_child(_hair_top)
+	_grids[_hair_top] = {}
+	_parts.append(_hair_top)
+	var ops := _ops.slice(0, from)
+	for op in _ops.slice(from):
+		ops.append(op)
+		if op[0] != "fill" or op[1] != head:
+			continue
+		var inside: Callable = op[5]
+		var top: Array = op.duplicate()
+		op[5] = func(p: Vector3) -> bool: return p.y < HAT_SEAT and inside.call(p)
+		top[1] = _hair_top
+		top[5] = func(p: Vector3) -> bool: return p.y >= HAT_SEAT and inside.call(p)
+		ops.append(top)
+	_ops = ops
 
 
 ## Paints a little more each frame; bakes each part once it's painted.
@@ -584,10 +614,23 @@ func _in_torso(p: Vector3, grow := 0.0) -> bool:
 	return (p.x * p.x) / (r.x * r.x) + (p.z * p.z) / (r.y * r.y) <= 1.0
 
 
+## Inside the torso or the pecs on it, grown by grow (cloth wraps the chest).
+func _in_chest(p: Vector3, grow := 0.0) -> bool:
+	if _in_torso(p, grow):
+		return true
+	var c := _b("chest")
+	var chest := _torso_radius(0.445)
+	for side in [-1.0, 1.0]:
+		var center := Vector3(0.085 * c * side, 0.445, -(chest.y - 0.03))
+		if ((p - center) / (Vector3(0.09 * c, 0.068, 0.05) + Vector3.ONE * grow)).length_squared() <= 1.0:
+			return true
+	return false
+
+
 ## A shell of cloth over the torso, from grow out, where keep() says.
 func _torso_cloth(torso: Node3D, grow: float, color: Variant, keep: Callable) -> void:
 	_fill(torso, Vector3(-0.42, -0.06, -0.26), Vector3(0.42, 0.66, 0.26), color, func(p: Vector3) -> bool:
-		return _in_torso(p, grow + 0.012) and not _in_torso(p, grow - 0.03) and keep.call(p))
+		return _in_chest(p, grow + 0.012) and not _in_torso(p, grow - 0.03) and keep.call(p))
 
 
 # --- The body -------------------------------------------------------------------
@@ -839,7 +882,6 @@ func _hair(head: Node3D) -> void:
 			for i in 5:
 				var x := lerpf(-fw + 0.03, fw - 0.03, i / 4.0)
 				_spike(head, Vector3(x, 0.36, -0.15), Vector3(x * 0.4, -0.55, -1.0), 0.075 + (i % 2) * 0.02, 0.03, 0.008, hair)
-			_crown = 0.07
 		"counter_master":
 			# Full and spiky: points all over the crown swept up and back, bangs
 			# falling over the brow to his left, locks over the ears.
@@ -856,7 +898,6 @@ func _hair(head: Node3D) -> void:
 				_spike(head, Vector3(x, 0.33, -0.155), Vector3(x - 0.35, -1.0, -0.25), 0.085 + (i % 3) * 0.02, 0.03, 0.006, hair.lightened(0.05 * (i % 2)))
 			for side in [-1.0, 1.0]:
 				_spike(head, Vector3((fw + 0.01) * side, 0.27, -0.02), Vector3(0.2 * side, -1.0, 0.3), 0.08, 0.03, 0.008, hair)
-			_crown = 0.12
 		"combo_master":
 			# A huge mass of curls, bigger than the head: curls on curls all
 			# over, hanging over the brow and down past the ears.
@@ -877,7 +918,6 @@ func _hair(head: Node3D) -> void:
 			for side in [-1.0, 1.0]:
 				for k in 3:
 					_blob(head, Vector3((fw + 0.04) * side, 0.2 - k * 0.05, -0.06 + k * 0.02), Vector3(0.035, 0.04, 0.035), hair.darkened(0.04 * k))
-			_crown = 0.24
 		"free_runner":
 			# A bush of thick locs standing up and out, each bending at the end;
 			# the red headband knotted at the back, its long tails flying.
@@ -902,7 +942,6 @@ func _hair(head: Node3D) -> void:
 			_blob(head, Vector3(-0.03, 0.275, 0.195), Vector3(0.035, 0.03, 0.025), red.darkened(0.1))
 			_ribbon(head, Vector3(-0.04, 0.275, 0.2), Vector3(-0.44, 0.17, 0.5), 0.045, 0.016, _cloth(red, 0.1), Vector3.UP, 0.03)
 			_ribbon(head, Vector3(-0.02, 0.265, 0.2), Vector3(-0.3, 0.0, 0.48), 0.04, 0.016, _cloth(red.darkened(0.1), 0.1), Vector3.UP, 0.03)
-			_crown = 0.16
 		"wise_guy":
 			# Short at the sides under a knit beanie with a folded brim.
 			_cap(head, hair, 0.012, 0.22, 0.12)
@@ -938,7 +977,6 @@ func _hair(head: Node3D) -> void:
 				var base := Vector3(0, 0.3, 0.04) + dir * Vector3(fw + 0.02, 0.06, 0.15)
 				var out := (dir + Vector3(0, 0.15, 0.9)).normalized()
 				_spike(head, base, out, 0.14 + (i % 4) * 0.035, 0.04, 0.012, hair.darkened(0.08 * (i % 3)))
-			_crown = 0.06
 
 
 # --- Clothes ----------------------------------------------------------------------

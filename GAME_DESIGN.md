@@ -1444,6 +1444,8 @@ Hold **Emote** (G; View / Create on a controller, plus D-pad down in Weenie Hut 
 - **Clothes** are shells over the body: ragged hems and trim, folds (a ruffled surface), knotted sashes with hanging tails, flaps below the belt, wraps in bands, laced shoes with soles and stripes.
 - **Baking** shades each cube by how closed in it is: darker in creases (between abs, under the pecs, cloth folds), lighter on edges.
 - **Building** is spread over frames (6 ms a frame, 12 in camp) and kept per fighter for the session, so a fight never hitches on it.
+- **Hats sit in the hair (2026-10-25):** every hat sits just over the skull (`PlayerBody.HAT_SEAT`). The hair above that line is built as its own part (`HairTop`) that hides while a hat's on, so the hat sits down in the hair instead of floating on top of big hair. The hair below the brim stays: the Blur's curls, the Stray's headband and locs, the Answer's bangs.
+- **Cloth wraps the chest (2026-10-25):** clothing shells cover the pecs as well as the torso (`_in_chest`), so muscle no longer pokes through the edges of a shirt.
 
 Each fighter:
 - **The Mauler:** huge arms and neck, square jaw, flat-top swept forward; open black vest with ragged white trim, red sash knotted in front, black trunks with a ragged hem, blood spatter, giant red gloves with taped cuffs, high boots with red laces and soles; orange eyes.
