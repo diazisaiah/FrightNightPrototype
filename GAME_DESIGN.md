@@ -1459,6 +1459,50 @@ It renders on its own layer, so the lantern at your eyes doesn't blow it out; a 
 
 **Enemy labels (2026-10-17):** the Armor number is gone from enemy name tags; the gear on the body says it. The damage-reduction line stays.
 
+## Multiplayer: the Versus ladder and co-op [Planned 2026-10-25]
+
+Not built yet. Versus comes first (it's cheaper, fits the game, and its networking carries over to co-op).
+
+### Versus
+- **Separate fields, one graveyard:** each player fights monsters on their own field, side by side, split by a see-through barrier (a ghostly fence or glowing seal line). Each machine runs only its own fight, so dodges and counters feel exactly like single player and lag never touches combat.
+- **Sending:** a monster you KO climbs out of a grave on your opponent's side, with an "INCOMING: Brute" warning about 2s ahead. Elites send elites, champions send champions. To consider: your KOs cancel what's incoming before anything extra goes over (Tetris style).
+- **First one down loses.**
+- **You see each other:** the opponent's sculpted body (`PlayerBody`, with their hat) is synced about 20 times a second (position, facing). Emotes play in full for them to see, and emoting mid-fight still leaves you open. Optionally their monsters show too, purely as visuals.
+- **Real builds:** players fight with their own upgrades and gear (not normalized).
+- **No pauses in Versus:** the hat popup, tutorials and level-up cards stay off.
+
+### The ladder (like Clash Royale)
+- **Arena points** decide matchmaking, so getting stronger climbs you into better arenas against stronger players.
+- **Arenas:** graveyard-themed fields, each bigger and nastier. Each has a floor you can't drop below once reached, and a reward for reaching it (Souls, hats, cosmetics).
+- **Points swing by POWER:** the stronger player's expected chance to win is Pa² / (Pa² + Pb²). The winner gains (and the loser drops) 60 × (1 - the winner's expected chance), rounded:
+
+| Matchup | Strong player's win chance | Strong wins | Weak wins |
+|---|---|---|---|
+| Even | 50% | +30 / -30 | +30 / -30 |
+| 2x POWER | 80% | +12 / -12 | +48 / -48 |
+| 4x POWER | 94% | +4 / -4 | +56 / -56 |
+
+  Beating someone much weaker barely moves either of you; beating someone stronger pushes you far.
+
+### Co-op
+- **One shared Arena field** for both players, with their power balanced against the field: monsters scale to the field and to how many are fighting.
+- **Revives:** a downed player crawls with a bleed-out timer while the partner holds interact to pick them up; both down ends the run.
+
+### What it takes
+- **Fight animations for the body:** guard, walk and run, jab, cross, hooks, uppercut, slip, roll, back step, getting hit, going down. The body only knows dances now. Versus needs these to show the opponent, and co-op reuses them.
+- **Messages for Versus:** sends, HP, downed, body position and emotes. All small, and they tolerate lag.
+- **A server:** matchmaking, arena points and a leaderboard, plus a relay so browsers can connect (browsers can't connect to each other directly; desktop builds can). It needs a hosting account (a free tier at first).
+- **Identity:** an anonymous ID and a display name kept in browser storage; no full accounts.
+- **Cheating:** builds live in each player's save and fights run on their own machine, so a determined cheater can edit a save. The server can reject absurd POWER, but full protection would mean running fights on the server.
+- **Bots for empty queues:** an opponent whose KOs are paced by its POWER against the field, with a body that moves and emotes now and then. They fill in after a short wait and may pay fewer points.
+- **Co-op specifically:** monsters choose between two targets and stay in sync between machines (the host runs them); each player's own machine decides whether their dodge worked; the world can't pause or slow down for one player (hit-stop and slow-mo become local).
+
+### Phases (rough, in working sessions)
+1. **Versus prototype** (3-4): two windows on one PC, real builds, side-by-side fields, the opponent's body and emotes, sending, win and loss.
+2. **Ladder** (3-4, plus hosting): server, matchmaking, points, arenas with floors and rewards, leaderboard, web play with room codes.
+3. **Bots** (about 1).
+4. **Co-op prototype** (4-6); shipping co-op takes weeks.
+
 ## Launch readiness [In progress, 2026-10-15]
 
 Checked: every main scene (title, camp, Arena, Crypt, training, Dead League menu and arena) runs 400 frames headless with no script errors, and the web build loads with no console errors (38 MB wasm + 15 MB pck; itch serves them compressed).
