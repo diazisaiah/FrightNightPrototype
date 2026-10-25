@@ -33,6 +33,7 @@ func _run() -> void:
 	_test_pad_work_combos()
 	_test_gentler_ramp()
 	_test_one_power()
+	_test_skins()
 	if _failures.is_empty():
 		print("BALANCE REGRESSION: PASS")
 		get_tree().quit(0)
@@ -41,6 +42,38 @@ func _run() -> void:
 			push_error(failure)
 		print("BALANCE REGRESSION: FAIL (%d)" % _failures.size())
 		get_tree().quit(1)
+
+
+## Skins: each belongs to a real fighter, only recolors parts that fighter
+## has, is worn only when owned and on its own fighter, saves, and sells in
+## the Soul Shop only for fighters you have.
+func _test_skins() -> void:
+	for id in Skins.CATALOG:
+		var fighter: String = Skins.CATALOG[id].fighter
+		_check(GameState.CLASSES.has(fighter), "Skin %s belongs to a real fighter" % id)
+		for part in Skins.LOOKS.get(id, {}):
+			_check(part in ["glow"] or Skins.BASE[fighter].has(part), "Skin %s only changes parts %s has (not %s)" % [id, fighter, part])
+	for fighter in Skins.BASE:
+		_check(Skins.BASE[fighter].has("shoes") and Skins.BASE[fighter].has("sole") and Skins.BASE[fighter].has("accent"), "%s's palette has shoes" % fighter)
+	GameState._reset_fields()
+	GameState.player_class = "berserker"
+	_check(GameState.skin() == "", "Fighters start in their own look")
+	_check(not GameState.equip_skin("berserker", "obsidian_furnace"), "You can't wear a skin you don't own")
+	GameState.skins_owned["obsidian_furnace"] = true
+	_check(not GameState.equip_skin("counter_master", "obsidian_furnace"), "A skin only goes on its own fighter")
+	_check(GameState.equip_skin("berserker", "obsidian_furnace") and GameState.skin() == "obsidian_furnace", "You can wear a skin you own")
+	_check(Skins.palette("berserker", "obsidian_furnace").glove != Skins.palette("berserker", "").glove, "A skin changes the palette")
+	GameState.save_game()
+	GameState.skins_owned = {}
+	GameState.skin_picks = {}
+	GameState.load_game()
+	_check(GameState.skins_owned.has("obsidian_furnace") and GameState.skin("berserker") == "obsidian_furnace", "Skins save")
+	SoulShop.restock()
+	for offer in GameState.shop_stock:
+		if offer.kind == "skin":
+			_check(not GameState.skins_owned.has(offer.id), "The shop doesn't sell skins you own")
+			_check(Skins.CATALOG[offer.id].fighter in GameState.class_ids(), "The shop only sells skins for fighters you have")
+	GameState._reset_fields()
 
 
 func _check(condition: bool, message: String) -> void:

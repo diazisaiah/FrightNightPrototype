@@ -10,22 +10,16 @@ extends Node3D
 ## Also dances on the Emotes stage in Cosmetics.
 ## Joints are pivots (see Emotes for which way they turn). Faces -Z.
 
-## Shoes (sole, accent: laces and stripe), hair, eyes (their glow, or black
-## for plain brown ones) and bulk (width scale, which spaces the joints).
-## Everything else is drawn in the build (BUILDS, the _dress functions).
+## Hair, eyes (their glow, or black for plain brown ones) and bulk (width
+## scale, which spaces the joints). The outfit's colors are the fighter's
+## palette (Skins), which a skin can change.
 const LOOKS := {
-	"berserker": {"shoes": Color(0.09, 0.09, 0.1), "sole": Color(0.72, 0.08, 0.07), "accent": Color(0.75, 0.08, 0.07),
-		"hair": Color(0.1, 0.08, 0.08), "eyes": Color(1.0, 0.45, 0.1), "bulk": 1.18},
-	"combo_master": {"shoes": Color(0.07, 0.07, 0.09), "sole": Color(0.88, 0.88, 0.9), "accent": Color(0.55, 0.32, 0.95),
-		"hair": Color(0.14, 0.12, 0.2), "eyes": Color(0.7, 0.45, 1.0), "bulk": 1.08},
-	"counter_master": {"shoes": Color(0.06, 0.06, 0.07), "sole": Color(0.85, 0.85, 0.88), "accent": Color(0.88, 0.88, 0.9),
-		"hair": Color(0.05, 0.05, 0.06), "eyes": Color(0.45, 0.85, 1.0), "bulk": 1.12},
-	"free_runner": {"shoes": Color(0.9, 0.88, 0.84), "sole": Color(0.86, 0.84, 0.8), "accent": Color(0.75, 0.08, 0.08),
-		"hair": Color(0.24, 0.16, 0.12), "eyes": Color(0.35, 1.0, 0.45), "bulk": 1.1},
-	"wise_guy": {"shoes": Color(0.09, 0.09, 0.1), "sole": Color(0.9, 0.9, 0.88), "accent": Color(0.9, 0.9, 0.88),
-		"hair": Color(0.07, 0.07, 0.08), "eyes": Color.BLACK, "bulk": 1.08},
-	"elementalist": {"shoes": Color(0.09, 0.08, 0.09), "accent": Color(0.86, 0.84, 0.8),
-		"hair": Color(0.93, 0.93, 0.91), "eyes": Color.BLACK, "bulk": 1.15},
+	"berserker": {"hair": Color(0.1, 0.08, 0.08), "eyes": Color(1.0, 0.45, 0.1), "bulk": 1.18},
+	"combo_master": {"hair": Color(0.14, 0.12, 0.2), "eyes": Color(0.7, 0.45, 1.0), "bulk": 1.08},
+	"counter_master": {"hair": Color(0.05, 0.05, 0.06), "eyes": Color(0.45, 0.85, 1.0), "bulk": 1.12},
+	"free_runner": {"hair": Color(0.24, 0.16, 0.12), "eyes": Color(0.35, 1.0, 0.45), "bulk": 1.1},
+	"wise_guy": {"hair": Color(0.07, 0.07, 0.08), "eyes": Color.BLACK, "bulk": 1.08},
+	"elementalist": {"hair": Color(0.93, 0.93, 0.91), "eyes": Color.BLACK, "bulk": 1.15},
 }
 const HEAD := 0.3
 ## The body renders on its own layer: the lantern at your eyes would blow it
@@ -35,7 +29,10 @@ const LAYER := 1 << 9
 const BLEND_TIME := 0.18
 
 var fighter := ""
+## The skin (Skins) to wear: "auto" for the fighter's pick, "" for their own look.
+var skin_id := "auto"
 var _look := {}
+var _pal := {}
 var _skin := Color()
 var _joints := {}
 var _hat: Node3D
@@ -59,20 +56,24 @@ var _playing := ""
 var _blend := -1.0
 
 
-func _init(class_id := "") -> void:
+func _init(class_id := "", skin := "auto") -> void:
 	fighter = class_id
+	skin_id = skin
 
 
 func _ready() -> void:
 	if fighter == "":
 		fighter = GameState.player_class
 	_look = LOOKS.get(fighter, LOOKS.counter_master)
+	if skin_id == "auto":
+		skin_id = GameState.skin(fighter)
+	_pal = Skins.palette(fighter, skin_id)
 	_skin = Fists.SKIN.get(fighter, Fists.DEFAULT_SKIN)
 	scale = Vector3.ONE * 0.92
 	_build()
-	if _cache.has(fighter):
+	if _cache.has(_cache_key()):
 		_ops.clear()
-		for part in _cache[fighter]:
+		for part in _cache[_cache_key()]:
 			_attach(get_node(part[0]), part[1])
 	else:
 		get_tree().process_frame.connect(_build_step)
@@ -236,6 +237,15 @@ func _color(key: String) -> Color:
 	return _skin if value is String else value
 
 
+## A part's color in this fighter's palette (Skins).
+func _p(key: String) -> Color:
+	return _pal.get(key, Color.MAGENTA)
+
+
+func _cache_key() -> String:
+	return fighter + "/" + skin_id
+
+
 func _build() -> void:
 	var b := _bulk()
 	var hips := _pivot("hips", self, Vector3(0, _hip_height(), 0))
@@ -303,7 +313,7 @@ func _build_step() -> void:
 		if Time.get_ticks_msec() - start >= build_budget_ms:
 			return
 	get_tree().process_frame.disconnect(_build_step)
-	_cache[fighter] = _baked
+	_cache[_cache_key()] = _baked
 	_ops.clear()
 	_grids.clear()
 
@@ -589,6 +599,12 @@ func _rag(p: Vector3, base := Color(0.88, 0.86, 0.8)) -> Color:
 	return _vary(base.darkened(0.2) if _noise(p) > 0.7 else base, p)
 
 
+## A jagged web of cracks (cells near the edges of wobbly blocks).
+func _crack(p: Vector3) -> bool:
+	var q := p + Vector3(sin(p.y * 37.0 + p.z * 11.0), sin(p.z * 29.0 + p.x * 17.0), sin(p.x * 31.0 + p.y * 13.0)) * 0.012
+	return (q / 0.09).floor() != ((q + Vector3.ONE * VOXEL * 0.3) / 0.09).floor()
+
+
 func _blood(p: Vector3, chance := 0.07) -> bool:
 	return _noise(p, 2.0) > 1.0 - chance
 
@@ -692,9 +708,9 @@ func _arm(shoulder: Node3D, elbow: Node3D, side: float) -> void:
 
 
 func _shoe(knee: Node3D, side: float) -> void:
-	var shoe: Color = _color("shoes")
-	var sole: Color = _color("sole") if _look.has("sole") else shoe.darkened(0.35)
-	var trim: Color = _look.get("accent", shoe.lightened(0.35))
+	var shoe := _p("shoes")
+	var sole := _p("sole")
+	var trim := _p("accent")
 	var w := 0.06 * maxf(_b("calf"), 1.0)
 	# A thick sole, the toe box rounding over the toes, heel and padded
 	# collar, a tongue, laces up the front, a stripe down the outside.
@@ -712,13 +728,13 @@ func _shoe(knee: Node3D, side: float) -> void:
 	if fighter == "elementalist":
 		# Wrapped boots, white straps around them.
 		for y in [-0.36, -0.3, -0.24]:
-			_limb(knee, Vector3(0, y, 0.012), Vector3(0, y + 0.018, 0.012), Vector2(w + 0.008, w + 0.012), Vector2(w + 0.008, w + 0.012), Color(0.86, 0.84, 0.8))
+			_limb(knee, Vector3(0, y, 0.012), Vector3(0, y + 0.018, 0.012), Vector2(w + 0.008, w + 0.012), Vector2(w + 0.008, w + 0.012), _p("straps"))
 	if fighter == "berserker":
 		# High boots: red laces criss-crossing up the front, a white band at the top.
 		for i in 6:
 			var y := -0.37 + i * 0.024
 			_block(knee, Vector3(-0.034, y, -w - 0.018), Vector3(0.034, y + 0.01, -w + 0.004), trim, 0.0, Vector3(0, 0, 0.35 * (1 - 2 * (i % 2))))
-		_limb(knee, Vector3(0, -0.25, 0.012), Vector3(0, -0.215, 0.012), Vector2(w + 0.01, w + 0.014), Vector2(w + 0.01, w + 0.014), Color(0.9, 0.88, 0.84))
+		_limb(knee, Vector3(0, -0.25, 0.012), Vector3(0, -0.215, 0.012), Vector2(w + 0.01, w + 0.014), Vector2(w + 0.01, w + 0.014), _p("band"))
 
 
 func _hand(elbow: Node3D, side: float) -> void:
@@ -726,23 +742,25 @@ func _hand(elbow: Node3D, side: float) -> void:
 	if fighter == "berserker":
 		# A huge padded glove, blood-spattered: the knuckle pad, the thumb on
 		# the inside, laces on the palm, a taped white cuff.
-		var red := Color(0.72, 0.08, 0.07)
+		var red := _p("glove")
+		var cracks := _p("cracks")
 		var glove := func(p: Vector3) -> Color:
+			if cracks.a > 0.0 and _crack(p):
+				return cracks
 			if _blood(p, 0.16):
-				return _vary(Color(0.42, 0.03, 0.03), p)
+				return _vary(_p("glove_blood"), p)
 			return _vary(red.lightened(0.12) if _noise(p, 3.0) > 0.8 else red, p)
 		_block(elbow, Vector3(-0.13, -0.5, -0.155), Vector3(0.13, -0.22, 0.11), glove, 0.075)
 		_blob(elbow, Vector3(0, -0.44, -0.115), Vector3(0.115, 0.065, 0.065), glove)
 		_blob(elbow, Vector3(-0.12 * side, -0.34, -0.055), Vector3(0.05, 0.08, 0.055), glove)
 		_block(elbow, Vector3(-0.004, -0.46, -0.15), Vector3(0.004, -0.24, -0.13), red.darkened(0.35))
-		_block(elbow, Vector3(-0.016, -0.25, 0.09), Vector3(0.016, -0.17, 0.11), Color(0.9, 0.88, 0.84))
-		var tape := _bands([Color(0.92, 0.9, 0.85), Color(0.8, 0.78, 0.73)], 0.016)
+		_block(elbow, Vector3(-0.016, -0.25, 0.09), Vector3(0.016, -0.17, 0.11), _p("laces"))
+		var tape := _bands([_p("tape"), _p("tape_dark")], 0.016)
 		_limb(elbow, Vector3(0, -0.15, 0), Vector3(0, -0.235, 0), Vector2(0.09, 0.092), Vector2(0.096, 0.098), func(p: Vector3) -> Color:
-			return _vary(Color(0.5, 0.05, 0.05), p) if _blood(p, 0.2) else tape.call(p))
+			return _vary(_p("blood"), p) if _blood(p, 0.2) else tape.call(p))
 		return
-	var gloves := {"counter_master": Color(0.08, 0.08, 0.1), "combo_master": Color(0.1, 0.09, 0.13), "free_runner": Color(0.16, 0.45, 0.22),
-			"wise_guy": Color(0.9, 0.88, 0.84), "elementalist": Color(0.9, 0.88, 0.84)}
-	var back: Color = gloves.get(fighter, skin)
+	var gloves := {"counter_master": "glove", "combo_master": "glove", "free_runner": "glove", "wise_guy": "tape", "elementalist": "hand_tape"}
+	var back: Color = _p(gloves[fighter]) if gloves.has(fighter) else skin
 	var fingers: Color = back if fighter == "counter_master" else skin
 	# The back of the fist, a row of knuckles, fingers curled under, the
 	# thumb across them.
@@ -752,9 +770,8 @@ func _hand(elbow: Node3D, side: float) -> void:
 		_blob(elbow, Vector3(x, -0.304, -0.034), Vector3(0.014, 0.016, 0.016), back.lightened(0.06))
 		_limb(elbow, Vector3(x, -0.298, -0.05), Vector3(x, -0.335, -0.05), Vector2(0.012, 0.016), Vector2(0.011, 0.015), fingers)
 	_limb(elbow, Vector3(-0.045 * side, -0.24, -0.042), Vector3(-0.012 * side, -0.305, -0.066), Vector2(0.015, 0.015), Vector2(0.013, 0.013), fingers)
-	var cuffs := {"combo_master": Color(0.55, 0.32, 0.95), "free_runner": Color(0.1, 0.32, 0.15), "counter_master": Color(0.9, 0.9, 0.92)}
-	if cuffs.has(fighter):
-		_limb(elbow, Vector3(0, -0.198, 0), Vector3(0, -0.216, 0), Vector2(0.052, 0.049), Vector2(0.052, 0.049), cuffs[fighter])
+	if fighter in ["combo_master", "free_runner", "counter_master"]:
+		_limb(elbow, Vector3(0, -0.198, 0), Vector3(0, -0.216, 0), Vector2(0.052, 0.049), Vector2(0.052, 0.049), _p("glove_cuff"))
 	if fighter == "wise_guy":
 		_box(elbow, Vector3(0.026, 0.016, 0.03), Color(1.0, 0.78, 0.22), Vector3(0.036 * side, -0.315, -0.04), Vector3.ZERO, true)
 
@@ -936,7 +953,7 @@ func _hair(head: Node3D) -> void:
 				var tint := hair.lightened(0.06 * (i % 3))
 				_spike(head, base, out, length, 0.03, 0.024, tint)
 				_spike(head, base + out * length, bend, length * 0.8, 0.025, 0.012, tint.darkened(0.06))
-			var red := Color(0.75, 0.08, 0.08)
+			var red := _p("band")
 			_fill(head, Vector3(-fw - 0.05, 0.24, -0.2), Vector3(fw + 0.05, 0.31, 0.21), _cloth(red, 0.1), func(p: Vector3) -> bool:
 				return p.y > 0.25 and p.y < 0.298 + sin(p.x * 40.0) * 0.003 and _in_rounded(p, Vector3(-fw - 0.03, 0.1, -0.18), Vector3(fw + 0.03, 0.4, 0.185), 0.09))
 			_blob(head, Vector3(-0.03, 0.275, 0.195), Vector3(0.035, 0.03, 0.025), red.darkened(0.1))
@@ -949,10 +966,10 @@ func _hair(head: Node3D) -> void:
 			_beanie.name = "Beanie"
 			head.add_child(_beanie)
 			var knit := func(p: Vector3) -> Color:
-				return Color(0.13, 0.13, 0.14) if fposmod(atan2(p.z, p.x) * 8.0, 1.0) < 0.5 else Color(0.09, 0.09, 0.1)
+				return _p("beanie_a") if fposmod(atan2(p.z, p.x) * 8.0, 1.0) < 0.5 else _p("beanie_b")
 			_fill(_beanie, Vector3(-fw - 0.05, 0.25, -0.21), Vector3(fw + 0.05, 0.47, 0.21), knit, func(p: Vector3) -> bool:
 				return p.y > 0.255 and ((p - Vector3(0, 0.27, 0.005)) / Vector3(fw + 0.03, 0.17, 0.18)).length_squared() <= 1.0)
-			_fill(_beanie, Vector3(-fw - 0.05, 0.23, -0.21), Vector3(fw + 0.05, 0.31, 0.21), Color(0.12, 0.12, 0.13), func(p: Vector3) -> bool:
+			_fill(_beanie, Vector3(-fw - 0.05, 0.23, -0.21), Vector3(fw + 0.05, 0.31, 0.21), _p("brim"), func(p: Vector3) -> bool:
 				return p.y > 0.24 and p.y < 0.3 and _in_rounded(p, Vector3(-fw - 0.034, 0.1, -0.185), Vector3(fw + 0.034, 0.4, 0.19), 0.08))
 		"elementalist":
 			# Long white hair swept back from a high brow, waving down past the
@@ -1039,28 +1056,29 @@ func _dress_torso(hips: Node3D, torso: Node3D) -> void:
 			# An open dark vest with ragged white trim (front, armholes, hem),
 			# spattered; the red sash knotted in front, its tails hanging;
 			# trunks; blood on the skin.
-			var vest := Color(0.1, 0.1, 0.12)
+			var vest := _p("vest")
+			var trim := _p("trim")
 			var open := func(p: Vector3) -> float:
 				return lerpf(0.05, 0.16 * c, clampf(p.y / 0.5, 0.0, 1.0)) + (_noise(p, 1.5) - 0.5) * 0.025
 			var paint2 := func(p: Vector3) -> Color:
 				var r := _torso_radius(p.y)
 				if (p.z < 0.0 and absf(p.x) < open.call(p) + 0.022) or p.y < 0.022 + _noise(p, 1.5) * 0.016 or (p.y > 0.38 and absf(p.x) > r.x - 0.004) or (p.y > 0.62 and p.z > 0.0):
-					return _rag(p)
-				return _vary(Color(0.45, 0.04, 0.04), p) if _blood(p) else _cloth_at(p, vest)
+					return _rag(p, trim)
+				return _vary(_p("blood").darkened(0.1), p) if _blood(p) else _cloth_at(p, vest)
 			var shape2 := func(p: Vector3) -> bool:
 				return not (p.z < 0.0 and absf(p.x) < open.call(p))
 			_torso_cloth(torso, 0.022, paint2, shape2)
 			var spots := func(p: Vector3) -> bool: return _blood(p, 0.03)
-			_fill(torso, Vector3(-0.4, -0.05, -0.25), Vector3(0.4, 0.6, 0.0), Color(0.5, 0.05, 0.05), spots, true)
-			_sash(torso, Color(0.72, 0.07, 0.06), 0.0, 0.27)
-			_seat(hips, Color(0.1, 0.1, 0.12))
+			_fill(torso, Vector3(-0.4, -0.05, -0.25), Vector3(0.4, 0.6, 0.0), _p("blood"), spots, true)
+			_sash(torso, _p("sash"), 0.0, 0.27)
+			_seat(hips, _p("trunks"))
 		"counter_master":
 			# A sleeveless hoodie zipped up the front, a small V at the neck,
 			# white piping down the zip, round the armholes and the hem; the
 			# hood down around the neck; the white belt; the hoodie's long
 			# front hanging below it.
-			var black := Color(0.08, 0.08, 0.1)
-			var white := Color(0.86, 0.86, 0.9)
+			var black := _p("cloth")
+			var white := _p("piping")
 			var vee := func(p: Vector3) -> bool:
 				return p.z < 0.0 and p.y > 0.44 and absf(p.x) < (p.y - 0.44) * 0.55
 			var paint3 := func(p: Vector3) -> Color:
@@ -1081,14 +1099,14 @@ func _dress_torso(hips: Node3D, torso: Node3D) -> void:
 				return p.y > 0.54 and p.y < 0.7 + 0.05 * clampf(p.z / 0.15, 0.0, 1.0) and r > 0.085 and r < 0.17 and p.z > -0.04 + (p.y - 0.55) * 0.3
 			_fill(torso, Vector3(-0.24, 0.5, -0.14), Vector3(0.24, 0.76, 0.26), paint4, shape4)
 			_blob(torso, Vector3(0, 0.57, 0.15), Vector3(0.14, 0.09, 0.05), black)
-			_sash(torso, white, 0.0, 0.12)
+			_sash(torso, _p("belt"), 0.0, 0.12)
 			_seat(hips, black)
 			_flaps(hips, black, white, false)
 		"combo_master":
 			# A sleeveless crop top up to a high collar, violet piping; bare abs
 			# below; the violet sash knotted at his left hip, tails hanging.
-			var black := Color(0.1, 0.09, 0.13)
-			var violet := Color(0.55, 0.32, 0.95)
+			var black := _p("top")
+			var violet := _p("trim")
 			var paint5 := func(p: Vector3) -> Color:
 				var r := _torso_radius(p.y)
 				if p.y < 0.31 or (p.y > 0.36 and absf(p.x) > r.x - 0.01):
@@ -1098,15 +1116,15 @@ func _dress_torso(hips: Node3D, torso: Node3D) -> void:
 			_torso_cloth(torso, 0.018, paint5, shape5)
 			_limb(torso, Vector3(0, 0.56, 0.01), Vector3(0, 0.69, 0.01), Vector2(0.086, 0.08), Vector2(0.078, 0.073), func(p: Vector3) -> Color:
 				return _vary(violet, p) if p.y > 0.67 else _cloth_at(p, black))
-			_sash(torso, Color(0.52, 0.16, 0.5), -0.8, 0.32)
-			_seat(hips, Color(0.09, 0.08, 0.12))
+			_sash(torso, _p("sash"), -0.8, 0.32)
+			_seat(hips, _p("pants"))
 		"free_runner":
 			# A sleeveless black gi crossed at the chest, ragged white trim at
 			# the lapels, armholes and hem; a red scarf round the neck, an end
 			# hanging; the red belt with white cloth hanging in front; the gi's
 			# torn skirt.
-			var gi := Color(0.14, 0.12, 0.13)
-			var white := Color(0.86, 0.82, 0.74)
+			var gi := _p("gi")
+			var white := _p("trim")
 			var vee := func(p: Vector3) -> float:
 				return (p.y - 0.28) * 0.42 + (_noise(p, 1.5) - 0.5) * 0.02
 			var paint6 := func(p: Vector3) -> Color:
@@ -1116,7 +1134,7 @@ func _dress_torso(hips: Node3D, torso: Node3D) -> void:
 				return _cloth_at(p, gi)
 			var shape6 := func(p: Vector3) -> bool: return not (p.z < 0.0 and p.y > 0.28 and absf(p.x) < vee.call(p))
 			_torso_cloth(torso, 0.02, paint6, shape6)
-			var red := Color(0.72, 0.08, 0.08)
+			var red := _p("band")
 			_fill(torso, Vector3(-0.22, 0.5, -0.22), Vector3(0.22, 0.7, 0.22), _cloth(red, 0.1), func(p: Vector3) -> bool:
 				var r := Vector2(p.x, p.z * 1.1).length() * (1.0 + 0.08 * sin(atan2(p.z, p.x) * 5.0 + p.y * 40.0))
 				return p.y > 0.53 and p.y < 0.66 and r > 0.075 and r < 0.135)
@@ -1131,17 +1149,17 @@ func _dress_torso(hips: Node3D, torso: Node3D) -> void:
 			# A track jacket half zipped over a white tee: the zip piped white
 			# down the front, a stand-up collar, pocket flaps, a ribbed hem;
 			# the gold chain.
-			var black := Color(0.08, 0.08, 0.09)
-			var white := Color(0.92, 0.92, 0.9)
+			var black := _p("jacket")
+			var white := _p("zip")
 			var tee := func(p: Vector3) -> bool: return true
-			_torso_cloth(torso, 0.004, white, tee)
+			_torso_cloth(torso, 0.004, _p("tee"), tee)
 			var vee := func(p: Vector3) -> bool:
 				return p.z < 0.0 and p.y > 0.36 and absf(p.x) < (p.y - 0.36) * 0.45 + 0.012
 			var jacket := func(p: Vector3) -> Color:
 				if p.z < 0.0 and (absf(p.x) < 0.008 or (p.y > 0.34 and absf(p.x) < (p.y - 0.36) * 0.45 + 0.026)):
 					return _vary(white, p)
 				if p.y < 0.035:
-					return Color(0.13, 0.13, 0.14) if fposmod(atan2(p.z, p.x) * 9.0, 1.0) < 0.5 else Color(0.08, 0.08, 0.09)
+					return _p("rib_a") if fposmod(atan2(p.z, p.x) * 9.0, 1.0) < 0.5 else _p("rib_b")
 				return _cloth_at(p, black, 0.05)
 			var zipped := func(p: Vector3) -> bool: return not vee.call(p)
 			_torso_cloth(torso, 0.026, jacket, zipped)
@@ -1157,20 +1175,21 @@ func _dress_torso(hips: Node3D, torso: Node3D) -> void:
 		"elementalist":
 			# An open dark robe with ragged white edges over a bare chest, a
 			# dark sash striped white, the robe hanging torn to the knee.
-			var robe := Color(0.11, 0.1, 0.12)
+			var robe := _p("robe")
+			var trim := _p("trim")
 			var open := func(p: Vector3) -> float:
 				return lerpf(0.07, 0.15 * c, clampf(p.y / 0.5, 0.0, 1.0)) + (_noise(p, 1.5) - 0.5) * 0.025
 			var paint8 := func(p: Vector3) -> Color:
 				if (p.z < 0.0 and absf(p.x) < open.call(p) + 0.024) or (p.y > 0.62 and p.z > 0.0):
-					return _rag(p)
+					return _rag(p, trim)
 				return _cloth_at(p, robe)
 			var shape8 := func(p: Vector3) -> bool: return not (p.z < 0.0 and absf(p.x) < open.call(p))
 			_torso_cloth(torso, 0.022, paint8, shape8)
-			_sash(torso, Color(0.16, 0.15, 0.18), 0.0, 0.12)
+			_sash(torso, _p("sash"), 0.0, 0.12)
 			var stripe := func(p: Vector3) -> bool: return p.y > 0.008 and p.y < 0.024
-			_torso_cloth(torso, 0.034, Color(0.86, 0.84, 0.8), stripe)
+			_torso_cloth(torso, 0.034, _p("sash_stripe"), stripe)
 			_seat(hips, robe)
-			_flaps(hips, robe, Color(0.86, 0.84, 0.8), true)
+			_flaps(hips, robe, trim, true)
 
 
 func _dress_leg(hip: Node3D, knee: Node3D, side: float) -> void:
@@ -1182,17 +1201,17 @@ func _dress_leg(hip: Node3D, knee: Node3D, side: float) -> void:
 				return -0.235 + (_noise(p, 1.5) - 0.5) * 0.04
 			var paint9 := func(p: Vector3) -> Color:
 				if p.y < hem.call(p) + 0.028:
-					return _rag(p)
-				return _vary(Color(0.5, 0.05, 0.05), p) if _blood(p, 0.1) else _cloth_at(p, Color(0.1, 0.1, 0.12))
+					return _rag(p, _p("trim"))
+				return _vary(_p("trunk_spots"), p) if _blood(p, 0.1) else _cloth_at(p, _p("trunks"))
 			var shape9 := func(p: Vector3) -> bool:
 				return p.y > hem.call(p) and _in_limb(p, Vector3(0, 0.03, 0), Vector3(0, -0.3, 0), Vector2(0.1, 0.104) * t, Vector2(0.106, 0.11) * t, 0.0, 0.5, 0.05)
 			_fill(hip, Vector3(-0.2, -0.3, -0.2), Vector3(0.2, 0.08, 0.2), paint9, shape9)
 			var spots := func(p: Vector3) -> bool: return _blood(p, 0.03)
-			_fill(hip, Vector3(-0.2, -0.45, -0.2), Vector3(0.2, 0.0, 0.2), Color(0.5, 0.05, 0.05), spots, true)
+			_fill(hip, Vector3(-0.2, -0.45, -0.2), Vector3(0.2, 0.0, 0.2), _p("blood"), spots, true)
 		"counter_master":
 			# Baggy black pants slashed with white lightning; a white cuff at the ankle.
-			var black := Color(0.08, 0.08, 0.1)
-			var white := Color(0.86, 0.86, 0.9)
+			var black := _p("cloth")
+			var white := _p("piping")
 			var bolt := func(p: Vector3) -> Color:
 				var a := atan2(p.z, p.x * side)
 				var jag := absf(fposmod(p.y * 5.0, 1.0) - 0.5) * 0.9
@@ -1200,43 +1219,43 @@ func _dress_leg(hip: Node3D, knee: Node3D, side: float) -> void:
 					return _vary(white, p)
 				return _cloth_at(p, black, 0.04)
 			_pants(hip, knee, bolt)
-			_limb(knee, Vector3(0, -0.29, 0), Vector3(0, -0.335, 0), Vector2(0.068, 0.072), Vector2(0.064, 0.068), white)
+			_limb(knee, Vector3(0, -0.29, 0), Vector3(0, -0.335, 0), Vector2(0.068, 0.072), Vector2(0.064, 0.068), _p("ankle"))
 		"combo_master":
 			# Balloon pants with big pale patches, gathered at the shin into
 			# white and violet leg wraps.
 			var cloth := func(p: Vector3) -> Color:
 				var n := _noise(p + Vector3(0, p.x * 0.6, 0), 6.0)
 				if n > 0.82:
-					return _vary(Color(0.78, 0.77, 0.82), p)
+					return _vary(_p("patch"), p)
 				if n > 0.72:
-					return _vary(Color(0.38, 0.36, 0.44), p)
-				return _vary(Color(0.09, 0.08, 0.12), p)
+					return _vary(_p("patch_mid"), p)
+				return _vary(_p("pants"), p)
 			_pants(hip, knee, cloth, 1.15, -0.22)
-			_limb(knee, Vector3(0, -0.19, 0), Vector3(0, -0.36, 0), Vector2(0.064, 0.068), Vector2(0.05, 0.054), _bands([Color(0.55, 0.32, 0.95), Color(0.9, 0.88, 0.92), Color(0.9, 0.88, 0.92)], 0.016))
+			_limb(knee, Vector3(0, -0.19, 0), Vector3(0, -0.36, 0), Vector2(0.064, 0.068), Vector2(0.05, 0.054), _bands([_p("band_a"), _p("band_b"), _p("band_c")], 0.016))
 		"free_runner":
 			# Baggy pants torn off at mid-shin (ragged), patched with white
 			# crosses; red wraps at the ankle.
-			var gi := Color(0.14, 0.12, 0.13)
+			var gi := _p("gi")
 			var hem := func(p: Vector3) -> float:
 				return -0.2 + (_noise(p, 1.5) - 0.5) * 0.07
 			_limb(hip, Vector3(0, 0.03, 0), Vector3(0, -0.44, 0), Vector2(0.1, 0.104) * t, Vector2(0.104, 0.108) * t, _cloth(gi), 0.1, 0.65, 0.07)
 			var paint10 := func(p: Vector3) -> Color:
-				return _rag(p, Color(0.3, 0.26, 0.26)) if p.y < hem.call(p) + 0.02 else _cloth_at(p, gi)
+				return _rag(p, _p("hem")) if p.y < hem.call(p) + 0.02 else _cloth_at(p, gi)
 			var shape10 := func(p: Vector3) -> bool:
 				return p.y > hem.call(p) and _in_limb(p, Vector3(0, 0.02, 0), Vector3(0, -0.28, 0), Vector2(0.104, 0.108) * t, Vector2(0.085, 0.09), 0.1, 0.25, 0.08)
 			_fill(knee, Vector3(-0.15, -0.3, -0.15), Vector3(0.15, 0.08, 0.15), paint10, shape10)
-			_cross(hip, Vector3(0.02 * side, -0.16, -0.118 * t), 0.03, Color(0.86, 0.82, 0.74))
+			_cross(hip, Vector3(0.02 * side, -0.16, -0.118 * t), 0.03, _p("trim"))
 			if side > 0:
-				_cross(knee, Vector3(-0.02, -0.08, -0.105 * t), 0.025, Color(0.86, 0.82, 0.74))
-			_limb(knee, Vector3(0, -0.27, 0), Vector3(0, -0.36, 0), Vector2(0.05, 0.054), Vector2(0.046, 0.05), _bands([Color(0.72, 0.08, 0.08), Color(0.55, 0.06, 0.06)], 0.016, 0.3))
+				_cross(knee, Vector3(-0.02, -0.08, -0.105 * t), 0.025, _p("trim"))
+			_limb(knee, Vector3(0, -0.27, 0), Vector3(0, -0.36, 0), Vector2(0.05, 0.054), Vector2(0.046, 0.05), _bands([_p("band"), _p("band").darkened(0.24)], 0.016, 0.3))
 		"wise_guy":
 			# Loose track pants, two white stripes down the outside, gathered
 			# at the ankle.
 			var stripes := func(p: Vector3) -> Color:
 				var a := atan2(p.z, p.x * side)
 				if absf(a + 0.5) < 0.08 or absf(a + 0.2) < 0.08:
-					return _vary(Color(0.92, 0.92, 0.9), p)
-				return _cloth_at(p, Color(0.08, 0.08, 0.09), 0.05)
+					return _vary(_p("stripe"), p)
+				return _cloth_at(p, _p("jacket"), 0.05)
 			_pants(hip, knee, stripes, 0.95, -0.33)
 		"elementalist":
 			# Wide dark hakama to the knee, frayed white at the hem, a white
@@ -1246,8 +1265,8 @@ func _dress_leg(hip: Node3D, knee: Node3D, side: float) -> void:
 			var paint12 := func(p: Vector3) -> Color:
 				var a := atan2(p.z, p.x * side)
 				if p.y < hem.call(p) + 0.03 or absf(a + 1.2) < 0.1:
-					return _rag(p)
-				return _cloth_at(p, Color(0.11, 0.1, 0.12))
+					return _rag(p, _p("trim"))
+				return _cloth_at(p, _p("robe"))
 			var shape12 := func(p: Vector3) -> bool:
 				return p.y > hem.call(p) and _in_limb(p, Vector3(0, 0.03, 0), Vector3(0, -0.42, 0), Vector2(0.104, 0.108) * t, Vector2(0.115, 0.12) * t, 0.06, 0.6, 0.07)
 			_fill(hip, Vector3(-0.22, -0.45, -0.22), Vector3(0.22, 0.08, 0.22), paint12, shape12)
@@ -1259,57 +1278,57 @@ func _dress_arm(shoulder: Node3D, elbow: Node3D, side: float) -> void:
 	match fighter:
 		"berserker":
 			# White tape up the forearm, spattered; blood on the arm.
-			var tape := _bands([Color(0.92, 0.9, 0.85), Color(0.82, 0.8, 0.75)], 0.016, 0.3)
+			var tape := _bands([_p("tape"), _p("tape_dark")], 0.016, 0.3)
 			_limb(elbow, Vector3(0, -0.06, 0), Vector3(0, -0.2, 0), Vector2(0.064, 0.062) * f, Vector2(0.05, 0.048) * f, func(p: Vector3) -> Color:
-				return _vary(Color(0.5, 0.05, 0.05), p) if _blood(p, 0.14) else tape.call(p))
+				return _vary(_p("blood"), p) if _blood(p, 0.14) else tape.call(p))
 			var spots := func(p: Vector3) -> bool: return _blood(p, 0.04)
-			_fill(shoulder, Vector3(-0.2, -0.32, -0.2), Vector3(0.2, 0.1, 0.2), Color(0.5, 0.05, 0.05), spots, true)
+			_fill(shoulder, Vector3(-0.2, -0.32, -0.2), Vector3(0.2, 0.1, 0.2), _p("blood"), spots, true)
 		"counter_master":
 			# The hoodie over the top of the shoulder, piped white; blue wraps
 			# up the forearm, banded navy and white, a loose end.
 			var paint11 := func(p: Vector3) -> Color:
-				return _vary(Color(0.86, 0.86, 0.9), p) if p.y < -0.005 else _cloth_at(p, Color(0.08, 0.08, 0.1))
+				return _vary(_p("piping"), p) if p.y < -0.005 else _cloth_at(p, _p("cloth"))
 			var shape11 := func(p: Vector3) -> bool:
 				return p.y > -0.02 and ((p - Vector3(0.012 * side, -0.02, 0)) / (Vector3(0.08, 0.085, 0.08) * a + Vector3.ONE * 0.016)).length_squared() <= 1.0
 			_fill(shoulder, Vector3(-0.15, -0.05, -0.15), Vector3(0.15, 0.12, 0.15), paint11, shape11)
-			var blue := Color(0.16, 0.38, 0.88)
-			_limb(elbow, Vector3(0, -0.04, 0), Vector3(0, -0.215, 0), Vector2(0.066, 0.064) * f, Vector2(0.052, 0.05) * f, _bands([blue, blue, blue.darkened(0.45), Color(0.9, 0.9, 0.92)], 0.016, 0.25))
+			var blue := _p("wrap")
+			_limb(elbow, Vector3(0, -0.04, 0), Vector3(0, -0.215, 0), Vector2(0.066, 0.064) * f, Vector2(0.052, 0.05) * f, _bands([blue, blue, _p("wrap_dark"), _p("wrap_light")], 0.016, 0.25))
 			_ribbon(elbow, Vector3(0.05 * side, -0.07, 0.0), Vector3(0.075 * side, -0.16, -0.01), 0.026, 0.012, blue, Vector3.BACK)
 		"combo_master":
 			# White wraps up the forearm, banded violet.
-			_limb(elbow, Vector3(0, -0.05, 0), Vector3(0, -0.215, 0), Vector2(0.064, 0.062) * f, Vector2(0.05, 0.048) * f, _bands([Color(0.9, 0.88, 0.92), Color(0.9, 0.88, 0.92), Color(0.55, 0.32, 0.95)], 0.016, 0.3))
+			_limb(elbow, Vector3(0, -0.05, 0), Vector3(0, -0.215, 0), Vector2(0.064, 0.062) * f, Vector2(0.05, 0.048) * f, _bands([_p("band_b"), _p("band_c"), _p("band_a")], 0.016, 0.3))
 		"free_runner":
 			# Thick white wraps in rings, skin between.
 			for i in 4:
 				var y := -0.04 - i * 0.042
 				_limb(elbow, Vector3(0, y, 0), Vector3(0, y - 0.03, 0), Vector2(0.066, 0.064) * f * (1.0 - i * 0.06), Vector2(0.062, 0.06) * f * (1.0 - i * 0.06), func(p: Vector3) -> Color:
-					return _rag(p, Color(0.86, 0.84, 0.78)))
+					return _rag(p, _p("tape")))
 		"wise_guy":
 			# Puffy jacket sleeves, two white stripes down the outside front,
 			# gathered into ribbed cuffs.
 			var sleeve := func(p: Vector3) -> Color:
 				var ang := atan2(p.z, p.x * side)
 				if absf(ang + 0.75) < 0.08 or absf(ang + 0.45) < 0.08:
-					return _vary(Color(0.92, 0.92, 0.9), p)
-				return _cloth_at(p, Color(0.08, 0.08, 0.09), 0.05)
+					return _vary(_p("stripe"), p)
+				return _cloth_at(p, _p("jacket"), 0.05)
 			_blob(shoulder, Vector3(0.012 * side, -0.02, 0), Vector3(0.08, 0.085, 0.08) * a + Vector3.ONE * 0.022, sleeve)
 			_limb(shoulder, Vector3(0, -0.04, 0), Vector3(0, -0.3, 0), Vector2(0.08, 0.082) * a, Vector2(0.07, 0.072) * a, sleeve, 0.1, 0.4, 0.05)
 			_limb(elbow, Vector3(0, 0.02, 0), Vector3(0, -0.16, 0), Vector2(0.078, 0.076) * f, Vector2(0.066, 0.064) * f, sleeve, 0.1, 0.4, 0.06)
 			_limb(elbow, Vector3(0, -0.155, 0), Vector3(0, -0.2, 0), Vector2(0.058, 0.055) * f, Vector2(0.052, 0.05) * f, func(p: Vector3) -> Color:
-				return Color(0.12, 0.12, 0.13) if fposmod(atan2(p.z, p.x) * 6.0, 1.0) < 0.5 else Color(0.08, 0.08, 0.09))
+				return _p("rib_a") if fposmod(atan2(p.z, p.x) * 6.0, 1.0) < 0.5 else _p("rib_b"))
 		"elementalist":
 			# Short robe sleeves, wide and torn; white wraps up the forearm
 			# with a key pattern, fire orange on the left, violet on the right.
-			var robe := Color(0.11, 0.1, 0.12)
+			var robe := _p("robe")
 			_blob(shoulder, Vector3(0.012 * side, -0.02, 0), Vector3(0.08, 0.085, 0.08) * a + Vector3.ONE * 0.02, _cloth(robe))
 			var hem := func(p: Vector3) -> float:
 				return -0.17 + (_noise(p, 1.5) - 0.5) * 0.05
 			var paint13 := func(p: Vector3) -> Color:
-				return _rag(p) if p.y < hem.call(p) + 0.022 else _cloth_at(p, robe)
+				return _rag(p, _p("trim")) if p.y < hem.call(p) + 0.022 else _cloth_at(p, robe)
 			var shape13 := func(p: Vector3) -> bool:
 				return p.y > hem.call(p) and _in_limb(p, Vector3(0, -0.02, 0), Vector3(0, -0.2, 0), Vector2(0.084, 0.086) * a, Vector2(0.1, 0.1) * a, 0.0, 0.5, 0.06)
 			_fill(shoulder, Vector3(-0.2, -0.24, -0.2), Vector3(0.2, 0.06, 0.2), paint13, shape13)
-			var ink := Color(1.0, 0.5, 0.12) if side < 0 else Color(0.6, 0.3, 1.0)
+			var ink := _p("ink_left") if side < 0 else _p("ink_right")
 			var key := ["XXX.", "..X.", "X.X.", "XXX."]
 			_limb(elbow, Vector3(0, -0.05, 0), Vector3(0, -0.21, 0), Vector2(0.064, 0.062) * f, Vector2(0.05, 0.048) * f, func(p: Vector3) -> Color:
 				var row := int(floorf((p.y + 0.17) / VOXEL))
@@ -1317,7 +1336,7 @@ func _dress_arm(shoulder: Node3D, elbow: Node3D, side: float) -> void:
 					var col := int(floorf(atan2(p.z, p.x) * 0.06 / VOXEL)) % 4
 					if String(key[3 - row])[col if col >= 0 else col + 4] == "X":
 						return _vary(ink, p)
-				return _vary(Color(0.92, 0.9, 0.86) if fposmod(p.y, 0.032) < 0.016 else Color(0.84, 0.82, 0.78), p))
+				return _vary(_p("tape_a") if fposmod(p.y, 0.032) < 0.016 else _p("tape_b"), p))
 
 
 ## A smooth glowing block (eyes, the chain, rings); everything else is painted.

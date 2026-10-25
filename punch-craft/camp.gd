@@ -1243,6 +1243,8 @@ func _show_cosmetic(page_name: String) -> void:
 			_refresh_emotes()
 		"Hand Idles":
 			_refresh_idles()
+		"Skins":
+			_refresh_skins()
 
 
 ## Your fighter on a little stage doing the emote you click (wearing your hat),
@@ -1281,6 +1283,8 @@ func _build_emote_page() -> Control:
 func _refresh_emotes() -> void:
 	if _emote_grid == null:
 		return
+	if _emote_stage.body.skin_id != GameState.skin():
+		_emote_stage.wear(GameState.skin())
 	var dancer := _emote_stage.body
 	dancer.wear_hat(GameState.worn_hat)
 	for child in _emote_grid.get_children():
@@ -1327,20 +1331,69 @@ func _build_idle_page() -> Control:
 	return panel
 
 
+var _skin_grid: HFlowContainer
+var _skin_note: Label
+
+
+## Your fighter's looks (Skins): their own and the skins you've bought, each
+## dancing on its card. Click one to wear it.
 func _build_skins_page() -> Control:
 	var panel := PanelContainer.new()
-	var center := CenterContainer.new()
-	panel.add_child(center)
 	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 8)
-	center.add_child(column)
-	var title := UiTheme.title_label("SKINS", 40, UiTheme.GOLD)
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	column.add_child(title)
-	var soon := _label("Coming soon.", 18, UiTheme.MUTED)
-	soon.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	column.add_child(soon)
+	column.add_theme_constant_override("separation", 12)
+	panel.add_child(column)
+	column.add_child(UiTheme.title_label("SKINS", 26, UiTheme.GOLD))
+	_skin_note = _label("", 13, UiTheme.MUTED)
+	column.add_child(_skin_note)
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	column.add_child(scroll)
+	_skin_grid = HFlowContainer.new()
+	_skin_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_skin_grid.add_theme_constant_override("h_separation", 12)
+	_skin_grid.add_theme_constant_override("v_separation", 12)
+	scroll.add_child(_skin_grid)
 	return panel
+
+
+func _refresh_skins() -> void:
+	if _skin_grid == null:
+		return
+	for child in _skin_grid.get_children():
+		child.queue_free()
+	var fighter := GameState.player_class
+	var owned: Array = Skins.of(fighter).filter(func(id: String) -> bool: return GameState.skins_owned.has(id))
+	_skin_note.text = "Click one to wear it." + ("" if owned.size() == Skins.of(fighter).size() else "  More in the Soul Shop.")
+	var tint := GameState.fighter_color()
+	for id in [""] + owned:
+		var wearing: bool = id == GameState.skin()
+		var card := Button.new()
+		card.custom_minimum_size = Vector2(240, 330)
+		card.add_theme_stylebox_override("normal", UiTheme.raised(Color(0.06, 0.05, 0.08, 0.96), UiTheme.GOLD if wearing else Color(tint, 0.5), 3 if wearing else 2, 12))
+		card.add_theme_stylebox_override("hover", UiTheme.raised(Color(tint.darkened(0.75), 0.98), tint.lightened(0.2), 3, 12))
+		card.add_theme_stylebox_override("pressed", UiTheme.raised(Color(tint.darkened(0.75), 0.98), tint.lightened(0.2), 3, 12))
+		var inside := VBoxContainer.new()
+		inside.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		inside.offset_left = 8
+		inside.offset_right = -8
+		inside.offset_top = 8
+		inside.offset_bottom = -8
+		inside.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		card.add_child(inside)
+		var stage := EmotePreview.new(fighter, 3.6, id)
+		stage.emote_id = "default"
+		stage.custom_minimum_size = Vector2(224, 260)
+		inside.add_child(stage)
+		var name_label := _label(Skins.name_of(id) + ("   ·   WEARING" if wearing else ""), 15, UiTheme.GOLD if wearing else UiTheme.TEXT)
+		name_label.add_theme_font_override("font", UiTheme.bold_font())
+		name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		inside.add_child(name_label)
+		card.pressed.connect(func() -> void:
+			if GameState.equip_skin(fighter, id):
+				Sfx.play("unlock", -8.0, 1.4)
+				_refresh_skins())
+		_skin_grid.add_child(card)
 
 
 ## Every hat on a peg: owned ones in color with their boost, missing ones as
@@ -1625,6 +1678,11 @@ func _shop_card(index: int, offer: Dictionary) -> Control:
 			title = IdleAnims.name_of(offer.id)
 			what = "HAND IDLE"
 			lines = "What your hands do while you wait."
+		"skin":
+			title = Skins.name_of(offer.id)
+			what = "SKIN  ·  %s" % GameState.fighter_name(Skins.CATALOG[offer.id].fighter).to_upper()
+			lines = Skins.CATALOG[offer.id].desc
+			tint = GameState.fighter_color(Skins.CATALOG[offer.id].fighter)
 		"fighter":
 			title = GameState.fighter_name(offer.id)
 			what = "FIGHTER"
@@ -1645,6 +1703,11 @@ func _shop_card(index: int, offer: Dictionary) -> Control:
 	elif offer.kind == "emote":
 		var stage := EmotePreview.new(GameState.player_class, 3.0)
 		stage.emote_id = offer.id
+		stage.custom_minimum_size = Vector2(200, 82)
+		column.add_child(stage)
+	elif offer.kind == "skin":
+		var stage := EmotePreview.new(Skins.CATALOG[offer.id].fighter, 3.0, offer.id)
+		stage.emote_id = "default"
 		stage.custom_minimum_size = Vector2(200, 82)
 		column.add_child(stage)
 	else:

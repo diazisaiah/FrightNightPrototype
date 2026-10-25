@@ -10,6 +10,8 @@ const EMOTE_PRICE := 8
 ## Hand idles (IdleAnims.SHOP).
 const IDLE_SLOTS := 1
 const IDLE_PRICE := 6
+## Skins (Skins.PRICE) for the fighters you have.
+const SKIN_SLOTS := 1
 ## Gear is a backup, not a way around the Crypt: mostly plain finds, priced
 ## against boss Souls (1 + tier each), with good gear rare and dear.
 const GEAR_PRICE := {"common": 6, "uncommon": 12, "rare": 22, "epic": 38, "legendary": 60}
@@ -36,6 +38,9 @@ static func _stale() -> bool:
 	var unowned_idles := IdleAnims.SHOP.any(func(id: String) -> bool: return not GameState.idles_bought.has(id))
 	if unowned_idles and not GameState.shop_stock.any(func(offer: Dictionary) -> bool: return offer.kind == "idle"):
 		return true
+	# Stock from before skins were sold.
+	if not _skins_for_sale().is_empty() and not GameState.shop_stock.any(func(offer: Dictionary) -> bool: return offer.kind == "skin"):
+		return true
 	for offer in GameState.shop_stock:
 		if offer.kind != "gear" or offer.sold:
 			continue
@@ -55,6 +60,10 @@ static func restock() -> void:
 	idles.shuffle()
 	for id in idles.slice(0, IDLE_SLOTS):
 		offers.append({"kind": "idle", "id": id, "price": IDLE_PRICE, "sold": false})
+	var skins := _skins_for_sale()
+	skins.shuffle()
+	for id in skins.slice(0, SKIN_SLOTS):
+		offers.append({"kind": "skin", "id": id, "price": Skins.PRICE, "sold": false})
 	for class_id in FIGHTERS:
 		if not class_id in GameState.class_ids() and Progression.seals_broken() >= int(FIGHTER_SEALS.get(class_id, 0)):
 			offers.append({"kind": "fighter", "id": class_id, "price": FIGHTERS[class_id], "sold": false})
@@ -69,6 +78,13 @@ static func restock() -> void:
 	GameState.shop_restock_at = GameState.fights_done
 	GameState.shop_rerolls = 0
 	GameState.save_game()
+
+
+## Skins you don't have, for fighters you do.
+static func _skins_for_sale() -> Array:
+	var fighters := GameState.class_ids()
+	return Skins.CATALOG.keys().filter(func(id: String) -> bool:
+		return not GameState.skins_owned.has(id) and Skins.CATALOG[id].fighter in fighters)
 
 
 static func _pick_rarity() -> String:
@@ -110,6 +126,9 @@ static func buy(index: int) -> bool:
 			GameState.emotes_bought[offer.id] = true
 		"idle":
 			GameState.idles_bought[offer.id] = true
+		"skin":
+			GameState.skins_owned[offer.id] = true
+			Toast.show_on(GameState.get_tree(), "SKIN: %s" % Skins.name_of(offer.id).to_upper(), "Wear it from Cosmetics.")
 		"gear":
 			GameState.add_to_armory(offer.item.duplicate(true))
 		"fighter":

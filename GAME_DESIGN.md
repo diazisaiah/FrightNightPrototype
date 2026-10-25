@@ -1416,7 +1416,7 @@ Maxing the Coffin Crown went from about 19M to about 7.3M.
 - **Hats:** the Hat Rack.
 - **Emotes:** your fighter on a little stage, wearing your hat, doing the emote you click; every emote you own, with a count.
 - **Hand Idles:** the idle cards (moved out of the Loadout, which is back to passives and ultimates).
-- **Skins:** coming soon.
+- **Skins:** your fighter's own look and the skins you've bought, each dancing on its card; click one to wear it (see Skins below).
 
 Hold **Emote** (G; View / Create on a controller, plus D-pad down in Weenie Hut Junior Mode, where it's free; in Pro Gamer Mode it's the back step) for the emote wheel, steer with the mouse or right stick, and let go on a dance. The camera pulls out to third person (about 0.35s, Destiny style) around your fighter. The mouse or right stick orbits the camera. Moving, punching, dodging, jumping, the ultimate or getting hit ends the dance and glides the camera back. Emoting works mid-fight; you're open while you dance. A quick tap repeats your last dance (or stops one). On a controller, a tap opens the map where there is one (the Crypt, the tutorial's dummy cycling), since the map gave up its own button.
 
@@ -1470,6 +1470,24 @@ It renders on its own layer, so the lantern at your eyes doesn't blow it out; a 
 - **A smoother Arena from the Ghost Division:** a player with a better build than the Ghost Division's par barely got 10-20 knockouts there, because two monsters could attack at once from that division on, veterans jumped to 45%, and elites to 8%, all at the same step.
   - One monster attacks at a time through the Ghost Division; in the Plague Division a second joins once the bar is half full; two in the Crown Division and the Endless Arena (`world._max_attackers`). The Crypt matches: one through floor 6, two from floor 7.
   - Veterans by tier: 0 / 15 / 30 / 45 / 65% (was 0 / 25 / 45 / 65 / 85%), 80% past tier 5 (was 90%).
+
+## Skins [Built 2026-10-25]
+
+A restyle for each fighter, after the reference art in `art/alternate_skins/` (`skins.gd`). Each is the fighter's own outfit in another palette, on the third-person body and the first-person hands alike:
+
+| Fighter | Skin | Look |
+|---|---|---|
+| The Mauler | Obsidian Furnace | Orange trim and sash, molten splotches on the trunks, obsidian gloves with lava cracks, gray tape, orange laces and soles |
+| The Answer | White Noise | White hoodie and pants with black piping and lightning, black belt, black / white / cyan wraps, white gloves |
+| The Blur | Hyperlight | Cyan piping and pant slashes, magenta sash, magenta / cyan / white wraps |
+| The Stray | Rooftop Ghost | Navy gi, orange headband, scarf, belt and ankle wraps, teal gloves |
+| Tony | Sunday Best | Maroon tracksuit, cream stripes, gold zip, green beanie |
+| The Catalyst | Verdant Sigil | Dark green robe and hakama trimmed gold, glowing green key pattern on the wraps, gold boot straps |
+
+- **How it works:** every color a skin can change is a named part of the fighter's palette (`Skins.BASE`: vest, trim, sash, glove, wraps, shoes...). A skin overrides the parts it changes (`Skins.LOOKS`), and can set "glow" (the hands' color when the ultimate is ready). `PlayerBody` and `Fists` paint from the palette, and bodies are cached per fighter and skin.
+- **Getting them:** one in each Soul Shop restock, 20 Souls (`SoulShop.SKIN_SLOTS`, `Skins.PRICE`), only for fighters you have.
+- **Wearing them:** Cosmetics → Skins. Saved per fighter (`GameState.skins_owned`, `skin_picks`; `skin()` / `equip_skin()`). The Emotes stage, the crowning and your fights all show the skin you wear.
+- **Later:** parody skins of anime characters.
 
 ## Multiplayer: the Versus ladder and co-op [Planned 2026-10-25]
 

@@ -1218,6 +1218,9 @@ var bounties: Array = []
 ## Hand idles (IdleAnims): each fighter's pick, and the ones bought.
 var idle_picks := {}
 var idles_bought := {}
+## Skins (Skins): the ones owned, and each fighter's pick ("" for their own look).
+var skins_owned := {}
+var skin_picks := {}
 var bounty_xp := 0
 var kills := {}
 ## Ability picks per fighter (Abilities): {class: {"passive": id, "ultimate": id}}.
@@ -1526,6 +1529,22 @@ func equip_idle(id: String) -> bool:
 	if not id in IdleAnims.choices(player_class):
 		return false
 	idle_picks[player_class] = id
+	_commit()
+	return true
+
+
+## A fighter's skin ("" for their own look; the current fighter by default).
+func skin(class_id := "") -> String:
+	var fighter := player_class if class_id == "" else class_id
+	var id: String = skin_picks.get(fighter, "")
+	return id if skins_owned.has(id) and String(Skins.CATALOG.get(id, {}).get("fighter", "")) == fighter else ""
+
+
+## Wears a skin you own on its fighter ("" back to their own look).
+func equip_skin(class_id: String, id: String) -> bool:
+	if id != "" and (not skins_owned.has(id) or Skins.CATALOG[id].fighter != class_id):
+		return false
+	skin_picks[class_id] = id
 	_commit()
 	return true
 
@@ -2164,6 +2183,8 @@ func save_game() -> void:
 		"bounties": bounties,
 		"idle_picks": idle_picks,
 		"idles_bought": idles_bought,
+		"skins_owned": skins_owned,
+		"skin_picks": skin_picks,
 		"bounty_xp": bounty_xp,
 		"kills": kills,
 		"loadouts": loadouts,
@@ -2259,6 +2280,8 @@ func load_game() -> void:
 	bounty_xp = int(data.get("bounty_xp", 0))
 	idle_picks = data.get("idle_picks", {}).duplicate() if data.get("idle_picks", {}) is Dictionary else {}
 	idles_bought = data.get("idles_bought", {}).duplicate() if data.get("idles_bought", {}) is Dictionary else {}
+	skins_owned = data.get("skins_owned", {}).duplicate() if data.get("skins_owned", {}) is Dictionary else {}
+	skin_picks = data.get("skin_picks", {}).duplicate() if data.get("skin_picks", {}) is Dictionary else {}
 	kills = data.get("kills", {}).duplicate() if data.get("kills", {}) is Dictionary else {}
 	loadouts = data.get("loadouts", {}).duplicate(true) if data.get("loadouts", {}) is Dictionary else {}
 	endless_best = int(data.get("endless_best", 0))
@@ -2568,6 +2591,8 @@ func _reset_fields() -> void:
 	bounty_xp = 0
 	idle_picks = {}
 	idles_bought = {}
+	skins_owned = {}
+	skin_picks = {}
 	kills = {}
 	loadouts = {}
 	endless_best = 0

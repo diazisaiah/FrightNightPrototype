@@ -97,6 +97,9 @@ const POSES := {
 var move_amount := 0.0
 ## Whose hands these are (a class id). Empty: the current class.
 var fighter := ""
+## The skin to wear (Skins): "auto" for the fighter's pick, "" for their own look.
+var skin_id := "auto"
+var _pal := {}
 
 var _bob_time := 0.0
 var _flinch_offset := Vector3.ZERO
@@ -132,7 +135,10 @@ var _bolt_timer := 0.0
 func _ready() -> void:
 	if fighter == "":
 		fighter = GameState.player_class
-	_accent = ACCENT.get(fighter, Color(1.0, 0.8, 0.4))
+	if skin_id == "auto":
+		skin_id = GameState.skin(fighter)
+	_pal = Skins.palette(fighter, skin_id)
+	_accent = _pal.get("glow", ACCENT.get(fighter, Color(1.0, 0.8, 0.4)))
 	_skin_color = SKIN.get(fighter, DEFAULT_SKIN)
 	for group in ["skin", "gear", "rim", "rune_left", "rune_right"]:
 		var material := StandardMaterial3D.new()
@@ -646,6 +652,11 @@ func _solid(color: Color, amount := 0.06) -> Callable:
 	return func(p: Vector3) -> Color: return _vary(color, p, amount)
 
 
+## A part's color in this fighter's palette (Skins).
+func _p(key: String) -> Color:
+	return _pal.get(key, Color.MAGENTA)
+
+
 func _skin_fn() -> Callable:
 	return func(p: Vector3) -> Color:
 		var c := _skin_color
@@ -879,15 +890,15 @@ func _apply_shape(hand: String, shape: Dictionary) -> void:
 ## red laces, and heavy bare forearms. When the ultimate is ready, cracks in
 ## the leather glow orange.
 func _paint_mauler() -> void:
-	var red := Color(0.66, 0.07, 0.06)
+	var red := _p("glove").darkened(0.08)
 	_paint_forearm(_skin_fn(), "skin", 1.25)
 	# Cuff: white tape in bands, laced up the palm side.
 	_fill_taper(-0.3, -0.2, Vector2(0.06, 0.054), Vector2(0.056, 0.05), 0.0, func(p: Vector3) -> Color:
-		var tape := Color(0.92, 0.89, 0.82)
+		var tape := _p("tape")
 		if fposmod(p.z, 0.017) < VOXEL:
 			tape = tape.darkened(0.2)
 		if p.y < -0.044 and absf(fposmod(p.z + p.x * 1.5, 0.026) - 0.013) < VOXEL:
-			tape = red.darkened(0.2)
+			tape = _p("sash").darkened(0.25)
 		return _vary(tape, p, 0.06))
 	var leather := func(p: Vector3) -> Color:
 		var c := red
@@ -911,25 +922,25 @@ func _paint_mauler() -> void:
 		if p.z < -0.29 and entry[1] == "gear" and p.y > -0.02:
 			var h := absf(sin(p.x * 377.7 + p.z * 1711.3) * 4371.9)
 			if h - floorf(h) > 0.9:
-				_grid[cell] = [Color(0.95, 0.4, 0.08), "rim"]
+				_grid[cell] = [Color(_p("cracks"), 1.0), "rim"]
 
 
 ## The Blur: bare hands with purple wraps around every finger, over the
 ## knuckles and around the palm, a purple wrist wrap, and a dark sleeve with a
 ## glowing violet cuff.
 func _paint_blur() -> void:
-	var purple := Color(0.5, 0.3, 0.88)
+	var purple := _p("hand_wrap")
 	var wrap := func(p: Vector3) -> Color:
 		# Strands of tape crossing diagonally.
 		var strand := fposmod(p.y * 1.2 + p.z, 0.017)
 		var c := purple.darkened(0.25) if strand < VOXEL else purple
 		return _vary(c, p, 0.08)
 	_fill_taper(-0.2, 0.32, Vector2(0.05, 0.046), Vector2(0.056, 0.052), 0.0, func(p: Vector3) -> Color:
-		var c := Color(0.12, 0.1, 0.16)
+		var c := _p("top")
 		if fposmod(p.z, 0.06) < VOXEL * 1.5:
 			c = c.darkened(0.35)
 		return _vary(c, p, 0.05))
-	_fill_taper(-0.215, -0.198, Vector2(0.052, 0.048), Vector2(0.052, 0.048), 0.0, _solid(Color(0.66, 0.5, 1.0)), "rim")
+	_fill_taper(-0.215, -0.198, Vector2(0.052, 0.048), Vector2(0.052, 0.048), 0.0, _solid(purple.lightened(0.3)), "rim")
 	_paint_forearm(_skin_fn(), "skin", 1.0, -0.24, -0.2)
 	_paint_wrist(wrap, "gear", 0.003)
 	_paint_fist(_skin_fn(), wrap, "skin", "gear")
@@ -941,12 +952,13 @@ func _paint_blur() -> void:
 ## wraps from the wrist up the forearm in bands. The white bands glow blue
 ## when the ultimate is ready.
 func _paint_answer() -> void:
-	var blue := Color(0.16, 0.38, 0.88)
-	var navy := Color(0.06, 0.1, 0.22)
-	var white := Color(0.88, 0.88, 0.9)
-	var black := Color(0.08, 0.08, 0.1)
+	var blue := _p("wrap")
+	var navy := _p("wrap_dark").darkened(0.5)
+	var white := _p("wrap_light")
+	var black := _p("glove")
+	var tape := _p("glove_cuff")
 	# Coat sleeve beyond the wraps.
-	_fill_taper(0.12, 0.32, Vector2(0.056, 0.052), Vector2(0.06, 0.056), 0.0, _solid(Color(0.07, 0.07, 0.09)))
+	_fill_taper(0.12, 0.32, Vector2(0.056, 0.052), Vector2(0.06, 0.056), 0.0, _solid(_p("cloth")))
 	# Forearm wraps: wide blue bands, thin navy ones, a white stripe now and then.
 	_fill_taper(-0.29, 0.12, Vector2(0.046, 0.042), Vector2(0.053, 0.049), 0.0, func(p: Vector3) -> Color:
 		var k := int(floorf((p.z + 0.29) / VOXEL)) % 9
@@ -958,7 +970,7 @@ func _paint_answer() -> void:
 		var c := black
 		# White tape across the knuckles and around the hand.
 		if (p.y > 0.024 and p.z < -0.345 and p.z > -0.375) or (p.z > -0.322 and p.z < -0.305):
-			c = white
+			c = tape
 		elif p.z < -0.346 and fposmod(p.x + 0.0455, 0.0227) < VOXEL * 0.9:
 			c = Color(0.03, 0.03, 0.04)
 		return _vary(c, p, 0.07)
@@ -969,10 +981,10 @@ func _paint_answer() -> void:
 ## wraps up the forearm, a red bandana tied on the left one, and a dark hoodie
 ## sleeve with green trim.
 func _paint_stray(left: bool) -> void:
-	var green := Color(0.12, 0.48, 0.22)
-	var tape := Color(0.82, 0.8, 0.76)
-	_fill_taper(0.06, 0.32, Vector2(0.056, 0.052), Vector2(0.06, 0.056), 0.0, _solid(Color(0.13, 0.13, 0.15)))
-	_fill_taper(0.05, 0.062, Vector2(0.058, 0.054), Vector2(0.058, 0.054), 0.0, _solid(Color(0.3, 0.95, 0.45)), "rim")
+	var green := _p("glove")
+	var tape := _p("tape")
+	_fill_taper(0.06, 0.32, Vector2(0.056, 0.052), Vector2(0.06, 0.056), 0.0, _solid(_p("gi")))
+	_fill_taper(0.05, 0.062, Vector2(0.058, 0.054), Vector2(0.058, 0.054), 0.0, _solid(_accent), "rim")
 	# Tape wraps: overlapping turns with darker edges, slightly ragged.
 	_fill_taper(-0.29, 0.06, Vector2(0.044, 0.04), Vector2(0.05, 0.046), 0.0, func(p: Vector3) -> Color:
 		var c := tape
@@ -983,7 +995,7 @@ func _paint_stray(left: bool) -> void:
 			c = tape.darkened(0.12)
 		return _vary(c, p, 0.07))
 	if left:
-		var red := Color(0.72, 0.08, 0.08)
+		var red := _p("band")
 		_fill_taper(-0.2, -0.155, Vector2(0.052, 0.048), Vector2(0.053, 0.049), 0.0, _solid(red, 0.1))
 		# Knot and two tails hanging off the outer side.
 		_fill(Vector3(0.048, -0.02, -0.19), Vector3(0.066, 0.016, -0.165), _solid(red.darkened(0.15), 0.1))
@@ -1003,16 +1015,16 @@ func _paint_stray(left: bool) -> void:
 ## Tony: a black tracksuit sleeve with two white stripes, white tape wound
 ## around the wrist and over the knuckles, and a gold pinky ring.
 func _paint_tony(_left: bool) -> void:
-	var black := Color(0.07, 0.07, 0.08)
-	var stripe := Color(0.92, 0.92, 0.9)
+	var black := _p("jacket")
+	var stripe := _p("stripe")
 	_fill_taper(-0.22, 0.32, Vector2(0.05, 0.046), Vector2(0.06, 0.055), 0.0, func(p: Vector3) -> Color:
 		# Two white stripes running down the top of the sleeve.
 		if p.y > 0.03 and (absf(p.x - 0.012) < VOXEL * 0.8 or absf(p.x + 0.012) < VOXEL * 0.8):
 			return _vary(stripe, p, 0.04)
 		return _vary(black, p, 0.08))
 	# Ribbed cuff.
-	_fill_taper(-0.24, -0.205, Vector2(0.052, 0.048), Vector2(0.052, 0.048), 0.0, _solid(Color(0.12, 0.12, 0.13)), "gear")
-	var tape := Color(0.9, 0.88, 0.84)
+	_fill_taper(-0.24, -0.205, Vector2(0.052, 0.048), Vector2(0.052, 0.048), 0.0, _solid(_p("rib_a")), "gear")
+	var tape := _p("tape")
 	var taped := func(p: Vector3) -> Color:
 		var c := tape
 		if fposmod(p.z + p.y * 0.35, 0.02) < VOXEL:
@@ -1031,8 +1043,8 @@ func _paint_tony(_left: bool) -> void:
 ## powers' colors when the ultimate is ready.
 func _paint_catalyst(left: bool) -> void:
 	var skin := _skin_color
-	_fill_taper(0.14, 0.32, Vector2(0.062, 0.058), Vector2(0.068, 0.064), 0.0, _solid(Color(0.1, 0.09, 0.11)))
-	_fill_taper(0.13, 0.148, Vector2(0.064, 0.06), Vector2(0.064, 0.06), 0.0, _solid(Color(0.86, 0.84, 0.8)))
+	_fill_taper(0.14, 0.32, Vector2(0.062, 0.058), Vector2(0.068, 0.064), 0.0, _solid(_p("robe")))
+	_fill_taper(0.13, 0.148, Vector2(0.064, 0.06), Vector2(0.064, 0.06), 0.0, _solid(_p("trim")))
 	# A vein snaking along the top of the forearm, and the odd white hair.
 	var forearm := func(p: Vector3) -> Color:
 		if p.y > 0.0 and absf(p.x - 0.018 * sin(p.z * 55.0)) < VOXEL * 0.7:
@@ -1041,7 +1053,7 @@ func _paint_catalyst(left: bool) -> void:
 			return Color(0.92, 0.92, 0.9)
 		return _vary(skin, p, 0.09)
 	_fill_taper(-0.12, 0.13, Vector2(0.05, 0.046), Vector2(0.058, 0.054), 0.0, forearm, "skin")
-	var tape := Color(0.74, 0.71, 0.65)
+	var tape := _p("tape_b").darkened(0.12)
 	var taped := func(p: Vector3) -> Color:
 		var c := tape
 		if fposmod(p.z + p.y * 0.35, 0.02) < VOXEL:
