@@ -14,12 +14,14 @@ const SCENES := {
 	"bulwark": preload("res://bulwark.tscn"), "pyromancer": preload("res://pyromancer.tscn"),
 	"sniper": preload("res://sniper.tscn"), "banshee": preload("res://banshee.tscn"),
 }
-## Share of each kind that comes as its veteran, by tier (1-5); past 5, 90%.
-const SHARE := [0.0, 0.25, 0.45, 0.65, 0.85]
+## Share of each kind that comes as its veteran, by tier (1-5); past 5, 80%.
+## (2026-10-25: was 25 / 45 / 65 / 85%, which stacked too fast on the tier's
+## own scaling.)
+const SHARE := [0.0, 0.15, 0.3, 0.45, 0.65]
 
 
 static func share(tier: int) -> float:
-	return SHARE[tier - 1] if tier >= 1 and tier <= SHARE.size() else (0.9 if tier > SHARE.size() else 0.0)
+	return SHARE[tier - 1] if tier >= 1 and tier <= SHARE.size() else (0.8 if tier > SHARE.size() else 0.0)
 
 
 ## The veteran scene to spawn instead of kind, or null for the regular one.

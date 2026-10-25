@@ -111,7 +111,7 @@ func _build() -> void:
 	if duplicate:
 		boost.text = "+%d {souls}" % Hats.DUPLICATE_SOULS[info.rarity]
 		boost.color = Color(0.55, 0.95, 0.9)
-	elif info.rarity == "legendary":
+	elif _id in Hats.LEGENDARIES:
 		var owned := Hats.LEGENDARIES.filter(func(id: String) -> bool: return GameState.hats.has(id)).size()
 		boost.text = "YONKERS  %d / 4" % (owned + 1)
 		boost.color = tint.lightened(0.2)

@@ -23,6 +23,8 @@ const SKELETON_FRUIT := 0.25
 const SIZE := 1.4
 const FRUIT_SIZE := 1.3
 const LEGENDARIES := ["yonker_brim", "yonker_no_brim", "brim_no_yonker", "no_yonker_no_brim"]
+## Won, never dropped: the Coffin Crown for beating the Coffin King (Ending).
+const TROPHIES := ["coffin_crown"]
 
 const CATALOG := {
 	"party_hat": {"name": "Party Hat", "rarity": "common", "effects": {"damage_percent": 0.01},
@@ -77,6 +79,8 @@ const CATALOG := {
 		"desc": "Does nothing. Yet."},
 	"no_yonker_no_brim": {"name": "No Yonker with No Brim", "rarity": "legendary", "effects": {},
 		"desc": "Does nothing. Yet."},
+	"coffin_crown": {"name": "Coffin Crown", "rarity": "legendary", "effects": {"damage_percent": 0.05, "knuckles_percent": 0.05},
+		"desc": "Off the Coffin King's head. Heavy is the head."},
 }
 
 
@@ -119,7 +123,7 @@ static func roll(skeleton: bool) -> String:
 		if pick <= 0.0:
 			rarity = key
 			break
-	var pool := CATALOG.keys().filter(func(id: String) -> bool: return CATALOG[id].rarity == rarity)
+	var pool := CATALOG.keys().filter(func(id: String) -> bool: return CATALOG[id].rarity == rarity and not id in TROPHIES)
 	return pool.pick_random()
 
 
@@ -200,6 +204,27 @@ static func build(id: String, u: float) -> Node3D:
 			_b(hat, u, Vector3(1.1, 0.34, 1.1), Vector3(0, 0.15, 0), Color(1.0, 0.82, 0.1))
 			_b(hat, u, Vector3(1.18, 0.05, 1.3), Vector3(0, 0.0, -0.08), Color(1.0, 0.78, 0.08))
 			_b(hat, u, Vector3(0.12, 0.12, 0.2), Vector3(0, 0.2, -0.58), Color(1.0, 0.95, 0.7), Vector3.ZERO, true)
+		"coffin_crown":
+			# An open ring of gold plates on a darker rim, six coffin-shaped
+			# points (narrow foot, wide shoulders, narrow head) each set with a
+			# violet gem, and a little skull on the front.
+			var gold := Color(1.0, 0.8, 0.3)
+			for i in 8:
+				var a := i * TAU / 8.0 + TAU / 16.0
+				var at := Vector3(sin(a), 0.0, cos(a))
+				_b(hat, u, Vector3(0.44, 0.26, 0.07), at * 0.52 + Vector3(0, 0.15, 0), gold, Vector3(0, a, 0), false, 0.5)
+				_b(hat, u, Vector3(0.47, 0.07, 0.1), at * 0.54 + Vector3(0, 0.03, 0), gold.darkened(0.35), Vector3(0, a, 0), false, 0.5)
+			for i in 6:
+				var a := i * TAU / 6.0
+				var at := Vector3(sin(a), 0.0, cos(a)) * 0.53
+				var turn := Vector3(0, a, 0)
+				_b(hat, u, Vector3(0.15, 0.1, 0.07), at + Vector3(0, 0.32, 0), gold, turn, false, 0.5)
+				_b(hat, u, Vector3(0.25, 0.15, 0.07), at + Vector3(0, 0.44, 0), gold, turn, false, 0.5)
+				_b(hat, u, Vector3(0.15, 0.11, 0.07), at + Vector3(0, 0.57, 0), gold, turn, false, 0.5)
+				_b(hat, u, Vector3(0.08, 0.08, 0.08), at * 1.04 + Vector3(0, 0.44, 0), Color(0.65, 0.2, 0.95), turn, true)
+			_b(hat, u, Vector3(0.18, 0.16, 0.05), Vector3(0, 0.14, -0.58), Color(0.95, 0.93, 0.86))
+			for side in [-1.0, 1.0]:
+				_b(hat, u, Vector3(0.05, 0.05, 0.02), Vector3(0.045 * side, 0.16, -0.61), Color(0.05, 0.05, 0.05))
 		"paper_crown":
 			_b(hat, u, Vector3(1.06, 0.2, 1.06), Vector3(0, 0.1, 0), Color(1.0, 0.82, 0.25))
 			for i in 8:

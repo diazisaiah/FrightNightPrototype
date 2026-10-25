@@ -174,7 +174,7 @@ func _ready() -> void:
 	if GameState.arena_bout_pick > 0:
 		_night = clampi(GameState.arena_bout_pick, 1, _night)
 		GameState.arena_bout_pick = 0
-	Enemy.max_attackers = 1 if _division <= 2 else 2
+	Enemy.max_attackers = _max_attackers()
 	_reset_style()
 	$Moon.shadow_enabled = Settings.get_value("shadows") and not Settings.use_web_profile()
 	Themes.apply_environment($WorldEnvironment.environment, _theme, $Moon)
@@ -284,6 +284,7 @@ func _process(delta: float) -> void:
 	_flicker_torches(delta)
 	if _run_over or _boss_spawned:
 		return
+	Enemy.max_attackers = _max_attackers()
 	_spawn_timer -= delta
 	if _spawn_timer <= 0.0 and _alive < _max_alive():
 		_spawn_timer = lerpf(SPAWN_INTERVAL_START, SPAWN_INTERVAL_END, _progress()) * (FIRST_NIGHT.spawn_slow if _first_night() else 1.0)
@@ -319,6 +320,18 @@ func _physics_process(_delta: float) -> void:
 # --- The night ---------------------------------------------------------------
 
 ## How full the night's progress bar is, 0-1.
+## Monsters attacking you at once (2026-10-25, a smoother step: two from the
+## Ghost Division on was a wall): one through the Ghost Division; in the
+## Plague Division a second joins once the bar is half full; two in the Crown
+## Division and the Endless Arena.
+func _max_attackers() -> int:
+	if _endless or _division >= 5:
+		return 2
+	if _division == 4 and _progress() >= 0.5:
+		return 2
+	return 1
+
+
 func _progress() -> float:
 	if _endless:
 		return 1.0  # Full strength from the start; the waves add the rest.

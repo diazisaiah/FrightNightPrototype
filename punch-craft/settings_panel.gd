@@ -49,6 +49,14 @@ var _content: ScrollContainer
 var _reset_button: Button
 var _reset_armed := false
 var _reset_timer: SceneTreeTimer
+## Save codes: the copy button and the code it shows; the paste box, its
+## load button (two clicks, like erasing) and what happened.
+var _copy_button: Button
+var _code_shown: LineEdit
+var _code_box: LineEdit
+var _load_button: Button
+var _load_armed := false
+var _code_note: Label
 ## Only shows when two control choices collide.
 var _scheme_note: Label
 ## Key bindings: the list of rows (rebuilt when the mode changes), the
@@ -172,6 +180,7 @@ func _ready() -> void:
 
 	if show_save_data:
 		var data := _page(pages, "SAVE DATA")
+		_build_save_codes(data)
 		var slot := _row(data, "cracked_skull", "Erase all progress", "Every fighter, upgrade and unlock. Can't be undone.", UiTheme.BAD)
 		_reset_button = Button.new()
 		_reset_button.custom_minimum_size = Vector2(240, 44)
@@ -621,6 +630,85 @@ func _refresh() -> void:
 
 
 # --- Save data ----------------------------------------------------------------------
+
+## Back up: copy your save as a code. Restore: paste one in and load it.
+func _build_save_codes(page: Control) -> void:
+	var copy_slot := _row(page, "chest", "Back up your save", "Copy the code. Keep it somewhere safe.")
+	_copy_button = Button.new()
+	_copy_button.text = "Copy save code"
+	_copy_button.custom_minimum_size = Vector2(240, 44)
+	_copy_button.pressed.connect(_copy_save_code)
+	copy_slot.add_child(_copy_button)
+	_code_shown = LineEdit.new()
+	_code_shown.editable = false
+	_code_shown.visible = false
+	_code_shown.select_all_on_focus = true
+	page.add_child(_code_shown)
+	var load_slot := _row(page, "shovel", "Load a save code", "Replaces this save.")
+	_code_box = LineEdit.new()
+	_code_box.placeholder_text = "Paste a code"
+	_code_box.custom_minimum_size = Vector2(220, 44)
+	_code_box.text_changed.connect(func(_text: String) -> void:
+		_disarm_load()
+		_code_note.text = "")
+	load_slot.add_child(_code_box)
+	_load_button = Button.new()
+	_load_button.custom_minimum_size = Vector2(130, 44)
+	_load_button.pressed.connect(_on_load_pressed)
+	load_slot.add_child(_load_button)
+	_code_note = _label("", 14, UiTheme.MUTED)
+	_code_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	page.add_child(_code_note)
+	_disarm_load()
+
+
+func _copy_save_code() -> void:
+	var code := GameState.save_code()
+	DisplayServer.clipboard_set(code)
+	_code_shown.text = code
+	_code_shown.visible = true
+	_copy_button.text = "Copied"
+	Sfx.play("coin", -6.0, 1.2)
+	get_tree().create_timer(2.0, true).timeout.connect(func() -> void:
+		if is_instance_valid(_copy_button):
+			_copy_button.text = "Copy save code")
+
+
+## Two clicks to load, like erasing.
+func _on_load_pressed() -> void:
+	if _code_box.text.strip_edges() == "":
+		_code_note.text = "Paste a code first."
+		return
+	if not _load_armed:
+		_load_armed = true
+		_load_button.text = "Click again"
+		_load_button.add_theme_color_override("font_color", UiTheme.BAD)
+		Sfx.play("block", -6.0, 0.8)
+		var armed_box := _code_box.text
+		get_tree().create_timer(CONFIRM_TIME, true).timeout.connect(func() -> void:
+			if is_instance_valid(_code_box) and _code_box.text == armed_box:
+				_disarm_load())
+		return
+	var problem := GameState.load_save_code(_code_box.text)
+	_disarm_load()
+	if problem != "":
+		_code_note.text = problem
+		_code_note.add_theme_color_override("font_color", UiTheme.BAD)
+		Sfx.play("deny", -6.0)
+		return
+	_code_note.text = "Loaded."
+	_code_note.add_theme_color_override("font_color", UiTheme.GOOD)
+	Sfx.play("unlock", -4.0)
+	# The title screen was built from the old save.
+	get_tree().create_timer(0.6, true).timeout.connect(Loading.reload)
+
+
+func _disarm_load() -> void:
+	_load_armed = false
+	if _load_button:
+		_load_button.text = "Load"
+		_load_button.remove_theme_color_override("font_color")
+
 
 ## Two clicks to erase: the first arms the button for a few seconds.
 func _on_reset_pressed() -> void:

@@ -199,6 +199,10 @@ func _finish_victory() -> void:
 " + adjust
 	if first_clear:
 		note = _seal_broken_text(GameState.dead_league_bout)
+	if first_clear and last:
+		await _crown_the_champion()
+		if not is_inside_tree():
+			return
 	_hud.show_results({
 		"title": "THE CROWN IS YOURS" if first_clear and last else "VICTORY",
 		"subtitle": "%s   ·   %s" % [profile.name, _format_time(_elapsed)],
@@ -211,6 +215,16 @@ func _finish_victory() -> void:
 		],
 		"note": note,
 	}, "Rematch", false, "League menu")
+
+
+## The Coffin King's first fall: his crown goes on your head (a hat that's
+## yours for good), and the ending plays (Ending).
+func _crown_the_champion() -> void:
+	GameState.hats["coffin_crown"] = 1
+	GameState.worn_hat = "coffin_crown"
+	GameState.save_game()
+	var ending := Ending.open(self)
+	await ending.finished
 
 
 ## What beating contender index broke open: "SEAL BROKEN: Ring 2 + FIRE ...".

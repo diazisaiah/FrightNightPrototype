@@ -78,6 +78,13 @@ func _build_ui() -> void:
 	var header_space := Control.new()
 	header_space.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(header_space)
+	# Champions can watch the crowning again.
+	if GameState.dead_league_clears.get("coffin_king", false):
+		var crowning := Button.new()
+		crowning.text = "Watch the ending"
+		crowning.custom_minimum_size = Vector2(170, 42)
+		crowning.pressed.connect(func() -> void: Ending.open(self))
+		header.add_child(crowning)
 	var back := Button.new()
 	back.text = "Back to camp"
 	back.custom_minimum_size = Vector2(150, 42)

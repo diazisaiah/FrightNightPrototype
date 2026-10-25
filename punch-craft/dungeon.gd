@@ -292,7 +292,8 @@ func _exit_tree() -> void:
 # --- Floors -------------------------------------------------------------------
 
 func _build_floor() -> void:
-	Enemy.max_attackers = 1 if _floor < 3 else 2
+	# One attacker at a time until the Plague tier's floors (7 on), like the Arena.
+	Enemy.max_attackers = 1 if _floor < 7 else 2
 	if _level:
 		_level.queue_free()
 	for enemy in _enemies.get_children():

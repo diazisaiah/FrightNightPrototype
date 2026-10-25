@@ -1636,7 +1636,7 @@ func add_hat(id: String) -> String:
 		return "duplicate"
 	hats[id] = 1
 	Achievements.earn("first_hat")
-	if Hats.CATALOG[id].rarity == "legendary":
+	if id in Hats.LEGENDARIES:
 		Achievements.earn("legendary_hat")
 	var result := "new"
 	if not tony_unlocked and Hats.LEGENDARIES.all(func(legend: String) -> bool: return hats.has(legend)):
@@ -2487,6 +2487,50 @@ func _refund_unreachable(nodes: Dictionary, owned: Dictionary, refund: Callable)
 func reset_progress() -> void:
 	_reset_fields()
 	_commit()
+
+
+# --- Save codes --------------------------------------------------------------------
+
+## A save as text to keep somewhere safe (web saves live in browser storage
+## and vanish if it's cleared): "FN1:<size>:<the save file, gzipped, base64>".
+const SAVE_CODE_TAG := "FN1:"
+const SAVE_CODE_MAX := 1 << 20
+
+
+func save_code() -> String:
+	save_game()
+	var raw := FileAccess.get_file_as_string(save_path).to_utf8_buffer()
+	return "%s%d:%s" % [SAVE_CODE_TAG, raw.size(), Marshalls.raw_to_base64(raw.compress(FileAccess.COMPRESSION_GZIP))]
+
+
+## Loads a save code over this save (the old one is kept beside it as
+## save_before_code.json). Returns "" when it worked, or why it didn't.
+func load_save_code(code: String) -> String:
+	code = code.strip_edges().replace("\n", "").replace("\r", "").replace(" ", "")
+	if not code.begins_with(SAVE_CODE_TAG):
+		return "Not a Fright Night save code."
+	var parts := code.substr(SAVE_CODE_TAG.length()).split(":", false, 1)
+	if parts.size() != 2 or not parts[0].is_valid_int() or int(parts[0]) <= 0 or int(parts[0]) > SAVE_CODE_MAX:
+		return "That code is damaged."
+	var text := Marshalls.base64_to_raw(parts[1]).decompress(int(parts[0]), FileAccess.COMPRESSION_GZIP).get_string_from_utf8()
+	var json := JSON.new()
+	if text == "" or json.parse(text) != OK or not json.data is Dictionary or not json.data.has("classes"):
+		return "That code is damaged."
+	var data: Dictionary = json.data
+	if int(data.get("version", 1)) != SAVE_VERSION:
+		return "That code is from another version."
+	if FileAccess.file_exists(save_path):
+		DirAccess.copy_absolute(ProjectSettings.globalize_path(save_path),
+				ProjectSettings.globalize_path(save_path.get_base_dir().path_join("save_before_code.json")))
+	var file := FileAccess.open(save_path, FileAccess.WRITE)
+	if file == null:
+		return "Couldn't write the save."
+	file.store_string(text)
+	file.close()
+	_reset_fields()
+	load_game()
+	changed.emit()
+	return ""
 
 
 func _reset_fields() -> void:

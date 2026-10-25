@@ -1201,7 +1201,7 @@ var _cosmetic_buttons := {}
 var _idle_grid: GridContainer
 var _emote_grid: GridContainer
 var _emote_title: Label
-var _emote_body: PlayerBody
+var _emote_stage: EmotePreview
 
 
 ## Hats, emotes, hand idles and (soon) skins, each on its own tab.
@@ -1252,33 +1252,9 @@ func _build_emote_page() -> Control:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 16)
 	panel.add_child(row)
-	var stage := SubViewportContainer.new()
-	stage.stretch = true
-	stage.custom_minimum_size = Vector2(320, 0)
-	stage.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_child(stage)
-	var viewport := SubViewport.new()
-	viewport.own_world_3d = true
-	viewport.transparent_bg = true
-	stage.add_child(viewport)
-	var environment := WorldEnvironment.new()
-	environment.environment = Environment.new()
-	environment.environment.background_mode = Environment.BG_CLEAR_COLOR
-	environment.environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	environment.environment.ambient_light_color = Color(0.6, 0.6, 0.66)
-	viewport.add_child(environment)
-	var sun := DirectionalLight3D.new()
-	sun.rotation = Vector3(-0.6, 0.5, 0)
-	viewport.add_child(sun)
-	var camera := Camera3D.new()
-	camera.fov = 34.0
-	var eye := Vector3(0, 1.15, -4.2)
-	camera.transform = Transform3D(Basis.looking_at(Vector3(0, 0.95, 0) - eye), eye)
-	viewport.add_child(camera)
-	_emote_body = PlayerBody.new(GameState.player_class)
-	_emote_body.build_budget_ms = 12
-	_emote_body.rotation.y = -0.35
-	viewport.add_child(_emote_body)
+	_emote_stage = EmotePreview.new(GameState.player_class)
+	_emote_stage.custom_minimum_size = Vector2(320, 0)
+	row.add_child(_emote_stage)
 	var column := VBoxContainer.new()
 	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	column.add_theme_constant_override("separation", 12)
@@ -1305,16 +1281,17 @@ func _build_emote_page() -> Control:
 func _refresh_emotes() -> void:
 	if _emote_grid == null:
 		return
-	_emote_body.wear_hat(GameState.worn_hat)
+	var dancer := _emote_stage.body
+	dancer.wear_hat(GameState.worn_hat)
 	for child in _emote_grid.get_children():
 		child.queue_free()
 	var owned := Achievements.emotes()
 	_emote_title.text = "EMOTES   %d / %d" % [owned.size(), Emotes.ORDER.size()]
 	var tint := GameState.fighter_color()
-	if not _emote_body.playing() in owned and not owned.is_empty():
-		_emote_body.play(owned[0])
+	if not dancer.playing() in owned and not owned.is_empty():
+		_emote_stage.play(owned[0])
 	for id in owned:
-		var showing: bool = id == _emote_body.playing()
+		var showing: bool = id == dancer.playing()
 		var card := Button.new()
 		card.text = Emotes.name_of(id)
 		card.custom_minimum_size = Vector2(0, 64)
@@ -1326,7 +1303,7 @@ func _refresh_emotes() -> void:
 		card.add_theme_stylebox_override("hover", UiTheme.raised(Color(tint.darkened(0.75), 0.98), tint.lightened(0.2), 3, 10))
 		card.add_theme_stylebox_override("pressed", UiTheme.raised(Color(tint.darkened(0.75), 0.98), tint.lightened(0.2), 3, 10))
 		card.pressed.connect(func() -> void:
-			_emote_body.play(id)
+			_emote_stage.play(id)
 			_refresh_emotes())
 		_emote_grid.add_child(card)
 
@@ -1451,7 +1428,8 @@ func _hat_card(id: String) -> Control:
 	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	column.add_child(name_label)
 	if have:
-		var boost := _label("Does nothing. Yet." if info.rarity == "legendary" else Hats.boost_text(id), 11, tint.lightened(0.3) if info.rarity == "legendary" else UiTheme.GOOD)
+		var yonker := id in Hats.LEGENDARIES
+		var boost := _label("Does nothing. Yet." if yonker else Hats.boost_text(id), 11, tint.lightened(0.3) if yonker else UiTheme.GOOD)
 		boost.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		boost.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		column.add_child(boost)
@@ -1583,10 +1561,9 @@ func _build_shop_page() -> Control:
 	column.add_theme_constant_override("separation", 12)
 	panel.add_child(column)
 	var header := HBoxContainer.new()
+	header.add_theme_constant_override("separation", 18)
 	column.add_child(header)
-	var title := UiTheme.title_label("SOUL SHOP", 26, UiTheme.GOLD)
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	header.add_child(title)
+	header.add_child(UiTheme.title_label("SOUL SHOP", 26, UiTheme.GOLD))
 	_shop_reroll = Button.new()
 	_shop_reroll.pressed.connect(func() -> void:
 		if SoulShop.reroll():
@@ -1595,7 +1572,11 @@ func _build_shop_page() -> Control:
 		else:
 			Sfx.play("deny", -10.0))
 	header.add_child(_shop_reroll)
-	column.add_child(_label("Emotes, hand idles and gear. New stock after every fight.", 14, UiTheme.MUTED))
+	var restock := _label("New stock after every fight.", 14, UiTheme.MUTED)
+	restock.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	restock.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header.add_child(restock)
+	header.move_child(restock, 1)
 	# Cards wrap onto more rows when the screen's too narrow for them all.
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -1633,8 +1614,6 @@ func _shop_card(index: int, offer: Dictionary) -> Control:
 		"emote":
 			title = Emotes.name_of(offer.id)
 			what = "EMOTE"
-			lines = "A dance for the wheel."
-			icon_name = "swoosh"
 		"gear":
 			var item: Dictionary = offer.item
 			tint = Items.RARITIES[item.rarity].color
@@ -1663,6 +1642,11 @@ func _shop_card(index: int, offer: Dictionary) -> Control:
 		preview.idle_id = offer.id
 		preview.custom_minimum_size = Vector2(200, 64)
 		column.add_child(preview)
+	elif offer.kind == "emote":
+		var stage := EmotePreview.new(GameState.player_class, 3.0)
+		stage.emote_id = offer.id
+		stage.custom_minimum_size = Vector2(200, 82)
+		column.add_child(stage)
 	else:
 		var icon := IconView.new()
 		icon.icon = icon_name

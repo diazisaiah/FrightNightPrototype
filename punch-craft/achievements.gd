@@ -58,6 +58,10 @@ static func catch_up() -> void:
 		earn("legendary_hat", true)
 	if not GameState.dead_league_clears.is_empty():
 		earn("first_contender", true)
+	# Champions from before the Coffin Crown existed get it too.
+	if GameState.dead_league_clears.get("coffin_king", false) and not GameState.hats.has("coffin_crown"):
+		GameState.hats["coffin_crown"] = 1
+		GameState.save_game()
 	if GameState.crypt_floors_cleared > 0:
 		earn("crypt_floor", true)
 	if not GameState.drills.is_empty():

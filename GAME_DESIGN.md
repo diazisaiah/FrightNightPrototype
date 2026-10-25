@@ -1459,6 +1459,16 @@ It renders on its own layer, so the lantern at your eyes doesn't blow it out; a 
 
 **Enemy labels (2026-10-17):** the Armor number is gone from enemy name tags; the gear on the body says it. The damage-reduction line stays.
 
+## Save codes, the crowning, dancing shop cards, a smoother Arena [Built 2026-10-25]
+
+- **Save codes** (Settings → Save data, title screen only): **Copy save code** puts your save on the clipboard as text ("FN1:" + the save file gzipped in base64, about 700 characters) and shows it to copy by hand too. **Load a save code** takes a pasted one (two clicks, like erasing), checks it's a real code from this version, keeps the replaced save as `save_before_code.json`, loads it and reloads the title (`GameState.save_code` / `load_save_code`).
+- **The crowning** (`ending.gd`): the first time you beat the Coffin King, the arena goes dark and gold flecks fall. Your fighter dances on a stage wearing the Coffin Crown. Three bells, then the announcer: "THE COFFIN KING IS DOWN!", "Ladies, gentlemen and gentle corpses...", "Your new champion of the Dead League:", your fighter's name. Then "THE COFFIN CROWN IS YOURS" and a credits roll (the game, the fighters you have, the five contenders, built with). Click or press anything to skip to the champion card (clicks in the first 1.5s are still the fight's punches); Continue goes on to the results. Champions can watch it again from the Dead League menu.
+- **The Coffin Crown:** a hat that's won, never dropped (`Hats.TROPHIES`): an open gold ring with six coffin-shaped points set with violet gems and a skull at the front. +5% damage, +5% max knuckle HP. Worn as soon as you win it. Champions from before it existed get it when camp loads. "Legendary" checks that meant the four Yonkers (the Legend achievement, "Does nothing. Yet.", the popup's Yonker count) now check `Hats.LEGENDARIES` so the crown isn't one.
+- **Emote cards dance:** Soul Shop emote cards play your fighter doing that dance in your hat (`EmotePreview`, also the stage in Cosmetics → Emotes). The shop's subtitle moved up beside its title so two rows of cards still fit.
+- **A smoother Arena from the Ghost Division:** a player with a better build than the Ghost Division's par barely got 10-20 knockouts there, because two monsters could attack at once from that division on, veterans jumped to 45%, and elites to 8%, all at the same step.
+  - One monster attacks at a time through the Ghost Division; in the Plague Division a second joins once the bar is half full; two in the Crown Division and the Endless Arena (`world._max_attackers`). The Crypt matches: one through floor 6, two from floor 7.
+  - Veterans by tier: 0 / 15 / 30 / 45 / 65% (was 0 / 25 / 45 / 65 / 85%), 80% past tier 5 (was 90%).
+
 ## Multiplayer: the Versus ladder and co-op [Planned 2026-10-25]
 
 Not built yet. Versus comes first (it's cheaper, fits the game, and its networking carries over to co-op).
@@ -1516,8 +1526,8 @@ Done:
 Still open:
 - Real sound effects and music (placeholders now; the Sound Lab is ready to audition them).
 - Painted upgrade and skill icons (`art/icons/ICON_PROMPTS.md`).
-- An ending for beating the Coffin King (right now it's one line and the Crown ring opening).
-- Save backup: web saves live in browser storage and vanish if it's cleared; an export/import code in Settings would protect them.
+- ~~An ending for beating the Coffin King~~ Done 2026-10-25 (the crowning, below).
+- ~~Save backup~~ Done 2026-10-25 (save codes, below).
 - A full playthrough on the new balance.
 
 ## Current build (as of 2026-10-15)
