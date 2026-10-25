@@ -1175,8 +1175,21 @@ Dodge window (+25% max) and counter window (+0.5s max) have caps on the total bo
 ## Camp fits any screen; League bosses press harder [Built 2026-10-24]
 
 - **Camp header and nav row shrink to fit** (`camp._fit_width`) when they're wider than the screen (points waiting, a long fighter name, Loadout and Shop), instead of pushing the camp off the right edge.
-- **Contenders slip and counter:** between combos, a punch can be slipped ("SLIPPED", combo broken), then a counter punch comes back: dodge it and counter. 15/20/25/30/35% by contender, +5% a round, +10% at the final bell, at most once per 1.5s. Never mid-combo, mid-special, while reeling from a hit or while left open (`DeadLeagueBoss.try_evade`).
+- **Contenders slip and counter:** between combos, a punch can be slipped ("SLIPPED", combo broken), then a counter punch comes back: dodge it and counter. 12/20/28/36/45% by contender (was 15-35%), +5% a round, +10% at the final bell, at most once per 1.5s. Never mid-combo, mid-special, while reeling from a hit or while left open (`DeadLeagueBoss.try_evade`).
 - **Dead League contenders combo more often:** pauses between combos are about 35% shorter (Bellman 0.95s to 0.6s, and so on), and settling after an undodged combo is 0.45-0.8s (was 0.8-1.4s). Dodging a whole combo still leaves them open as long as before (`DeadLeagueBoss._idle_time` / `_recover_time`).
+
+**A bigger gap between contenders (2026-10-25).** A Junior Mode player beat all five while under par for the Ghost division (S+ on four), so each contender is now a clear step up. Every knob lives in its profile (`DeadLeagueRules.BOSSES`), on top of the tier's par build:
+
+| | Bellman | Headless | Southpaw | Plague Doctor | Coffin King |
+|---|---|---|---|---|---|
+| HP (× par damage / 2) | 52 | 64 (was 58) | 80 (62) | 98 (68) | 120 (78) |
+| Damage (× par EHP / 50) | 4.6 | 5.2 (4.3) | 5.9 (4.4) | 6.7 (4.9) | 7.6 (5.4) |
+| Windup (tell speed) | 1.08 | 0.94 | 0.84 | 0.76 | 0.68 |
+| Pause between combos | 0.6s | 0.46s | 0.36s | 0.3s | 0.24s |
+| Slips your punches | 12% | 20% | 28% | 36% | 45% |
+| Open after a dodged combo | 1.0s | 0.9s | 0.8s | 0.7s | 0.6s |
+
+Rounds still add HP, damage and speed on top, and the final bell still speeds them up.
 
 ## Arena elites and champions [Built 2026-10-24]
 

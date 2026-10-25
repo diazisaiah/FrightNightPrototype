@@ -91,6 +91,8 @@ var show_hints := false
 var glow_tells := true
 ## Multiplies windup times (lower = less warning).
 var windup_scale := 1.0
+## Scales how long it's left open after you dodge a whole combo.
+var open_scale := 1.0
 
 var _state := State.IDLE
 var _state_timer := 1.0
@@ -317,7 +319,7 @@ func _strike(distance: float) -> void:
 	if result == "dodged":
 		# Keep throwing the rest of the combo so dodges can be chained; it's
 		# left open at the end. A counter mid-combo staggers it and cuts it short.
-		_open_time = DODGED_OPEN_TIME
+		_open_time = DODGED_OPEN_TIME * open_scale
 
 
 func _enter(state: State, time: float) -> void:

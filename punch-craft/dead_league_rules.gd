@@ -5,6 +5,12 @@ extends RefCounted
 const ROUND_COUNT := 3
 const BOSS_COUNT := 5
 
+## Each contender is a clear step up from the last (2026-10-25: the gap was
+## too small, so later ones fell to an under-par build): more HP and harder
+## hits on top of the tier's par build, quicker tells (windup), shorter
+## pauses between combos (idle), slipping more of your punches (evade), and
+## less time open after you dodge a whole combo (open).
+
 const BOSSES := [
 	{
 		"id": "bellman", "number": 1, "name": "THE BELLMAN",
@@ -12,39 +18,39 @@ const BOSSES := [
 		"bio": "A patient power fighter. Read the bell, dodge the finish, punish the silence.",
 		"pattern": "Heavy straights, hooks, delayed slams. Leaps on you from above",
 		"accent": Color(0.95, 0.22, 0.12), "hp": 52.0, "damage": 4.6,
-		"speed": 0.95, "windup": 1.08,
+		"speed": 0.95, "windup": 1.08, "idle": 0.6, "evade": 0.12, "open": 1.0,
 	},
 	{
 		"id": "headless", "number": 2, "name": "THE HEADLESS",
 		"tagline": "No eyes. No tells. Watch the flame.",
 		"bio": "A relentless knight whose ghost-flame shoulders reveal which side is coming.",
 		"pattern": "Fast straights, sudden hooks. Ghost charges across the ring",
-		"accent": Color(0.25, 0.72, 1.0), "hp": 58.0, "damage": 4.3,
-		"speed": 1.08, "windup": 0.96,
+		"accent": Color(0.25, 0.72, 1.0), "hp": 64.0, "damage": 5.2,
+		"speed": 1.08, "windup": 0.94, "idle": 0.46, "evade": 0.2, "open": 0.9,
 	},
 	{
 		"id": "southpaw", "number": 3, "name": "SISTER SOUTHPAW",
 		"tagline": "Confession comes from the left.",
 		"bio": "A tempo fighter who changes rhythm mid-combination and lives on the outside angle.",
 		"pattern": "Left-hand pressure and mix-ups. Judgment circles, then the charge",
-		"accent": Color(0.68, 0.35, 1.0), "hp": 62.0, "damage": 4.4,
-		"speed": 1.12, "windup": 0.93,
+		"accent": Color(0.68, 0.35, 1.0), "hp": 80.0, "damage": 5.9,
+		"speed": 1.12, "windup": 0.84, "idle": 0.36, "evade": 0.28, "open": 0.8,
 	},
 	{
 		"id": "plague_doctor", "number": 4, "name": "THE PLAGUE DOCTOR",
 		"tagline": "The cure is a counterpunch.",
 		"bio": "A clinical trap-setter. Short combinations bait an early dodge before the real dose.",
 		"pattern": "Stuttered attacks and uppercuts. Poison vials and a leaping slam",
-		"accent": Color(0.35, 0.95, 0.48), "hp": 68.0, "damage": 4.9,
-		"speed": 1.02, "windup": 1.0,
+		"accent": Color(0.35, 0.95, 0.48), "hp": 98.0, "damage": 6.7,
+		"speed": 1.1, "windup": 0.76, "idle": 0.3, "evade": 0.36, "open": 0.7,
 	},
 	{
 		"id": "coffin_king", "number": 5, "name": "THE COFFIN KING",
 		"tagline": "Three rounds. One throne.",
 		"bio": "The champion combines every lesson in the League and becomes merciless when hurt.",
 		"pattern": "Long strings and crushing slams. Every contender's special",
-		"accent": Color(1.0, 0.7, 0.18), "hp": 78.0, "damage": 5.4,
-		"speed": 1.05, "windup": 0.96,
+		"accent": Color(1.0, 0.7, 0.18), "hp": 120.0, "damage": 7.6,
+		"speed": 1.18, "windup": 0.68, "idle": 0.24, "evade": 0.45, "open": 0.6,
 	},
 ]
 
