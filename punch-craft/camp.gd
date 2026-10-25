@@ -1573,7 +1573,7 @@ func _bounty_card(index: int, bounty: Dictionary) -> Control:
 
 # --- Soul Shop -------------------------------------------------------------------------
 
-var _shop_grid: GridContainer
+var _shop_grid: HFlowContainer
 var _shop_reroll: Button
 
 
@@ -1596,11 +1596,17 @@ func _build_shop_page() -> Control:
 			Sfx.play("deny", -10.0))
 	header.add_child(_shop_reroll)
 	column.add_child(_label("Emotes, hand idles and gear. New stock after every fight.", 14, UiTheme.MUTED))
-	_shop_grid = GridContainer.new()
-	_shop_grid.columns = 7
+	# Cards wrap onto more rows when the screen's too narrow for them all.
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	column.add_child(scroll)
+	_shop_grid = HFlowContainer.new()
+	_shop_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_shop_grid.alignment = FlowContainer.ALIGNMENT_CENTER
 	_shop_grid.add_theme_constant_override("h_separation", 12)
 	_shop_grid.add_theme_constant_override("v_separation", 12)
-	column.add_child(_shop_grid)
+	scroll.add_child(_shop_grid)
 	return panel
 
 
@@ -1647,21 +1653,21 @@ func _shop_card(index: int, offer: Dictionary) -> Control:
 			tint = GameState.fighter_color(offer.id)
 			lines = GameState.CLASSES[offer.id].tagline
 	var card := PanelContainer.new()
-	card.custom_minimum_size = Vector2(164, 250)
+	card.custom_minimum_size = Vector2(280, 0)
 	card.add_theme_stylebox_override("panel", UiTheme.box(Color(tint.darkened(0.8), 0.7), Color(tint, 0.8), 2, 10, 10.0))
 	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 6)
+	column.add_theme_constant_override("separation", 4)
 	card.add_child(column)
 	if offer.kind == "idle":
 		var preview := IdlePreview.new()
 		preview.idle_id = offer.id
-		preview.custom_minimum_size = Vector2(166, 92)
+		preview.custom_minimum_size = Vector2(200, 64)
 		column.add_child(preview)
 	else:
 		var icon := IconView.new()
 		icon.icon = icon_name
 		icon.color = tint.lightened(0.2)
-		icon.custom_minimum_size = Vector2(48, 48)
+		icon.custom_minimum_size = Vector2(40, 40)
 		icon.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		column.add_child(icon)
 	var name_label := _label(title, 15, UiTheme.TEXT)
@@ -1678,7 +1684,7 @@ func _shop_card(index: int, offer: Dictionary) -> Control:
 	detail.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	column.add_child(detail)
 	var buy := Button.new()
-	buy.custom_minimum_size.y = 40
+	buy.custom_minimum_size.y = 36
 	if offer.sold:
 		buy.text = "SOLD"
 		buy.disabled = true

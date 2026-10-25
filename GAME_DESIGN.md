@@ -1282,6 +1282,7 @@ A **Shop** tab in camp (`soul_shop.gd`) where you spend **Souls**:
 - **Fighters**, as new ones are added (`SoulShop.FIGHTERS`; Tony stays secret).
 - **Restock after every fight:** each return to camp from the Arena, Crypt or Dead League counts (`GameState.fights_done`, counted in `Loading.go`). Sold offers stay sold until then.
 - **Reroll:** 2 Souls, +1 each time, resets on restock.
+- **Layout (2026-10-24):** the cards wrap into centered rows (4 across at 16:9), scrolling only if the window is too short for them.
 
 ## Mini tutorials and one power at a time [Built 2026-10-23]
 
