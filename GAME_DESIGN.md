@@ -1075,17 +1075,19 @@ Saved as `drills: {drill: {best, day}}`; the day is your own clock's date.
 | Flurry | Land a 25-hit combo | Running Man |
 | Drill Sergeant | Finish a daily drill | Nae Nae |
 | Veteran Slayer | Knock out a veteran | Take the L |
-| No End in Sight | 50 knockouts in the Endless Arena | Horse Ride |
+| No End in Sight | 100 knockouts in one endless bout (was 50 in the Endless Arena) | Horse Ride |
 | Legend | Find a legendary hat | Bros. Shuffle |
 | Untouchable | Beat a Dead League contender without getting hit | Boo-Yah |
 
 Older saves get what they'd already earned, quietly, when camp loads. The list and which emote each gives are expected to change as emotes are added.
 
-**The Endless Arena** unlocks after the Crown Division's third bout, as an ENDLESS card in that division's bout picker. It's in the Colosseum and is all about score:
+**Endless bouts (2026-10-25: every division's third bout is endless).** The one Endless Arena after the Crown Division became the Crown's third bout, and every other division's third bout works the same way, in that division's own place with its own monsters. It's the ENDLESS card in the bout picker (with your best). Finishing bout 2 and choosing Next bout goes straight into it.
 - No progress bar and no champion.
-- Every **25 knockouts** starts a new wave: monsters get tougher (difficulty climbs 0.3 of a tier a wave past the Crown par, pay 0.25 a wave), you get the wave heal, and a **mini-boss** steps in.
+- It starts at the division's third-bout difficulty. Every **25 knockouts** starts a new wave: monsters get tougher (difficulty climbs 0.3 of a tier a wave, pay 0.25 a wave), you get the wave heal, and a **mini-boss** steps in.
+- **50 knockouts win the bout** (`ENDLESS_CLEAR`): it counts as bout 3 won, with its first-win bonus and Souls, and the Dead League contender is called out if you haven't beaten them. Then you keep going for the score.
 - Any spawn has a **2%** chance of being a mini-boss too. A mini-boss is an elite veteran (Swift, Brutal, Ironclad or Hulking) with 3x health.
-- **Score:** 10 a knockout, 150 a mini-boss. Best score saved (`endless_best`).
+- Monsters attacking at once follow the division (one through Ghost, two in Crown).
+- **Score:** 10 a knockout, 30 an elite, 75 a champion, 150 a mini-boss. Each division keeps its own best (`GameState.endless_bests`); an old Endless Arena best moved to the Crown Division.
 - **Pay:** kills pay as usual, plus a purse at the end of score x pay x 0.3.
 
 **The Playground** (`playground/`) is a separate Godot project for testing.
@@ -1204,7 +1206,7 @@ Regular Arena spawns can be **elites** (as in the Crypt: one trait, x2 health, x
 | Crown (and Endless) | 12% | 4% |
 
 - Never on the very first bout, and never the Grave Champion's escorts or summons.
-- **Worth the trouble:** toward the bout bar an elite counts as 2 knockouts and a champion as 3. In the Endless Arena they score 30 and 75 (a knockout is 10).
+- **Worth the trouble:** toward the bout bar an elite counts as 2 knockouts and a champion as 3. In endless bouts they score 30 and 75 (a knockout is 10).
 - `world.gd` `ELITE_CHANCE` / `CHAMPION_CHANCE`, `Enemy.make_champion`.
 
 ## Combos across enemies and coin bursts [Built 2026-10-24]
@@ -1468,7 +1470,7 @@ It renders on its own layer, so the lantern at your eyes doesn't blow it out; a 
 - **The Coffin Crown:** a hat that's won, never dropped (`Hats.TROPHIES`): an open gold ring with six coffin-shaped points set with violet gems and a skull at the front. +5% damage, +5% max knuckle HP. Worn as soon as you win it. Champions from before it existed get it when camp loads. "Legendary" checks that meant the four Yonkers (the Legend achievement, "Does nothing. Yet.", the popup's Yonker count) now check `Hats.LEGENDARIES` so the crown isn't one.
 - **Emote cards dance:** Soul Shop emote cards play your fighter doing that dance in your hat (`EmotePreview`, also the stage in Cosmetics → Emotes). The shop's subtitle moved up beside its title so two rows of cards still fit.
 - **A smoother Arena from the Ghost Division:** a player with a better build than the Ghost Division's par barely got 10-20 knockouts there, because two monsters could attack at once from that division on, veterans jumped to 45%, and elites to 8%, all at the same step.
-  - One monster attacks at a time through the Ghost Division; in the Plague Division a second joins once the bar is half full; two in the Crown Division and the Endless Arena (`world._max_attackers`). The Crypt matches: one through floor 6, two from floor 7.
+  - One monster attacks at a time through the Ghost Division; in the Plague Division a second joins once the bar is half full; two in the Crown Division (`world._max_attackers`). The Crypt matches: one through floor 6, two from floor 7.
   - Veterans by tier: 0 / 15 / 30 / 45 / 65% (was 0 / 25 / 45 / 65 / 85%), 80% past tier 5 (was 90%).
 
 ## Higher-detail hands [Built 2026-10-25]

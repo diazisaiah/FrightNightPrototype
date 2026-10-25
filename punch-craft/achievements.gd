@@ -11,10 +11,13 @@ const LIST := {
 	"combo_25": {"name": "Flurry", "desc": "Land a 25-hit combo.", "emote": "running_man"},
 	"drill": {"name": "Drill Sergeant", "desc": "Finish a daily drill.", "emote": "nae_nae"},
 	"veteran": {"name": "Veteran Slayer", "desc": "Knock out a veteran monster.", "emote": "take_the_l"},
-	"endless_50": {"name": "No End in Sight", "desc": "Reach 50 knockouts in the Endless Arena.", "emote": "horse_ride"},
+	"endless_50": {"name": "No End in Sight", "desc": "Reach 100 knockouts in an endless bout.", "emote": "horse_ride"},
 	"legendary_hat": {"name": "Legend", "desc": "Find a legendary hat.", "emote": "bros_shuffle"},
 	"untouched": {"name": "Untouchable", "desc": "Beat a Dead League contender without getting hit.", "emote": "boo_yah"},
 }
+## Knockouts in one endless bout for No End in Sight (every division's third
+## bout is endless now, so 50 would come with simply winning one).
+const ENDLESS_KOS := 100
 ## Dances everyone has.
 const FREE_EMOTES := ["default"]
 

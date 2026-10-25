@@ -90,11 +90,14 @@ const ARENA_RADIUS := 45.0
 const SPAWN_DISTANCE_MIN := 20.0
 const SPAWN_DISTANCE_MAX := 30.0
 const FALL_LIMIT := -20.0
-## The Endless Arena (after the Crown Division's third bout): no bar, no
-## champion, just waves. Every ENDLESS_WAVE knockouts the dead get tougher and
+## Endless bouts (2026-10-25: every division's third bout; it used to be
+## one Endless Arena after the Crown Division): no bar, no champion, just
+## waves in the division's own place. ENDLESS_CLEAR knockouts win the bout
+## (its first-win bonus and Souls), then it's for a high score per division. Every ENDLESS_WAVE knockouts the dead get tougher and
 ## a mini-boss (an elite veteran) steps in; any spawn has a MINI_BOSS_CHANCE of
 ## being one too. Score: ENDLESS_KO a knockout, ENDLESS_MINI_BOSS a mini-boss.
 const ENDLESS_WAVE := 25
+const ENDLESS_CLEAR := 50
 const MINI_BOSS_CHANCE := 0.02
 const ENDLESS_KO := 10
 const ENDLESS_MINI_BOSS := 150
@@ -145,6 +148,8 @@ var _division := 1
 var _endless := false
 var _score := 0
 var _wave := 0
+## This endless bout reached ENDLESS_CLEAR (won).
+var _endless_won := false
 ## This division's place (Themes.ARENA).
 var _theme := {}
 ## Style tally for the current bout (the purse's grade).
@@ -163,10 +168,6 @@ var _nights_cleared_this_run := 0
 func _ready() -> void:
 	# Your kept gear comes with you (GameState.equipped).
 	_division = clampi(GameState.arena_division, 1, Progression.current_tier())
-	_endless = GameState.arena_endless
-	GameState.arena_endless = false
-	if _endless:
-		_division = Progression.TIER_COUNT
 	_theme = Themes.arena(_division)
 	Sfx.play_music(_theme.music)
 	_night = clampi(int(GameState.arena_bouts.get(str(_division), 0)) + 1, 1, Progression.BOUTS_PER_DIVISION)
@@ -174,6 +175,7 @@ func _ready() -> void:
 	if GameState.arena_bout_pick > 0:
 		_night = clampi(GameState.arena_bout_pick, 1, _night)
 		GameState.arena_bout_pick = 0
+	_endless = _night >= Progression.BOUTS_PER_DIVISION
 	Enemy.max_attackers = _max_attackers()
 	_reset_style()
 	$Moon.shadow_enabled = Settings.get_value("shadows") and not Settings.use_web_profile()
@@ -210,7 +212,7 @@ func _ready() -> void:
 	_hud.set_combo(0, 1.0)
 	_apply_first_night()
 	_update_night_hud()
-	_hud.announce(_bout_title())
+	_hud.announce(_bout_title(true))
 	_hud.say("", Progression.announcer_line(), Color(1.0, 0.8, 0.45))
 
 
@@ -218,11 +220,15 @@ func _first_night() -> bool:
 	return _division == 1 and _night == 1
 
 
-## "GRAVEDIGGER DIVISION  ·  BOUT 2"
-func _bout_title() -> String:
+## "GRAVEDIGGER DIVISION  ·  BOUT 2" (with the wave and score in an endless
+## bout, unless short: the banner).
+func _bout_title(short := false) -> String:
+	var division: String = Progression.TIERS[_division - 1].division.to_upper()
 	if _endless:
-		return "THE ENDLESS ARENA  ·  WAVE %d  ·  SCORE %d" % [_wave + 1, _score]
-	return "%s DIVISION  ·  BOUT %d" % [Progression.TIERS[_division - 1].division.to_upper(), _night]
+		if short:
+			return "%s DIVISION  ·  ENDLESS" % division
+		return "%s DIVISION  ·  ENDLESS  ·  WAVE %d  ·  SCORE %d" % [division, _wave + 1, _score]
+	return "%s DIVISION  ·  BOUT %d" % [division, _night]
 
 
 func _position(bout := -1) -> float:
@@ -325,7 +331,7 @@ func _physics_process(_delta: float) -> void:
 ## Plague Division a second joins once the bar is half full; two in the Crown
 ## Division and the Endless Arena.
 func _max_attackers() -> int:
-	if _endless or _division >= 5:
+	if _division >= 5:
 		return 2
 	if _division == 4 and _progress() >= 0.5:
 		return 2
@@ -403,8 +409,10 @@ func _spawn_scaling() -> Dictionary:
 ## fifth of a tier a bout (Progression.arena_difficulty); pay climbs faster.
 func _night_scaling(night := -1) -> Dictionary:
 	if _endless:
-		var top := Progression.arena_position(Progression.TIER_COUNT, Progression.BOUTS_PER_DIVISION)
-		return Progression.enemy_scaling(top + ENDLESS_PAY_STEP * _wave, Progression.TIER_COUNT - 0.6 + ENDLESS_STEP * _wave)
+		# From this division's third bout, tougher every wave.
+		var top := Progression.arena_position(_division, Progression.BOUTS_PER_DIVISION)
+		var hard := Progression.arena_difficulty(_division, Progression.BOUTS_PER_DIVISION)
+		return Progression.enemy_scaling(top + ENDLESS_PAY_STEP * _wave, hard + ENDLESS_STEP * _wave)
 	return Progression.enemy_scaling(_position(night), Progression.arena_difficulty(_division, _night if night < 0 else night))
 
 
@@ -531,8 +539,10 @@ func _on_endless_ko(enemy: Enemy) -> void:
 	_night_kills += 1
 	_score += ENDLESS_MINI_BOSS if enemy.has_meta("mini_boss") else ENDLESS_CHAMPION if enemy.has_meta("champion") \
 			else ENDLESS_ELITE if enemy.has_meta("elite") else ENDLESS_KO
-	if _night_kills >= 50:
+	if _night_kills >= Achievements.ENDLESS_KOS:
 		Achievements.earn("endless_50")
+	if _night_kills >= ENDLESS_CLEAR and not _endless_won:
+		_win_endless()
 	if _night_kills % ENDLESS_WAVE == 0:
 		_wave += 1
 		_hud.announce("WAVE %d" % (_wave + 1))
@@ -541,6 +551,27 @@ func _on_endless_ko(enemy: Enemy) -> void:
 		_player.heal(GameState.heal_amount("wave_heal", _player.max_knuckles))
 		_spawn_mini_boss()
 	_update_night_hud()
+
+
+## Enough knockouts to win the third bout: its first-win bonus and Souls,
+## then on for the high score.
+func _win_endless() -> void:
+	_endless_won = true
+	var first_time := GameState.clear_arena_bout(_division, _night)  # Also saves.
+	var souls := Progression.boss_souls(_position(), first_time)
+	_run_souls += souls
+	GameState.add_souls(souls)
+	var bonus := 0
+	if first_time:
+		bonus = roundi(FIRST_WIN_BONUS[_night - 1] * Progression.pay(_position()))
+		_run_coins += bonus
+		GameState.add_resource("coins", bonus)
+	_nights_cleared_this_run += 1
+	Sfx.play("bell")
+	_hud.announce("BOUT %d WON" % _night)
+	_hud.announce_small(("+%d {coins}   ·   " % bonus if bonus > 0 else "") + "+%d {souls}   ·   Keep going for the high score" % souls, UiTheme.GOLD)
+	if not bool(GameState.dead_league_clears.get(Progression.TIERS[_division - 1].contender, false)):
+		_hud.add_feed("%s AWAITS IN THE DEAD LEAGUE" % DeadLeagueRules.boss(_division - 1).name, UiTheme.GOLD)
 
 
 ## An elite veteran, three times the health, crowned with a name.
@@ -630,6 +661,10 @@ func _win_night() -> void:
 
 func _continue_to_next_night() -> void:
 	_night = mini(_night + 1, Progression.BOUTS_PER_DIVISION)
+	_endless = _night >= Progression.BOUTS_PER_DIVISION
+	_score = 0
+	_wave = 0
+	_endless_won = false
 	_reset_style()
 	_night_kills = 0
 	_milestone = 0
@@ -640,7 +675,7 @@ func _continue_to_next_night() -> void:
 	_apply_first_night()
 	_player.start_fresh()
 	_hud.resume_after_summary()
-	_hud.announce(_bout_title())
+	_hud.announce(_bout_title(true))
 	_hud.say("", Progression.announcer_line(), Color(1.0, 0.8, 0.45))
 	_update_night_hud()
 
@@ -687,10 +722,12 @@ func _end_run(title: String, slow := true) -> void:
 	}, "", false, "Back to camp")
 
 
-## The Endless Arena's end: the score, the best, and a purse for the score.
+## An endless bout's end: the score, this division's best, and a purse for
+## the score.
 func _end_endless(title: String) -> void:
-	var best := _score > GameState.endless_best
-	GameState.endless_best = maxi(GameState.endless_best, _score)
+	var before := GameState.endless_best_in(_division)
+	var best := _score > before
+	GameState.endless_bests[str(_division)] = maxi(before, _score)
 	var purse := roundi(_score * Progression.pay(_night_scaling().position) * ENDLESS_PURSE)
 	_run_coins += purse
 	GameState.add_resource("coins", purse)
@@ -698,7 +735,10 @@ func _end_endless(title: String) -> void:
 	_hud.show_results({
 		"title": "NEW BEST!" if best else ("KNOCKED OUT" if title == "KNOCKED OUT" else "BACK TO CAMP"),
 		"title_color": UiTheme.GOLD if best else UiTheme.BAD,
-		"subtitle": "SCORE %d   ·   BEST %d   ·   %d KNOCKOUTS   ·   WAVE %d" % [_score, GameState.endless_best, _night_kills, _wave + 1],
+		"subtitle": "%s DIVISION  ·  ENDLESS\nSCORE %d   ·   BEST %d   ·   %d KNOCKOUTS   ·   WAVE %d" % [
+				Progression.TIERS[_division - 1].division.to_upper(), _score, GameState.endless_best_in(_division), _night_kills, _wave + 1],
+		"note": ("BOUT %d WON" % _night) if _endless_won else "%d KNOCKOUTS WIN THE BOUT" % ENDLESS_CLEAR,
+		"note_color": UiTheme.GOLD if _endless_won else UiTheme.MUTED,
 		"rewards": {"coins": _run_coins, "xp": _run_xp, "souls": _run_souls},
 	}, "", false, "Back to camp")
 

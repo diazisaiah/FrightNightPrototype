@@ -1225,10 +1225,8 @@ var bounty_xp := 0
 var kills := {}
 ## Ability picks per fighter (Abilities): {class: {"passive": id, "ultimate": id}}.
 var loadouts := {}
-## The Endless Arena's best score.
-var endless_best := 0
-## The next Arena run is the Endless Arena (picked in camp; not saved).
-var arena_endless := false
+## Each division's best endless-bout score: {"division": score}.
+var endless_bests := {}
 ## Achievements earned (Achievements): {id: true}.
 var achievements := {}
 ## The one power that works (2026-10-23): a sigil node's id ("" for none).
@@ -1823,6 +1821,10 @@ func clear_night(night: int) -> bool:
 
 
 ## Records an Arena bout won in a division. Returns true the first time.
+func endless_best_in(division: int) -> int:
+	return int(endless_bests.get(str(division), 0))
+
+
 func clear_arena_bout(division: int, bout: int) -> bool:
 	var best := int(arena_bouts.get(str(division), 0))
 	var first_time := bout > best
@@ -2188,7 +2190,7 @@ func save_game() -> void:
 		"bounty_xp": bounty_xp,
 		"kills": kills,
 		"loadouts": loadouts,
-		"endless_best": endless_best,
+		"endless_bests": endless_bests,
 		"achievements": achievements,
 		"power_pick": power_pick,
 		"power_pick_2": power_pick_2,
@@ -2284,7 +2286,10 @@ func load_game() -> void:
 	skin_picks = data.get("skin_picks", {}).duplicate() if data.get("skin_picks", {}) is Dictionary else {}
 	kills = data.get("kills", {}).duplicate() if data.get("kills", {}) is Dictionary else {}
 	loadouts = data.get("loadouts", {}).duplicate(true) if data.get("loadouts", {}) is Dictionary else {}
-	endless_best = int(data.get("endless_best", 0))
+	endless_bests = data.get("endless_bests", {}).duplicate() if data.get("endless_bests", {}) is Dictionary else {}
+	# The one Endless Arena was the Crown Division's.
+	if int(data.get("endless_best", 0)) > 0 and not endless_bests.has(str(Progression.TIER_COUNT)):
+		endless_bests[str(Progression.TIER_COUNT)] = int(data.endless_best)
 	worn_hat = String(data.get("worn_hat", ""))
 	if not hats.has(worn_hat):
 		worn_hat = ""
@@ -2595,7 +2600,7 @@ func _reset_fields() -> void:
 	skin_picks = {}
 	kills = {}
 	loadouts = {}
-	endless_best = 0
+	endless_bests = {}
 	achievements = {}
 	power_pick = ""
 	power_pick_2 = ""
