@@ -1502,6 +1502,52 @@ A restyle for each fighter, after the reference art in `art/alternate_skins/` (`
 - **Wearing them:** Cosmetics → Skins. Saved per fighter (`GameState.skins_owned`, `skin_picks`; `skin()` / `equip_skin()`). The Emotes stage, the crowning and your fights all show the skin you wear.
 - **Later:** parody skins of anime characters.
 
+## Level-ups: the card draw and attributes [Planned 2026-10-25]
+
+Replaces the skill webs and the four stats. Why: every skill got bought eventually (33 points, maxed by level 34), so two players with the same fighter ended up identical; most skills and stats were number bumps that the coin web and gear already give; Looting was a trap; and a level-up gave nothing to try.
+
+### The card draw (replaces the skill web)
+- **Each fighter has a deck** of about 30 cards: ~20 of their own plus ~10 shared ones every fighter can draw.
+- **Every level-up draws 3 cards; you keep 1.** The other two go back in the deck. Over a climb you take roughly 30 of the draws, so no two runs of a fighter end up with the same hand.
+- **Rarities:**
+  - Common: solid, simple (often ranked I-III, drawn again to rank up).
+  - Rare: changes how a move works.
+  - Epic: a build-defining signature.
+  - Legendary: the old capstones. They only enter the deck when their Dead League seal breaks, so every contender win adds new possibilities.
+- **Cards change how you fight, not just numbers.** For example:
+  - The Answer: Ice Water (counters freeze the target), Two Answers (a perfect counter earns a free second one), Read Twice (a clean dodge shortens the counter cooldown).
+  - The Mauler: Short Fuse (super armor builds the Inferno meter faster), Wrecking Ball (staggered enemies take a shove that knocks others down), Bloodthirst (each hit you absorb heals a little on your next landed punch).
+- **Tags** (Counter, Dodge, Combo, Power, Ultimate, Movement) show what a card plays into. Possibly later: set bonuses for collecting several of one tag.
+- **When you draw:** level-ups mid-fight don't interrupt. The results screen and camp show "DRAW (n)". The draw screen flips 3 cards face up and you pick one. Unspent draws wait.
+- **The Skills page becomes the Deck page:** your cards laid out by tag with their ranks, the count drawn against the deck size, and undrawn cards face down (locked things stay hidden).
+- **Costs:**
+  - Reroll a draw (3 new cards): Souls, more each time per level.
+  - Swap a card (discard one you own, draw 3 to replace it): Souls, more for higher rarity.
+  - Full redraft (return every card, then redraw one pick per level): a big Souls price.
+- **Loadout stays separate:** passives and ultimates still unlock by level. Cards can power them (like the passive-power nodes now).
+
+### Attributes (replace the four stats)
+- **3 points a level** across five attributes, each a small steady bonus per point plus a perk at 10, 20 and 30 points:
+  - **Power:** +% damage. Perks like heavier set-up shots, more stagger, crits.
+  - **Grit:** +% knuckle HP and defense. Perks like a free hit to absorb, last-stand toughness.
+  - **Speed:** punch and move speed. Perks like faster dash recovery, longer combo time.
+  - **Technique:** dodge and counter windows (within the caps). Perks like a counter-window bump after a clean dodge.
+  - **Fortune:** coins, XP and better loot. A real tradeoff: no fighting power, but faster progress.
+- **Resetting attributes** costs coins, scaled to your tier.
+
+### Balance
+- **Raw power comes from the coin web and gear.** Cards give style, attributes give a lean.
+- **POWER rates cards and attributes; par assumes a typical hand** (average card value per level, attribute points split across the combat attributes), so enemies and contenders still match a fair build, and `balance_regression` keeps every fighter within range.
+
+### Old saves
+- Every skill point comes back as draws, one per level gained, and every stat point comes back to spend on attributes. Camp explains it once.
+
+### Phases
+1. The card system: card data (effects use the same effect keys as today's skills), deck, draw, reroll and swap, the draw screen, the Deck page, save migration.
+2. Attributes and their perks; the Stats page rebuilt.
+3. Six decks of cards (one per fighter, Tony and the Catalyst included) plus the shared cards.
+4. Balance: POWER, par and the regression checks.
+
 ## Multiplayer: the Versus ladder and co-op [Planned 2026-10-25]
 
 Not built yet. Versus comes first (it's cheaper, fits the game, and its networking carries over to co-op).
