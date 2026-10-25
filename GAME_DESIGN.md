@@ -1471,6 +1471,17 @@ It renders on its own layer, so the lantern at your eyes doesn't blow it out; a 
   - One monster attacks at a time through the Ghost Division; in the Plague Division a second joins once the bar is half full; two in the Crown Division and the Endless Arena (`world._max_attackers`). The Crypt matches: one through floor 6, two from floor 7.
   - Veterans by tier: 0 / 15 / 30 / 45 / 65% (was 0 / 25 / 45 / 65 / 85%), 80% past tier 5 (was 90%).
 
+## Higher-detail hands [Built 2026-10-25]
+
+The first-person hands (`fists.gd`) are built at about twice the resolution (voxels 0.0045 m, were 0.0085), so you can see the detail:
+- **Wraps show every turn** (`Fists._wrap`): tape and cloth spiral up the arm one strip-width a turn, each turn shaded from its overlapping edge to its tucked edge, with a thin seam between turns. Used by every fighter's tape, the Answer's blue wraps (every fourth turn navy) and the Blur's purple ones.
+- **Fingers:** slimmer (0.0162 m wide), so there's a gap between them; a crease at every joint; nails on bare fingertips.
+- **Clean materials:** the random per-voxel speckle is a third of what it was; the light does the shading instead. Baked voxels are darker in creases and underneath and lighter on edges and tops (`Fists._shade`).
+- **The light** on the hands sits off to the side and a little behind (it was straight overhead and washed out white tape).
+- **The Mauler's glove:** smooth leather with fine cracks instead of blotches.
+
+**Built once a session:** each fighter's hands (per skin and side) are built the first time, then reused (`Fists._cache`), and the next fight's are built behind the loading screen (`Fists.warm`, from `Loading.go`). To keep the first build quick: tapers are painted as 3-voxel shells with their hidden cores kept as rectangles (`_fill_shell`, `_cores`), colors are worked out only for voxels that show (`_color_of`), only the outside of the Mauler's glove goes on its bones, and the cube meshes are filled from one buffer (`_cubes`). A first build is about 0.3-0.5 s on desktop; every pair after is a few milliseconds.
+
 ## Skins [Built 2026-10-25]
 
 A restyle for each fighter, after the reference art in `art/alternate_skins/` (`skins.gd`). Each is the fighter's own outfit in another palette, on the third-person body and the first-person hands alike:

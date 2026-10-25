@@ -61,6 +61,8 @@ func go(path: String) -> void:
 	else:
 		await get_tree().process_frame
 		packed = load(path)
+	# The fighter's hands, built now rather than as the scene starts (Fists).
+	Fists.warm(get_tree(), GameState.player_class)
 	var left := MIN_TIME - (Time.get_ticks_msec() - started) / 1000.0
 	if left > 0.0:
 		await get_tree().create_timer(left, true, false, true).timeout

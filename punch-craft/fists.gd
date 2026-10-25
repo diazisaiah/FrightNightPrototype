@@ -9,7 +9,9 @@ extends Node3D
 
 const HURT_COLOR := Color(0.7, 0.1, 0.08)
 ## Size of one voxel, in meters.
-const VOXEL := 0.0085
+## Voxel size (2026-10-25: was 0.0085; finer, so wraps show every turn and
+## fingers their joints and nails).
+const VOXEL := 0.0045
 ## The hands render on their own layer, lit by their own soft light (the
 ## player's lantern sits right beside them and would wash them out).
 const HAND_LAYER := 2
@@ -26,7 +28,7 @@ const FINGER_X := [-0.034, -0.0113, 0.0114, 0.034]
 const FINGER_LENGTH := [1.0, 1.08, 1.0, 0.82]
 const KNUCKLE := Vector2(0.008, -0.362)
 const PHALANX := [0.03, 0.024, 0.02]
-const FINGER_SIZE := Vector2(0.018, 0.021)
+const FINGER_SIZE := Vector2(0.0162, 0.02)
 const CURL_CLOSED := [-1.35, -1.45, -1.0]
 const CURL_OPEN := [-0.06, -0.1, -0.05]
 ## Fingers fan out this far (yaw) on an open hand, index to pinky.
@@ -110,6 +112,16 @@ var _tweens := {}
 ## The rig: bone -> {parent, offset, closed, open}, and per hand the bone nodes.
 var _rig := {}
 var _bones := {"left": {}, "right": {}}
+## Arms already built this session, per fighter, skin and side: the rig, and
+## the meshes of the arm ("") and of each bone, as [[group, MultiMesh], ...].
+## Built once; every other pair of these hands reuses them.
+static var _cache := {}
+## The meshes of the arm being built (as in _cache).
+var _meshes := {}
+## Tapers are painted as shells SHELL voxels thick; their hidden cores are
+## kept as rectangles per z cell (z -> [Rect2i, ...]) and count as filled.
+const SHELL := 3
+var _cores := {}
 ## Voxels painted per bone (local cells): bone -> {Vector3i: [Color, group]}.
 var _bone_cells := {}
 ## Voxels moved onto a bone (local positions): bone -> [[Vector3, Color, group]].
@@ -155,11 +167,24 @@ func _ready() -> void:
 	var fill := OmniLight3D.new()
 	fill.light_cull_mask = HAND_LAYER
 	fill.light_color = Color(1.0, 0.92, 0.85)
-	fill.light_energy = 0.8
+	# Off to the side and a little behind, so the wraps' turns and the
+	# fingers catch light on one side and shade on the other.
+	fill.light_energy = 0.55
 	fill.omni_range = 2.0
-	fill.position = Vector3(0, 0.45, -0.35)
+	fill.position = Vector3(0.35, 0.3, 0.05)
 	add_child(fill)
 	set_hurt(0.0)
+
+
+## Builds a fighter's hands ahead of time (behind the loading screen), so
+## the pair in the next scene appears at once (_cache).
+static func warm(tree: SceneTree, class_id: String) -> void:
+	var fists := Fists.new()
+	fists.fighter = class_id
+	fists.silent = true
+	fists.visible = false
+	tree.root.add_child(fists)
+	fists.queue_free()
 
 
 func _process(delta: float) -> void:
@@ -540,10 +565,21 @@ func _build_arm(side: float) -> Node3D:
 	arm.position = _mirror_pos(REST_POS, side)
 	arm.rotation = _mirror_rot(REST_ROT, side)
 	add_child(arm)
+	var key := "%s|%s|%d" % [fighter, skin_id, side]
+	if _cache.has(key):
+		var built: Dictionary = _cache[key]
+		_rig = built.rig
+		for entry in built.meshes.get("", []):
+			_attach(arm, entry[0], entry[1])
+		_build_bones(arm, side, built.meshes)
+		_build_effect(arm, side)
+		return arm
 	_grid.clear()
-	_rig.clear()
+	_cores = {}
+	_rig = {}
 	_bone_cells.clear()
 	_bone_extra.clear()
+	_meshes = {}
 	match fighter:
 		"berserker":
 			_paint_mauler()
@@ -565,12 +601,18 @@ func _build_arm(side: float) -> Node3D:
 	_attach_loose_voxels()
 	_bake(arm, side)
 	_build_bones(arm, side)
+	_cache[key] = {"rig": _rig, "meshes": _meshes}
+	_grid.clear()
+	_cores = {}
+	_bone_cells.clear()
+	_bone_extra.clear()
 	_build_effect(arm, side)
 	return arm
 
 
 ## Fills every voxel whose center is inside the box (meters) with color(p) in a
-## group. soft: how much of each edge to shave off, for padded shapes.
+## group. soft: how much of each edge to shave off, for padded shapes. The
+## color is only worked out for voxels that end up showing (_color_of).
 func _fill(from: Vector3, to: Vector3, color: Callable, group := "gear", soft := 0.0) -> void:
 	var lo := Vector3i((from / VOXEL).floor())
 	var hi := Vector3i((to / VOXEL).ceil())
@@ -587,7 +629,7 @@ func _fill(from: Vector3, to: Vector3, color: Callable, group := "gear", soft :=
 					var d := ((p - center).abs() - (half - Vector3.ONE * soft)).max(Vector3.ZERO)
 					if d.length() > soft:
 						continue
-				_grid[Vector3i(x, y, z)] = [color.call(p), group]
+				_grid[Vector3i(x, y, z)] = [color, group]
 
 
 ## A box tapering along Z from half-size a (at z0) to b (at z1), centered on y_mid.
@@ -597,52 +639,154 @@ func _fill_taper(z0: float, z1: float, a: Vector2, b: Vector2, y_mid: float, col
 		var z := z0 + i * VOXEL
 		var t := float(i) / steps
 		var h := a.lerp(b, t)
-		_fill(Vector3(-h.x, y_mid - h.y, z), Vector3(h.x, y_mid + h.y, z + VOXEL * 1.01), color, group)
+		_fill_shell(Vector3(-h.x, y_mid - h.y, z), Vector3(h.x, y_mid + h.y, z + VOXEL * 1.01), color, group)
+
+
+## Like _fill, but only the outer SHELL voxels of the box's sides (x and y);
+## the rest is recorded as a core (filled, never shown).
+func _fill_shell(from: Vector3, to: Vector3, color: Callable, group: String) -> void:
+	var lo := Vector3i(((from / VOXEL) - Vector3.ONE * 0.5).ceil())
+	var hi := Vector3i(((to / VOXEL) - Vector3.ONE * 0.5).floor())
+	var core := Rect2i(lo.x + SHELL, lo.y + SHELL, hi.x - lo.x + 1 - SHELL * 2, hi.y - lo.y + 1 - SHELL * 2)
+	var hollow := core.size.x > 0 and core.size.y > 0
+	for z in range(lo.z, hi.z + 1):
+		if hollow:
+			if not _cores.has(z):
+				_cores[z] = []
+			_cores[z].append(core)
+		for y in range(lo.y, hi.y + 1):
+			var middle := hollow and y >= core.position.y and y < core.end.y
+			var x := lo.x
+			while x <= hi.x:
+				if middle and x == core.position.x:
+					x = core.end.x
+					continue
+				_grid[Vector3i(x, y, z)] = [color, group]
+				x += 1
+
+
+## True if a cell is painted, or inside a taper's hidden core.
+static func _filled_at(grid: Dictionary, cores: Dictionary, cell: Vector3i) -> bool:
+	if grid.has(cell):
+		return true
+	var rects = cores.get(cell.z)
+	if rects == null:
+		return false
+	for rect in rects:
+		if (rect as Rect2i).has_point(Vector2i(cell.x, cell.y)):
+			return true
+	return false
+
+
+## How a surface voxel is lit: lighter where nothing is above it and on
+## edges, darker underneath and in creases (counted from the cells around).
+const SHADE_NEAR := [
+	Vector3i(-2, 0, 0), Vector3i(2, 0, 0), Vector3i(0, -2, 0), Vector3i(0, 2, 0), Vector3i(0, 0, -2), Vector3i(0, 0, 2),
+	Vector3i(-2, -2, 0), Vector3i(2, 2, 0), Vector3i(-2, 2, 0), Vector3i(2, -2, 0),
+]
+const SIDES := [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, -1, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]
+
+
+static func _shade(cells: Dictionary, cell: Vector3i, color: Color, cores := {}) -> Color:
+	var filled := 0
+	var core := not cores.is_empty()
+	for n in SHADE_NEAR:
+		var at: Vector3i = cell + n
+		if cells.has(at) or (core and _filled_at(cells, cores, at)):
+			filled += 1
+	var crease := clampf((filled - 5.0) / 3.5, -1.0, 1.0)
+	color = color.darkened(0.3 * crease) if crease > 0.0 else color.lightened(-0.08 * crease)
+	var up := cell + Vector3i(0, 1, 0)
+	var down := cell + Vector3i(0, -1, 0)
+	if not (cells.has(up) or (core and _filled_at(cells, cores, up))):
+		color = color.lightened(0.05)
+	elif not (cells.has(down) or (core and _filled_at(cells, cores, down))):
+		color = color.darkened(0.1)
+	return color
+
+
+## A MultiMesh of cubes at positions ([[Vector3, Color], ...] by index), filled
+## in one go.
+static func _cubes(positions: Array, colors: Array, cube: Mesh) -> MultiMesh:
+	var multimesh := MultiMesh.new()
+	multimesh.transform_format = MultiMesh.TRANSFORM_3D
+	multimesh.use_colors = true
+	multimesh.mesh = cube
+	multimesh.instance_count = positions.size()
+	var buffer := PackedFloat32Array()
+	buffer.resize(positions.size() * 16)
+	var k := 0
+	for i in positions.size():
+		var p: Vector3 = positions[i]
+		var c: Color = colors[i]
+		buffer[k] = 1.0
+		buffer[k + 3] = p.x
+		buffer[k + 5] = 1.0
+		buffer[k + 7] = p.y
+		buffer[k + 10] = 1.0
+		buffer[k + 11] = p.z
+		buffer[k + 12] = c.r
+		buffer[k + 13] = c.g
+		buffer[k + 14] = c.b
+		buffer[k + 15] = c.a
+		k += 16
+	multimesh.buffer = buffer
+	return multimesh
 
 
 ## Turns the painted grid into cubes: only voxels with an open side are kept,
 ## one MultiMesh per material group.
 func _bake(arm: Node3D, side: float) -> void:
-	var neighbours := [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, -1, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]
-	var by_group := {}
-	for cell in _grid:
-		var hidden := true
-		for n in neighbours:
-			if not _grid.has(cell + n):
-				hidden = false
+	var grid := _grid
+	var cores := _cores
+	var positions := {}
+	var colors := {}
+	for cell in grid:
+		var open := false
+		for n in SIDES:
+			var at: Vector3i = cell + n
+			if not grid.has(at) and not _filled_at(grid, cores, at):
+				open = true
 				break
-		if hidden:
+		if not open:
 			continue
-		var entry: Array = _grid[cell]
-		if not by_group.has(entry[1]):
-			by_group[entry[1]] = []
-		by_group[entry[1]].append([cell, entry[0]])
+		var entry: Array = grid[cell]
+		var group: String = entry[1]
+		if not positions.has(group):
+			positions[group] = []
+			colors[group] = []
+		positions[group].append(Vector3((cell.x + 0.5) * VOXEL * side, (cell.y + 0.5) * VOXEL, (cell.z + 0.5) * VOXEL))
+		colors[group].append(_shade(grid, cell, _color_of(cell, entry), cores))
 	var cube := BoxMesh.new()
 	cube.size = Vector3.ONE * VOXEL * 1.02
-	for group in by_group:
-		var cells: Array = by_group[group]
-		var multimesh := MultiMesh.new()
-		multimesh.transform_format = MultiMesh.TRANSFORM_3D
-		multimesh.use_colors = true
-		multimesh.mesh = cube
-		multimesh.instance_count = cells.size()
-		for i in cells.size():
-			var cell: Vector3i = cells[i][0]
-			var p := (Vector3(cell) + Vector3(0.5, 0.5, 0.5)) * VOXEL
-			multimesh.set_instance_transform(i, Transform3D(Basis.IDENTITY, _mirror_pos(p, side)))
-			multimesh.set_instance_color(i, cells[i][1])
-		var instance := MultiMeshInstance3D.new()
-		instance.multimesh = multimesh
-		instance.material_override = _materials[group]
-		instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		instance.layers = HAND_LAYER
-		arm.add_child(instance)
+	for group in positions:
+		var multimesh := _cubes(positions[group], colors[group], cube)
+		_meshes[""] = _meshes.get("", []) + [[group, multimesh]]
+		_attach(arm, group, multimesh)
+
+
+## A painted voxel's color: set, or worked out from where it sits.
+static func _color_of(cell: Vector3i, entry: Array) -> Color:
+	var color = entry[0]
+	return color if color is Color else (color as Callable).call((Vector3(cell) + Vector3(0.5, 0.5, 0.5)) * VOXEL)
+
+
+## Puts a baked mesh on a node in this pair of hands' own material for its
+## group (they take the hurt tint and the ultimate's glow).
+func _attach(node: Node3D, group: String, multimesh: MultiMesh) -> void:
+	var instance := MultiMeshInstance3D.new()
+	instance.multimesh = multimesh
+	instance.material_override = _materials[group]
+	instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	instance.layers = HAND_LAYER
+	node.add_child(instance)
 
 
 # --- Color helpers ----------------------------------------------------------------
 
 ## A little per-voxel variation so surfaces read as textured blocks.
 func _vary(color: Color, p: Vector3, amount := 0.06) -> Color:
+	amount *= 0.3
 	var h := absf(sin(p.x * 1271.3 + p.y * 3117.7 + p.z * 1771.1) * 43758.5453)
 	h -= floorf(h)
 	return color.darkened(h * amount) if h > 0.5 else color.lightened((0.5 - h) * amount)
@@ -666,6 +810,20 @@ func _skin_fn() -> Callable:
 			if gap < VOXEL * 0.9 or (absf(p.y - 0.0) < VOXEL * 0.6 and p.z < -0.385):
 				c = c.darkened(0.25)
 		return _vary(c, p, 0.05)
+
+
+## Tape or cloth wound around the arm: a strip width wide spiralling up it
+## (slant 1: each turn climbs one width; 0: flat rings), each turn shaded from
+## its overlapping edge to its tucked one, a dark seam between turns. colors
+## take turns, one per turn.
+func _wrap(colors: Array, width: float, slant := 1.0, seam := Color.TRANSPARENT) -> Callable:
+	return func(p: Vector3) -> Color:
+		var u := (p.z + atan2(p.y, p.x) / TAU * width * slant) / width
+		var t := u - floorf(u)
+		var c: Color = colors[posmod(int(floorf(u)), colors.size())]
+		if t * width < VOXEL * 0.95:
+			return seam if seam.a > 0.0 else c.darkened(0.22)
+		return c.lightened(0.07 * (1.0 - t)).darkened(0.07 * t)
 
 
 ## Bands along the arm: colors repeat every len(colors) * width meters of z.
@@ -751,7 +909,14 @@ func _paint_bone(bone: String, length: float, size: Vector2, color: Callable, gr
 				var d := ((p - center).abs() - (half - Vector3.ONE * 0.004)).max(Vector3.ZERO)
 				if (p - center).abs().x > half.x or (p - center).abs().y > half.y or (p - center).abs().z > half.z or d.length() > 0.004:
 					continue
-				cells[Vector3i(x, y, z)] = [color.call(closed * p), group]
+				var c: Color = color.call(closed * p)
+				# A crease where each segment meets the one before.
+				if p.z > -VOXEL * 1.1 and bone != "t_0":
+					c = c.darkened(0.28)
+				# Nails on the bare fingertips (the back of the hand is +y).
+				elif group == "skin" and (bone.ends_with("_2") or bone == "t_1") and p.y > half.y - VOXEL * 1.2 						and p.z < -length * 0.35 and absf(p.x) < half.x - VOXEL * 0.6:
+					c = c.lerp(Color(0.96, 0.84, 0.8), 0.45).lightened(0.08)
+				cells[Vector3i(x, y, z)] = [c, group]
 	_bone_cells[bone] = cells
 
 
@@ -760,20 +925,26 @@ func _paint_bone(bone: String, length: float, size: Vector2, color: Callable, gr
 func _rig_mitten() -> void:
 	_rig["mitten"] = {"parent": "", "offset": MITTEN_PIVOT, "closed": Vector3.ZERO, "open": MITTEN_OPEN}
 	_rig["t_0"] = {"parent": "", "offset": MITTEN_THUMB_PIVOT, "closed": Vector3.ZERO, "open": MITTEN_THUMB_OPEN}
+	var parts := {"mitten": {}, "t_0": {}}
 	for cell in _grid.keys():
 		var p := (Vector3(cell) + Vector3(0.5, 0.5, 0.5)) * VOXEL
-		var bone := ""
 		if p.x < -0.05 and p.z < -0.3 and p.z > -0.41:
-			bone = "t_0"
+			parts.t_0[cell] = _grid[cell]
 		elif p.z < MITTEN_PIVOT.z:
-			bone = "mitten"
-		if bone == "":
-			continue
-		if not _bone_extra.has(bone):
-			_bone_extra[bone] = []
-		var entry: Array = _grid[cell]
-		_bone_extra[bone].append([_closed_transform(bone).affine_inverse() * p, entry[0], entry[1]])
-		_grid.erase(cell)
+			parts.mitten[cell] = _grid[cell]
+	for bone in parts:
+		var cells: Dictionary = parts[bone]
+		var to_bone := _closed_transform(bone).affine_inverse()
+		var extra: Array = _bone_extra.get(bone, [])
+		for cell in cells:
+			for n in SIDES:
+				if not cells.has(cell + n):
+					var p := (Vector3(cell) + Vector3(0.5, 0.5, 0.5)) * VOXEL
+					extra.append([to_bone * p, _shade(cells, cell, _color_of(cell, cells[cell])), cells[cell][1]])
+					break
+		_bone_extra[bone] = extra
+		for cell in cells:
+			_grid.erase(cell)
 
 
 ## Anything painted out past the palm onto the fingers (taped knuckles, a ring,
@@ -804,12 +975,13 @@ func _attach_loose_voxels() -> void:
 		if not _bone_extra.has(best):
 			_bone_extra[best] = []
 		var entry: Array = _grid[cell]
-		_bone_extra[best].append([_closed_transform(best).affine_inverse() * p, entry[0], entry[1]])
+		_bone_extra[best].append([_closed_transform(best).affine_inverse() * p, _color_of(cell, entry), entry[1]])
 		_grid.erase(cell)
 
 
-## The bone nodes under the arm (closed), each with its voxels baked on.
-func _build_bones(arm: Node3D, side: float) -> void:
+## The bone nodes under the arm (closed), each with its voxels baked on (or
+## the meshes built before, when given).
+func _build_bones(arm: Node3D, side: float, built := {}) -> void:
 	var hand := "left" if side < 0.0 else "right"
 	var nodes := {}
 	for bone in _rig:
@@ -819,44 +991,44 @@ func _build_bones(arm: Node3D, side: float) -> void:
 		node.rotation = _mirror_rot(info.closed, side)
 		(nodes[info.parent] if info.parent != "" else arm).add_child(node)
 		nodes[bone] = node
+		if not built.is_empty():
+			for entry in built.get(bone, []):
+				_attach(node, entry[0], entry[1])
+			continue
 		var voxels: Array = []
 		var cells: Dictionary = _bone_cells.get(bone, {})
-		var neighbours := [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, -1, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]
 		for cell in cells:
-			if neighbours.all(func(n: Vector3i) -> bool: return cells.has(cell + n)):
+			var open := false
+			for n in SIDES:
+				if not cells.has(cell + n):
+					open = true
+					break
+			if not open:
 				continue
-			voxels.append([(Vector3(cell) + Vector3(0.5, 0.5, 0.5)) * VOXEL, cells[cell][0], cells[cell][1]])
+			voxels.append([(Vector3(cell) + Vector3(0.5, 0.5, 0.5)) * VOXEL, _shade(cells, cell, cells[cell][0]), cells[cell][1]])
 		voxels.append_array(_bone_extra.get(bone, []))
-		_bake_voxels(node, voxels, side)
+		_bake_voxels(node, voxels, side, bone)
 	_bones[hand] = nodes
 	_shape[hand] = IdleAnims.shape("fist")
 
 
 ## Voxels [[position, color, group]] as cubes under a node, one MultiMesh per group.
-func _bake_voxels(node: Node3D, voxels: Array, side: float) -> void:
-	var by_group := {}
+func _bake_voxels(node: Node3D, voxels: Array, side: float, bone: String) -> void:
+	var positions := {}
+	var colors := {}
 	for voxel in voxels:
-		if not by_group.has(voxel[2]):
-			by_group[voxel[2]] = []
-		by_group[voxel[2]].append(voxel)
+		var group: String = voxel[2]
+		if not positions.has(group):
+			positions[group] = []
+			colors[group] = []
+		positions[group].append(_mirror_pos(voxel[0], side))
+		colors[group].append(voxel[1])
 	var cube := BoxMesh.new()
 	cube.size = Vector3.ONE * VOXEL * 1.02
-	for group in by_group:
-		var list: Array = by_group[group]
-		var multimesh := MultiMesh.new()
-		multimesh.transform_format = MultiMesh.TRANSFORM_3D
-		multimesh.use_colors = true
-		multimesh.mesh = cube
-		multimesh.instance_count = list.size()
-		for i in list.size():
-			multimesh.set_instance_transform(i, Transform3D(Basis.IDENTITY, _mirror_pos(list[i][0], side)))
-			multimesh.set_instance_color(i, list[i][1])
-		var instance := MultiMeshInstance3D.new()
-		instance.multimesh = multimesh
-		instance.material_override = _materials[group]
-		instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		instance.layers = HAND_LAYER
-		node.add_child(instance)
+	for group in positions:
+		var multimesh := _cubes(positions[group], colors[group], cube)
+		_meshes[bone] = _meshes.get(bone, []) + [[group, multimesh]]
+		_attach(node, group, multimesh)
 
 
 ## Poses a hand's bones from a shape (IdleAnims.shape): f / f0-f3 finger curl
@@ -893,13 +1065,12 @@ func _paint_mauler() -> void:
 	var red := _p("glove").darkened(0.08)
 	_paint_forearm(_skin_fn(), "skin", 1.25)
 	# Cuff: white tape in bands, laced up the palm side.
+	var cuff := _wrap([_p("tape")], 0.017)
 	_fill_taper(-0.3, -0.2, Vector2(0.06, 0.054), Vector2(0.056, 0.05), 0.0, func(p: Vector3) -> Color:
-		var tape := _p("tape")
-		if fposmod(p.z, 0.017) < VOXEL:
-			tape = tape.darkened(0.2)
-		if p.y < -0.044 and absf(fposmod(p.z + p.x * 1.5, 0.026) - 0.013) < VOXEL:
-			tape = _p("sash").darkened(0.25)
-		return _vary(tape, p, 0.06))
+		# Laces criss-crossing the palm side.
+		if p.y < -0.044 and absf(fposmod(p.z + p.x * 1.5, 0.026) - 0.013) < VOXEL * 1.2:
+			return _p("sash").darkened(0.25)
+		return cuff.call(p))
 	var leather := func(p: Vector3) -> Color:
 		var c := red
 		# Seam down the back of the glove and around the thumb.
@@ -908,10 +1079,6 @@ func _paint_mauler() -> void:
 		# Padded knuckles a shade lighter.
 		if p.y > 0.035 and p.z < -0.37:
 			c = red.lightened(0.15)
-		# Scuffs.
-		var h := absf(sin(p.x * 913.1 + p.y * 2111.3 + p.z * 731.7) * 9137.31)
-		if h - floorf(h) > 0.975:
-			c = Color(0.85, 0.75, 0.7)
 		return _vary(c, p, 0.08)
 	_fill(Vector3(-0.066, -0.058, -0.435), Vector3(0.066, 0.064, -0.28), leather, "gear", 0.022)
 	_fill(Vector3(-0.084, -0.05, -0.4), Vector3(-0.05, 0.004, -0.3), leather, "gear", 0.012)
@@ -920,8 +1087,11 @@ func _paint_mauler() -> void:
 		var entry: Array = _grid[cell]
 		var p := (Vector3(cell) + Vector3(0.5, 0.5, 0.5)) * VOXEL
 		if p.z < -0.29 and entry[1] == "gear" and p.y > -0.02:
-			var h := absf(sin(p.x * 377.7 + p.z * 1711.3) * 4371.9)
-			if h - floorf(h) > 0.9:
+			# A jagged web of cracks across the leather.
+			var q := p + Vector3(sin(p.y * 97.0 + p.z * 41.0), sin(p.z * 83.0 + p.x * 59.0), sin(p.x * 71.0 + p.y * 47.0)) * 0.008
+			var block := (q / 0.05).floor()
+			var h := absf(sin(block.x * 127.1 + block.y * 311.7 + block.z * 74.7) * 43758.5)
+			if h - floorf(h) < 0.45 and block != ((q + Vector3.ONE * VOXEL * 0.6) / 0.05).floor():
 				_grid[cell] = [Color(_p("cracks"), 1.0), "rim"]
 
 
@@ -930,11 +1100,7 @@ func _paint_mauler() -> void:
 ## glowing violet cuff.
 func _paint_blur() -> void:
 	var purple := _p("hand_wrap")
-	var wrap := func(p: Vector3) -> Color:
-		# Strands of tape crossing diagonally.
-		var strand := fposmod(p.y * 1.2 + p.z, 0.017)
-		var c := purple.darkened(0.25) if strand < VOXEL else purple
-		return _vary(c, p, 0.08)
+	var wrap := _wrap([purple], 0.014)
 	_fill_taper(-0.2, 0.32, Vector2(0.05, 0.046), Vector2(0.056, 0.052), 0.0, func(p: Vector3) -> Color:
 		var c := _p("top")
 		if fposmod(p.z, 0.06) < VOXEL * 1.5:
@@ -960,12 +1126,9 @@ func _paint_answer() -> void:
 	# Coat sleeve beyond the wraps.
 	_fill_taper(0.12, 0.32, Vector2(0.056, 0.052), Vector2(0.06, 0.056), 0.0, _solid(_p("cloth")))
 	# Forearm wraps: wide blue bands, thin navy ones, a white stripe now and then.
-	_fill_taper(-0.29, 0.12, Vector2(0.046, 0.042), Vector2(0.053, 0.049), 0.0, func(p: Vector3) -> Color:
-		var k := int(floorf((p.z + 0.29) / VOXEL)) % 9
-		var c := blue if k < 5 else navy if k < 8 else white
-		return _vary(c, p, 0.08))
+	_fill_taper(-0.29, 0.12, Vector2(0.046, 0.042), Vector2(0.053, 0.049), 0.0, _wrap([blue, blue, blue, navy.lightened(0.15)], 0.016, 1.0, blue.darkened(0.45)))
 	for z in [-0.255, -0.18, -0.105, -0.03, 0.045]:
-		_fill_taper(z, z + VOXEL * 1.2, Vector2(0.049, 0.045), Vector2(0.05, 0.046), 0.0, _solid(white, 0.05), "rim")
+		_fill_taper(z, z + 0.0075, Vector2(0.049, 0.045), Vector2(0.05, 0.046), 0.0, _solid(white, 0.05), "rim")
 	var glove := func(p: Vector3) -> Color:
 		var c := black
 		# White tape across the knuckles and around the hand.
@@ -986,14 +1149,7 @@ func _paint_stray(left: bool) -> void:
 	_fill_taper(0.06, 0.32, Vector2(0.056, 0.052), Vector2(0.06, 0.056), 0.0, _solid(_p("gi")))
 	_fill_taper(0.05, 0.062, Vector2(0.058, 0.054), Vector2(0.058, 0.054), 0.0, _solid(_accent), "rim")
 	# Tape wraps: overlapping turns with darker edges, slightly ragged.
-	_fill_taper(-0.29, 0.06, Vector2(0.044, 0.04), Vector2(0.05, 0.046), 0.0, func(p: Vector3) -> Color:
-		var c := tape
-		var turn := fposmod(p.z + p.y * 0.4, 0.021)
-		if turn < VOXEL:
-			c = tape.darkened(0.3)
-		elif fposmod(p.z * 3.1 + p.x * 7.0, 0.05) < 0.004:
-			c = tape.darkened(0.12)
-		return _vary(c, p, 0.07))
+	_fill_taper(-0.29, 0.06, Vector2(0.044, 0.04), Vector2(0.05, 0.046), 0.0, _wrap([tape], 0.018))
 	if left:
 		var red := _p("band")
 		_fill_taper(-0.2, -0.155, Vector2(0.052, 0.048), Vector2(0.053, 0.049), 0.0, _solid(red, 0.1))
@@ -1024,12 +1180,7 @@ func _paint_tony(_left: bool) -> void:
 		return _vary(black, p, 0.08))
 	# Ribbed cuff.
 	_fill_taper(-0.24, -0.205, Vector2(0.052, 0.048), Vector2(0.052, 0.048), 0.0, _solid(_p("rib_a")), "gear")
-	var tape := _p("tape")
-	var taped := func(p: Vector3) -> Color:
-		var c := tape
-		if fposmod(p.z + p.y * 0.35, 0.02) < VOXEL:
-			c = tape.darkened(0.25)
-		return _vary(c, p, 0.06)
+	var taped := _wrap([_p("tape")], 0.016)
 	_paint_wrist(taped, "gear", 0.004)
 	# Tape over the knuckles too (the first finger segments), fingertips bare.
 	_paint_fist(taped, _skin_fn(), "gear", "skin", taped, "gear")
@@ -1053,12 +1204,7 @@ func _paint_catalyst(left: bool) -> void:
 			return Color(0.92, 0.92, 0.9)
 		return _vary(skin, p, 0.09)
 	_fill_taper(-0.12, 0.13, Vector2(0.05, 0.046), Vector2(0.058, 0.054), 0.0, forearm, "skin")
-	var tape := _p("tape_b").darkened(0.12)
-	var taped := func(p: Vector3) -> Color:
-		var c := tape
-		if fposmod(p.z + p.y * 0.35, 0.02) < VOXEL:
-			c = tape.darkened(0.25)
-		return _vary(c, p, 0.08)
+	var taped := _wrap([_p("tape_b").darkened(0.12)], 0.017)
 	_fill_taper(-0.29, -0.12, Vector2(0.046, 0.042), Vector2(0.05, 0.046), 0.0, taped)
 	_paint_wrist(taped, "gear", 0.004)
 	_paint_fist(taped, _skin_fn(), "gear", "skin")
