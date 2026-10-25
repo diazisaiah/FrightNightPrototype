@@ -1,7 +1,7 @@
 extends Node
 ## Persistent progression (autoloaded as GameState). Shared: coins, Champion
-## Souls, the armory, the upgrade web and what's been cleared. Per class: level, XP, stat and
-## skill points, stats and that class's own skill web. Saved to disk.
+## Souls, the armory, the upgrade web and what's been cleared. Per class: level,
+## XP, attributes (Attributes) and that fighter's cards (Cards). Saved to disk.
 
 signal changed
 signal leveled_up(new_level: int)
@@ -12,12 +12,7 @@ const SAVE_PATH := "user://save.json"
 var save_path: String = OS.get_environment("FRIGHT_NIGHT_SAVE") if OS.get_environment("FRIGHT_NIGHT_SAVE") != "" else SAVE_PATH
 ## Bump when saved data stops being compatible; older saves are ignored.
 const SAVE_VERSION := 2
-const STAT_POINTS_PER_LEVEL := 3
-## What one stat point is worth (Damage, Durability; Defense is 1 per point).
-const DAMAGE_PER_POINT := 0.5
-const KNUCKLES_PER_POINT := 6.0
-const SKILL_POINTS_PER_LEVEL := 1
-## Caps on what upgrades, skills and gear can add (2026-10-15: dodge and
+## Caps on what upgrades, cards, attributes and gear can add (2026-10-15: dodge and
 ## counter windows grew too forgiving).
 const MAX_DODGE_WINDOW_BONUS := 0.25
 const MAX_COUNTER_WINDOW_BONUS := 0.5
@@ -100,25 +95,25 @@ const RESOURCE_NAMES := {
 	"coins": "Coins",
 }
 
-const STATS := {
-	"damage": {"name": "Damage", "icon": "burst", "desc": "+0.5 punch damage per point"},
-	"defense": {"name": "Defense", "icon": "shield", "desc": "Less knuckle damage from enemy hits"},
-	"durability": {"name": "Durability", "icon": "heart", "desc": "+6 max knuckle HP per point"},
-	"looting": {"name": "Looting", "icon": "coin", "desc": "+5% coins from kills per point"},
-}
+## Card respecs, in Souls: a reroll costs one more each time on the same
+## draw; a swap by the card's rarity; a full redraft returns every card.
+const REROLL_SOULS := 1
+const SWAP_SOULS := {"common": 2, "rare": 3, "epic": 5, "legendary": 8}
+const REDRAFT_SOULS := 15
+## Passive power (Abilities.POWER_TEXT): a point every few levels, up to a cap.
+const PASSIVE_POWER_EVERY := 4
+const PASSIVE_POWER_MAX := 9
 
-# Upgrade tree (bought with coins) and skill tree (bought with skill points).
+# The upgrade web (bought with coins).
 # pos: cell in the tree view (x = column from center, y = row).
 # requires: nodes that must be at least level 1 first.
 # cost: price of level 1; each further level costs cost_growth times more.
 # effects: added once per level owned.
-# class: (skills only) node belongs to that class's column and only shows,
-# and only counts, while playing that class.
 # ring: which seal layer the node sits in (1 is open from the start; each Dead
 # League win opens the next; 6 = after the Coffin King). medallion: drawn as a
 # big round node (powers, capstones, trophies, ultimate nodes).
 
-# Both trees are webs around a center node (x = columns right, y = rows down),
+# The web sits around a center node (x = columns right, y = rows down),
 # with upgrade types mixed together, in five sealed rings (see Progression).
 # Four Sigil nodes each unlock a power (Fire, Frost, Storm, Blood) when their
 # ring opens; the nodes past a sigil upgrade that power in different ways
@@ -541,471 +536,6 @@ const UPGRADES := {
 	},
 }
 
-const SKILL_TREES := {
-	"berserker": {
-		"fury": {
-			"name": "Fury", "icon": "horns", "pos": Vector2(0, 0), "requires": [],
-			"desc": "The Mauler's heart. Every path starts here.",
-			"max_level": 1, "cost": 1, "cost_growth": 1.0, "effects": {"damage_percent": 0.02, "knuckles_percent": 0.02},
-		},
-		"sledgehammer": {
-			"name": "Sledgehammer", "icon": "hammer", "pos": Vector2(1, 0), "requires": ["fury"],
-			"desc": "Everything you throw lands heavier.",
-			"max_level": 3, "cost": 1, "cost_growth": 1.0, "effects": {"damage_percent": 0.02},
-		},
-		"rib_breaker": {
-			"name": "Rib Breaker", "icon": "gut", "pos": Vector2(2, 0), "requires": ["sledgehammer"],
-			"desc": "Hooks and uppercuts cave things in.",
-			"max_level": 2, "cost": 1, "cost_growth": 1.0, "effects": {"heavy_bonus": 0.08},
-		},
-		"lights_out": {
-			"name": "Lights Out", "icon": "skull", "pos": Vector2(3, 0), "requires": ["rib_breaker"],
-			"desc": "Hurt things die faster around you.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"finisher_bonus": 0.24},
-		},
-		"wrecking_ball": {
-			"name": "Wrecking Ball", "icon": "anvil", "pos": Vector2(4, 0), "requires": ["lights_out"], "ring": 2, "medallion": true,
-			"desc": "Hooks and uppercuts hit like a falling piano.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"heavy_bonus": 0.17, "damage_percent": 0.03},
-		},
-		"thick_hide": {
-			"name": "Thick Hide", "icon": "heart", "pos": Vector2(-1, 0), "requires": ["fury"],
-			"desc": "More meat between you and the floor.",
-			"max_level": 3, "cost": 1, "cost_growth": 1.0, "effects": {"knuckles_percent": 0.03},
-		},
-		"iron_jaw": {
-			"name": "Iron Jaw", "icon": "tooth", "pos": Vector2(-2, 0), "requires": ["thick_hide"],
-			"desc": "Clean hits barely move you.",
-			"max_level": 2, "cost": 1, "cost_growth": 1.0, "effects": {"flinch_reduction": 0.16},
-		},
-		"bloodthirst": {
-			"name": "Bloodthirst", "icon": "fang", "pos": Vector2(-3, 0), "requires": ["iron_jaw"],
-			"desc": "Every kill patches you up.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"heal_on_kill": 0.75},
-		},
-		"juggernaut": {
-			"name": "Juggernaut", "icon": "chestplate", "pos": Vector2(-4, 0), "requires": ["bloodthirst"], "ring": 4, "medallion": true,
-			"desc": "Built like a wall: more knuckle HP, and hits barely rock you.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"knuckles_percent": 0.06, "flinch_reduction": 0.25},
-		},
-		"short_fuse": {
-			"name": "Short Fuse", "icon": "clock", "pos": Vector2(0, -1), "requires": ["fury"],
-			"desc": "Fuels your passive: Grudge, Wrecking Ball or Berserker hits harder.",
-			"max_level": 3, "cost": 1, "cost_growth": 1.0, "effects": {"passive_power": 1},
-		},
-		"unbreakable": {
-			"name": "Unbreakable", "icon": "shield", "pos": Vector2(0, -2), "requires": ["short_fuse"],
-			"desc": "Fuels your passive: Grudge, Wrecking Ball or Berserker hits harder.",
-			"max_level": 2, "cost": 1, "cost_growth": 1.0, "effects": {"passive_power": 1},
-		},
-		"payback": {
-			"name": "Payback", "icon": "counter_arrow", "pos": Vector2(0, -3), "requires": ["unbreakable"],
-			"desc": "Fuels your passive: Grudge, Wrecking Ball or Berserker hits harder.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"passive_power": 1},
-		},
-		"berserk": {
-			"name": "Berserk", "icon": "rage", "pos": Vector2(0, -4), "requires": ["payback"], "ring": 6, "medallion": true,
-			"desc": "Your passive at full fury.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"passive_power": 3},
-		},
-		"fury_surge": {
-			"name": "Ultimate Surge", "icon": "spark", "pos": Vector2(1, 1), "requires": ["fury"], "ring": 3, "medallion": true,
-			"desc": "Your ultimate meter fills 25% faster.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"ult_gain": 0.25},
-		},
-		"fury_ult_power": {
-			"name": "Inferno II", "icon": "flame", "pos": Vector2(-1, 1), "requires": ["fury"], "ring": 5, "medallion": true,
-			"desc": "Ultimate: the Inferno Uppercut hits 50% harder, reaches farther and burns longer.",
-			"max_level": 1, "cost": 3, "cost_growth": 1.0, "effects": {"ult_power": 1},
-		},
-	},
-	"counter_master": {
-		"read_the_fight": {
-			"name": "Read the Fight", "icon": "eye", "pos": Vector2(0, 0), "requires": [],
-			"desc": "The Answer's eye. Every path starts here.",
-			"max_level": 1, "cost": 1, "cost_growth": 1.0, "effects": {"damage_percent": 0.02, "counter_window": 0.05},
-		},
-		"counterpunch": {
-			"name": "Counterpunch", "icon": "counter_arrow", "pos": Vector2(1, 0), "requires": ["read_the_fight"],
-			"desc": "Counters hit harder.",
-			"max_level": 3, "cost": 1, "cost_growth": 1.0, "effects": {"counter_bonus": 0.19},
-		},
-		"cold_blood": {
-			"name": "Cold Blood", "icon": "snowflake", "pos": Vector2(2, 0), "requires": ["counterpunch"],
-			"desc": "Calm hands. Heavy hands.",
-			"max_level": 2, "cost": 1, "cost_growth": 1.0, "effects": {"damage_percent": 0.04},
-		},
-		"precision_strike": {
-			"name": "Precision Strike", "icon": "crosshair", "pos": Vector2(3, 0), "requires": ["cold_blood"],
-			"desc": "Perfect counters work with any punch from the matching hand, not just hooks and uppercuts.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"perfect_any_punch": 1},
-		},
-		"executioner": {
-			"name": "Executioner", "icon": "axe", "pos": Vector2(4, 0), "requires": ["precision_strike"], "ring": 2, "medallion": true,
-			"desc": "Perfect counters cut a big chunk out of bosses.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"boss_ko_bonus": 0.1},
-		},
-		"ghost": {
-			"name": "Ghost", "icon": "ghost", "pos": Vector2(-1, 0), "requires": ["read_the_fight"],
-			"desc": "A little more time to get out of the way.",
-			"max_level": 3, "cost": 1, "cost_growth": 1.0, "effects": {"dodge_window": 0.02},
-		},
-		"thick_skull": {
-			"name": "Thick Skull", "icon": "helmet", "pos": Vector2(-2, 0), "requires": ["ghost"],
-			"desc": "Grazes (right timing, wrong dodge) hurt less.",
-			"max_level": 2, "cost": 1, "cost_growth": 1.0, "effects": {"graze_reduction": 0.2},
-		},
-		"iron_chin": {
-			"name": "Iron Chin", "icon": "heart", "pos": Vector2(-3, 0), "requires": ["thick_skull"],
-			"desc": "More knuckle HP.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"knuckles_percent": 0.1},
-		},
-		"free_flow": {
-			"name": "Free Flow", "icon": "flow", "pos": Vector2(-4, 0), "requires": ["iron_chin"], "ring": 4, "medallion": true,
-			"desc": "Counters often cost no knuckle HP, and you can take more.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"counter_free_bonus": 0.34, "knuckles_percent": 0.07},
-		},
-		"perfect_timing": {
-			"name": "Perfect Timing", "icon": "stopwatch", "pos": Vector2(0, -1), "requires": ["read_the_fight"],
-			"desc": "Perfect counters come back sooner.",
-			"max_level": 3, "cost": 1, "cost_growth": 1.0, "effects": {"perfect_cooldown_cut": 1.0},
-		},
-		"patience": {
-			"name": "Patience", "icon": "hourglass", "pos": Vector2(0, -2), "requires": ["perfect_timing"],
-			"desc": "Longer counter window.",
-			"max_level": 2, "cost": 1, "cost_growth": 1.0, "effects": {"counter_window": 0.05},
-		},
-		"snap_back": {
-			"name": "Snap Back", "icon": "fast_fist", "pos": Vector2(0, -3), "requires": ["patience"],
-			"desc": "Faster hands to punish with.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"punch_speed": 0.06},
-		},
-		"checkmate": {
-			"name": "Checkmate", "icon": "crown", "pos": Vector2(0, -4), "requires": ["snap_back"], "ring": 6, "medallion": true,
-			"desc": "Counters become the whole fight.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"counter_bonus": 0.69, "damage_percent": 0.06},
-		},
-		"read_the_fight_surge": {
-			"name": "Ultimate Surge", "icon": "spark", "pos": Vector2(1, 1), "requires": ["read_the_fight"], "ring": 3, "medallion": true,
-			"desc": "Your ultimate meter fills 25% faster.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"ult_gain": 0.25},
-		},
-		"read_the_fight_ult_power": {
-			"name": "Riposte II", "icon": "counter_arrow", "pos": Vector2(-1, 1), "requires": ["read_the_fight"], "ring": 5, "medallion": true,
-			"desc": "Ultimate: Riposte Stance lasts 2 seconds longer.",
-			"max_level": 1, "cost": 3, "cost_growth": 1.0, "effects": {"ult_power": 1},
-		},
-	},
-	"combo_master": {
-		"flow_state": {
-			"name": "Flow State", "icon": "wave", "pos": Vector2(0, 0), "requires": [],
-			"desc": "The Blur's rhythm. Every path starts here.",
-			"max_level": 1, "cost": 1, "cost_growth": 1.0, "effects": {"combo_window": 0.12, "punch_speed": 0.02},
-		},
-		"fast_hands": {
-			"name": "Fast Hands", "icon": "fast_fist", "pos": Vector2(1, 0), "requires": ["flow_state"],
-			"desc": "Faster punches.",
-			"max_level": 3, "cost": 1, "cost_growth": 1.0, "effects": {"punch_speed": 0.02},
-		},
-		"flow": {
-			"name": "Build-Up", "icon": "chevrons", "pos": Vector2(2, 0), "requires": ["fast_hands"],
-			"desc": "Combos build faster.",
-			"max_level": 2, "cost": 1, "cost_growth": 1.0, "effects": {"combo_step": 0.03},
-		},
-		"double_jab": {
-			"name": "Triple Jab", "icon": "double_fist", "pos": Vector2(3, 0), "requires": ["flow"],
-			"desc": "Jab, jab, jab keeps the combo going, and every punch hits a bit harder.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"double_jab": 1, "damage_percent": 0.04},
-		},
-		"thousand_fists": {
-			"name": "Thousand Fists", "icon": "infinity", "pos": Vector2(4, 0), "requires": ["double_jab"], "ring": 2, "medallion": true,
-			"desc": "Even faster hands, and combos climb even quicker.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"punch_speed": 0.07, "combo_step": 0.03},
-		},
-		"endurance": {
-			"name": "Endurance", "icon": "heartbeat", "pos": Vector2(-1, 0), "requires": ["flow_state"],
-			"desc": "More knuckle HP.",
-			"max_level": 3, "cost": 1, "cost_growth": 1.0, "effects": {"knuckles_percent": 0.03},
-		},
-		"hard_knuckles": {
-			"name": "Hard Knuckles", "icon": "brass", "pos": Vector2(-2, 0), "requires": ["endurance"],
-			"desc": "Some punches don't hurt your hands at all.",
-			"max_level": 2, "cost": 1, "cost_growth": 1.0, "effects": {"free_punch_chance": 0.08},
-		},
-		"iron_jaw": {
-			"name": "Iron Jaw", "icon": "tooth", "pos": Vector2(-3, 0), "requires": ["hard_knuckles"],
-			"desc": "Clean hits barely slow you down.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"flinch_reduction": 0.32},
-		},
-		"second_wind": {
-			"name": "Second Wind", "icon": "wind", "pos": Vector2(-4, 0), "requires": ["iron_jaw"], "ring": 4, "medallion": true,
-			"desc": "Catch your breath as the bout goes on, and take more.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"wave_heal": 2.0, "knuckles_percent": 0.07},
-		},
-		"wide_wave": {
-			"name": "Wide Wave", "icon": "ripple", "pos": Vector2(0, -1), "requires": ["flow_state"],
-			"desc": "Shockwaves reach farther.",
-			"max_level": 3, "cost": 1, "cost_growth": 1.0, "effects": {"shockwave_radius": 0.5},
-		},
-		"rolling_thunder": {
-			"name": "Rolling Thunder", "icon": "quake", "pos": Vector2(0, -2), "requires": ["wide_wave"],
-			"desc": "Shockwaves hit everything they stun.",
-			"max_level": 2, "cost": 1, "cost_growth": 1.0, "effects": {"shockwave_damage": 0.75},
-		},
-		"aftershock": {
-			"name": "Aftershock", "icon": "spiral", "pos": Vector2(0, -3), "requires": ["rolling_thunder"],
-			"desc": "Shockwaves stun for longer.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"shockwave_stun": 0.5},
-		},
-		"flurry": {
-			"name": "Flurry", "icon": "storm", "pos": Vector2(0, -4), "requires": ["aftershock"], "ring": 6, "medallion": true,
-			"desc": "A shockwave every 4th combo hit instead of every 5th, and they hit harder.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"shockwave_every_cut": 1, "shockwave_damage": 0.75},
-		},
-		"flow_state_surge": {
-			"name": "Ultimate Surge", "icon": "spark", "pos": Vector2(1, 1), "requires": ["flow_state"], "ring": 3, "medallion": true,
-			"desc": "Your ultimate meter fills 25% faster.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"ult_gain": 0.25},
-		},
-		"flow_state_ult_power": {
-			"name": "Temporal Break II", "icon": "hourglass", "pos": Vector2(-1, 1), "requires": ["flow_state"], "ring": 5, "medallion": true,
-			"desc": "Ultimate: Temporal Break starts with 1.5 more seconds on the clock.",
-			"max_level": 1, "cost": 3, "cost_growth": 1.0, "effects": {"ult_power": 1},
-		},
-	},
-	"free_runner": {
-		"light_step": {
-			"name": "Light Step", "icon": "feather", "pos": Vector2(0, 0), "requires": [],
-			"desc": "The Stray's stride. Every path starts here.",
-			"max_level": 1, "cost": 1, "cost_growth": 1.0, "effects": {"damage_percent": 0.02, "move_speed": 0.03, "sprint_bonus": 0.03},
-		},
-		"momentum": {
-			"name": "Momentum", "icon": "chevrons", "pos": Vector2(1, 0), "requires": ["light_step"],
-			"desc": "Dash punches (Spear Jab and Haymaker) hit even harder.",
-			"max_level": 3, "cost": 1, "cost_growth": 1.0, "effects": {"opener_bonus": 0.19},
-		},
-		"opportunist": {
-			"name": "Opportunist", "icon": "target", "pos": Vector2(2, 0), "requires": ["momentum"],
-			"desc": "Hurt things die faster around you.",
-			"max_level": 2, "cost": 1, "cost_growth": 1.0, "effects": {"finisher_bonus": 0.1},
-		},
-		"cheap_shot": {
-			"name": "Cheap Shot", "icon": "slash", "pos": Vector2(3, 0), "requires": ["opportunist"],
-			"desc": "Fight dirty. Everything hits harder.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"damage_percent": 0.08},
-		},
-		"blindside": {
-			"name": "Blindside", "icon": "dive", "pos": Vector2(4, 0), "requires": ["cheap_shot"], "ring": 2, "medallion": true,
-			"desc": "Dash punches land like a truck, and so does everything else.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"opener_bonus": 0.34, "damage_percent": 0.07},
-		},
-		"rubber_legs": {
-			"name": "Rubber Legs", "icon": "heart", "pos": Vector2(-1, 0), "requires": ["light_step"],
-			"desc": "More knuckle HP.",
-			"max_level": 3, "cost": 1, "cost_growth": 1.0, "effects": {"knuckles_percent": 0.03},
-		},
-		"slick": {
-			"name": "Slick", "icon": "slip", "pos": Vector2(-2, 0), "requires": ["rubber_legs"],
-			"desc": "A little more time to get out of the way.",
-			"max_level": 2, "cost": 1, "cost_growth": 1.0, "effects": {"dodge_window": 0.03},
-		},
-		"hard_knuckles": {
-			"name": "Hard Knuckles", "icon": "brass", "pos": Vector2(-3, 0), "requires": ["slick"],
-			"desc": "Some punches don't hurt your hands at all.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"free_punch_chance": 0.12},
-		},
-		"ghost_step": {
-			"name": "Ghost Step", "icon": "ghost", "pos": Vector2(-4, 0), "requires": ["hard_knuckles"], "ring": 4, "medallion": true,
-			"desc": "Grazes barely touch you, and you can take more.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"graze_reduction": 0.34, "knuckles_percent": 0.07},
-		},
-		"stride": {
-			"name": "Stride", "icon": "wing_boot", "pos": Vector2(0, -1), "requires": ["light_step"],
-			"desc": "Faster on your feet, faster sprinting.",
-			"max_level": 3, "cost": 1, "cost_growth": 1.0, "effects": {"sprint_bonus": 0.04, "move_speed": 0.01},
-		},
-		"acrobat": {
-			"name": "Acrobat", "icon": "wing", "pos": Vector2(0, -2), "requires": ["stride"],
-			"desc": "Higher jumps: more time for jump punches.",
-			"max_level": 2, "cost": 1, "cost_growth": 1.0, "effects": {"jump_bonus": 0.1},
-		},
-		"high_ground": {
-			"name": "High Ground", "icon": "mountain", "pos": Vector2(0, -3), "requires": ["acrobat"],
-			"desc": "Jump punch finishers work on healthier enemies.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"finisher_threshold": 0.12},
-		},
-		"dive_kick": {
-			"name": "Dive Kick", "icon": "dive", "pos": Vector2(0, -4), "requires": ["high_ground"], "ring": 6, "medallion": true,
-			"desc": "Jump punches stagger whatever they hit, and everything hits harder.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"dive_kick": 1, "damage_percent": 0.07},
-		},
-		"light_step_surge": {
-			"name": "Ultimate Surge", "icon": "spark", "pos": Vector2(1, 1), "requires": ["light_step"], "ring": 3, "medallion": true,
-			"desc": "Your ultimate meter fills 25% faster.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"ult_gain": 0.25},
-		},
-		"light_step_ult_power": {
-			"name": "Highlight Reel II", "icon": "bolt", "pos": Vector2(-1, 1), "requires": ["light_step"], "ring": 5, "medallion": true,
-			"desc": "Ultimate: the Highlight Reel hits 3 more enemies, 30% harder.",
-			"max_level": 1, "cost": 3, "cost_growth": 1.0, "effects": {"ult_power": 1},
-		},
-	},
-	"wise_guy": {
-		"wise_guy": {
-			"name": "Wise Guy", "icon": "rage", "pos": Vector2(0, 0), "requires": [],
-			"desc": "Tony's attitude. Every path starts here.",
-			"max_level": 1, "cost": 1, "cost_growth": 1.0, "effects": {"damage_percent": 0.02, "knuckles_percent": 0.02},
-		},
-		"heavy_hands": {
-			"name": "Heavy Hands", "icon": "fist", "pos": Vector2(1, 0), "requires": ["wise_guy"],
-			"desc": "Hooks and uppercuts hit harder.",
-			"max_level": 3, "cost": 1, "cost_growth": 1.0, "effects": {"heavy_bonus": 0.06},
-		},
-		"knuckle_sandwich": {
-			"name": "Knuckle Sandwich", "icon": "burst", "pos": Vector2(2, 0), "requires": ["heavy_hands"],
-			"desc": "Everything hits harder. Extra mustard.",
-			"max_level": 2, "cost": 1, "cost_growth": 1.0, "effects": {"damage_percent": 0.04},
-		},
-		"last_word": {
-			"name": "Last Word", "icon": "skull", "pos": Vector2(3, 0), "requires": ["knuckle_sandwich"],
-			"desc": "Hurt things die faster around you.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"finisher_bonus": 0.24},
-		},
-		"bada_bing": {
-			"name": "Bada Bing", "icon": "hammer", "pos": Vector2(4, 0), "requires": ["last_word"], "ring": 2, "medallion": true,
-			"desc": "Hooks and uppercuts land like a cement shoe.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"heavy_bonus": 0.17, "damage_percent": 0.03},
-		},
-		"tough_guy": {
-			"name": "Tough Guy", "icon": "heart", "pos": Vector2(-1, 0), "requires": ["wise_guy"],
-			"desc": "More knuckle HP.",
-			"max_level": 3, "cost": 1, "cost_growth": 1.0, "effects": {"knuckles_percent": 0.03},
-		},
-		"shrug_it_off": {
-			"name": "Shrug It Off", "icon": "shield", "pos": Vector2(-2, 0), "requires": ["tough_guy"],
-			"desc": "Fuggedaboudit comes back faster.",
-			"max_level": 2, "cost": 1, "cost_growth": 1.0, "effects": {"fugget_cut": 1.5},
-		},
-		"deli_run": {
-			"name": "Deli Run", "icon": "medkit", "pos": Vector2(-3, 0), "requires": ["shrug_it_off"],
-			"desc": "Every KO, a little sandwich.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"heal_on_kill": 0.75},
-		},
-		"made_man": {
-			"name": "Made Man", "icon": "crown", "pos": Vector2(-4, 0), "requires": ["deli_run"], "ring": 4, "medallion": true,
-			"desc": "Fuggedaboudit patches you up, and you can take more.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"fugget_heal": 0.07, "knuckles_percent": 0.07},
-		},
-		"trash_talk": {
-			"name": "Trash Talk", "icon": "note", "pos": Vector2(0, -1), "requires": ["wise_guy"],
-			"desc": "Insulted monsters stay mad longer.",
-			"max_level": 3, "cost": 1, "cost_growth": 1.0, "effects": {"insult_time": 0.5},
-		},
-		"below_the_belt": {
-			"name": "Below the Belt", "icon": "gut", "pos": Vector2(0, -2), "requires": ["trash_talk"],
-			"desc": "Hit insulted monsters even harder.",
-			"max_level": 2, "cost": 1, "cost_growth": 1.0, "effects": {"wise_up": 0.13},
-		},
-		"hustle": {
-			"name": "Hustle", "icon": "bag", "pos": Vector2(0, -3), "requires": ["below_the_belt"],
-			"desc": "Insulted monsters pay out more coins.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"hustle": 0.81},
-		},
-		"say_it_to_my_face": {
-			"name": "Say It To My Face", "icon": "counter_arrow", "pos": Vector2(0, -4), "requires": ["hustle"], "ring": 6, "medallion": true,
-			"desc": "Insulted monsters take a beating, and so does anyone you counter.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"wise_up": 0.28, "counter_bonus": 0.34},
-		},
-		"wise_guy_surge": {
-			"name": "Ultimate Surge", "icon": "spark", "pos": Vector2(1, 1), "requires": ["wise_guy"], "ring": 3, "medallion": true,
-			"desc": "Your ultimate meter fills 25% faster.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"ult_gain": 0.25},
-		},
-		"wise_guy_ult_power": {
-			"name": "Big Mouth II", "icon": "rage", "pos": Vector2(-1, 1), "requires": ["wise_guy"], "ring": 5, "medallion": true,
-			"desc": "Ultimate: Big Mouth enrages a second monster, and the duel lasts 3s longer.",
-			"max_level": 1, "cost": 3, "cost_growth": 1.0, "effects": {"ult_power": 1},
-		},
-	},
-	"elementalist": {
-		"elementalist": {
-			"name": "Catalyst", "icon": "flame", "pos": Vector2(0, 0), "requires": [],
-			"desc": "Spells in the fists. Every path starts here.",
-			"max_level": 1, "cost": 1, "cost_growth": 1.0, "effects": {"damage_percent": 0.02, "knuckles_percent": 0.02},
-		},
-		"conduit": {
-			"name": "Conduit", "icon": "bolt", "pos": Vector2(1, 0), "requires": ["elementalist"],
-			"desc": "Your powers and punches hit harder.",
-			"max_level": 3, "cost": 1, "cost_growth": 1.0, "effects": {"power_amp": 0.06, "damage_percent": 0.03},
-		},
-		"resonance": {
-			"name": "Resonance", "icon": "spark", "pos": Vector2(2, 0), "requires": ["conduit"],
-			"desc": "Your powers hit even harder.",
-			"max_level": 2, "cost": 1, "cost_growth": 1.0, "effects": {"power_amp": 0.08, "damage_percent": 0.04},
-		},
-		"wellspring": {
-			"name": "Wellspring", "icon": "drop", "pos": Vector2(3, 0), "requires": ["resonance"],
-			"desc": "Deep power.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"power_amp": 0.12, "damage_percent": 0.05},
-		},
-		"archmage": {
-			"name": "Archmage", "icon": "crown", "pos": Vector2(4, 0), "requires": ["wellspring"], "ring": 2, "medallion": true,
-			"desc": "Your powers at their strongest.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"power_amp": 0.2, "damage_percent": 0.08},
-		},
-		"spark_knuckles": {
-			"name": "Spark Knuckles", "icon": "fist", "pos": Vector2(0, -1), "requires": ["elementalist"],
-			"desc": "Elemental Fists fire more often.",
-			"max_level": 3, "cost": 1, "cost_growth": 1.0, "effects": {"spell_chance": 0.02, "heavy_bonus": 0.05},
-		},
-		"hot_hands": {
-			"name": "Hot Hands", "icon": "flame", "pos": Vector2(0, -2), "requires": ["spark_knuckles"],
-			"desc": "Fireballs, icicles and lightning hit harder.",
-			"max_level": 2, "cost": 1, "cost_growth": 1.0, "effects": {"spell_damage": 0.15},
-		},
-		"long_spell": {
-			"name": "Long Spell", "icon": "clock", "pos": Vector2(0, -3), "requires": ["hot_hands"],
-			"desc": "Elemental Fists last longer.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"spell_time": 3.0},
-		},
-		"spellfists": {
-			"name": "Spellfists", "icon": "star", "pos": Vector2(0, -4), "requires": ["long_spell"], "ring": 6, "medallion": true,
-			"desc": "Elemental Fists fire far more often.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"spell_chance": 0.04, "spell_damage": 0.2},
-		},
-		"old_bones": {
-			"name": "Old Bones", "icon": "heart", "pos": Vector2(-1, 0), "requires": ["elementalist"],
-			"desc": "More knuckle HP.",
-			"max_level": 3, "cost": 1, "cost_growth": 1.0, "effects": {"knuckles_percent": 0.03},
-		},
-		"kindle": {
-			"name": "Kindle", "icon": "flame", "pos": Vector2(-2, 0), "requires": ["old_bones"],
-			"desc": "Flame Burst hits harder.",
-			"max_level": 2, "cost": 1, "cost_growth": 1.0, "effects": {"burst_damage": 0.2, "knuckles_percent": 0.02},
-		},
-		"wide_flames": {
-			"name": "Wide Flames", "icon": "burst", "pos": Vector2(-3, 0), "requires": ["kindle"],
-			"desc": "Flame Burst reaches farther.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"burst_radius": 1.5},
-		},
-		"phoenix": {
-			"name": "Phoenix", "icon": "crown", "pos": Vector2(-4, 0), "requires": ["wide_flames"], "ring": 4, "medallion": true,
-			"desc": "Flame Burst burns longer, and you can take more.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"burst_burn": 0.5, "knuckles_percent": 0.07},
-		},
-		"elementalist_surge": {
-			"name": "Ultimate Surge", "icon": "spark", "pos": Vector2(1, 1), "requires": ["elementalist"], "ring": 3, "medallion": true,
-			"desc": "Your ultimate meter fills 25% faster.",
-			"max_level": 1, "cost": 2, "cost_growth": 1.0, "effects": {"ult_gain": 0.25},
-		},
-		"elementalist_ult_power": {
-			"name": "Spellfists II", "icon": "bolt", "pos": Vector2(-1, 1), "requires": ["elementalist"], "ring": 5, "medallion": true,
-			"desc": "Ultimate: Elemental Fists last longer and hit harder; Flame Burst too.",
-			"max_level": 1, "cost": 3, "cost_growth": 1.0, "effects": {"ult_power": 1},
-		},
-	},
-}
-
 # How each effect reads in the UI. Percent effects are stored as fractions.
 const EFFECT_FORMATS := {
 	"insult_time": "Enraged monsters stay mad %ss longer",
@@ -1154,9 +684,10 @@ const V4_PRICES := {"wrapped_knuckles": [15, 1.0], "calluses": [20, 1.7], "iron_
 const V4_RINGS := {"wrapped_knuckles": 1, "calluses": 1, "iron_fists": 1, "pickpocket": 2, "running_shoes": 3, "thick_skin": 2, "quick_wraps": 3, "heavy_hitter": 2, "armor_breaker": 3, "guard": 3, "giant_killer": 4, "sigil_blood": 5, "vampiric_knuckles": 5, "bloodletting": 5, "blood_rage": 5, "sigil_fire": 2, "hotter_flames": 2, "wildfire": 2, "lingering_flames": 2, "searing": 2, "kindling": 2, "brass_tape": 1, "light_feet": 1, "rhythm": 2, "ice_bath": 3, "night_owl": 4, "iron_will": 2, "bounty": 3, "weighted_wraps": 4, "dawn_patrol": 5, "sigil_storm": 4, "forked": 4, "storm": 4, "overcharge": 4, "conductor": 4, "static_shock": 4, "mouthguard": 1, "grave_robber": 1, "cornerman": 1, "skull_cracker": 1, "sigil_frost": 3, "deep_freeze": 3, "permafrost": 3, "frost_nova": 3, "brittle": 3, "cold_snap": 3, "road_work": 1, "footwork_drills": 1, "heavy_bag": 1, "sparring_partner": 1, "champions_belt": 3, "bone_plating": 4, "grave_gold": 4, "pyre": 6, "thunderhead": 6, "frost_shatter": 6, "bloodbath": 6, "bellmans_bell": 2, "headless_helm": 3, "southpaws_rosary": 4, "plague_censer": 5, "coffin_crown": 6}
 ## Version 4 max levels per node (old refunds are clamped to them).
 const V4_LEVELS := {"wrapped_knuckles": 1, "calluses": 5, "iron_fists": 5, "pickpocket": 3, "running_shoes": 2, "thick_skin": 3, "quick_wraps": 3, "heavy_hitter": 3, "armor_breaker": 3, "guard": 3, "giant_killer": 3, "sigil_blood": 1, "vampiric_knuckles": 3, "bloodletting": 3, "blood_rage": 3, "sigil_fire": 1, "hotter_flames": 3, "wildfire": 2, "lingering_flames": 3, "searing": 3, "kindling": 3, "brass_tape": 3, "light_feet": 2, "rhythm": 3, "ice_bath": 2, "night_owl": 3, "iron_will": 2, "bounty": 2, "weighted_wraps": 1, "dawn_patrol": 2, "sigil_storm": 1, "forked": 2, "storm": 1, "overcharge": 3, "conductor": 1, "static_shock": 1, "mouthguard": 3, "grave_robber": 3, "cornerman": 3, "skull_cracker": 2, "sigil_frost": 1, "deep_freeze": 3, "permafrost": 3, "frost_nova": 2, "brittle": 3, "cold_snap": 3, "road_work": 3, "footwork_drills": 2, "heavy_bag": 2, "sparring_partner": 3, "champions_belt": 3, "bone_plating": 3, "grave_gold": 2, "pyre": 1, "thunderhead": 1, "frost_shatter": 1, "bloodbath": 1, "bellmans_bell": 3, "headless_helm": 3, "southpaws_rosary": 3, "plague_censer": 3, "coffin_crown": 5}
-## The fighter skill webs' version. Version 2 (2026-10-15) rebuilt every web
-## (fewer, stronger nodes); older saves get every skill point back.
-const SKILL_VERSION := 2
+## The fighter level-up version. Version 2 (2026-10-15) rebuilt every skill
+## web; version 3 (2026-10-25) replaced the webs and stats with card draws and
+## attributes: older saves get a draw a level and every stat point back.
+const SKILL_VERSION := 3
 ## Version 3 raised the existing web from roughly 17,000 to 40,950 coins
 ## before adding the four new 600-coin capstones. Version-2 saves are respecced
 ## at their approximate old purchase value so the higher prices actually create
@@ -1234,6 +765,8 @@ var achievements := {}
 var power_pick := ""
 ## The Catalyst's second pick (Dual Sigil): the one before the latest.
 var power_pick_2 := ""
+## Living Conduit's extra pick.
+var power_pick_3 := ""
 ## Daily drills: {drill: {"best": score, "day": "YYYY-MM-DD" of the last paid run}}.
 var drills := {}
 ## The drill picked in camp for the drills scene (not saved).
@@ -1280,10 +813,13 @@ var dead_league_clears := {}
 var dead_league_bout := 0
 var dead_league_active := false
 
-## Each class's own progress: {class_id: {level, xp, stat_points, skill_points,
-## stats: {stat: points}, skills: {id: level}}}. The properties below read and
-## write the current class's entry.
+## Each class's own progress: {class_id: {level, xp, attribute_points,
+## attributes: {attribute: points}, cards: {id: rank}, draws (waiting),
+## offer (the three cards on the table), rerolls (on this offer)}}. The
+## properties below read and write the current class's entry.
 var _classes := {}
+## How full the ultimate is (0-1), kept up by Ult for the cards that care.
+var ult_share := 0.0
 
 var level: int:
 	get:
@@ -1295,19 +831,22 @@ var xp: int:
 		return _current().xp
 	set(value):
 		_current().xp = value
-var stat_points: int:
+var attribute_points: int:
 	get:
-		return _current().stat_points
+		return _current().attribute_points
 	set(value):
-		_current().stat_points = value
-var skill_points: int:
+		_current().attribute_points = value
+var attributes: Dictionary:
 	get:
-		return _current().skill_points
+		return _current().attributes
+var cards: Dictionary:
+	get:
+		return _current().cards
+var draws: int:
+	get:
+		return _current().draws
 	set(value):
-		_current().skill_points = value
-var stats: Dictionary:
-	get:
-		return _current().stats
+		_current().draws = value
 
 
 func _ready() -> void:
@@ -1326,20 +865,9 @@ func _notification(what: int) -> void:
 
 # --- Trees and classes --------------------------------------------------------
 
-## The upgrade web, or the current class's skill web as it plays with the
-## equipped passive (Abilities.adapt_tree).
-func tree(kind: String) -> Dictionary:
-	if kind == "upgrade":
-		return UPGRADES
-	var key := "%s/%s" % [player_class, passive()]
-	if key != _skill_view_key:
-		_skill_view_key = key
-		_skill_view = Abilities.adapt_tree(player_class, SKILL_TREES[player_class], passive())
-	return _skill_view
-
-
-var _skill_view := {}
-var _skill_view_key := ""
+## The upgrade web.
+func tree(_kind := "upgrade") -> Dictionary:
+	return UPGRADES
 
 
 func class_level(id: String) -> int:
@@ -1350,38 +878,40 @@ func _current() -> Dictionary:
 	return _classes[player_class]
 
 
-func _levels(kind: String) -> Dictionary:
-	return upgrade_levels if kind == "upgrade" else _current().skills
+func _levels(_kind := "upgrade") -> Dictionary:
+	return upgrade_levels
 
 
 func _new_class_progress() -> Dictionary:
-	var class_stats := {}
-	for stat in STATS:
-		class_stats[stat] = 0
-	return {"level": 1, "xp": 0, "stat_points": 0, "skill_points": 0, "stats": class_stats, "skills": {}}
+	var points := {}
+	for attribute in Attributes.LIST:
+		points[attribute] = 0
+	return {"level": 1, "xp": 0, "attribute_points": 0, "attributes": points, "cards": {}, "draws": 0, "offer": [], "rerolls": 0}
 
 
 # --- Derived values -------------------------------------------------------
 
-## Total of one effect from owned upgrades, the current class's skills and
-## any equipped Crypt items.
+## Total of one effect from owned upgrades, the current fighter's cards and
+## attributes, equipped Crypt items, blessings and hats.
 func get_effect(effect: String) -> float:
 	var total := 0.0
 	var amplify := effect in AMPLIFIED and is_player_class("elementalist")
-	for kind in ["upgrade", "skill"]:
-		var nodes := tree(kind)
-		var owned := _levels(kind)
-		for id in owned:
-			# Only the selected power's line counts.
-			if kind == "upgrade" and not power_active(id):
-				continue
-			# Passive nodes feed the equipped passive instead (passive_power).
-			if kind == "skill" and Abilities.node_adapts(player_class, id, passive()):
-				continue
-			var amount: float = nodes[id].effects.get(effect, 0) * owned[id]
-			if amplify and kind == "upgrade" and amount != 0.0 and power_of(id) != "":
-				amount *= _power_scale(power_of(id))
-			total += amount
+	for id in upgrade_levels:
+		# Only the selected power's line counts.
+		if not power_active(id):
+			continue
+		var amount: float = UPGRADES[id].effects.get(effect, 0) * upgrade_levels[id]
+		if amplify and amount != 0.0 and power_of(id) != "":
+			amount *= _power_scale(power_of(id))
+		total += amount
+	var progress := _current()
+	var deck := Cards.deck(player_class)
+	for id in progress.cards:
+		var values = deck.get(id, {}).get("effects", {}).get(effect)
+		if values != null:
+			total += float(values[mini(int(progress.cards[id]), values.size()) - 1])
+	for attribute in progress.attributes:
+		total += float(Attributes.LIST[attribute].per_point.get(effect, 0.0)) * int(progress.attributes[attribute])
 	for slot in equipped:
 		total += equipped[slot].effects.get(effect, 0.0)
 	for blessing in blessings:
@@ -1427,9 +957,11 @@ func power_active(id: String) -> bool:
 	if is_player_class("elementalist"):
 		match passive():
 			"dual_sigil":
-				return root == power_pick or root == power_pick_2
+				return root == power_pick or root == power_pick_2 or root == power_pick_3
 			"prism":
 				return id == root and upgrade_levels.get(root, 0) > 0
+			"attunement":
+				return root == power_pick or root == power_pick_2
 	return root == power_pick
 
 
@@ -1438,39 +970,73 @@ func power_selected(root: String) -> bool:
 	if is_player_class("elementalist"):
 		match passive():
 			"dual_sigil":
-				return root == power_pick or root == power_pick_2
+				return root == power_pick or root == power_pick_2 or root == power_pick_3
 			"prism":
 				return upgrade_levels.get(root, 0) > 0
+			"attunement":
+				return root == power_pick or root == power_pick_2
 	return root == power_pick
 
 
-## Picks which owned power works. With Dual Sigil the newest pick joins the
-## last one (the older drops out).
+## How many powers can be selected at once: two under Dual Sigil, and Living
+## Conduit adds one (a second, plain one beside the attuned under Attunement).
+func power_slots() -> int:
+	if not is_player_class("elementalist"):
+		return 1
+	var extra := 1 if has_effect("living_conduit") else 0
+	match passive():
+		"dual_sigil":
+			return 2 + extra
+		"attunement":
+			return 1 + extra
+	return 1
+
+
+## Picks which owned power works. With more than one slot the newest pick
+## joins the others (the oldest drops out).
 func select_power(root: String) -> bool:
 	if not SkillTreeView.BRANCHES.has(root) or upgrade_levels.get(root, 0) <= 0:
 		return false
-	if is_player_class("elementalist") and passive() == "dual_sigil" and root != power_pick:
-		power_pick_2 = power_pick
+	var slots := power_slots()
+	var picks := [root]
+	for pick in [power_pick, power_pick_2, power_pick_3]:
+		if pick != "" and not pick in picks:
+			picks.append(pick)
 	power_pick = root
+	power_pick_2 = picks[1] if slots > 1 and picks.size() > 1 else ""
+	power_pick_3 = picks[2] if slots > 2 and picks.size() > 2 else ""
 	_commit()
 	return true
 
 
-## The Catalyst's scale on a power's numbers (AMPLIFIED): Weave nodes under
-## Dual Sigil, x1.5+ for the attuned power, a little more under Prism.
+## Selected powers, attuned (or newest) first.
+func selected_powers() -> Array:
+	var picks := []
+	for root in [power_pick, power_pick_2, power_pick_3]:
+		if root != "" and power_selected(root) and not root in picks:
+			picks.append(root)
+	if is_player_class("elementalist") and passive() == "prism":
+		return owned_powers()
+	return picks
+
+
+## The Catalyst's scale on a power's numbers (AMPLIFIED): passive power under
+## Dual Sigil, x1.5+ for the attuned power, a little more under Prism; his
+## cards on top (Conduit, Deep Attunement, Archmage).
 func _power_scale(root: String) -> float:
 	if not is_player_class("elementalist"):
 		return 1.0
+	var cards_amp := get_effect("conduit")
+	if ult_share > 0.5:
+		cards_amp += get_effect("archmage")
 	match passive():
 		"attunement":
-			return ATTUNE + 0.05 * passive_power() if root == power_pick else 1.0
+			if root != power_pick:
+				return 1.0 + cards_amp
+			return ATTUNE + 0.05 * passive_power() + 0.25 * get_effect("deep_attunement") + cards_amp
 		"prism":
-			return 1.0 + 0.04 * passive_power()
-	var amp := 0.0
-	var owned := _levels("skill")
-	for id in owned:
-		amp += float(SKILL_TREES[player_class][id].effects.get("power_amp", 0.0)) * int(owned[id])
-	return 1.0 + amp
+			return 1.0 + 0.04 * passive_power() + cards_amp
+	return 1.0 + 0.05 * passive_power() + cards_amp
 
 
 ## Owned powers, in climb order.
@@ -1547,16 +1113,10 @@ func equip_skin(class_id: String, id: String) -> bool:
 	return true
 
 
-## Skill points that strengthen the equipped passive (adapted passive nodes):
-## a point a level, three for a capstone.
+## What strengthens the equipped passive (Abilities.POWER_TEXT): a point
+## every few levels.
 func passive_power() -> float:
-	var total := 0.0
-	var nodes := tree("skill")
-	var owned := _levels("skill")
-	for id in owned:
-		if Abilities.node_adapts(player_class, id, passive()):
-			total += int(owned[id]) * float(nodes[id].effects.get("passive_power", 1))
-	return total
+	return float(mini((level - 1) / PASSIVE_POWER_EVERY, PASSIVE_POWER_MAX))
 
 
 ## A kept item straight into the armory (the Soul Shop's gear).
@@ -1876,11 +1436,11 @@ func set_player_class(id: String) -> void:
 
 
 func get_damage() -> float:
-	return (2.0 + stats.damage * DAMAGE_PER_POINT + get_effect("damage")) * get_class_mod("damage") * (1.0 + get_effect("damage_percent"))
+	return (2.0 + get_effect("damage")) * get_class_mod("damage") * (1.0 + get_effect("damage_percent"))
 
 
 func get_defense() -> float:
-	return stats.defense + get_effect("defense") + get_class_mod("defense", 0.0)
+	return get_effect("defense") + get_class_mod("defense", 0.0)
 
 
 ## Multiplier on knuckle HP lost to enemy hits. Never reaches zero.
@@ -1889,7 +1449,7 @@ func get_knuckle_loss_multiplier() -> float:
 
 
 func get_max_knuckles() -> float:
-	return (50.0 + KNUCKLES_PER_POINT * stats.durability + get_effect("max_knuckles")) * get_class_mod("knuckles") * (1.0 + get_effect("knuckles_percent"))
+	return (50.0 + get_effect("max_knuckles")) * get_class_mod("knuckles") * (1.0 + get_effect("knuckles_percent"))
 
 
 func get_move_speed_multiplier() -> float:
@@ -1952,7 +1512,7 @@ func get_sprint_multiplier() -> float:
 
 
 func get_coin_multiplier() -> float:
-	return 1.0 + 0.05 * stats.looting + get_effect("coin_bonus")
+	return 1.0 + get_effect("coin_bonus")
 
 
 func begin_dead_league() -> void:
@@ -2007,8 +1567,8 @@ func add_xp(amount: int) -> void:
 	while xp >= xp_to_next():
 		xp -= xp_to_next()
 		level += 1
-		stat_points += STAT_POINTS_PER_LEVEL
-		skill_points += SKILL_POINTS_PER_LEVEL
+		attribute_points += Attributes.POINTS_PER_LEVEL
+		draws += 1
 		leveled_up.emit(level)
 	changed.emit()
 
@@ -2020,13 +1580,140 @@ func add_resource(resource: String, amount: int) -> void:
 
 # --- Spending ---------------------------------------------------------------
 
-func spend_stat_point(stat: String) -> bool:
-	if stat_points <= 0 or not stats.has(stat):
+func spend_attribute(attribute: String) -> bool:
+	if attribute_points <= 0 or not attributes.has(attribute) or int(attributes[attribute]) >= Attributes.MAX:
 		return false
-	stat_points -= 1
-	stats[stat] += 1
+	attribute_points -= 1
+	attributes[attribute] += 1
 	_commit()
 	return true
+
+
+## Every attribute point back, for coins.
+func reset_attributes() -> bool:
+	var spent := 0
+	for attribute in attributes:
+		spent += int(attributes[attribute])
+	var cost := Attributes.reset_cost()
+	if spent == 0 or resources.get("coins", 0) < cost:
+		return false
+	resources["coins"] -= cost
+	for attribute in attributes:
+		attributes[attribute] = 0
+	attribute_points += spent
+	_commit()
+	return true
+
+
+## Whether an attribute perk is unlocked for the current fighter.
+func perk(id: String) -> bool:
+	var needs := Attributes.perk_needs(id)
+	return int(attributes.get(needs[0], 0)) >= int(needs[1])
+
+
+# --- Cards ------------------------------------------------------------------------
+
+## A card's rank for the current fighter (0 if not drawn).
+func card_rank(id: String) -> int:
+	return int(cards.get(id, 0))
+
+
+## The three cards on the table (drawn when a draw is waiting).
+func card_offer() -> Array:
+	var progress := _current()
+	if progress.draws <= 0:
+		return []
+	if progress.offer.is_empty():
+		progress.offer = Cards.draw(player_class, progress.cards, 3, dead_league_clears)
+		if progress.offer.is_empty():
+			# The deck is spent (or everything's sealed): the draw waits.
+			return []
+		save_game()
+	return progress.offer
+
+
+## Keep one of the offered cards (a new card, or a rank up).
+func take_card(id: String) -> bool:
+	var progress := _current()
+	if progress.draws <= 0 or not id in progress.offer:
+		return false
+	progress.cards[id] = card_rank(id) + 1
+	progress.draws -= 1
+	progress.offer = []
+	progress.rerolls = 0
+	_commit()
+	return true
+
+
+func reroll_cost() -> int:
+	return REROLL_SOULS + int(_current().rerolls)
+
+
+## Three new cards for this draw (different ones where the deck allows).
+func reroll_offer() -> bool:
+	var progress := _current()
+	if progress.offer.is_empty() or souls < reroll_cost():
+		return false
+	souls -= reroll_cost()
+	progress.rerolls += 1
+	var shown: Array = progress.offer
+	var hidden: Dictionary = progress.cards.duplicate()
+	for id in shown:
+		hidden[id] = Cards.copies(Cards.info(player_class, id))
+	var fresh := Cards.draw(player_class, hidden, 3, dead_league_clears)
+	if fresh.size() < 3:
+		for id in Cards.draw(player_class, progress.cards, 3, dead_league_clears):
+			if fresh.size() < 3 and not id in fresh:
+				fresh.append(id)
+	progress.offer = fresh
+	_commit()
+	return true
+
+
+func swap_cost(id: String) -> int:
+	return int(SWAP_SOULS.get(Cards.info(player_class, id).get("rarity", "common"), 2))
+
+
+## Give back one rank of a card for a fresh draw (without it on the table).
+func swap_card(id: String) -> bool:
+	var progress := _current()
+	if card_rank(id) <= 0 or souls < swap_cost(id) or progress.draws > 0:
+		return false
+	souls -= swap_cost(id)
+	progress.cards[id] = card_rank(id) - 1
+	if progress.cards[id] <= 0:
+		progress.cards.erase(id)
+	progress.draws += 1
+	var without: Dictionary = progress.cards.duplicate()
+	without[id] = Cards.copies(Cards.info(player_class, id))
+	progress.offer = Cards.draw(player_class, without, 3, dead_league_clears)
+	progress.rerolls = 0
+	_commit()
+	return true
+
+
+## Every card back to the deck, a draw for each.
+func redraft() -> bool:
+	var progress := _current()
+	var kept := 0
+	for id in progress.cards:
+		kept += int(progress.cards[id])
+	if kept == 0 or souls < REDRAFT_SOULS:
+		return false
+	souls -= REDRAFT_SOULS
+	progress.cards = {}
+	progress.draws += kept
+	progress.offer = []
+	progress.rerolls = 0
+	_commit()
+	return true
+
+
+func cards_kept() -> int:
+	var kept := 0
+	for id in cards:
+		kept += int(cards[id])
+	return kept
 
 
 func node_level(kind: String, id: String) -> int:
@@ -2082,8 +1769,8 @@ func node_cost(kind: String, id: String) -> int:
 	return roundi(node.cost * pow(node.cost_growth, node_level(kind, id)))
 
 
-func node_currency(kind: String) -> int:
-	return resources.get("coins", 0) if kind == "upgrade" else skill_points
+func node_currency(_kind := "upgrade") -> int:
+	return resources.get("coins", 0)
 
 
 ## The contender whose seal still blocks this node ("" when it's open).
@@ -2100,11 +1787,7 @@ func can_buy_node(kind: String, id: String) -> bool:
 func buy_node(kind: String, id: String) -> bool:
 	if not can_buy_node(kind, id):
 		return false
-	var cost := node_cost(kind, id)
-	if kind == "upgrade":
-		resources["coins"] -= cost
-	else:
-		skill_points -= cost
+	resources["coins"] -= node_cost(kind, id)
 	_levels(kind)[id] = node_level(kind, id) + 1
 	_commit()
 	return true
@@ -2194,6 +1877,7 @@ func save_game() -> void:
 		"achievements": achievements,
 		"power_pick": power_pick,
 		"power_pick_2": power_pick_2,
+		"power_pick_3": power_pick_3,
 		"drills": drills,
 		"hat_pity": hat_pity,
 		"tony_unlocked": tony_unlocked,
@@ -2272,6 +1956,7 @@ func load_game() -> void:
 	achievements = data.get("achievements", {}).duplicate() if data.get("achievements", {}) is Dictionary else {}
 	power_pick = String(data.get("power_pick", ""))
 	power_pick_2 = String(data.get("power_pick_2", ""))
+	power_pick_3 = String(data.get("power_pick_3", ""))
 	shop_stock = data.get("shop_stock", []).duplicate(true) if data.get("shop_stock", []) is Array else []
 	shop_restock_at = int(data.get("shop_restock_at", -1))
 	shop_rerolls = int(data.get("shop_rerolls", 0))
@@ -2323,6 +2008,8 @@ func load_game() -> void:
 		power_pick = owned[0] if not owned.is_empty() else ""
 	if not power_pick_2 in owned_powers() or power_pick_2 == power_pick:
 		power_pick_2 = ""
+	if not power_pick_3 in owned_powers() or power_pick_3 == power_pick or power_pick_3 == power_pick_2:
+		power_pick_3 = ""
 
 	var saved_classes: Dictionary = data.get("classes", {})
 	if saved_classes.is_empty():
@@ -2333,18 +2020,22 @@ func load_game() -> void:
 			if CLASSES.has(id):
 				_load_class_progress(id, saved_classes[id])
 
-	# Skill web v2: every class's web was rebuilt, so every point comes back.
+	# Version 3: skill webs and stats became card draws and attributes. Every
+	# level gained comes back as a draw and its stat points as attribute points.
 	if int(data.get("skill_version", 1)) < SKILL_VERSION:
-		var refunded := false
+		var leveled := false
 		for id in _classes:
 			var progress: Dictionary = _classes[id]
-			if not progress.skills.is_empty() or progress.skill_points > 0:
-				refunded = refunded or not progress.skills.is_empty()
-			progress.skills = {}
-			progress.skill_points = (int(progress.level) - 1) * SKILL_POINTS_PER_LEVEL
-		if refunded:
-			upgrade_notice = (upgrade_notice + "
-" if upgrade_notice != "" else "") + "The skill webs were rebuilt: every skill point is back."
+			var gained := int(progress.level) - 1
+			leveled = leveled or gained > 0
+			progress.cards = {}
+			progress.draws = gained
+			progress.offer = []
+			progress.attributes = _new_class_progress().attributes
+			progress.attribute_points = gained * Attributes.POINTS_PER_LEVEL
+		if leveled:
+			upgrade_notice = (upgrade_notice + "\n" if upgrade_notice != "" else "") \
+					+ "Level-ups are now card draws and attributes. Every level you gained is a draw, and every stat point is an attribute point."
 	# Armor Breaker went from flat armor to a share of it: convert kept gear.
 	if saved_upgrade_version < 5:
 		for item in armory:
@@ -2352,9 +2043,6 @@ func load_game() -> void:
 				item.effects.armor_pierce = snappedf(float(item.effects.armor_pierce) * 0.07, 0.01)
 	# Nodes no longer connected to the center are removed and refunded.
 	_refund_unreachable(UPGRADES, upgrade_levels, func(amount: int) -> void: resources["coins"] = resources.get("coins", 0) + amount)
-	for id in _classes:
-		var progress: Dictionary = _classes[id]
-		_refund_unreachable(SKILL_TREES[id], progress.skills, func(amount: int) -> void: progress.skill_points += amount)
 	changed.emit()
 
 
@@ -2362,24 +2050,30 @@ func _load_class_progress(id: String, saved: Dictionary) -> void:
 	var progress: Dictionary = _classes[id]
 	progress.level = int(saved.get("level", 1))
 	progress.xp = int(saved.get("xp", 0))
-	progress.stat_points = int(saved.get("stat_points", 0))
-	progress.skill_points = int(saved.get("skill_points", 0))
-	var saved_stats: Dictionary = saved.get("stats", {})
-	for stat in progress.stats:
-		progress.stats[stat] = int(saved_stats.get(stat, 0))
-	# Skills: {id: level}, or an old list of ids. Skills this class's web
-	# doesn't have give their points back.
-	var web: Dictionary = SKILL_TREES[id]
-	var saved_skills = saved.get("skills", {})
-	if saved_skills is Array:
-		progress.skill_points += saved_skills.size()
-	elif saved_skills is Dictionary:
-		for skill in saved_skills:
-			var owned := int(saved_skills[skill])
-			if web.has(skill):
-				progress.skills[skill] = clampi(owned, 0, web[skill].max_level)
-			else:
-				progress.skill_points += owned
+	progress.attribute_points = int(saved.get("attribute_points", 0))
+	var saved_attributes = saved.get("attributes", {})
+	if saved_attributes is Dictionary:
+		for attribute in progress.attributes:
+			var points := clampi(int(saved_attributes.get(attribute, 0)), 0, Attributes.MAX)
+			progress.attributes[attribute] = points
+	# Cards the deck no longer has come back as draws.
+	progress.draws = int(saved.get("draws", 0))
+	var saved_cards = saved.get("cards", {})
+	if saved_cards is Dictionary:
+		for card in saved_cards:
+			var info := Cards.info(id, card)
+			var rank := int(saved_cards[card])
+			if info.is_empty():
+				progress.draws += rank
+			elif rank > 0:
+				progress.cards[card] = mini(rank, Cards.copies(info))
+				progress.draws += rank - progress.cards[card]
+	var saved_offer = saved.get("offer", [])
+	if saved_offer is Array:
+		for card in saved_offer:
+			if not Cards.info(id, String(card)).is_empty():
+				progress.offer.append(String(card))
+	progress.rerolls = int(saved.get("rerolls", 0))
 
 
 ## Souls given for each old Champion Sigil when sigils were retired.
@@ -2604,6 +2298,7 @@ func _reset_fields() -> void:
 	achievements = {}
 	power_pick = ""
 	power_pick_2 = ""
+	power_pick_3 = ""
 	drills = {}
 	hat_pity = 0
 	tony_unlocked = false

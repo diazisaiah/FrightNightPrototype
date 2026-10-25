@@ -1,10 +1,11 @@
 extends Control
 ## Between-run camp: a header with your progress on the Climb and the run
-## buttons, and four pages — Upgrades (the sealed coin web), Skills (skill
-## point web), Armory (kept Crypt gear) and Stats (stat points and a sheet). The class is chosen on the title screen
-## (Menu button). Built in code because it's generated from the data in GameState.
+## buttons, and the pages: Upgrades (the sealed coin web), Deck (the fighter's
+## level-up cards), Armory (kept Crypt gear), Cosmetics, Bounties, Shop and
+## Attributes (attribute points, perks and a sheet). The class is chosen on the
+## title screen (Menu button). Built in code from the data in GameState.
 
-const PAGES := ["Upgrades", "Skills", "Armory", "Cosmetics", "Bounties", "Shop", "Stats"]
+const PAGES := ["Upgrades", "Deck", "Armory", "Cosmetics", "Bounties", "Shop", "Attributes"]
 const WORLD := preload("res://world.gd")
 const DUNGEON := preload("res://dungeon.gd")
 const DETAIL_WIDTH := 340.0
@@ -16,7 +17,7 @@ var _menus: Control
 var _crypt_button: Button
 var _level_label: Label
 var _xp_label: Label
-## Resource pills in the header: coins, souls, skill and stat points.
+## Resource pills in the header: coins, souls, card draws and attribute points.
 var _chips := {}
 ## The header amounts only animate after the first refresh.
 var _shown_once := false
@@ -25,9 +26,11 @@ var _tab_buttons := {}
 var _pages := {}
 var _trees := {}
 var _details := {}
-var _stat_rows := {}
+var _attribute_rows := {}
 var _sheet: GridContainer
-var _stats_title: Label
+var _attributes_title: Label
+var _reset_button: Button
+var _deck: DeckPage
 
 
 func _ready() -> void:
@@ -46,9 +49,25 @@ func _ready() -> void:
 		var notice := GameDialog.open(self, "A NEW CLIMB", GameState.upgrade_notice, ["Let's go"])
 		GameState.upgrade_notice = ""
 		GameState.save_game()
-		notice.chosen.connect(func(_index: int) -> void: _camp_tips.call_deferred())
+		notice.chosen.connect(func(_index: int) -> void: _draw_then_tips.call_deferred())
+	else:
+		_draw_then_tips()
+
+
+## Cards waiting from level-ups: the draw first, then camp's tips.
+func _draw_then_tips() -> void:
+	if not is_inside_tree():
+		return
+	if GameState.draws > 0 and not GameState.card_offer().is_empty():
+		_open_draw().closed.connect(_camp_tips.call_deferred)
 	else:
 		_camp_tips()
+
+
+func _open_draw() -> CardDraw:
+	var draw := CardDraw.open(self)
+	draw.closed.connect(_refresh)
+	return draw
 
 
 ## Camp's mini tutorials (Tutorial), each once: after your first hat, the
@@ -153,12 +172,14 @@ func _build_ui() -> void:
 	page_area.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	column.add_child(page_area)
 	_add_page(page_area, "Upgrades", _build_tree_page("upgrade"))
-	_add_page(page_area, "Skills", _build_tree_page("skill"))
+	_deck = DeckPage.new()
+	_deck.draw_requested.connect(_open_draw)
+	_add_page(page_area, "Deck", _deck)
 	_add_page(page_area, "Armory", _build_armory_page())
 	_add_page(page_area, "Cosmetics", _build_cosmetics_page())
 	_add_page(page_area, "Bounties", _build_bounty_page())
 	_add_page(page_area, "Shop", _build_shop_page())
-	_add_page(page_area, "Stats", _build_stats_page())
+	_add_page(page_area, "Attributes", _build_attributes_page())
 
 
 ## Holds a row at its natural size, shrunk to fit when the screen is narrower
@@ -217,8 +238,8 @@ func _build_header() -> Control:
 	var tips := {
 		"coins": "Coins",
 		"souls": "Souls",
-		"skill_points": "Skill points",
-		"stat_points": "Stat points",
+		"draws": "Card draws waiting",
+		"attribute_points": "Attribute points",
 	}
 	for id in tips:
 		var chip := ResourceChip.make(id)
@@ -475,7 +496,7 @@ func _buy_selected(kind: String) -> void:
 		tree.deny(id)
 		_shake(_details[kind].cost_row)
 		if GameState.node_sealed_by(kind, id) == "":
-			_chips["coins" if kind == "upgrade" else "skill_points"].deny()
+			_chips.coins.deny()
 
 
 ## The first power bought: a pointer at Select until it's picked.
@@ -514,7 +535,7 @@ func _ability_tip() -> void:
 			if not Abilities.unlocked(GameState.player_class, entry.id, GameState.level):
 				continue
 			if Tutorial.open(self, "ability_" + entry.id, "NEW %s: %s" % [slot.to_upper(), String(entry.name).to_upper()],
-					"%s\n\nEquip it in your Loadout. Your skill web adapts to whatever you pick." % entry.desc,
+					"%s\n\nEquip it in your Loadout. Your cards for it come with it." % entry.desc,
 					_loadout_button, func() -> bool: return _loadout_opened, false) != null:
 				return
 
@@ -713,7 +734,7 @@ func _refresh_detail(kind: String) -> void:
 	var cost := GameState.node_cost(kind, id)
 	var have := GameState.node_currency(kind)
 	var holder := GameState.node_sealed_by(kind, id)
-	var cost_text := "%d {%s}" % [cost, "coins" if kind == "upgrade" else "skill_points"]
+	var cost_text := "%d {coins}" % cost
 	var can_pay := have >= cost and holder == ""
 	detail.cost.color = UiTheme.TEXT if can_pay else UiTheme.BAD.lightened(0.1)
 	detail.cost.text = cost_text
@@ -737,55 +758,98 @@ func _refresh_detail(kind: String) -> void:
 		buy.text = "Need %d more" % (cost - have)
 		buy.disabled = true
 	else:
-		var verb := "Buy" if kind == "upgrade" else "Learn"
-		buy.text = verb if node.max_level == 1 else "%s level %d" % [verb, level + 1]
+		buy.text = "Buy" if node.max_level == 1 else "Buy level %d" % (level + 1)
 		buy.disabled = false
 
 
-# --- Stats ----------------------------------------------------------------------
+# --- Attributes ------------------------------------------------------------------
 
-func _build_stats_page() -> Control:
+func _build_attributes_page() -> Control:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 14)
 
 	var left := PanelContainer.new()
 	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(left)
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	left.add_child(scroll)
 	var list := VBoxContainer.new()
-	list.add_theme_constant_override("separation", 10)
-	left.add_child(list)
-	_stats_title = UiTheme.title_label("STATS", 26, UiTheme.GOLD)
-	list.add_child(_stats_title)
-	for stat in GameState.STATS:
-		var info: Dictionary = GameState.STATS[stat]
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	list.add_theme_constant_override("separation", 8)
+	scroll.add_child(list)
+	var top := HBoxContainer.new()
+	list.add_child(top)
+	_attributes_title = UiTheme.title_label("ATTRIBUTES", 26, UiTheme.GOLD)
+	_attributes_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(_attributes_title)
+	_reset_button = Button.new()
+	_reset_button.tooltip_text = "Every attribute point back."
+	_reset_button.pressed.connect(func() -> void:
+		if GameState.reset_attributes():
+			Sfx.play("coin", -6.0, 0.8)
+		else:
+			_chips.coins.deny())
+	top.add_child(_reset_button)
+	for attribute in Attributes.LIST:
+		var info: Dictionary = Attributes.LIST[attribute]
+		var tint: Color = info.color
 		var card := PanelContainer.new()
-		card.add_theme_stylebox_override("panel", UiTheme.box(UiTheme.PANEL_LIGHT, UiTheme.BORDER, 1, 10, 12.0))
-		var stat_row := HBoxContainer.new()
-		stat_row.add_theme_constant_override("separation", 14)
-		card.add_child(stat_row)
+		card.add_theme_stylebox_override("panel", UiTheme.box(UiTheme.PANEL_LIGHT, Color(tint, 0.35), 1, 10, 10.0))
+		var body := VBoxContainer.new()
+		body.add_theme_constant_override("separation", 6)
+		card.add_child(body)
+		var head := HBoxContainer.new()
+		head.add_theme_constant_override("separation", 12)
+		body.add_child(head)
 		var icon := IconView.new()
 		icon.icon = info.icon
-		icon.custom_minimum_size = Vector2(48, 48)
-		stat_row.add_child(icon)
+		icon.color = tint
+		icon.custom_minimum_size = Vector2(44, 44)
+		head.add_child(icon)
 		var texts := VBoxContainer.new()
 		texts.alignment = BoxContainer.ALIGNMENT_CENTER
 		texts.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		texts.add_child(_label(info.name, 18))
-		texts.add_child(_label(info.desc, 13, UiTheme.MUTED))
-		stat_row.add_child(texts)
-		var value := _label("0", 26, UiTheme.GOLD)
-		value.custom_minimum_size.x = 50
+		texts.add_child(_label("Every point: " + info.text, 13, UiTheme.MUTED))
+		head.add_child(texts)
+		var value := _label("0", 24, UiTheme.GOLD)
+		value.custom_minimum_size.x = 76
 		value.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		value.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		stat_row.add_child(value)
+		head.add_child(value)
 		var plus := Button.new()
 		plus.text = "+"
-		plus.custom_minimum_size = Vector2(48, 48)
+		plus.custom_minimum_size = Vector2(44, 44)
 		plus.add_theme_font_size_override("font_size", 22)
-		plus.pressed.connect(GameState.spend_stat_point.bind(stat))
-		stat_row.add_child(plus)
+		plus.pressed.connect(func() -> void:
+			if GameState.spend_attribute(attribute):
+				Sfx.play("clear", -8.0, 1.2))
+		head.add_child(plus)
+		# The perks at 10, 20 and 30 points.
+		var perks := HBoxContainer.new()
+		perks.add_theme_constant_override("separation", 8)
+		body.add_child(perks)
+		var perk_labels := []
+		for i in info.perks.size():
+			var perk: Array = info.perks[i]
+			var cell := PanelContainer.new()
+			cell.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			cell.size_flags_stretch_ratio = 1.0
+			var cell_box := VBoxContainer.new()
+			cell_box.add_theme_constant_override("separation", 0)
+			cell.add_child(cell_box)
+			var perk_name := _label("%d  ·  %s" % [Attributes.PERK_AT[i], perk[1]], 13)
+			perk_name.add_theme_font_override("font", UiTheme.bold_font())
+			cell_box.add_child(perk_name)
+			var perk_text := _label(perk[2], 11, UiTheme.MUTED)
+			perk_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			perk_text.custom_minimum_size.x = 150
+			cell_box.add_child(perk_text)
+			perks.add_child(cell)
+			perk_labels.append([cell, perk_name, perk_text, Attributes.PERK_AT[i]])
 		list.add_child(card)
-		_stat_rows[stat] = {"value": value, "plus": plus}
+		_attribute_rows[attribute] = {"value": value, "plus": plus, "perks": perk_labels, "tint": tint}
 
 	var right := PanelContainer.new()
 	right.custom_minimum_size.x = DETAIL_WIDTH
@@ -805,6 +869,26 @@ func _build_stats_page() -> Control:
 	return row
 
 
+func _refresh_attributes() -> void:
+	var points := GameState.attribute_points
+	_attributes_title.text = "ATTRIBUTES  ·  %d TO SPEND" % points if points > 0 else "ATTRIBUTES"
+	var spent := 0
+	for attribute in _attribute_rows:
+		var row: Dictionary = _attribute_rows[attribute]
+		var have := int(GameState.attributes.get(attribute, 0))
+		spent += have
+		row.value.text = "%d / %d" % [have, Attributes.MAX]
+		row.plus.disabled = points <= 0 or have >= Attributes.MAX
+		for perk in row.perks:
+			var on: bool = have >= int(perk[3])
+			perk[0].add_theme_stylebox_override("panel", UiTheme.box(Color(row.tint.darkened(0.72), 0.95) if on else Color(0, 0, 0, 0.3), Color(row.tint, 0.7 if on else 0.15), 1, 6, 6.0))
+			perk[1].add_theme_color_override("font_color", row.tint.lightened(0.2) if on else UiTheme.MUTED)
+			perk[2].add_theme_color_override("font_color", UiTheme.TEXT if on else UiTheme.MUTED.darkened(0.2))
+	var cost := Attributes.reset_cost()
+	_reset_button.text = "Reset  ·  %d coins" % cost
+	_reset_button.disabled = spent == 0
+
+
 func _refresh_sheet() -> void:
 	for child in _sheet.get_children():
 		child.queue_free()
@@ -813,6 +897,8 @@ func _refresh_sheet() -> void:
 		["Fighter", "%s  (%s)" % [GameState.fighter_name(), GameState.CLASSES[GameState.player_class].name]],
 		["Jab damage", "%.1f  (head %.1f)" % [damage, damage * (Enemy.HEAD_MULTIPLIER + GameState.get_effect("head_bonus"))]],
 		["Max knuckle HP", "%d" % roundi(GameState.get_max_knuckles())],
+		["Passive", "%s  ·  %s" % [String(Abilities.info(GameState.player_class, GameState.passive()).get("name", "")),
+				Abilities.power_text(GameState.passive(), GameState.passive_power()) if GameState.passive_power() > 0.0 else "grows with levels"]],
 		["Punch cost", "Jab/cross 1, hook 2, uppercut 3"],
 		["Damage taken", "%d%%" % roundi(GameState.get_knuckle_loss_multiplier() * 100.0)],
 		["Punch speed", "x%.2f" % GameState.get_punch_speed()],
@@ -825,6 +911,7 @@ func _refresh_sheet() -> void:
 				GameState.get_counter_window_bonus(), GameState.MAX_COUNTER_WINDOW_BONUS]],
 		["Armor ignored", "%d%%" % roundi(GameState.get_armor_pierce() * 100.0)],
 		["Coins", "x%.2f" % GameState.get_coin_multiplier()],
+		["XP", "x%.2f" % (1.0 + GameState.get_effect("xp_bonus"))],
 	]
 	for line in lines:
 		_sheet.add_child(_label(line[0], 14, UiTheme.MUTED))
@@ -844,8 +931,8 @@ func _refresh() -> void:
 	_chips.coins.set_amount(GameState.resources.get("coins", 0), _shown_once)
 	_refresh_bounties()
 	_chips.souls.set_amount(GameState.souls, _shown_once)
-	_chips.skill_points.set_amount(GameState.skill_points, _shown_once)
-	_chips.stat_points.set_amount(GameState.stat_points, _shown_once)
+	_chips.draws.set_amount(GameState.draws, _shown_once)
+	_chips.attribute_points.set_amount(GameState.attribute_points, _shown_once)
 	_shown_once = true
 	# Your POWER: every stat, upgrade, skill and item in one number.
 	_night_label.text = "POWER  %d" % PowerRating.player()
@@ -862,13 +949,9 @@ func _refresh() -> void:
 			tree.selected_id = GameState.tree(kind).keys()[0]
 			tree.refresh()
 		_refresh_detail(kind)
-	_tab_buttons["Skills"].text = "Skills  (%d)" % GameState.skill_points if GameState.skill_points > 0 else "Skills"
-	_tab_buttons["Stats"].text = "Stats  (%d)" % GameState.stat_points if GameState.stat_points > 0 else "Stats"
-
-	_stats_title.text = "STATS  ·  %d TO SPEND" % GameState.stat_points if GameState.stat_points > 0 else "STATS"
-	for stat in _stat_rows:
-		_stat_rows[stat].value.text = "%d" % GameState.stats[stat]
-		_stat_rows[stat].plus.disabled = GameState.stat_points <= 0
+	_tab_buttons["Deck"].text = "Deck  (%d)" % GameState.draws if GameState.draws > 0 else "Deck"
+	_tab_buttons["Attributes"].text = "Attributes  (%d)" % GameState.attribute_points if GameState.attribute_points > 0 else "Attributes"
+	_refresh_attributes()
 	_refresh_sheet()
 
 

@@ -43,7 +43,7 @@ func _think(delta: float) -> Vector3:
 
 	if _drawing:
 		_draw_timer -= delta
-		if not _flashed and _draw_timer <= TELL_FLASH_TIME:
+		if not _flashed and _draw_timer <= tell_time():
 			_flashed = true
 			_flash_tell(_tell_color(), _flash_height)
 		if _draw_timer <= 0.0:

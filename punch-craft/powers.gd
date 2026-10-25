@@ -23,6 +23,14 @@ const MAX_FROST_SLOW := 0.85
 const LAUNCH_KNOCKBACK_MULTIPLIER := 2.0
 const LAUNCH_STUN := 1.5
 
+## Hears every power go off: (root, target) (CardPlay, for the Catalyst's cards).
+static var listener: Callable
+
+
+static func went_off(root: String, target: Enemy) -> void:
+	if listener.is_valid():
+		listener.call(root, target)
+
 
 ## Flames burst from the punched enemy and burn everyone else nearby.
 static func fire_burst(target: Enemy, damage: float) -> void:
@@ -40,26 +48,29 @@ static func fire_burst(target: Enemy, damage: float) -> void:
 		target.ignite(burn_per_second, burn_time)
 	for enemy in _enemies_near(target, target.global_position, radius):
 		var push := (enemy.global_position - target.global_position).normalized() * 3.0
-		enemy.take_hit(damage, enemy.global_position + Vector3(0, 1.0, 0), push, false, "BURN")
-		if burn_per_second > 0.0:
+		_hit(enemy, damage, push, false, "BURN")
+		if burn_per_second > 0.0 and not enemy.is_dead():
 			enemy.ignite(burn_per_second, burn_time)
 		HitFx.burst(world, enemy.global_position + Vector3(0, 1.0, 0), Vector3.UP, FIRE_COLOR, 12, 2.5, true, 0.07)
+	went_off("sigil_fire", target)
 
 
 ## Frost Fists: the target and everything near it are frozen (slowed).
-static func frost_burst(target: Enemy) -> void:
+## slow: how much (the Frost upgrades' own by default).
+static func frost_burst(target: Enemy, slow := -1.0) -> void:
 	var world := target.get_parent()
 	var center := target.global_position + Vector3(0, 1.1, 0)
 	HitFx.burst(world, center, Vector3.UP, Enemy.FROST_COLOR, 30, 4.0, true, 0.06)
 	HitFx.burst(world, center, Vector3.UP, Color(0.9, 0.97, 1.0), 14, 2.0, true, 0.04)
 	_flash(world, center, Enemy.FROST_COLOR, 4.0)
 	Sfx.play_at("zap", center, -4.0, 0.55)
-	var slow := minf(GameState.get_effect("frost_punch"), MAX_FROST_SLOW)
+	slow = minf(GameState.get_effect("frost_punch") if slow < 0.0 else slow, MAX_FROST_SLOW)
 	var duration := FROST_TIME + GameState.get_effect("frost_time")
 	var radius := FROST_RADIUS + GameState.get_effect("frost_radius")
 	target.chill(duration, slow)
 	for enemy in _enemies_near(target, target.global_position, radius):
 		enemy.chill(duration, slow)
+	went_off("sigil_frost", target)
 
 
 ## Lightning jumps from the punched enemy to the nearest others, one after another.
@@ -76,11 +87,12 @@ static func chain_lightning(target: Enemy, damage: float, jumps: int) -> void:
 			break
 		var to := next.global_position + Vector3(0, 1.3, 0)
 		_bolt(world, from, to)
-		next.take_hit(jump_damage, next.global_position + Vector3(0, 1.0, 0), Vector3.ZERO, stuns, "ZAP")
+		_hit(next, jump_damage, Vector3.ZERO, stuns, "ZAP")
 		HitFx.burst(world, to, Vector3.UP, CHAIN_COLOR, 10, 3.0, true, 0.04)
 		hit.append(next)
 		from = to
 		jump_damage *= CHAIN_FALLOFF
+	went_off("sigil_storm", target)
 
 
 ## Landing shockwave around the player: damages, staggers and knocks back.
@@ -105,6 +117,20 @@ static func ground_pound(player: Node3D, damage: float) -> void:
 		enemy.take_hit(damage, enemy.global_position + Vector3(0, 1.0, 0), offset.normalized() * knockback, true, "QUAKE")
 		if launch:
 			enemy.stun(LAUNCH_STUN)
+
+
+## A power's hit. Overflow (the Catalyst's card): what's left over after a
+## knockout spills onto the nearest monster.
+static func _hit(enemy: Enemy, damage: float, push: Vector3, stagger: bool, caption: String) -> void:
+	var before := enemy.hp
+	var dealt := enemy.take_hit(damage, enemy.global_position + Vector3(0, 1.0, 0), push, stagger, caption)
+	var overflow := GameState.get_effect("overflow")
+	if overflow <= 0.0 or not enemy.is_dead() or dealt <= before:
+		return
+	var next := _nearest(enemy, enemy.global_position, 4.0, [enemy] as Array[Enemy])
+	if next:
+		_bolt(enemy.get_parent(), enemy.global_position + Vector3(0, 1.2, 0), next.global_position + Vector3(0, 1.2, 0))
+		next.take_hit((dealt - before) * overflow, next.global_position + Vector3(0, 1.0, 0), Vector3.ZERO, false, "OVERFLOW")
 
 
 static func _enemies_near(target: Enemy, center: Vector3, radius: float) -> Array[Enemy]:

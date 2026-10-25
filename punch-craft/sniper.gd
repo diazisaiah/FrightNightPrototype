@@ -21,7 +21,7 @@ func _ready() -> void:
 func _think(delta: float) -> Vector3:
 	var move := super(delta)
 	if _drawing:
-		if _draw_timer > TELL_FLASH_TIME:
+		if _draw_timer > tell_time():
 			var to_player := player.global_position - global_position
 			to_player.y = 0.0
 			if to_player.length() > 0.1:

@@ -180,7 +180,7 @@ func _think(delta: float) -> Vector3:
 			if _state_timer <= 0.0 and has_turn() and distance <= attack_range:
 				_start_combo()
 		State.WINDUP:
-			if not _flashed and _state_timer <= TELL_FLASH_TIME:
+			if not _flashed and _state_timer <= tell_time():
 				_flashed = true
 				if glow_tells:
 					_flash_tell(CUES[_attack].color)
@@ -207,6 +207,10 @@ func _think(delta: float) -> Vector3:
 			return _wait_move(offset, delta, move_speed)
 		return _footwork(offset, delta)
 	return Vector3.ZERO
+
+
+func combo_finished() -> bool:
+	return _queue.is_empty()
 
 
 func _on_staggered() -> void:
@@ -249,7 +253,7 @@ func _begin_attack(attack: String, windup: float) -> void:
 	_attack = attack
 	_flashed = false
 	_previewed = false
-	_windup_total = maxf(windup * windup_scale, TELL_FLASH_TIME + 0.15)
+	_windup_total = maxf(windup * windup_scale, tell_time() + 0.15)
 	var left := _attack_uses_arm(attack, "left")
 	var right := _attack_uses_arm(attack, "right")
 	if left != right:
@@ -319,7 +323,8 @@ func _strike(distance: float) -> void:
 	if result == "dodged":
 		# Keep throwing the rest of the combo so dodges can be chained; it's
 		# left open at the end. A counter mid-combo staggers it and cuts it short.
-		_open_time = DODGED_OPEN_TIME * open_scale
+		# Exploit (the Answer's card): open longer.
+		_open_time = (DODGED_OPEN_TIME + GameState.get_effect("exploit")) * open_scale
 
 
 func _enter(state: State, time: float) -> void:
@@ -823,7 +828,7 @@ func _run_special(delta: float) -> Vector3:
 			_turn_toward(player.global_position - global_position, delta)
 			_marks.show_ring(global_position, GROUND_SLAM_RADIUS)
 			_marks.pulse(_step_time / GROUND_SLAM_WINDUP)
-			if not _locked and _step_time >= GROUND_SLAM_WINDUP - TELL_FLASH_TIME:
+			if not _locked and _step_time >= GROUND_SLAM_WINDUP - tell_time():
 				_locked = true
 				_flash_tell(Telegraphs.DANGER, 2.2)
 			if _step_time >= GROUND_SLAM_WINDUP:

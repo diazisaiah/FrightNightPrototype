@@ -17,6 +17,8 @@ class_name PowerRating
 ##   (1 + weighted defense and sustain: capped dodge/counter windows, graze
 ##      and flinch cuts, heals, free punches, super armor... see DEFENSE)
 ## Every special (thorns, venom, The Long Count, Bone Breaker ...) adds 5%.
+## Cards (CARDS: offense and defense per unit of each card's effect, EVERY for
+## "every Nth" cards) and attribute perks (PERKS) count too.
 ##
 ## Dead League contenders are rated with the same formula on the par build
 ## they're tuned for (Progression.par), so the two numbers compare directly.
@@ -28,8 +30,8 @@ const OFFENSE := {
 	"finisher_bonus": 0.3, "boss_damage": 0.3, "armor_pierce": 0.3,
 	"last_stand": 0.35, "retaliation_bonus": 0.1, "opener_bonus": 0.13, "wise_up": 0.4,
 	"shockwave_damage": 0.1, "boss_ko_bonus": 0.8,
-	# Skill points feeding the equipped passive (Abilities): each passive
-	# turns them into damage and staying power.
+	# Passive power (a point every few levels): each passive turns it into
+	# damage and staying power.
 	"passive_power": 0.02,
 }
 const POWERS := {
@@ -46,6 +48,59 @@ const DEFENSE := {
 	"counter_heal": 0.06, "fugget_heal": 0.6, "fugget_cut": 0.03, "counter_free_bonus": 0.2,
 	"armor_charges": 0.08, "armor_recharge_cut": 0.02, "armor_absorb_reduction": 0.15,
 	"passive_power": 0.025,
+}
+## Level-up cards (Cards): [offense, defense] for each unit of the effect. How
+## often each one comes into play is baked in (Payback touches about one punch
+## in seven, Mob Magnet about one and a half monsters...). Flags are worth
+## their number once.
+const CARDS := {
+	# The Mauler.
+	"payback": [0.15, 0.0], "hit_guard": [0.0, 1.0], "hit_ult": [0.01, 0.0], "mob_bonus": [1.5, 0.0],
+	"no_flinch": [0.0, 0.1], "staggered_bonus": [0.25, 0.0], "cleave": [0.06, 0.0], "shoulder": [0.02, 0.03],
+	"second_breath": [0.0, 0.25], "blood_feud": [0.12, 0.0], "strike": [0.08, 0.0], "red_mist": [0.1, 0.0],
+	"inferno_ii": [0.04, 0.0], "brimstone_wall": [0.03, 0.06], "crowd_guard": [0.0, 2.0], "juggernaut": [0.0, 0.125],
+	"ult_surge": [0.05, 0.03], "avalanche": [0.06, 0.04], "berserk": [0.06, 0.04],
+	# The Answer.
+	"closing": [0.07, 0.0], "exploit": [0.08, 0.0], "sting_delay": [0.0, 0.15], "counter_ult": [0.08, 0.0],
+	"two_answers": [0.06, 0.0], "turnabout": [0.04, 0.05], "read_twice": [0.02, 0.0], "return_sender": [0.01, 0.0],
+	"crowd_reader": [0.0, 0.15], "checkmate": [0.1, 0.0], "ghost_walk": [0.0, 0.06], "stored_answers": [0.12, 0.0],
+	"riposte_ii": [0.04, 0.03], "untouchable_flow": [0.0, 0.06], "free_flow": [0.06, 0.0], "mirror_match": [0.0, 0.06],
+	"last_word": [0.06, 0.0],
+	# The Blur.
+	"second_gear": [0.7, 0.0], "bounce_back": [0.1, 0.0], "pierce_hit": [0.4, 0.0], "speed_bag": [0.3, 0.0],
+	"ricochet": [0.03, 0.0], "afterimage": [0.03, 0.0], "stun_lock": [0.05, 0.03], "aftershock": [0.08, 0.03],
+	"double_echo": [0.08, 0.0], "spear_hands": [0.08, 0.04], "temporal_break_ii": [0.05, 0.0], "unbroken_ii": [0.05, 0.0],
+	"flurry": [0.06, 0.0], "perpetual_motion": [0.06, 0.0], "blur": [0.03, 0.08], "fifty": [0.04, 0.04],
+	# The Stray.
+	"dash_reach": [0.0, 0.1], "cheap_shot": [0.25, 0.0], "hang_time": [0.15, 0.0], "opportunist": [0.3, 0.0],
+	"vault": [0.03, 0.02], "blindside": [0.03, 0.0], "ghost_step": [0.0, 0.04], "slick": [0.0, 0.05],
+	"spear_line": [0.08, 0.0], "bounce_house": [0.06, 0.0], "full_tilt": [0.1, 0.0], "directors_cut": [0.05, 0.0],
+	"express": [0.04, 0.0], "high_ground": [0.15, 0.0], "parkour": [0.03, 0.04], "never_where": [0.0, 0.08],
+	"free_running": [0.08, 0.0],
+	# Tony.
+	# Enraged monsters take double from Tony (and hit him harder).
+	"insult_time": [0.02, 0.0], "below_belt": [0.2, 0.0], "first_punch": [0.1, 0.0], "shrug_rage": [0.05, -0.03],
+	"bada_bing": [0.03, 0.0], "made_man": [0.0, 0.03], "vinnie_bonus": [0.08, 0.0], "wake_up_call": [0.02, 0.03],
+	"fuggedaboudit_ii": [0.0, 0.1], "whole_crew": [0.05, 0.04], "skim": [0.02, 0.0], "big_mouth_ii": [0.06, 0.0],
+	"family_reunion": [0.05, 0.0], "last_word_tony": [0.0, 0.05], "untouchable_tony": [0.0, 0.1], "respect": [0.04, 0.0],
+	"capo": [0.04, 0.0],
+	# The Catalyst.
+	"conduit": [0.3, 0.0], "afterglow": [0.3, 0.0], "resonance": [0.04, 0.0], "overflow": [0.06, 0.0],
+	"ward": [0.0, 2.0], "focus": [0.4, 0.0], "twin_cast": [0.3, 0.0], "sigil_weave": [0.08, 0.0],
+	"deep_attunement": [0.08, 0.0], "spectrum": [0.1, 0.0], "elemental_fists_ii": [0.06, 0.0], "flame_burst_ii": [0.06, 0.0],
+	"archmage": [0.2, 0.0], "living_conduit": [0.1, 0.0], "elemental_body": [0.04, 0.03], "grand_unification": [0.06, 0.0],
+}
+## "Every Nth" cards (the smaller N, the better): [offense, defense] x 1/N.
+const EVERY := {
+	"thousand_fists": [1.2, 0.0], "rhythm_guard": [0.0, 0.4], "say_it": [1.2, -0.3], "runic_wraps": [0.9, 0.0],
+}
+## Attribute perks (Attributes): [offense, defense] each. Fortune's are worth
+## no fighting power.
+const PERKS := {
+	"heavy_hands": [0.03, 0.02], "follow_through": [0.04, 0.0], "knockout_blow": [0.12, 0.0],
+	"iron_knuckles": [0.0, 0.05], "granite_chin": [0.0, 0.08], "get_up": [0.0, 0.1],
+	"quick_feet": [0.0, 0.03], "tempo": [0.08, 0.0], "blur_step": [0.05, 0.02],
+	"read_the_tell": [0.0, 0.06], "clean_break": [0.02, 0.04], "precision": [0.06, 0.0],
 }
 ## Effect caps (GameState): only what actually applies counts.
 const CAPS := {"dodge_window": 0.25, "counter_window": 0.5, "armor_pierce": 0.75}
@@ -76,6 +131,9 @@ static func rate(build: Dictionary) -> int:
 	offense *= 1.0 + _weighted(fx, POWERS)
 	var defense: float = build.knuckles * (10.0 + build.defense) / 10.0 / 50.0 / (1.0 + maxf(fx.get("damage_taken", 0.0), -0.5))
 	defense *= 1.0 + _weighted(fx, DEFENSE)
+	var cards := _card_worth(fx, build.get("perks", []))
+	offense *= 1.0 + cards.x
+	defense *= 1.0 + cards.y
 	var specials := 0
 	for key in SPECIALS:
 		if float(fx.get(key, 0.0)) > 0.0:
@@ -83,7 +141,7 @@ static func rate(build: Dictionary) -> int:
 	return roundi(100.0 * sqrt(maxf(offense, 0.01) * maxf(defense, 0.01)) * (1.0 + SPECIAL_WORTH * specials))
 
 
-## The current fighter: every stat, upgrade, skill, worn item and blessing.
+## The current fighter: every upgrade, card, attribute, worn item and blessing.
 static func player() -> int:
 	var fx := {}
 	for key in _all_keys():
@@ -96,8 +154,25 @@ static func player() -> int:
 	return rate({
 		"damage": GameState.get_damage(), "knuckles": GameState.get_max_knuckles(),
 		"defense": GameState.get_defense(), "punch_speed": GameState.get_punch_speed(),
-		"combo_step": GameState.get_combo_step(), "effects": fx,
+		"combo_step": GameState.get_combo_step(), "effects": fx, "perks": PERKS.keys().filter(GameState.perk),
 	})
+
+
+## What cards and perks add: (offense, defense) shares.
+static func _card_worth(fx: Dictionary, perks: Array) -> Vector2:
+	var worth := Vector2.ZERO
+	for key in CARDS:
+		var value := float(fx.get(key, 0.0))
+		if value != 0.0:
+			worth += Vector2(CARDS[key][0], CARDS[key][1]) * value
+	for key in EVERY:
+		var every := float(fx.get(key, 0.0))
+		if every > 0.0:
+			worth += Vector2(EVERY[key][0], EVERY[key][1]) / every
+	for perk in perks:
+		if PERKS.has(perk):
+			worth += Vector2(PERKS[perk][0], PERKS[perk][1])
+	return worth
 
 
 ## Contender index i (0-4): the par build for its tier, as your class (its
@@ -141,6 +216,9 @@ static func _all_keys() -> Array:
 			keys[key] = true
 	for key in SPECIALS:
 		keys[key] = true
+	for table in [CARDS, EVERY]:
+		for key in table:
+			keys[key] = true
 	keys["damage_taken"] = true
 	keys["crit_chance"] = true
 	keys["crit_damage"] = true

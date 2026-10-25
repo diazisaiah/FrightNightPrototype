@@ -90,7 +90,7 @@ func _think(delta: float) -> Vector3:
 			return Vector3.ZERO
 	if _casting:
 		_cast_timer -= delta
-		if not _flashed and _cast_timer <= TELL_FLASH_TIME:
+		if not _flashed and _cast_timer <= tell_time():
 			_flashed = true
 			_flash_tell(Boxer.SLIP_COLOR, 1.8)
 		if _cast_timer <= 0.0:

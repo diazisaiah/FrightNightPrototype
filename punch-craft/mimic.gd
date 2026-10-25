@@ -56,7 +56,7 @@ func _think(delta: float) -> Vector3:
 			return offset.normalized() * move_speed
 		State.WINDUP:
 			_turn_toward(offset, delta)
-			if not _flashed and _state_timer <= TELL_FLASH_TIME:
+			if not _flashed and _state_timer <= tell_time():
 				_flashed = true
 				_flash_tell(Boxer.BACK_STEP_COLOR, 1.3)
 			if _state_timer <= 0.0:

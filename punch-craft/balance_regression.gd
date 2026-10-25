@@ -208,7 +208,8 @@ func _test_progression_webs() -> void:
 	_check(tamed.upgrade_levels.get("dmg_1", 0) == 5 and tamed.upgrade_levels.get("dmg_2", 0) == 3, "Taming prices keeps every bought level")
 	_check(expected > 0 and tamed.resources.coins == expected, "Taming prices refunds the difference (%d, expected %d)" % [tamed.resources.coins, expected])
 	tamed.free()
-	_check(GameState.SKILL_VERSION == 2, "Skill web v2 must refund every older skill point")
+	_check(GameState.SKILL_VERSION == 3, "Level-up v3 must turn old levels into card draws and attributes")
+	_test_card_migration()
 
 	# A maxed version-3 web comes back at its old (pre-ring) prices, about 43k,
 	# not today's ring prices; its Champion Sigils become Souls.
@@ -224,20 +225,77 @@ func _test_progression_webs() -> void:
 	_check(migrated.souls == 2 * migrated.SOULS_PER_OLD_SIGIL, "Old Champion Sigils must become Souls")
 	migrated.free()
 
-	for class_id in GameState.SKILL_TREES:
-		var nodes: Dictionary = GameState.SKILL_TREES[class_id]
-		_audit_tree(class_id, nodes)
-		var sealed := 0
-		for node in nodes.values():
-			if int(node.get("ring", 1)) > 1:
-				sealed += 1
-		_check(sealed == 5, "%s should have three sealed capstones plus Ultimate Surge and Ultimate II" % class_id)
-		var points := 0
-		for node in nodes.values():
-			points += int(node.cost) * int(node.max_level)
-			for effect in node.effects:
-				_check(effect != "head_bonus", "%s: head shots are too hard to land to build a skill around" % class_id)
-		_check(points == int(Progression.SKILL_WEB_POINTS), "%s's web should cost %d points, got %d" % [class_id, Progression.SKILL_WEB_POINTS, points])
+	_test_decks()
+
+
+## Every fighter's deck: 20 cards, 40 copies (5 commons x4, 5 rares x2, 5
+## epics, 5 legendaries), an epic for each passive and ultimate, a legendary
+## for each seal, effects for every rank, real icons and tags.
+func _test_decks() -> void:
+	for fighter in GameState.CLASSES:
+		var deck := Cards.deck(fighter)
+		_check(deck.size() == 20 and Cards.deck_size(fighter) == 40, "%s's deck has 20 cards, 40 copies" % fighter)
+		var by_rarity := {}
+		var upgrades := []
+		var seals := []
+		for id in deck:
+			var card: Dictionary = deck[id]
+			by_rarity[card.rarity] = int(by_rarity.get(card.rarity, 0)) + 1
+			_check(Icons.NAMES.has(card.icon), "%s card %s has no icon %s" % [fighter, id, card.icon])
+			for tag in card.tags:
+				_check(Cards.TAG_COLORS.has(tag), "%s card %s has an unknown tag %s" % [fighter, id, tag])
+			var copies := Cards.copies(card)
+			for effect in card.effects:
+				_check(card.effects[effect].size() == copies, "%s card %s needs a value per rank for %s" % [fighter, id, effect])
+				_check(PowerRating.CARDS.has(effect) or PowerRating.EVERY.has(effect) or effect in PowerRating.SPECIALS or effect in ["damage_percent", "knuckles_percent", "move_speed", "spell_time"],
+						"POWER must rate %s card %s's %s" % [fighter, id, effect])
+			if card.text is Array:
+				_check(card.text.size() == copies, "%s card %s needs a line per rank" % [fighter, id])
+			else:
+				_check(card.values.size() == copies, "%s card %s needs a value per rank" % [fighter, id])
+			if card.has("upgrades"):
+				upgrades.append(card.upgrades)
+				_check(not Abilities.info(fighter, card.upgrades).is_empty(), "%s card %s upgrades a real passive or ultimate" % [fighter, id])
+			if card.rarity == "legendary":
+				seals.append(card.seal)
+		_check(by_rarity == {"common": 5, "rare": 5, "epic": 5, "legendary": 5}, "%s's deck has 5 of each rarity: %s" % [fighter, by_rarity])
+		_check(upgrades.size() == 5 and Abilities.passives(fighter).size() + Abilities.ultimates(fighter).size() == 5, "%s has an epic for each passive and ultimate" % fighter)
+		seals.sort()
+		var all := Cards.SEALS.duplicate()
+		all.sort()
+		_check(seals == all, "%s has a legendary for each seal" % fighter)
+		var hand := Cards.typical_hand(fighter, 28, 4)
+		var kept := 0
+		for id in hand:
+			kept += int(hand[id])
+			_check(int(hand[id]) <= Cards.copies(deck[id]), "A typical hand never holds more copies than a card has")
+		_check(kept == 28, "A typical hand holds every pick (%d)" % kept)
+
+
+## Old saves: every level gained is a card draw, every stat point an attribute point.
+func _test_card_migration() -> void:
+	var path := "user://test_save_cards.json"
+	var old := {"version": GameState.SAVE_VERSION, "skill_version": 2, "class": "berserker",
+		"classes": {"berserker": {"level": 12, "xp": 5, "stat_points": 4, "skill_points": 2,
+			"stats": {"damage": 20, "defense": 9, "durability": 0, "looting": 0}, "skills": {"payback": 1}}}}
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	file.store_string(JSON.stringify(old))
+	file.close()
+	var state = load("res://game_state.gd").new()
+	state.save_path = path
+	state._reset_fields()
+	state.load_game()
+	var progress: Dictionary = state._classes.berserker
+	_check(progress.level == 12 and progress.draws == 11 and progress.attribute_points == 33,
+			"An old level 12 gets 11 draws and 33 attribute points (got %d / %d)" % [progress.draws, progress.attribute_points])
+	_check(progress.cards.is_empty() and not progress.has("skills") and not progress.has("stats"), "Old skills and stats are gone")
+	_check(state.upgrade_notice.contains("card draws"), "Camp explains the change once")
+	var offer: Array = state.card_offer()
+	_check(offer.size() == 3, "A waiting draw offers three cards")
+	_check(state.take_card(offer[0]) and progress.draws == 10 and state.card_rank(offer[0]) == 1, "Taking a card spends a draw")
+	_check(state.spend_attribute("power") and progress.attributes.power == 1 and progress.attribute_points == 32, "Attribute points spend")
+	state.free()
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 
 
 func _test_upgrade_reveal_gates() -> void:
@@ -399,17 +457,7 @@ func _par_with_share(tier: int, share: float) -> Dictionary:
 		var node_effects: Dictionary = GameState.UPGRADES[levels[i][1]].effects
 		for effect in node_effects:
 			effects[effect] = effects.get(effect, 0.0) + float(node_effects[effect])
-	var par := Progression.par(tier)
-	var full_effects := {}
-	for i in ceili(levels.size() * Progression.PAR_SHARE):
-		var node_effects: Dictionary = GameState.UPGRADES[levels[i][1]].effects
-		for effect in node_effects:
-			full_effects[effect] = full_effects.get(effect, 0.0) + float(node_effects[effect])
-	var skill := 1.0 + Progression.SKILL_PAR * minf(1.0, (int(Progression.PAR_LEVEL[tier]) - 1) / Progression.SKILL_WEB_POINTS)
-	var damage: float = (par.damage / skill - full_effects.get("damage", 0.0) + effects.get("damage", 0.0)) * skill
-	var knuckles: float = (par.knuckles / skill - full_effects.get("max_knuckles", 0.0) + effects.get("max_knuckles", 0.0)) * skill
-	var defense: float = par.defense - full_effects.get("defense", 0.0) + effects.get("defense", 0.0)
-	return {"damage": damage, "ehp": knuckles * (10.0 + defense) / 10.0}
+	return Progression.par_build(tier, share)
 
 
 ## Seals and kept gear: a contender's win opens the next ring; Crypt finds
@@ -538,7 +586,7 @@ func _test_hats_and_tony() -> void:
 	_check(GameState.add_hat("no_yonker_no_brim") == "tony" and GameState.tony_unlocked, "The fourth Yonker unlocks Tony")
 	_check("wise_guy" in GameState.class_ids(), "Tony shows in the class picker once unlocked")
 	_check(GameState.add_hat("no_yonker_no_brim") == "duplicate", "Tony only unlocks once")
-	_check(GameState.SKILL_TREES.has("wise_guy") and GameState.SKILL_TREES.wise_guy.size() == GameState.SKILL_TREES.berserker.size(), "Tony has a full skill web")
+	_check(Cards.deck("wise_guy").size() == Cards.deck("berserker").size(), "Tony has a full deck")
 	GameState._reset_fields()
 
 
@@ -561,9 +609,10 @@ func _test_crypt_unlock() -> void:
 			"The Arena no longer raises a crypt mid-bout")
 
 
-## Every class at par (its level's skills, par upgrades and gear) should rate
-## about even with the contender it faces, and every full skill web should be
-## worth about the same. Runs last: it rewrites the build in GameState.
+## Every class at par (its level's attributes and typical cards, par upgrades
+## and gear) should rate about even with the contender it faces, and every
+## fighter's typical hand should be worth about the same. Runs last: it
+## rewrites the build in GameState.
 func _test_class_balance() -> void:
 	var report = load("res://balance_report.gd")
 	var saved_class := GameState.player_class
@@ -574,12 +623,12 @@ func _test_class_balance() -> void:
 			_check(ratio > 0.88 and ratio < 1.2, "%s at par for tier %d should rate about even with the contender, got %.2f" % [class_id, tier, ratio])
 	var uplifts := []
 	for class_id in GameState.CLASSES:
-		report.set_build(GameState, Progression, class_id, 5, 0)
+		report.set_build(GameState, Progression, class_id, 5, false)
 		var without := float(PowerRating.player())
-		report.set_build(GameState, Progression, class_id, 5, 999)
+		report.set_build(GameState, Progression, class_id, 5)
 		uplifts.append(float(PowerRating.player()) / without)
-	_check(uplifts.max() - uplifts.min() < 0.2, "Full skill webs should be worth about the same for every class: %s" % [uplifts])
-	print("Full skill web POWER: %s" % [uplifts.map(func(u: float) -> String: return "x%.2f" % u)])
+	_check(uplifts.max() - uplifts.min() < 0.15, "Every fighter's typical hand should be worth about the same: %s" % [uplifts])
+	print("Typical hand POWER: %s" % [uplifts.map(func(u: float) -> String: return "x%.2f" % u)])
 	GameState.player_class = saved_class
 
 

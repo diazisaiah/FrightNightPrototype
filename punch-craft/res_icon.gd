@@ -9,8 +9,8 @@ const INFO := {
 	"silver": {"name": "Silver", "icon": "silver", "color": Color(0.8, 0.85, 0.93)},
 	"xp": {"name": "XP", "icon": "xp", "color": Color(0.42, 0.95, 0.72)},
 	"souls": {"name": "Souls", "icon": "ghost", "color": Color(0.55, 0.95, 0.9)},
-	"skill_points": {"name": "Skill points", "icon": "skill_point", "color": Color(0.55, 0.75, 1.0)},
-	"stat_points": {"name": "Stat points", "icon": "stat_point", "color": Color(1.0, 0.56, 0.42)},
+	"draws": {"name": "Card draws", "icon": "skill_point", "color": Color(0.55, 0.75, 1.0)},
+	"attribute_points": {"name": "Attribute points", "icon": "stat_point", "color": Color(1.0, 0.56, 0.42)},
 	"knuckles": {"name": "Knuckle HP", "icon": "heart", "color": Color(0.95, 0.4, 0.38)},
 }
 

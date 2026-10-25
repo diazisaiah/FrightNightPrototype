@@ -1,7 +1,7 @@
 class_name IconLabel
 extends VBoxContainer
 ## Text with resource icons in it: write {coins}, {silver}, {xp}, {souls},
-## {skill_points}, {stat_points} or {knuckles} and the token is drawn in
+## {draws}, {attribute_points} or {knuckles} and the token is drawn in
 ## place, e.g. "Room cleared   +40 {coins}". Lines split on \n.
 ## Use like a Label: set text, font_size, color, outline and alignment.
 

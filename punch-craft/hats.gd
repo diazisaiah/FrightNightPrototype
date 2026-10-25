@@ -103,7 +103,8 @@ static func boost_text(id: String) -> String:
 ## Which hat (if any) a freshly spawned enemy wears. Bumps the bad-luck
 ## counter for non-legendary hats.
 static func roll(skeleton: bool) -> String:
-	if randf() >= HAT_CHANCE:
+	# Hat Trick (a Fortune perk): twice as many hats.
+	if randf() >= HAT_CHANCE * (2.0 if GameState.perk("hat_trick") else 1.0):
 		return ""
 	var missing := LEGENDARIES.filter(func(id: String) -> bool: return not GameState.hats.has(id))
 	var legendary_chance := LEGENDARY_BASE + LEGENDARY_STEP * GameState.hat_pity

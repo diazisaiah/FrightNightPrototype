@@ -22,11 +22,9 @@ const PAR_LEVEL := [1, 9, 14, 19, 24, 29]
 ## Only upgrades with raw power count toward par: the par build skips
 ## utility (sprint, coins, XP...), so buying those never puts you under par.
 const POWER_EFFECTS := ["damage", "max_knuckles", "defense", "damage_percent", "knuckles_percent"]
-## A fighter's skill web, fully owned, is worth about this much extra damage
-## and knuckle HP: about x1.7 POWER (every class is tuned to the same budget). Par owns
-## the share of the web its level's skill points buy.
-const SKILL_PAR := 0.6
-const SKILL_WEB_POINTS := 33.0
+## Par's attribute points go evenly into these (Fortune is the tradeoff: a
+## Fortune build is knowingly a little under par).
+const PAR_ATTRIBUTES := ["power", "grit", "speed", "technique"]
 ## What a fresh fighter starts with (no upgrades, level 1, no gear).
 const BASE_DAMAGE := 2.0
 const BASE_KNUCKLES := 50.0
@@ -116,15 +114,22 @@ static func seal_holder(ring: int) -> String:
 # --- The par build ----------------------------------------------------------------
 
 ## The expected build when facing contender t (t = 0: a fresh fighter):
-## {damage, knuckles, defense, ehp}. Counts power upgrades, stats, gear and an
-## average skill web for its level; class bonuses aren't counted.
+## {damage, knuckles, defense, ehp}. Counts power upgrades, gear, attributes
+## for its level (split evenly over PAR_ATTRIBUTES) and the typical hand of
+## cards for its level (Cards.typical_hand, averaged over the fighters); class
+## bonuses aren't counted.
 static func par(tier: int) -> Dictionary:
 	tier = clampi(tier, 0, TIER_COUNT)
-	if _par_cache.has(tier):
-		return _par_cache[tier]
+	if not _par_cache.has(tier):
+		_par_cache[tier] = par_build(tier, PAR_SHARE)
+	return _par_cache[tier]
+
+
+## Par with a share (0-1) of the open rings' power upgrades.
+static func par_build(tier: int, share: float) -> Dictionary:
 	var effects := {}
 	if tier > 0:
-		# The cheapest PAR_SHARE of every power level in the open rings.
+		# The cheapest share of every power level in the open rings.
 		var levels := []
 		for id in GameState.UPGRADES:
 			var node: Dictionary = GameState.UPGRADES[id]
@@ -133,29 +138,78 @@ static func par(tier: int) -> Dictionary:
 			for level in int(node.max_level):
 				levels.append([node.cost * pow(node.cost_growth, level), id])
 		levels.sort_custom(func(a, b) -> bool: return a[0] < b[0])
-		var take := ceili(levels.size() * PAR_SHARE)
+		var take := ceili(levels.size() * share)
 		for i in take:
 			var node_effects: Dictionary = GameState.UPGRADES[levels[i][1]].effects
 			for effect in node_effects:
 				effects[effect] = effects.get(effect, 0.0) + float(node_effects[effect])
-	# Stat points from levels, spread evenly over damage, durability and defense.
-	var points: int = GameState.STAT_POINTS_PER_LEVEL * (int(PAR_LEVEL[tier]) - 1)
-	var per_stat: float = points / 3.0
+	var level: int = PAR_LEVEL[tier]
+	# Power and Grit go straight into damage and knuckle HP.
+	var per := par_points(level)
+	for effect in ["damage_percent", "knuckles_percent"]:
+		effects[effect] = effects.get(effect, 0.0) + per * _attribute_effect(effect)
 	# Decent gear from the tier's deepest floor: gloves with damage, wraps with
 	# knuckles and defense (expected values of rare-ish rolls).
 	var gear := _par_gear(tier)
-	var damage: float = (BASE_DAMAGE + per_stat * GameState.DAMAGE_PER_POINT + effects.get("damage", 0.0) + gear.damage) \
-			* (1.0 + effects.get("damage_percent", 0.0))
-	var knuckles: float = (BASE_KNUCKLES + per_stat * GameState.KNUCKLES_PER_POINT + effects.get("max_knuckles", 0.0) + gear.knuckles) \
-			* (1.0 + effects.get("knuckles_percent", 0.0))
-	var defense: float = per_stat + effects.get("defense", 0.0) + gear.defense
-	# The skill web its level affords.
-	var skill := 1.0 + SKILL_PAR * minf(1.0, (int(PAR_LEVEL[tier]) - 1) * GameState.SKILL_POINTS_PER_LEVEL / SKILL_WEB_POINTS)
-	damage *= skill
-	knuckles *= skill
-	var result := {"damage": damage, "knuckles": knuckles, "defense": defense, "ehp": knuckles * (10.0 + defense) / 10.0, "effects": effects}
-	_par_cache[tier] = result
-	return result
+	var damage: float = (BASE_DAMAGE + effects.get("damage", 0.0) + gear.damage) * (1.0 + effects.get("damage_percent", 0.0))
+	var knuckles: float = (BASE_KNUCKLES + effects.get("max_knuckles", 0.0) + gear.knuckles) * (1.0 + effects.get("knuckles_percent", 0.0))
+	var defense: float = effects.get("defense", 0.0) + gear.defense
+	# Everything else a level gives (Speed, Technique, perks, passive power,
+	# cards) as one factor on both: the POWER it's worth.
+	var factor := level_factor(tier, damage, knuckles, defense, effects)
+	damage *= factor
+	knuckles *= factor
+	return {"damage": damage, "knuckles": knuckles, "defense": defense, "ehp": knuckles * (10.0 + defense) / 10.0, "effects": effects, "factor": factor}
+
+
+## Attribute points par puts in each of PAR_ATTRIBUTES at a level.
+static func par_points(level: int) -> float:
+	return minf(floorf(Attributes.POINTS_PER_LEVEL * (level - 1) / float(PAR_ATTRIBUTES.size())), Attributes.MAX)
+
+
+static func _attribute_effect(effect: String) -> float:
+	for attribute in PAR_ATTRIBUTES:
+		if Attributes.LIST[attribute].per_point.has(effect):
+			return float(Attributes.LIST[attribute].per_point[effect])
+	return 0.0
+
+
+## How much POWER a level's Speed and Technique points, perks, passive power
+## and typical hand add to a build (1 = nothing).
+static func level_factor(tier: int, damage: float, knuckles: float, defense: float, effects: Dictionary) -> float:
+	var level: int = PAR_LEVEL[tier]
+	var base := {"damage": damage, "knuckles": knuckles, "defense": defense,
+		"punch_speed": 1.0 + effects.get("punch_speed", 0.0), "combo_step": 0.25 + effects.get("combo_step", 0.0), "effects": effects}
+	var fx := effects.duplicate()
+	var per := par_points(level)
+	var perks := []
+	for attribute in PAR_ATTRIBUTES:
+		var info: Dictionary = Attributes.LIST[attribute]
+		if attribute in ["speed", "technique"]:
+			for effect in info.per_point:
+				fx[effect] = fx.get(effect, 0.0) + per * float(info.per_point[effect])
+		for i in info.perks.size():
+			if per >= Attributes.PERK_AT[i]:
+				perks.append(info.perks[i][0])
+	fx["passive_power"] = minf(floorf((level - 1) / float(GameState.PASSIVE_POWER_EVERY)), GameState.PASSIVE_POWER_MAX)
+	var plain := float(PowerRating.rate(base))
+	# The typical hand: what it's worth to each fighter, averaged.
+	var fighters: Array = GameState.CLASSES.keys()
+	var total := 0.0
+	for fighter in fighters:
+		var hand := Cards.hand_effects(fighter, Cards.typical_hand(fighter, level - 1, maxi(tier - 1, 0)))
+		var with_fx := fx.duplicate()
+		for effect in hand:
+			with_fx[effect] = with_fx.get(effect, 0.0) + float(hand[effect])
+		var with := base.duplicate()
+		with.effects = with_fx
+		with.perks = perks
+		with.damage = damage * (1.0 + with_fx.get("damage_percent", 0.0)) / (1.0 + effects.get("damage_percent", 0.0))
+		with.knuckles = knuckles * (1.0 + with_fx.get("knuckles_percent", 0.0)) / (1.0 + effects.get("knuckles_percent", 0.0))
+		with.punch_speed = 1.0 + with_fx.get("punch_speed", 0.0)
+		with.combo_step = 0.25 + with_fx.get("combo_step", 0.0)
+		total += float(PowerRating.rate(with)) / maxf(plain, 1.0)
+	return total / fighters.size()
 
 
 static func _is_power(node: Dictionary) -> bool:
@@ -274,7 +328,8 @@ static func crypt_start_floor(tier: int) -> int:
 
 ## Souls for a Grave Champion or Crypt floor boss at climb position x.
 static func boss_souls(x: float, first_clear: bool) -> int:
-	return SOULS_PER_TIER * (1 + ceili(maxf(x, 0.01))) + (SOULS_FIRST_CLEAR if first_clear else 0)
+	var collector := 1 if GameState.perk("soul_collector") else 0
+	return SOULS_PER_TIER * (1 + ceili(maxf(x, 0.01))) + (SOULS_FIRST_CLEAR if first_clear else 0) + collector
 
 
 ## Souls to reroll one stat on a kept item; each reroll on it costs one more.

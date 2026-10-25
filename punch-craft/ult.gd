@@ -4,8 +4,8 @@ extends Node
 ## fastest (dodges, counters, set-up heavies, combos); wild jabs barely do and
 ## getting hit drains it. The configured ultimate action fires it when full:
 ##   Berserker       Inferno Uppercut: any time the meter is full, a flaming
-##                   uppercut that launches the nearest enemy (the last one to
-##                   hit your super armor, if it's in reach) and sets it alight.
+##                   uppercut that launches the nearest enemy (your Grudge
+##                   target, if it's in reach) and sets it alight.
 ##                   His meter fills faster (INFERNO_GAIN) and hits never drain it.
 ##   Combo Master    Temporal Break: enemies freeze, punch prompts appear; each right
 ##                   one lands a hit, grows the combo and buys back some time,
@@ -167,9 +167,15 @@ var _struck: Array[Enemy] = []
 var _target_index := 0
 
 
-## 1 with the fighter's sigil ultimate upgrade (the "... II" skill), else 0.
+## Empowered ultimate (gear and such; the epic cards change each ultimate
+## their own way, below).
 func _power() -> float:
 	return GameState.get_effect("ult_power")
+
+
+## Whether the fighter has a card (an effect) for their ultimate.
+func _card(effect: String) -> bool:
+	return GameState.has_effect(effect)
 
 
 func is_full() -> bool:
@@ -192,6 +198,7 @@ func add(amount: float) -> void:
 		elif GameState.is_player_class("berserker"):
 			amount *= INFERNO_GAIN
 	meter = clampf(meter + amount, 0.0, MAX_METER)
+	GameState.ult_share = meter / MAX_METER
 	meter_changed.emit(meter, is_full())
 	if is_full() and not was_full:
 		Sfx.play("tell", -2.0, 0.8)
@@ -201,11 +208,14 @@ func add(amount: float) -> void:
 ## Fills the meter (tutorial).
 func fill() -> void:
 	meter = MAX_METER
+	GameState.ult_share = 1.0
 	meter_changed.emit(meter, true)
 
 
+## Ultimate Surge (a card) gives a quarter back.
 func _spend() -> void:
-	meter = 0.0
+	meter = MAX_METER * 0.25 if _card("ult_surge") else 0.0
+	GameState.ult_share = meter / MAX_METER
 	meter_changed.emit(meter, false)
 	used.emit(GameState.player_class)
 
@@ -216,7 +226,8 @@ func on_punch(kind: String, clean: bool, running: bool) -> void:
 	var multiplier := player.get_combo_multiplier()
 	match kind:
 		"counter":
-			add(GAIN["clean_counter" if clean else "counter"] * multiplier)
+			# Answered (the Answer's card): counters fill it faster.
+			add(GAIN["clean_counter" if clean else "counter"] * multiplier * (1.0 + GameState.get_effect("counter_ult")))
 		"setup":
 			add(GAIN.setup * multiplier)
 		"hit":
@@ -282,7 +293,7 @@ func intercept_attack(attack: String, attacker: Node3D, amount := 0.0) -> String
 		_riposte_dodge(attack, attacker as Enemy)
 		return "dodged"
 	if _shield_hits > 0:
-		_shield_absorb(amount)
+		_shield_absorb(amount, attacker as Enemy)
 		return "armored"
 	return ""
 
@@ -318,13 +329,14 @@ func _process(delta: float) -> void:
 # --- Wise Guy: Big Mouth --------------------------------------------------------------
 
 func _big_mouth() -> void:
-	var targets := _looked_at(1 + int(_power()))
+	# Big Mouth II: everyone in front of him.
+	var targets := _looked_at(99 if _card("big_mouth_ii") else 1 + int(_power()))
 	if targets.is_empty():
 		_set_status("Nobody to yell at", 1.2)
 		return
 	_spend()
 	say(Insults.insult())
-	var duration := MOUTH_TIME + GameState.get_effect("insult_time") + 3.0 * _power()
+	var duration := MOUTH_TIME + 3.0 * _power()
 	for enemy in targets:
 		enemy.taunt(duration)
 		enemy.died.connect(_on_duel_won, CONNECT_ONE_SHOT)
@@ -419,8 +431,8 @@ func _wait(seconds: float) -> void:
 
 # --- Berserker: Inferno Uppercut ----------------------------------------------------
 
-## Fires whenever the meter is full: at the last super-armor attacker if it's
-## in reach, otherwise the nearest enemy.
+## Fires whenever the meter is full: at the Mauler's Grudge target if it's in
+## reach, otherwise the nearest enemy.
 func _try_inferno() -> void:
 	var reach := INFERNO_LEAP * (1.0 + 0.3 * _power())
 	var target: Enemy = player._grudge
@@ -431,6 +443,22 @@ func _try_inferno() -> void:
 		return
 	_spend()
 	_set_status("")
+	await _inferno_at(target)
+	# Inferno II: then at a second monster.
+	if _card("inferno_ii") and player.active:
+		var second: Enemy = null
+		for enemy in _alive_enemies():
+			if enemy != target and enemy.global_position.distance_to(player.global_position) <= reach \
+					and (second == null or enemy.global_position.distance_to(player.global_position) < second.global_position.distance_to(player.global_position)):
+				second = enemy
+		if second:
+			await _wait(0.25)
+			if is_instance_valid(second) and not second.is_dead():
+				await _inferno_at(second)
+
+
+## The leap and the flaming uppercut, at one monster.
+func _inferno_at(target: Enemy) -> void:
 	_face(target)
 	# The leap: an arc up and in, trailing fire, to right in front of it.
 	mode = "inferno"
@@ -498,7 +526,7 @@ func _start_time_stop() -> void:
 	_struck.assign(targets)
 	_target_index = 0
 	_freeze(true)
-	_time_left = TIME_STOP_START + 1.5 * _power()
+	_time_left = (TIME_STOP_START + 1.5 * _power()) * (1.3 if _card("temporal_break_ii") else 1.0)
 	_refund = TIME_STOP_REFUND
 	_hits = 0
 	_next_prompt()
@@ -568,7 +596,7 @@ func _answer_prompt(hand: String, type := "") -> void:
 	player._last_hand = ""  # Every prompt counts toward the combo, whatever the hand.
 	player._last_punch_hand = hand
 	player._combo_timer = GameState.get_combo_window()
-	player._set_combo(player.combo + TIME_STOP_COMBO_GAIN)
+	player._set_combo(player.combo + TIME_STOP_COMBO_GAIN + (1 if _card("temporal_break_ii") else 0))
 	_time_left += _refund
 	_refund *= TIME_STOP_REFUND_DECAY
 	Sfx.play("hit", 0.0, minf(1.0 + _hits * 0.04, 2.2))
@@ -610,7 +638,7 @@ func _end_time_stop() -> void:
 func _start_riposte() -> void:
 	_spend()
 	_riposte_counters = true
-	_riposte = RIPOSTE_TIME + 2.0 * _power()
+	_riposte = (RIPOSTE_TIME + 2.0 * _power()) * (1.5 if _card("riposte_ii") else 1.0)
 	Sfx.play("tell", 0.0, 1.1)
 	player.class_event.emit("RIPOSTE STANCE")
 
@@ -644,7 +672,8 @@ func _riposte_counter(enemy: Enemy) -> void:
 ## The Mauler's Brimstone Shield: soaks the next hits, then bursts.
 func _start_shield() -> void:
 	_spend()
-	_shield_hits = SHIELD_HITS + int(_power())
+	# Brimstone Wall: twice the hits.
+	_shield_hits = (SHIELD_HITS + int(_power())) * (2 if _card("brimstone_wall") else 1)
 	_shield_soaked = 0.0
 	_shield_time = SHIELD_TIME + 3.0 * _power()
 	Sfx.play("unlock", 0.0, 0.6)
@@ -659,9 +688,12 @@ func _start_shield() -> void:
 	player.add_child(_shield_ring)
 
 
-func _shield_absorb(amount: float) -> void:
+func _shield_absorb(amount: float, attacker: Enemy = null) -> void:
 	_shield_hits -= 1
 	_shield_soaked += amount
+	# Brimstone Wall: every soaked hit burns the attacker back.
+	if _card("brimstone_wall") and attacker and not attacker.is_dead():
+		attacker.take_hit(GameState.get_damage(), attacker.global_position + Vector3(0, 1.2, 0), Vector3.ZERO, false, "BRIMSTONE")
 	Sfx.play("block", 0.0, 0.7)
 	player._shake = maxf(player._shake, 0.05)
 	HitFx.burst(player.get_parent(), player.global_position + Vector3.UP * 1.2, Vector3.UP, FIRE_COLOR, 12, 3.0, true, 0.04)
@@ -702,7 +734,7 @@ func _start_flow() -> void:
 ## The Blur's Unbroken: every hit builds the combo, which can't drop.
 func _start_unbroken() -> void:
 	_spend()
-	player.unbroken_time = UNBROKEN_TIME + 2.0 * _power()
+	player.unbroken_time = (UNBROKEN_TIME + 2.0 * _power()) * (1.5 if _card("unbroken_ii") else 1.0)
 	Sfx.play("tell", 0.0, 0.9)
 	player.class_event.emit("UNBROKEN")
 
@@ -711,18 +743,32 @@ func _start_unbroken() -> void:
 func _start_hype() -> void:
 	_spend()
 	hype = HYPE_TIME + _power()
+	_express = 0.0
 	Sfx.play("whoosh", 4.0, 0.6)
 	player._kick_fov(12.0)
 	player.class_event.emit("HYPE TRAIN!")
 
 
-## Tony's The Family: three ghost goons brawl beside him.
+## Express (the Stray's card): every monster bowled over keeps the train going.
+var _express := 0.0
+
+
+func on_bowled() -> void:
+	if hype > 0.0 and _card("express") and _express < 6.0:
+		_express += 1.0
+		hype += 1.0
+
+
+## Tony's The Family: three ghost goons brawl beside him (Family Reunion: four,
+## for longer).
 func _start_family() -> void:
 	_spend()
 	say(["Boys. Get in here.", "You wanna meet the family?", "Ey! The whole family's here!"].pick_random())
-	var seconds := FAMILY_TIME + 2.0 * _power()
-	for i in FAMILY_SIZE + int(_power()):
-		var a := TAU * i / float(FAMILY_SIZE)
+	var reunion := _card("family_reunion")
+	var seconds := FAMILY_TIME + 2.0 * _power() + (5.0 if reunion else 0.0)
+	var size := FAMILY_SIZE + int(_power()) + (1 if reunion else 0)
+	for i in size:
+		var a := TAU * i / float(size)
 		var at := player.global_position + Vector3(cos(a), 0, sin(a)) * 1.5
 		player.get_parent().add_child(Goon.brawler(at, seconds, GameState.get_damage() * (0.8 + 0.2 * _power())))
 	player.class_event.emit("THE FAMILY")
@@ -740,9 +786,22 @@ func _start_spellfists() -> void:
 
 ## A punch landed during Elemental Fists: each element rolls on its own.
 func on_landed(target: Enemy, dealt: float, hand: String) -> void:
+	# Untouchable (the Answer's card): Flow State grows with every punch.
+	if _riposte > 0.0 and not _riposte_counters and _card("untouchable_flow"):
+		_riposte += 0.2
 	if spellfists <= 0.0 or target == null or not is_instance_valid(target):
 		return
 	var chance := minf(SPELL_CHANCE + GameState.get_effect("spell_chance"), SPELL_CHANCE_MAX)
+	# Elemental Fists II: 20% each, and every spell finds a second monster.
+	var twice := _card("elemental_fists_ii")
+	if twice:
+		chance = maxf(chance, 0.2)
+	var other: Enemy = null
+	if twice:
+		for enemy in _alive_enemies():
+			if enemy != target and enemy.global_position.distance_to(target.global_position) <= 8.0 \
+					and (other == null or enemy.global_position.distance_to(target.global_position) < other.global_position.distance_to(target.global_position)):
+				other = enemy
 	var strength := GameState.get_damage() * (1.0 + GameState.get_effect("spell_damage") + 0.25 * _power())
 	var camera: Camera3D = player._camera
 	var side := -1.0 if hand == "left" else 1.0
@@ -751,8 +810,12 @@ func on_landed(target: Enemy, dealt: float, hand: String) -> void:
 	ahead.y = 0.0
 	if randf() < chance:
 		SpellBolt.fling(player.get_parent(), fist, ahead, "fire", strength * SPELL_FIRE, target)
+		if other:
+			SpellBolt.fling(player.get_parent(), fist, ahead, "fire", strength * SPELL_FIRE, other)
 	if randf() < chance:
 		SpellBolt.fling(player.get_parent(), fist, ahead, "ice", strength * SPELL_ICE, target)
+		if other:
+			SpellBolt.fling(player.get_parent(), fist, ahead, "ice", strength * SPELL_ICE, other)
 	if randf() < chance and not target.is_dead():
 		Powers.chain_lightning(target, strength * SPELL_LIGHTNING, SPELL_JUMPS)
 	if randf() < chance and dealt > 0.0:
@@ -764,8 +827,17 @@ func on_landed(target: Enemy, dealt: float, hand: String) -> void:
 
 
 ## Flame Burst: fire bursts out in a ring; everything in it is hit and burns.
+## Flame Burst II: it goes off again a moment later.
 func _flame_burst() -> void:
 	_spend()
+	_burst_ring()
+	if _card("flame_burst_ii"):
+		await _wait(0.6)
+		if is_instance_valid(player) and player.active:
+			_burst_ring()
+
+
+func _burst_ring() -> void:
 	var world := player.get_parent()
 	var center := player.global_position
 	var radius := BURST_RADIUS + GameState.get_effect("burst_radius") + _power()
@@ -816,7 +888,8 @@ func _reel_targets() -> Array[Enemy]:
 		found.append(enemy)
 	found.sort_custom(func(a: Enemy, b: Enemy) -> bool:
 		return a.global_position.distance_to(player.global_position) < b.global_position.distance_to(player.global_position))
-	return found.slice(0, REEL_TARGETS + 3 * int(_power()))
+	# Director's Cut: three more.
+	return found.slice(0, REEL_TARGETS + 3 * int(_power()) + (3 if _card("directors_cut") else 0))
 
 
 func _start_reel() -> void:
@@ -850,6 +923,9 @@ func _start_reel() -> void:
 			player._kick_fov(8.0)
 		else:
 			player._land_punch(type, hand, false, false, target, REEL_DAMAGE * (1.0 + 0.3 * _power()), "HIGHLIGHT!")
+		# Director's Cut: every hit stuns.
+		if _card("directors_cut") and is_instance_valid(target) and not target.is_dead():
+			target.stun(1.0)
 		if is_instance_valid(target):
 			HitFx.burst(player.get_parent(), target.global_position + Vector3(0, 1.3, 0), Vector3.UP, LIGHTNING_COLOR, 24, 6.0, true, 0.05)
 		await _wait(REEL_PAUSE)

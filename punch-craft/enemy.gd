@@ -49,6 +49,14 @@ const MAX_BODY_SLOW := 0.35
 const WINDED_THRESHOLD := 0.6
 ## Every attack flashes this long before it lands: the cue to dodge.
 const TELL_FLASH_TIME := 0.22
+## Read the Tell (a Technique perk): tells flash this much sooner.
+const READ_TELL := 0.08
+## Heavy Hands (a Power perk): staggers last this much longer.
+const HEAVY_HANDS := 1.3
+## Time slowed for every monster (cards: The Last Word, Fifty Before They
+## Blink): they run at this pace until slow_until (msec).
+const TIME_SLOW := 0.4
+static var slow_until := 0
 const HEAL_COLOR := Color(0.35, 1.0, 0.45)
 ## Attack turns: only a few melee enemies may attack the player at once; the
 ## rest hang back at WAIT_DISTANCE, circling, until one finishes its combo
@@ -114,6 +122,8 @@ var _hp_label: Label3D
 var _meshes: Array[MeshInstance3D] = []
 var _knockback := Vector3.ZERO
 var _stagger_timer := 0.0
+## Held still without a stagger (delay, scare): no moving, no attacking.
+var _hold_time := 0.0
 var _flash_timer := 0.0
 var _dead := false
 var _recoil := 0.0
@@ -249,6 +259,7 @@ func _physics_process(delta: float) -> void:
 		if _flash_timer <= 0.0:
 			_set_flash(false)
 		_stagger_timer -= delta
+		_hold_time -= delta
 		if _taunt_time > 0.0:
 			_taunt_time -= delta
 			if _taunt_time <= 0.0:
@@ -259,13 +270,15 @@ func _physics_process(delta: float) -> void:
 		if _chill_time > 0.0:
 			_chill_time -= delta
 			pace *= 1.0 - _chill_amount
+		if Time.get_ticks_msec() < slow_until:
+			pace *= TIME_SLOW
 		_update_statuses(delta)
 		_turn_rest -= delta
 		if _attackers.has(self):
 			_turn_age += delta
 			if _turn_age > TURN_TIMEOUT:
 				end_turn()
-		if _stagger_timer <= 0.0 and is_instance_valid(player) and player.active:
+		if _stagger_timer <= 0.0 and _hold_time <= 0.0 and is_instance_valid(player) and player.active:
 			desired = _steer(_think(delta * pace) * pace, delta)
 
 	if _burn_time > 0.0 and not _dead:
@@ -315,7 +328,7 @@ func take_hit(raw_damage: float, hit_point: Vector3, push: Vector3, stagger: boo
 	_recoil = RECOIL_DISTANCE * (2.0 if stagger else 1.0)
 	_set_flash(true)
 	if stagger:
-		_stagger_timer = STAGGER_TIME
+		_stagger_timer = maxf(_stagger_timer, STAGGER_TIME * (HEAVY_HANDS if GameState.perk("heavy_hands") else 1.0))
 		_on_staggered()
 
 	var parent := get_parent()
@@ -358,7 +371,7 @@ func make_elite(trait_name: String) -> void:
 	max_hp *= ELITE_HP
 	_apply_trait(trait_name)
 	hp = max_hp
-	coin_reward *= ELITE_REWARD
+	coin_reward *= ELITE_REWARD * _pickpocket()
 	xp_reward *= ELITE_REWARD
 	display_name = "%s %s" % [trait_name, display_name]
 	_special_look(ELITE_COLOR, 1.6)
@@ -371,12 +384,17 @@ func make_champion(traits: Array) -> void:
 	for trait_name in traits:
 		_apply_trait(trait_name)
 	hp = max_hp
-	coin_reward *= CHAMPION_REWARD
+	coin_reward *= CHAMPION_REWARD * _pickpocket()
 	xp_reward *= CHAMPION_REWARD
 	display_name = "Champion %s %s %s" % [traits[0], traits[1], display_name]
 	set_meta("champion", true)
 	_special_look(CHAMPION_COLOR, 2.4)
 	_update_label()
+
+
+## Pickpocket (a Fortune perk): elites and champions pay triple.
+static func _pickpocket() -> int:
+	return 3 if GameState.perk("pickpocket") else 1
 
 
 func _apply_trait(trait_name: String) -> void:
@@ -550,6 +568,63 @@ func stun(duration: float) -> void:
 	DamagePopup.spawn(get_parent(), "STUNNED", Color(1, 0.8, 0.3), 40, global_position + Vector3(0, 2.0, 0))
 
 
+## Holds it still for a moment (no move, no attack) without a stagger: its
+## next attack waits.
+func delay(seconds: float, caption := "") -> void:
+	if _dead:
+		return
+	_hold_time = maxf(_hold_time, seconds)
+	if caption != "":
+		DamagePopup.spawn(get_parent(), caption, Color(0.6, 0.9, 1.0), 36, global_position + Vector3(0, 2.0 * _body.scale.y, 0))
+
+
+## Scared off: backs away from where the scare came from and holds.
+func scare(seconds: float, from: Vector3) -> void:
+	if _dead:
+		return
+	var away := global_position - from
+	away.y = 0.0
+	_knockback = away.normalized() * 7.0
+	_on_staggered()
+	delay(seconds, "SCARED")
+
+
+func is_staggered() -> bool:
+	return _stagger_timer > 0.0 and not _dead
+
+
+## A stagger that's already on lasts longer (Stun Lock).
+func extend_stagger(seconds: float) -> void:
+	if is_staggered():
+		_stagger_timer += seconds
+
+
+## How squarely it faces a point: 1 straight at it, -1 its back to it.
+func facing(at: Vector3) -> float:
+	var to := at - global_position
+	to.y = 0.0
+	var forward := -global_basis.z
+	forward.y = 0.0
+	if to.length_squared() < 0.0001 or forward.length_squared() < 0.0001:
+		return 1.0
+	return forward.normalized().dot(to.normalized())
+
+
+## Done with its combo: the attack thrown was its last (Closing Statement).
+func combo_finished() -> bool:
+	return true
+
+
+## When a fully wound-up attack's tell flashes, before it lands.
+static func tell_time() -> float:
+	return TELL_FLASH_TIME + (READ_TELL if GameState.perk("read_the_tell") else 0.0)
+
+
+## Every monster runs slow for a while (not the player).
+static func slow_time(seconds: float) -> void:
+	slow_until = maxi(slow_until, Time.get_ticks_msec() + roundi(seconds * 1000.0))
+
+
 ## Damage a Counter Master's perfect counter deals: enough to finish anything,
 ## or a big chunk of a boss.
 func get_knockout_damage() -> float:
@@ -603,7 +678,7 @@ func _flash_tell(color: Color, height := 1.5) -> void:
 	add_child(light)
 	light.global_position = at
 	var tween := light.create_tween()
-	tween.tween_property(light, "light_energy", 0.0, TELL_FLASH_TIME + 0.1)
+	tween.tween_property(light, "light_energy", 0.0, tell_time() + 0.1)
 	tween.tween_callback(light.queue_free)
 	HitFx.burst(get_parent(), at, Vector3.UP, color, 8, 2.0, true, 0.04)
 	Sfx.play_at("tell", at, -2.0)
@@ -623,7 +698,8 @@ func _build_armor() -> void:
 func taunt(seconds: float) -> void:
 	if _dead:
 		return
-	_taunt_time = seconds
+	# Trash Talk (Tony's card): they stay mad longer.
+	_taunt_time = maxf(_taunt_time, seconds + GameState.get_effect("insult_time"))
 	DamagePopup.spawn(get_parent(), "ENRAGED!", Color(1.0, 0.25, 0.15), 54, global_position + Vector3(0, 2.4 * _body.scale.y, 0))
 	Sfx.play_at("growl", global_position + Vector3.UP * 1.6, 2.0, 0.8)
 	if _taunt_fx == null:
@@ -971,9 +1047,9 @@ func _die(push: Vector3) -> void:
 		_lesson_label = null
 	if has_meta("veteran"):
 		Achievements.earn("veteran")
-	# Tony's The Take: an enraged monster pays double.
+	# Tony's The Take: an enraged monster pays double (Skim Off the Top: triple).
 	if is_taunted() and GameState.has_passive("the_take"):
-		coin_reward *= 2
+		coin_reward *= 3 if GameState.has_effect("skim") else 2
 	_dead = true
 	end_turn()
 	# Finish a hatted enemy with an uppercut and the hat is always yours;

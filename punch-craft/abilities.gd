@@ -3,10 +3,9 @@ class_name Abilities
 ## ultimates, the first of each free, the rest unlocked by class level, swapped
 ## in camp's Loadout (never mid-run). GameState.loadouts holds the picks.
 ##
-## Skill webs adapt: the nodes that fed a fighter's default passive (PASSIVE
-## NODES) give "passive power" to whichever passive is equipped instead (one
-## point a level, three for a capstone). The Mauler's default changed (Grudge
-## replaced super armor), so his always do.
+## Passives grow with the fighter: "passive power" (GameState.passive_power),
+## a point every few levels, strengthens whichever passive is equipped. The
+## epic cards (Cards) each upgrade one passive or ultimate.
 
 const PASSIVES := {
 	"berserker": [
@@ -101,6 +100,11 @@ const ULTIMATES := {
 ## What a point of passive power does for each passive: [per point, text].
 const POWER_TEXT := {
 	"grudge": [0.15, "+%sx Grudge damage"],
+	"perfect_counter": [0.3, "-%ss Perfect Counter cooldown"],
+	"rapid_combos": [0.2, "+%sx shockwave damage"],
+	"dash_punches": [0.08, "+%sx dash punch damage"],
+	"fuggedaboudit": [0.25, "-%ss Fuggedaboudit recharge"],
+	"dual_sigil": [5.0, "+%s%% power (both)"],
 	"wrecking_ball": [0.3, "+%sx Wrecking Ball damage"],
 	"berserker": [5.0, "+%s%% Berserker damage"],
 	"phantom_step": [0.2, "-%ss Phantom Step cooldown"],
@@ -114,17 +118,6 @@ const POWER_TEXT := {
 	"attunement": [5.0, "+%s%% attuned power"],
 	"prism": [4.0, "+%s%% power (every power)"],
 }
-
-## Skill web nodes that strengthen the passive (see above).
-const PASSIVE_NODES := {
-	"berserker": ["short_fuse", "unbreakable", "payback", "berserk"],
-	"counter_master": ["perfect_timing", "precision_strike", "executioner"],
-	"combo_master": ["wide_wave", "rolling_thunder", "aftershock", "flurry"],
-	"free_runner": ["high_ground", "dive_kick"],
-	"wise_guy": ["shrug_it_off", "made_man"],
-	"elementalist": ["conduit", "resonance", "wellspring", "archmage"],
-}
-
 
 static func passives(class_id: String) -> Array:
 	return PASSIVES.get(class_id, [])
@@ -155,11 +148,6 @@ static func unlocked(class_id: String, id: String, class_level: int) -> bool:
 	return not entry.is_empty() and class_level >= int(entry.level)
 
 
-## Whether a skill node feeds the passive (and so adapts).
-static func is_passive_node(class_id: String, node_id: String) -> bool:
-	return node_id in PASSIVE_NODES.get(class_id, [])
-
-
 ## "+0.3x Grudge damage": what this much passive power does for a passive.
 static func power_text(passive: String, points: float) -> String:
 	if not POWER_TEXT.has(passive):
@@ -169,29 +157,3 @@ static func power_text(passive: String, points: float) -> String:
 
 static func _num(value: float) -> String:
 	return ("%.2f" % value).rstrip("0").rstrip(".")
-
-
-## The skill web as it plays with this passive: nodes that adapt show the
-## passive's icon and what they give it.
-static func adapt_tree(class_id: String, nodes: Dictionary, passive: String) -> Dictionary:
-	var view := {}
-	var entry := info(class_id, passive)
-	for id in nodes:
-		var node: Dictionary = nodes[id]
-		if not node_adapts(class_id, id, passive):
-			view[id] = node
-			continue
-		var adapted := node.duplicate()
-		adapted.effects = {"passive_power": node.effects.get("passive_power", 3 if int(node.get("ring", 1)) >= 6 else 1)}
-		adapted.icon = entry.get("icon", node.icon)
-		adapted.desc = "Powers %s." % entry.get("name", "your passive")
-		view[id] = adapted
-	return view
-
-
-## Whether that node keeps its own effect (the default passive is on, and the
-## fighter's default still uses it), or gives passive power instead.
-static func node_adapts(class_id: String, node_id: String, passive: String) -> bool:
-	if not is_passive_node(class_id, node_id):
-		return false
-	return class_id == "berserker" or passive != default_passive(class_id)

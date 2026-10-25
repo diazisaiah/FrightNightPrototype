@@ -17,24 +17,24 @@ Numbers are first guesses, to be tuned against POWER and par.
 
 ## The Mauler
 
-Super armor, Grudge / Wrecking Ball / Berserker, Inferno Uppercut / Brimstone Shield. A brawler who takes the hit and gives it back.
+Grudge / Wrecking Ball / Berserker, Inferno Uppercut / Brimstone Shield. A brawler who takes the hit and gives it back.
 
 **Commons (I-IV)**
 | Card | Per rank |
 |---|---|
 | **Payback** | Your first punch after taking a hit deals +12% |
-| **Thick Hide** | Super armor recharges 12% faster |
-| **Short Fuse** | Hits your super armor absorbs fill your ultimate 10% more |
+| **Thick Hide** | Hits deal 2% less to you |
+| **Short Fuse** | Taking a hit fills your ultimate by 3% |
 | **Heavy Hitter** | +4% damage |
-| **Mob Magnet** | +3% damage for each monster within 3m (up to 4) |
+| **Mob Magnet** | +2% damage for each monster within 3m (up to 4) |
 
 **Rares (I-II)**
 | Card | I | II |
 |---|---|---|
-| **Hold the Line** | While super armor is up you can't be knocked back, and absorbed hits cost 25% less | 50% less |
+| **Hold the Line** | Hits make you flinch half as long | Hits can't make you flinch |
 | **Lights Out** | Staggered monsters take +20% from you | +40% |
-| **Haymaker Swing** | Hooks hit every monster in a wide arc in front of you | Wider arc, +15% damage |
-| **Shoulder Charge** | Dashing into a monster knocks it down | And hits it for 2x your base damage |
+| **Haymaker Swing** | Hooks also hit every monster in an arc in front of you for half damage | A wider arc, for full damage |
+| **Shoulder Charge** | Dashing into a monster knocks it down for 1s | And hits it for 2x your base damage |
 | **Second Breath** | Below 30% knuckle HP, punches cost nothing | Below 40% |
 
 **Epics**
@@ -44,13 +44,13 @@ Super armor, Grudge / Wrecking Ball / Berserker, Inferno Uppercut / Brimstone Sh
 | **Strike!** | Wrecking Ball | Bowled monsters are knocked down for 2s, and a strike of 3+ fills 25% of your ultimate |
 | **Red Mist** | Berserker | Berserker's bonus also gives up to +40% punch speed |
 | **Inferno II** | Inferno Uppercut | After the first uppercut lands, you leap at a second monster |
-| **Brimstone Wall** | Brimstone Shield | The shield holds twice as much, and every hit it soaks hits the attacker back for half |
+| **Brimstone Wall** | Brimstone Shield | The shield holds twice as many hits, and every hit it soaks hits the attacker back for your base damage |
 
 **Legendaries**
 | Seal | Card | Effect |
 |---|---|---|
-| Bellman | **Unbreakable** | Super armor can't break during your own combos |
-| Headless | **Juggernaut** | You can't be staggered or knocked back, and every hit you absorb makes your next punch +50% |
+| Bellman | **Thrill of the Fight** | Every monster within 4m makes hits deal 5% less to you (up to 25%) |
+| Headless | **Juggernaut** | Above half knuckle HP, hits deal 25% less and can't make you flinch |
 | Southpaw | **Ultimate Surge** | (shared) |
 | Plague Doctor | **Avalanche** | Every 4th punch you land shoves every monster in front of you back and staggers them |
 | Coffin King | **Berserk** | Once a bout, dropping below 50% knuckle HP makes you hit twice as hard and take half damage for 8s |

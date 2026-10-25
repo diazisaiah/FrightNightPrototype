@@ -271,6 +271,17 @@ var _grudge_mark: Label3D
 var _dodge_chain_charge := 0
 ## Phantom Step: cooldown between teleports.
 var _phantom_cooldown := 0.0
+## Ghost Walk: Phantom Step on melee attacks, every few seconds.
+var _ghost_walk_cooldown := 0.0
+const GHOST_WALK_COOLDOWN := 6.0
+## Blood Feud: hits the grudge monster has landed since it was marked.
+var _grudge_hits := 0
+## Bounce House: bounces since you last touched the floor.
+var _stomp_chain := 0
+## Fuggedaboudit II's second wave-off.
+var _fugget_spare := false
+## The attack being dodged (for the cards that care what it was).
+var _dodged_attack := ""
 ## Momentum: built by sprinting (0-1), spent by the next punch that lands.
 var _momentum := 0.0
 var _momentum_idle := 0.0
@@ -325,6 +336,10 @@ var _head_tween: Tween
 var _fov_tween: Tween
 ## The class ultimate and its meter.
 var ult: Ult
+## The fighter's cards and attribute perks in play.
+var cards: CardPlay
+## Seconds left in a forward dash (Ghost Step slips attacks in it).
+var dash_time := 0.0
 
 ## Emotes: hold the emote key for the wheel (EmoteWheel), let go on a dance.
 ## The camera pulls out to third person around your fighter (PlayerBody) until
@@ -370,6 +385,10 @@ func _ready() -> void:
 	ult = Ult.new()
 	ult.player = self
 	add_child(ult)
+	GameState.ult_share = 0.0
+	cards = CardPlay.new()
+	cards.player = self
+	add_child(cards)
 	_body = PlayerBody.new()
 	_body.visible = false
 	add_child(_body)
@@ -468,6 +487,8 @@ func _process(delta: float) -> void:
 
 	_cooldown -= delta
 	_flinch_timer -= delta
+	dash_time -= delta
+	cards.tick(delta)
 	_dash_jab_time -= delta
 	_ghost_time -= delta
 	_defense_cooldown -= delta
@@ -570,7 +591,7 @@ func _physics_process(delta: float) -> void:
 			_pad_sprint = false
 		if Input.is_action_pressed("sprint") or _pad_sprint or ult.hype > 0.0:
 			speed = SPRINT_SPEED * GameState.get_sprint_multiplier()
-		speed *= GameState.get_move_speed_multiplier()
+		speed *= GameState.get_move_speed_multiplier() * cards.move_mult()
 		if ult.hype > 0.0:
 			speed *= Ult.HYPE_SPEED
 
@@ -589,6 +610,13 @@ func _physics_process(delta: float) -> void:
 
 	var was_airborne := not is_on_floor()
 	move_and_slide()
+	if dash_time > 0.0:
+		for i in get_slide_collision_count():
+			var bumped := get_slide_collision(i).get_collider() as Enemy
+			if bumped:
+				cards.dash_contact(bumped)
+	if is_on_floor():
+		_stomp_chain = 0
 	_check_head_stomp()
 	if ult.hype > 0.0:
 		_hype_bowl()
@@ -598,7 +626,7 @@ func _physics_process(delta: float) -> void:
 
 ## An enemy attack reaches the player. attack is an ANSWERS key. Returns
 ## "dodged" (right defense), "grazed" (a timed but wrong defense), "armored"
-## (Berserker super armor absorbed it) or "hit".
+## (an ultimate shield or other guard absorbed it) or "hit".
 ## attacker: the enemy throwing it, for melee attacks (Thorns hits it back).
 func receive_attack(amount: float, from: Vector3, attack: String, attacker: Node3D = null) -> String:
 	_stop_emote()
@@ -607,6 +635,9 @@ func receive_attack(amount: float, from: Vector3, attack: String, attacker: Node
 	if _last_attacker and _last_attacker.is_taunted():
 		amount *= Enemy.TAUNT_DEALT
 	if not active:
+		return "dodged"
+	# Get Up: back on your feet, untouchable for a moment.
+	if cards.untouchable > 0.0:
 		return "dodged"
 	var intercepted := ult.intercept_attack(attack, attacker, amount)
 	if intercepted != "":
@@ -635,9 +666,13 @@ func receive_attack(amount: float, from: Vector3, attack: String, attacker: Node
 				move = swapped
 		_assist_side = ""
 		if move in ANSWERS.get(attack, []):
+			_dodged_attack = attack
 			_on_dodge(move, since_press <= CLEAN_DODGE_TIME)
+			_dodged_attack = ""
 			if attack in ["arrow", "fireball"]:
 				_phantom_step(attacker)
+			elif GameState.has_effect("ghost_walk") and _ghost_walk_cooldown <= 0.0 and _phantom_step(attacker):
+				_ghost_walk_cooldown = GHOST_WALK_COOLDOWN
 			return "dodged"
 		_defense_cooldown = minf(_defense_cooldown, GRAZE_RECOVERY)
 		Sfx.play("block", -6.0, 0.7)
@@ -645,6 +680,15 @@ func receive_attack(amount: float, from: Vector3, attack: String, attacker: Node
 		_dodge_chain = 0
 		_take_damage(amount * GRAZE_MULTIPLIER * (1.0 - GameState.get_effect("graze_reduction")), attacker)
 		return "grazed"
+	# Cards that slip an undefended attack for you.
+	var slipped := cards.auto_slip(attack, attacker as Enemy)
+	if slipped != "":
+		Sfx.play("slip", -2.0, 1.2)
+		dodged.emit("ghost")
+		if slipped != "READ IT":
+			_ready_counter("any")
+		DamagePopup.spawn(get_parent(), slipped, Color(0.6, 0.9, 1.0), 40, global_position + _flat_forward() * 1.2 + Vector3(0, 1.6, 0))
+		return "dodged"
 	# Gravewalker Boots: right after a dodge, the next attack hits your ghost.
 	if _ghost_time > 0.0:
 		_ghost_time = 0.0
@@ -658,21 +702,30 @@ func receive_attack(amount: float, from: Vector3, attack: String, attacker: Node
 		class_event.emit("IRON WILL")
 		return "armored"
 	# Tony: Fuggedaboudit waves off one hit every 10s, with a quip.
-	if GameState.is_player_class("wise_guy") and GameState.has_passive("fuggedaboudit") and _fugget_cooldown <= 0.0:
-		_fugget_cooldown = maxf(3.0, FUGGET_TIME - GameState.get_effect("fugget_cut"))
+	if GameState.is_player_class("wise_guy") and GameState.has_passive("fuggedaboudit") and (_fugget_cooldown <= 0.0 or _fugget_spare):
+		# Fuggedaboudit II: two in a row, then the recharge.
+		if _fugget_cooldown <= 0.0 and GameState.has_effect("fuggedaboudit_ii"):
+			_fugget_spare = true
+		else:
+			_fugget_spare = false
+		var recharge := FUGGET_TIME - GameState.get_effect("fugget_cut") - 0.25 * _pp() - 3.0 * GameState.get_effect("fuggedaboudit_ii")
+		_fugget_cooldown = maxf(3.0, recharge)
 		Sfx.play("block", -2.0, 1.25)
 		class_event.emit("FUGGEDABOUDIT!")
 		ult.say(Insults.quip())
+		var made := GameState.get_effect("made_man")
+		if made > 0.0 and _last_attacker and not _last_attacker.is_dead():
+			_last_attacker.stun(made)
 		var patch_up := GameState.get_effect("fugget_heal")
 		if patch_up > 0.0:
 			heal(max_knuckles * patch_up)
 		ult.add(FUGGET_METER)
 		return "armored"
 	_shake = maxf(_shake, 0.08)
-	_flinch_timer = FLINCH_TIME * (1.0 - GameState.get_effect("flinch_reduction"))
+	_flinch_timer = FLINCH_TIME * (1.0 - GameState.get_effect("flinch_reduction")) * cards.flinch_scale()
 	_buffered_hand = ""
 	_on_hit_passives(attacker)
-	_set_combo(0)
+	_set_combo(cards.combo_after_hit(combo))
 	_fists.flinch()
 	Sfx.play("hurt")
 	attacked.emit(from)
@@ -682,11 +735,13 @@ func receive_attack(amount: float, from: Vector3, attack: String, attacker: Node
 	_dodge_chain = 0
 	ult.on_hit()
 	_take_damage(amount, attacker)
+	cards.on_hit(attacker as Enemy)
 	return "hit"
 
 
 ## Knuckle damage from an attack; Thorns hits the attacker back for what it cost.
 func _take_damage(amount: float, attacker: Node3D) -> void:
+	amount = cards.hit_amount(amount, attacker as Enemy)
 	var before := knuckles
 	hurt_knuckles(amount)
 	var lost := before - knuckles
@@ -703,9 +758,10 @@ func on_room_start() -> void:
 	_iron_will_ready = true
 
 
-## A new Crypt floor: The Long Count is ready again.
+## A new Crypt floor: The Long Count is ready again, and once-a-bout cards.
 func on_floor_start() -> void:
 	_long_count_ready = true
+	cards.start_bout()
 	on_room_start()
 
 
@@ -739,6 +795,7 @@ func start_fresh() -> void:
 	_clear_counter()
 	_flinch_timer = 0.0
 	_perfect_cooldown = 0.0
+	cards.start_bout()
 
 
 ## Between Dead League rounds: keep the bout's attrition, but clear any stale
@@ -791,6 +848,9 @@ func _lose_knuckles(amount: float) -> void:
 			var enemy := node as Enemy
 			if enemy and not enemy.is_dead() and enemy.global_position.distance_to(global_position) < 25.0:
 				enemy.stun(LONG_COUNT_STUN)
+	if knuckles <= 0.0:
+		cards.save_from_knockout()
+	cards.on_knuckles()
 	knuckles_changed.emit(knuckles, max_knuckles)
 	_fists.set_hurt(1.0 - knuckles / max_knuckles)
 	if knuckles <= 0.0:
@@ -1027,10 +1087,12 @@ func _do_move(move: String) -> void:
 func _forward_dash() -> void:
 	if _forward_dash_cooldown > 0.0 or _flinch_timer > 0.0:
 		return
-	_forward_dash_cooldown = FORWARD_DASH_COOLDOWN
+	_forward_dash_cooldown = FORWARD_DASH_COOLDOWN * cards.recovery_scale()
 	_dash_jab_time = DASH_PUNCH_WINDOW if GameState.has_passive("dash_punches") else DASH_JAB_WINDOW
-	_dash = -global_basis.z * FORWARD_DASH_SPEED
+	_dash = -global_basis.z * FORWARD_DASH_SPEED * cards.dash_scale()
 	_dash.y = 0.0
+	dash_time = 0.3
+	cards.on_dash()
 	Sfx.play("whoosh", -6.0, 0.7)
 	if _fov_tween:
 		_fov_tween.kill()
@@ -1092,7 +1154,7 @@ func _try_defense(move: String) -> void:
 	_defense = move
 	_defense_timer = window
 	_defense_window = window
-	_defense_cooldown = window + defense.recovery
+	_defense_cooldown = window + defense.recovery * cards.recovery_scale()
 	_animate_defense(move)
 	Sfx.play("whoosh", -6.0, 0.8 if move.begins_with("slip") else 0.6)
 
@@ -1117,7 +1179,9 @@ func _return_from_back_step(delta: float) -> void:
 func _on_dodge(move: String, clean := false) -> void:
 	_defense_cooldown = 0.0  # A dodge can be chained straight into the next one.
 	if GameState.has_passive("dodge_chain"):
-		_dodge_chain_charge = mini(_dodge_chain_charge + 1, DODGE_CHAIN_MAX)
+		# Stored Answers: chains go up to 10.
+		var most := 10 if GameState.has_effect("stored_answers") else DODGE_CHAIN_MAX
+		_dodge_chain_charge = mini(_dodge_chain_charge + 1, most)
 		if _dodge_chain_charge >= 2:
 			class_event.emit("CHAIN x%d" % _dodge_chain_charge)
 	if move == "back_step":
@@ -1137,6 +1201,7 @@ func _on_dodge(move: String, clean := false) -> void:
 		TimeFx.slowmo(0.7, 0.15)
 		dodged.emit(move)
 	_on_dodge_specials(move)
+	cards.on_dodge(clean, _dodged_attack, _last_attacker)
 
 
 ## Item specials that trigger on a successful dodge.
@@ -1230,8 +1295,9 @@ func _punch_type_for(hand: String) -> String:
 
 func _punch(type: String, hand: String) -> void:
 	_last_punch_hand = hand
+	cards.before_punch()
 	var punch: Dictionary = PUNCHES[type]
-	var speed := GameState.get_punch_speed()
+	var speed := GameState.get_punch_speed() * cards.speed_mult()
 	var impact: float = punch.impact / speed
 	_cooldown = punch.cooldown / speed
 	_fists.play_punch(type, hand, impact, _cooldown)
@@ -1265,7 +1331,7 @@ func _land_punch(type: String, hand: String, _dashing := false, airborne := fals
 		target = _punch_ray.get_collider() as Enemy
 		hit_point = _punch_ray.get_collision_point()
 	if target == null and _dash_style == "spear":
-		var line := _enemies_in_line(SPEAR_JAB_REACH, SPEAR_JAB_WIDTH)
+		var line := _enemies_in_line(_spear_reach(), SPEAR_JAB_WIDTH)
 		if not line.is_empty():
 			target = line[0]
 			hit_point = target.global_position + Vector3(0, 1.3, 0)
@@ -1329,7 +1395,7 @@ func _land_punch(type: String, hand: String, _dashing := false, airborne := fals
 	_last_hand = hand
 	_last_type = type
 	_last_set_up = set_up
-	_combo_timer = GameState.get_combo_window()
+	_combo_timer = GameState.get_combo_window() * cards.combo_window_scale()
 	var plain := type in ["jab", "cross"] and not counter and not dash_jab and is_on_floor()
 	_straight_run = _straight_run + 1 if plain else 0
 	_combo_grew = _straight_run <= STRAIGHT_RUN_LIMIT or unbroken_time > 0.0
@@ -1368,10 +1434,10 @@ func _land_punch(type: String, hand: String, _dashing := false, airborne := fals
 	if GameState.has_passive("dash_punches"):
 		var jump_threshold := FINISHER_HP_FRACTION + GameState.get_effect("finisher_threshold")
 		if _dash_style == "spear":
-			raw_damage *= SPEAR_JAB_MULTIPLIER + GameState.get_effect("opener_bonus")
+			raw_damage *= SPEAR_JAB_MULTIPLIER + GameState.get_effect("opener_bonus") + 0.08 * _pp()
 			caption = "SPEAR JAB!"
 		elif _dash_style == "haymaker":
-			raw_damage *= HAYMAKER_MULTIPLIER + GameState.get_effect("opener_bonus")
+			raw_damage *= HAYMAKER_MULTIPLIER + GameState.get_effect("opener_bonus") + 0.08 * _pp()
 			caption = "HAYMAKER!"
 		elif airborne and target.hp < target.max_hp * jump_threshold:
 			raw_damage *= FINISHER_MULTIPLIER
@@ -1395,11 +1461,24 @@ func _land_punch(type: String, hand: String, _dashing := false, airborne := fals
 	# Perfect Counter: a matching-hand hook/uppercut counter hits x2.5 harder
 	# (2026-10-24: it used to KO outright, and the Answer outclassed everyone).
 	var perfect_punch: bool = punch.heavy or GameState.has_effect("perfect_any_punch")
-	if counter and perfect_punch and GameState.has_passive("perfect_counter") and _perfect_cooldown <= 0.0:
+	# The Last Word and Riposte II make every counter a Perfect Counter.
+	var free_perfect := counter and cards.free_perfect()
+	if counter and (free_perfect or (perfect_punch and GameState.has_passive("perfect_counter") and _perfect_cooldown <= 0.0)):
 		raw_damage *= PERFECT_COUNTER_BONUS
 		caption = "PERFECT COUNTER!"
-		_perfect_cooldown = PERFECT_COUNTER_COOLDOWN - GameState.get_effect("perfect_cooldown_cut")
+		if not free_perfect:
+			_perfect_cooldown = PERFECT_COUNTER_COOLDOWN - GameState.get_effect("perfect_cooldown_cut") - 0.3 * _pp()
 		class_event.emit("PERFECT COUNTER!")
+		# Checkmate: a weakened monster goes down (a boss loses a chunk).
+		if GameState.has_effect("checkmate") and target.hp < target.max_hp * 0.4:
+			raw_damage = maxf(raw_damage, target.max_hp * 0.15 + target.armor if target.is_boss else target.hp + target.armor + 1.0)
+			crush = true
+			caption = "CHECKMATE!"
+
+	var card := cards.punch_mod(target, type, counter, airborne, set_up, hit_point, forced != null)
+	raw_damage *= card.mult
+	if card.caption != "":
+		caption = card.caption if caption == "" else caption + "\n" + card.caption
 
 	var passive := _passive_punch(target, forced != null)
 	raw_damage *= passive.mult
@@ -1434,7 +1513,7 @@ func _land_punch(type: String, hand: String, _dashing := false, airborne := fals
 		caption = forced_caption if caption == "" else forced_caption + "\n" + caption
 	var push := target.global_position - global_position if forced else -_camera.global_basis.z
 	push.y = 0.0
-	push = push.normalized() * punch.knockback * (1.5 if counter else 1.0)
+	push = push.normalized() * punch.knockback * (1.5 if counter else 1.0) * card.push
 	if _dash_style == "haymaker":
 		push *= HAYMAKER_KNOCKBACK
 	# How the target flies if this punch finishes it (see Enemy.finisher).
@@ -1445,7 +1524,8 @@ func _land_punch(type: String, hand: String, _dashing := false, airborne := fals
 	# Dive Kick: jump punches stagger.
 	var dive_kick := airborne and GameState.has_effect("dive_kick")
 	var big := forced != null and bonus > 1.0
-	var staggers: bool = set_up or counter or dive_kick or crush or big or _dash_style == "haymaker" or passive.stagger
+	var spear_line := _dash_style == "spear" and GameState.has_effect("spear_line")
+	var staggers: bool = set_up or counter or dive_kick or crush or big or _dash_style == "haymaker" or passive.stagger or card.stagger or spear_line
 	var dealt := target.take_hit(raw_damage, hit_point, push, staggers, caption, weak > 1.0, crush)
 	var killed := target.is_dead()
 	if not killed:
@@ -1453,6 +1533,7 @@ func _land_punch(type: String, hand: String, _dashing := false, airborne := fals
 	_dash_punch_splash(target, raw_damage, hand)
 	_after_punch_passives(target, raw_damage, killed, push, forced != null)
 	_punch_specials(type, hand, target, raw_damage, counter, dash_jab, killed)
+	cards.after_punch(target, type, hand, raw_damage, dealt, counter, killed, airborne, set_up, forced != null)
 	ult.on_landed(target, dealt, hand)
 
 	var kind := "hit"
@@ -1482,12 +1563,13 @@ func _land_punch(type: String, hand: String, _dashing := false, airborne := fals
 ## everything in its line, a Haymaker blasts back whoever stands beside it.
 func _dash_punch_splash(target: Enemy, damage: float, hand: String) -> void:
 	if _dash_style == "spear":
-		for enemy in _enemies_in_line(SPEAR_JAB_REACH, SPEAR_JAB_WIDTH):
+		var line := GameState.has_effect("spear_line")
+		for enemy in _enemies_in_line(_spear_reach(), SPEAR_JAB_WIDTH):
 			if enemy == target or enemy.is_dead():
 				continue
 			var forward := _flat_forward()
 			enemy.finisher = {"type": "spear", "hand": hand, "level": 0, "dir": forward, "player": self}
-			enemy.take_hit(damage * 0.8, enemy.global_position + Vector3(0, 1.2, 0), forward * 3.0, false, "SPEAR")
+			enemy.take_hit(damage * 0.8, enemy.global_position + Vector3(0, 1.2, 0), forward * 3.0, line, "SPEAR")
 			if not enemy.is_dead():
 				enemy.finisher = {}
 	elif _dash_style == "haymaker":
@@ -1504,6 +1586,22 @@ func _dash_punch_splash(target: Enemy, damage: float, hand: String) -> void:
 			enemy.take_hit(damage * 0.4, enemy.global_position + Vector3(0, 1.2, 0), away.normalized() * 9.0, true, "KNOCKED BACK")
 			if not enemy.is_dead():
 				enemy.finisher = {}
+				if GameState.has_effect("spear_line"):
+					_bowl_into(enemy, damage * 0.3)
+
+
+## Spear Line: the blasted monster flies into whoever's behind it.
+func _bowl_into(flier: Enemy, damage: float) -> void:
+	await get_tree().create_timer(0.2, false).timeout
+	if not is_instance_valid(flier):
+		return
+	for enemy in _enemies_near(flier.global_position, 1.6):
+		if enemy != flier:
+			enemy.take_hit(damage, enemy.global_position + Vector3(0, 1.0, 0), Vector3.ZERO, true, "BOWLED")
+
+
+func _spear_reach() -> float:
+	return SPEAR_JAB_REACH * (2.0 if GameState.has_effect("spear_line") else 1.0)
 
 
 ## Living enemies in a line straight ahead, nearest first.
@@ -1544,7 +1642,9 @@ func _pay_for_punch(punch: Dictionary, counter: bool) -> void:
 	if punch.heavy:
 		cost = maxf(1.0, cost - GameState.get_effect("heavy_cost_cut"))
 	cost += GameState.get_effect("blood_cost")
-	_lose_knuckles(cost * punch_cost_scale)
+	cost *= cards.cost_scale()
+	if cost > 0.0:
+		_lose_knuckles(cost * punch_cost_scale)
 
 
 ## Item specials that trigger when a punch lands.
@@ -1612,8 +1712,9 @@ func _trigger_powers(target: Enemy, damage: float, big_hit: bool, counter := fal
 		# Lightning gets only half of the combo bonus.
 		var multiplier := get_combo_multiplier()
 		Powers.chain_lightning(target, damage / multiplier * (1.0 + (multiplier - 1.0) * 0.5), jumps)
-	if counter:
+	if counter and GameState.get_effect("counter_heal") > 0.0:
 		heal(GameState.heal_amount("counter_heal", max_knuckles))
+		Powers.went_off("sigil_blood", target)
 
 
 ## Thunderhead (Storm capstone): a clean dodge strikes the attacker, then arcs.
@@ -1643,7 +1744,11 @@ func _check_ground_pound(was_airborne: bool, delta: float) -> void:
 func _shockwave() -> void:
 	var radius := SHOCKWAVE_RADIUS + GameState.get_effect("shockwave_radius")
 	var stun := SHOCKWAVE_STUN + GameState.get_effect("shockwave_stun")
-	var damage := GameState.get_damage() * GameState.get_effect("shockwave_damage")
+	var damage := GameState.get_damage() * (GameState.get_effect("shockwave_damage") + 0.2 * _pp())
+	# Aftershock: the stun hits too, and holds the combo longer.
+	var aftershock := GameState.has_effect("aftershock")
+	if aftershock:
+		damage += GameState.get_damage()
 	for node in get_tree().get_nodes_in_group("enemies"):
 		var enemy := node as Enemy
 		if enemy and not enemy.is_dead() and enemy.global_position.distance_to(global_position) <= radius:
@@ -1654,7 +1759,7 @@ func _shockwave() -> void:
 				enemy.take_hit(damage, enemy.global_position + Vector3(0, 1.0, 0), away.normalized() * 3.0, false, "SHOCK")
 			if not enemy.is_dead():
 				enemy.stun(stun)
-	_combo_freeze = COMBO_FREEZE_TIME
+	_combo_freeze = 2.0 if aftershock else COMBO_FREEZE_TIME
 	HitFx.burst(get_parent(), global_position + Vector3.UP, Vector3.UP, Color(1, 0.8, 0.3), 40, 7.0, true, 0.06)
 	Sfx.play("counter", -2.0, 0.7)
 	_kick_fov(5.0)
@@ -1663,7 +1768,7 @@ func _shockwave() -> void:
 
 # --- Passives (Abilities) --------------------------------------------------------------
 
-## Extra passive power from the skill web (GameState.passive_power).
+## Passive power from levels (GameState.passive_power).
 func _pp() -> float:
 	return GameState.passive_power()
 
@@ -1680,6 +1785,14 @@ func _passive_punch(target: Enemy, forced: bool) -> Dictionary:
 				result.mult = GRUDGE_MULT + 0.15 * _pp()
 				result.caption = "GRUDGE!"
 				result.stagger = true
+				# Blood Feud: every hit it landed adds to it, and it rocks the crowd.
+				if GameState.has_effect("blood_feud"):
+					result.mult += _grudge_hits
+					for enemy in _enemies_near(target.global_position, 3.0):
+						if enemy != target:
+							enemy.stun(Enemy.STAGGER_TIME)
+					if _grudge_hits > 0:
+						result.caption = "BLOOD FEUD x%d!" % (_grudge_hits + 1)
 				_clear_grudge()
 		"berserker":
 			result.mult = _berserker_mult()
@@ -1688,13 +1801,15 @@ func _passive_punch(target: Enemy, forced: bool) -> Dictionary:
 				result.mult = 1.0 + (DODGE_CHAIN_STEP + 0.05 * _pp()) * _dodge_chain_charge
 				result.caption = "CHAIN x%d!" % _dodge_chain_charge
 				result.stagger = _dodge_chain_charge >= 3
-				_dodge_chain_charge = 0
+				# Stored Answers: one dodge a punch.
+				_dodge_chain_charge = _dodge_chain_charge - 1 if GameState.has_effect("stored_answers") else 0
 		"momentum":
 			if _momentum > 0.1:
 				result.mult = _momentum_mult()
 				result.caption = "MOMENTUM x%.1f!" % result.mult
 				result.stagger = _momentum >= 0.9
-				_momentum = 0.0
+				# Full Tilt: a punch spends only half.
+				_momentum = _momentum * 0.5 if GameState.has_effect("full_tilt") else 0.0
 	return result
 
 
@@ -1705,11 +1820,17 @@ func _berserker_mult() -> float:
 
 
 func _momentum_mult() -> float:
-	return 1.0 + (MOMENTUM_MAX + 0.1 * _pp()) * _momentum
+	var most := MOMENTUM_MAX * (2.0 if GameState.has_effect("full_tilt") else 1.0)
+	return 1.0 + (most + 0.1 * _pp()) * _momentum
 
 
 func _take_bonus() -> float:
 	return 0.25 + 0.03 * _pp() if GameState.has_passive("the_take") else 0.0
+
+
+## Card hooks reach for these.
+func is_sprinting() -> bool:
+	return (Input.is_action_pressed("sprint") or _pad_sprint or ult.hype > 0.0) and Vector2(velocity.x, velocity.z).length() > WALK_SPEED + 0.5
 
 
 ## After a punch lands: echoes and wrecking balls.
@@ -1724,18 +1845,18 @@ func _after_punch_passives(target: Enemy, damage: float, killed: bool, push: Vec
 				_wrecking_ball(target.global_position, push)
 
 
-## A violet echo of the punch, a beat later.
-func _echo(target: Enemy, damage: float) -> void:
+## A violet echo of the punch, a beat later (Double Echo: it echoes again, for half).
+func _echo(target: Enemy, damage: float, again := true) -> void:
 	await get_tree().create_timer(ECHO_DELAY, false).timeout
 	if not is_instance_valid(target) or target.is_dead() or not active:
 		return
 	var at := target.global_position + Vector3(0, 1.3, 0)
-	target.take_hit(damage * (ECHO_SHARE + 0.04 * _pp()), at, Vector3.ZERO, false, "ECHO")
+	var echo := damage * (ECHO_SHARE + 0.04 * _pp())
+	target.take_hit(echo, at, Vector3.ZERO, false, "ECHO")
 	HitFx.burst(get_parent(), at, Vector3.UP, Color(0.7, 0.45, 1.0), 10, 3.0, true, 0.04)
 	Sfx.play_at("hit", at, -6.0, 1.5)
-	# Flurry (the Blur's capstone) with Echo Fists: echoes build the multiplier.
-	if int(GameState._levels("skill").get("flurry", 0)) > 0:
-		_rhythm = minf(_rhythm + ECHO_COMBO, RHYTHM_MAX)
+	if again and GameState.has_effect("double_echo"):
+		_echo(target, damage * 0.5, false)
 
 
 ## The knocked-out monster bowls through the ones behind it.
@@ -1757,8 +1878,14 @@ func _wrecking_ball(from: Vector3, push: Vector3) -> void:
 			enemy.take_hit(GameState.get_damage() * (WRECKING_DAMAGE + 0.3 * _pp()), enemy.global_position + Vector3(0, 1.0, 0),
 					direction * 6.0, true, "STRIKE!")
 			HitFx.burst(get_parent(), enemy.global_position + Vector3(0, 1.0, 0), direction, Color(1.0, 0.55, 0.2), 14, 5.0, false, 0.05)
+			# Strike!: knocked down for 2s.
+			if GameState.has_effect("strike") and not enemy.is_dead():
+				enemy.stun(2.0)
 		if not hit.is_empty() and step == 0:
 			Sfx.play_at("heavy", at, 0.0, 0.7)
+	if GameState.has_effect("strike") and hit.size() >= 3:
+		ult.add(Ult.MAX_METER * 0.25)
+		class_event.emit("STRIKE!  x%d" % hit.size())
 
 
 func _enemies_near(at: Vector3, radius: float) -> Array:
@@ -1782,7 +1909,11 @@ func _on_hit_passives(attacker: Node3D) -> void:
 	_momentum = 0.0
 	var enemy := attacker as Enemy
 	if GameState.has_passive("grudge") and enemy and not enemy.is_dead():
+		# Blood Feud counts the marked monster's hits.
+		_grudge_hits = _grudge_hits + 1 if enemy == _grudge else 0
+		var hits := _grudge_hits
 		_clear_grudge()
+		_grudge_hits = hits
 		_grudge = enemy
 		_grudge_mark = Label3D.new()
 		_grudge_mark.text = "GRUDGE"
@@ -1802,13 +1933,15 @@ func _clear_grudge() -> void:
 		_grudge_mark.queue_free()
 	_grudge_mark = null
 	_grudge = null
+	_grudge_hits = 0
 
 
 ## Phantom Step: dodged a thrown attack, so appear behind whoever threw it.
-func _phantom_step(attacker: Node3D) -> void:
+## True if it did.
+func _phantom_step(attacker: Node3D) -> bool:
 	var enemy := attacker as Enemy
 	if not GameState.has_passive("phantom_step") or _phantom_cooldown > 0.0 or enemy == null or enemy.is_dead():
-		return
+		return false
 	_phantom_cooldown = maxf(1.0, PHANTOM_COOLDOWN - 0.2 * _pp())
 	var away := enemy.global_position - global_position
 	away.y = 0.0
@@ -1821,10 +1954,12 @@ func _phantom_step(attacker: Node3D) -> void:
 	Sfx.play("slip", 0.0, 1.5)
 	_ready_counter("any")
 	class_event.emit("PHANTOM STEP!")
+	return true
 
 
 func _update_passive_timers(delta: float) -> void:
 	_phantom_cooldown = maxf(0.0, _phantom_cooldown - delta)
+	_ghost_walk_cooldown = maxf(0.0, _ghost_walk_cooldown - delta)
 	_stomp_cooldown = maxf(0.0, _stomp_cooldown - delta)
 	if unbroken_time > 0.0:
 		unbroken_time -= delta
@@ -1846,6 +1981,8 @@ func _update_passive_timers(delta: float) -> void:
 			if _muscle_timer <= 0.0:
 				_muscle_timer = maxf(6.0, MUSCLE_EVERY - 0.8 * _pp())
 				_cousin_vinnie()
+				if GameState.has_effect("whole_crew"):
+					_cousin_vinnie(true)
 
 
 ## Hype Train: every monster the Stray runs into goes flying.
@@ -1863,32 +2000,46 @@ func _hype_bowl() -> void:
 		_bowled[enemy] = now
 		enemy.take_hit(GameState.get_damage() * (Ult.HYPE_DAMAGE + 0.5 * ult._power()) * get_combo_multiplier(),
 				enemy.global_position + Vector3(0, 1.0, 0), ahead.normalized() * 10.0 + Vector3.UP * 2.0, true, "BOWLED!")
+		ult.on_bowled()
 		_set_combo(combo + 1)
 		_combo_timer = GameState.get_combo_window()
 		Sfx.play("heavy", -2.0, 0.8)
 		_shake = maxf(_shake, 0.05)
 
 
-## The Muscle: Cousin Vinnie grabs the nearest monster and holds it.
-func _cousin_vinnie() -> void:
+## The Muscle: Cousin Vinnie grabs the nearest monster and holds it. second:
+## The Whole Crew's second grab, and the two heads cracked together.
+func _cousin_vinnie(second := false) -> void:
 	var nearest: Enemy
 	for enemy in _enemies_near(global_position, MUSCLE_RANGE):
+		if second and float(enemy.get_meta("vinnie_until", 0.0)) > Time.get_ticks_msec() / 1000.0:
+			continue
 		if nearest == null or enemy.global_position.distance_to(global_position) < nearest.global_position.distance_to(global_position):
 			nearest = enemy
 	if nearest == null:
-		_muscle_timer = 1.0
+		if not second:
+			_muscle_timer = 1.0
 		return
-	var hold := MUSCLE_HOLD + 0.1 * _pp()
+	var hold := MUSCLE_HOLD + 0.1 * _pp() + (1.0 if GameState.has_effect("vinnie_bonus") else 0.0)
 	nearest.stun(hold)
+	nearest.set_meta("vinnie_until", Time.get_ticks_msec() / 1000.0 + hold)
 	var goon := Goon.make(nearest, hold)
 	get_parent().add_child(goon)
+	if second:
+		DamagePopup.spawn(get_parent(), "HEADS TOGETHER!", Color(0.5, 1.0, 0.6), 44, nearest.global_position + Vector3(0, 2.4, 0))
+		for enemy in _enemies_near(global_position, MUSCLE_RANGE):
+			if float(enemy.get_meta("vinnie_until", 0.0)) > Time.get_ticks_msec() / 1000.0:
+				enemy.take_hit(GameState.get_damage() * 2.0, enemy.global_position + Vector3(0, 1.6, 0), Vector3.ZERO, true, "CRACK")
+		return
 	DamagePopup.spawn(get_parent(), "VINNIE GOT HIM!", Color(0.5, 1.0, 0.6), 40, nearest.global_position + Vector3(0, 2.4, 0))
 	ult.say(["Hold him still, Vinnie.", "Vinnie! Little help.", "That's my cousin. Say hi."].pick_random())
 
 
 ## Head Stomp: landed on a monster's head, so bounce off it, stunning it.
+## Parkour (a card) bounces any fighter off heads, with a short stun.
 func _check_head_stomp() -> void:
-	if not GameState.has_passive("head_stomp") or _stomp_cooldown > 0.0:
+	var stomps := GameState.has_passive("head_stomp")
+	if not (stomps or GameState.has_effect("parkour")) or _stomp_cooldown > 0.0:
 		return
 	for i in get_slide_collision_count():
 		var hit := get_slide_collision(i)
@@ -1896,8 +2047,20 @@ func _check_head_stomp() -> void:
 		if enemy and not enemy.is_dead() and hit.get_normal().y > 0.6:
 			_stomp_cooldown = 0.35
 			velocity.y = JUMP_VELOCITY * 1.15
+			if not stomps:
+				enemy.stun(0.5)
+				Sfx.play("heavy", -4.0, 1.4)
+				return
 			enemy.stun(STOMP_STUN + 0.1 * _pp())
-			enemy.take_hit(GameState.get_damage() * STOMP_DAMAGE * get_combo_multiplier(), enemy.global_position + Vector3(0, 1.8, 0),
+			# Bounce House: each bounce in a chain hits harder; three give the dash back.
+			var bounce := 1.0
+			if GameState.has_effect("bounce_house"):
+				bounce = pow(1.5, _stomp_chain)
+				_stomp_chain += 1
+				if _stomp_chain == 3:
+					_forward_dash_cooldown = 0.0
+					class_event.emit("BOUNCE HOUSE!")
+			enemy.take_hit(GameState.get_damage() * STOMP_DAMAGE * bounce * get_combo_multiplier(), enemy.global_position + Vector3(0, 1.8, 0),
 					Vector3.ZERO, true, "STOMP!")
 			_set_combo(combo + 1)
 			_combo_timer = GameState.get_combo_window()

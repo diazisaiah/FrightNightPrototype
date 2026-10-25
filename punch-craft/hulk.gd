@@ -59,7 +59,7 @@ func _think(delta: float) -> Vector3:
 			return offset.normalized() * move_speed
 		State.WINDUP:
 			_state_timer -= delta
-			if not _flashed and _state_timer <= TELL_FLASH_TIME:
+			if not _flashed and _state_timer <= tell_time():
 				_flashed = true
 				_flash_tell(RING_COLOR, 2.2)
 			if _state_timer <= 0.0:

@@ -29,7 +29,7 @@ func _ready() -> void:
 		await _capture("res://dead_league_versus_%s_capture.png" % versus_class)
 		return
 	if loading_index >= 0:
-		Loading._build(loading_index)
+		Loading._build(Loading._boss_card(loading_index))
 		await _settle()
 		await _capture("res://dead_league_loading_%d_capture.png" % loading_index)
 		return
