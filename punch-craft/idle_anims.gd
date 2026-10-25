@@ -2,7 +2,7 @@ class_name IdleAnims
 ## Hand idles (2026-10-24): what the first-person hands do after a few
 ## seconds of doing nothing. Purely cosmetic; any action cuts one off. Each
 ## fighter has their own; more are bought in the Soul Shop and equipped per
-## fighter in the Loadout (GameState.idle_picks). The hands are rigged
+## fighter in Cosmetics at camp (GameState.idle_picks). The hands are rigged
 ## (Fists): fingers curl, spread, point and flick, and the hands stop where
 ## they touch instead of passing through each other.
 ##

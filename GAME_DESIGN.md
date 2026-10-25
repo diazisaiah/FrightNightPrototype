@@ -929,7 +929,7 @@ The humor pillar: a hat collection and a secret character.
 - **Popup:** the game pauses; the hat turns slowly with sparkles in its rarity color; then its name, a one-line joke, its boost, and one button: **GIMME THAT**. It's collected and the game resumes.
 - **Duplicates** become Souls, with a smaller "Already got one, ya greedy ghoul" popup.
 - **Boosts:** small and permanent (about 1-2% for a common, up to ~5% for an epic), counted in stats and POWER.
-- **Hat Rack:** a camp tab with owned hats on pegs and missing ones as silhouettes.
+- **Hat Rack:** the Hats tab in camp's Cosmetics, owned hats on pegs and missing ones as silhouettes.
 - **Roster draft:**
   - Commons: Party Hat, Traffic Cone, Shower Cap, Propeller Beanie, Lampshade, Bucket.
   - Uncommons: Bowler, Chef's Toque, Viking Helmet, Pirate Tricorn.
@@ -1107,7 +1107,7 @@ After 5s of doing nothing (no keys or buttons held, no movement; looking around 
 
 **Soul Shop** (one per restock, 6 Souls), any fighter: Fist Bump (bump, then blow it up), Coin Flip (thumb flick, catch), Juggler (a skull tossed palm to palm), Drum Roll (a bone in each fist for drumsticks), Windmill, Stretch (fingers spread and rippling), Finger Guns (one hand then the other, the thumb drops like a hammer), Nose Pick (the index finger goes up past the camera, then flicks a booger away).
 
-**Equip** per fighter in the Loadout's Hand Idle tab, each card playing live (`IdlePreview`); shop cards preview too.
+**Equip** per fighter in Cosmetics → Hand Idles, each card playing live (`IdlePreview`); shop cards preview too.
 
 ## New fighter: The Catalyst (Elementalist) [Built 2026-10-24]
 
@@ -1139,7 +1139,7 @@ A buff old wizard with a white beard and long white hair who put his spells into
 
 **Look:**
 - **First person:** heavy old forearms (a vein, white hairs), a dark robe sleeve with white trim, tape wraps up the forearm and over the knuckles carved with runes. When the ultimate is ready, the right hand's runes, light and sparks glow in his first power's color and the left in his second (fire orange, frost blue, storm violet, blood red). Prism cycles through them.
-- **Third person** (emotes): bare chest in an open dark robe with white trim, long white hair and beard.
+- **Third person** (emotes): see the body under Emotes (open torn robe, hakama, wild white hair and beard, key-pattern wraps).
 - The demo reel shows Dual Sigil (burn + chill) and Elemental Fists (fireball, icicle, zap, heal).
 
 ## Bounties, mastery and the Crypt merchant [Built 2026-10-24]
@@ -1290,7 +1290,7 @@ A **Shop** tab in camp (`soul_shop.gd`) where you spend **Souls**:
 
 The tips so far:
 - **First hatted monster** (`hat_first`, `Enemy._check_hat_lesson`): when a hatted monster is within 12 m and on screen, the game freezes on its hat. "Knock it off with an uppercut... This one only goes down to an uppercut." That monster gets "UPPERCUT IT! (your keys)" over its head and can't be finished by anything but an uppercut (it holds at 1 HP), so the hat always drops.
-- **Camp, after your first hat** (`hat_rack`, then `hat_rack_tour`): a pointer at the Hats tab, then a card on the rack (boosts are for good, worn or not, collect them all, click to wear, emote to show it off).
+- **Camp, after your first hat** (`hat_rack`, then `hat_rack_tour`): a pointer at the Cosmetics tab, then a card on the rack (boosts are for good, worn or not, collect them all, click to wear, emote to show it off).
 - **First power bought** (`power_select`): "You unlocked a power!" with a pointer at Select until you press it.
 
 **One power at a time:** Fire, Storm, Frost and Blood each work only while selected (`GameState.power_pick`, `power_of`, `power_active`).
@@ -1397,6 +1397,12 @@ Maxing the Coffin Crown went from about 19M to about 7.3M.
 
 ## Emotes and your fighter's body [Built 2026-10-17]
 
+**Cosmetics (2026-10-24):** the camp's Hats tab is now **Cosmetics**, with its own tabs:
+- **Hats:** the Hat Rack.
+- **Emotes:** your fighter on a little stage, wearing your hat, doing the emote you click; every emote you own, with a count.
+- **Hand Idles:** the idle cards (moved out of the Loadout, which is back to passives and ultimates).
+- **Skins:** coming soon.
+
 Hold **Emote** (G; View / Create on a controller, plus D-pad down in Weenie Hut Junior Mode, where it's free; in Pro Gamer Mode it's the back step) for the emote wheel, steer with the mouse or right stick, and let go on a dance. The camera pulls out to third person (about 0.35s, Destiny style) around your fighter. The mouse or right stick orbits the camera. Moving, punching, dodging, jumping, the ultimate or getting hit ends the dance and glides the camera back. Emoting works mid-fight; you're open while you dance. A quick tap repeats your last dance (or stops one). On a controller, a tap opens the map where there is one (the Crypt, the tutorial's dummy cycling), since the map gave up its own button.
 
 **Dances** (`emotes.gd`, keyframed poses eased in a loop, mirrored with `Emotes.mirror`):
@@ -1416,16 +1422,24 @@ Hold **Emote** (G; View / Create on a controller, plus D-pad down in Weenie Hut 
 - Timing is snappier, about 0.15-0.2s a beat.
 - The Nae Nae has a big overhead wave, a loose low arm, and a hip-to-hip rock with a knee pop into each side.
 
-**The body** (`player_body.gd`) is voxel blocks like the enemies, dressed after each card:
-- The Mauler: bare chest, red trunks, red gloves taped white, orange eyes.
-- The Blur: dark top, violet sash, spiky hair, violet eyes.
-- The Answer: black jacket, white belt, blue gloves, ice eyes.
-- The Stray: a mop of locs, red headband with tails, green sash, taped fists, green eyes.
-- Tony: black tracksuit with white stripes, white tee, gold chain and pinky ring, beanie, stubble, red nose.
+**The body** (`player_body.gd`, re-sculpted 2026-10-24) is sculpted in small voxels after each fighter's voxel model (`art/fighter_*_voxel_model.png`, Tony's is `fighter_tony_`, the Catalyst's `fighter_catalyst_`).
+- **Shapes, not boxes:** limbs are tapered ellipses with muscle swells (deltoids, biceps, triceps, forearms thick below the elbow, quads, calves), the torso narrows to the waist with pecs, abs, obliques, lats and traps on it, and each fighter has his own build (`BUILDS`: chest, waist, arms, legs, neck, jaw from square to pointed, face width).
+- **Faces** are drawn in whole voxels like the models: a dark brow bar, eyes (white, pupil, iris, white), a nose standing out, a mouth. Cheekbones, ears with a bowl and a lobe.
+- **Clothes** are shells over the body: ragged hems and trim, folds (a ruffled surface), knotted sashes with hanging tails, flaps below the belt, wraps in bands, laced shoes with soles and stripes.
+- **Baking** shades each cube by how closed in it is: darker in creases (between abs, under the pecs, cloth folds), lighter on edges.
+- **Building** is spread over frames (6 ms a frame, 12 in camp) and kept per fighter for the session, so a fight never hitches on it.
+
+Each fighter:
+- **The Mauler:** huge arms and neck, square jaw, flat-top swept forward; open black vest with ragged white trim, red sash knotted in front, black trunks with a ragged hem, blood spatter, giant red gloves with taped cuffs, high boots with red laces and soles; orange eyes.
+- **The Answer:** spiky hair with bangs over the brow; sleeveless black hoodie piped white with the hood down round the neck, white belt, the hoodie's long front below it; baggy pants slashed with white lightning; blue wraps, black fists; ice eyes.
+- **The Blur:** a huge mass of curls over a slim build and pointed chin; crop top with a high collar and violet piping, bare abs, violet sash knotted at the hip; balloon pants with big pale patches into striped leg wraps; violet eyes.
+- **The Stray:** a bush of thick locs, red headband with long flying tails; black gi crossed at the chest with ragged white trim, red scarf, red belt with white cloth hanging, a torn skirt; pants torn at mid-shin with white cross patches, red ankle wraps, white sneakers; green fingerless gloves; a grin; green eyes.
+- **Tony:** knit beanie, gray stubble, red nose; half-zip track jacket over a white tee, white zip piping, pocket flaps, puffy striped sleeves into ribbed cuffs; loose striped track pants; gold chain and pinky ring; taped hands.
+- **The Catalyst:** wild white hair streaming back, a full beard to the chest; open black robe with ragged white edges and short torn sleeves; knee-length hakama frayed white; strapped boots; wraps with a key pattern, fire orange on the left, violet on the right.
 
 It renders on its own layer, so the lantern at your eyes doesn't blow it out; a soft fill on the emote camera lights it. No crosshair while the camera's out.
 
-**Wear a hat:** click an owned hat on the Hat Rack to wear it (WEARING tag, gold border); click again to take it off. It shows on your fighter when you emote (Tony's beanie comes off for it). It's cosmetic only: every owned hat's boost already counts. Saved as `worn_hat`.
+**Wear a hat:** click an owned hat on the Hat Rack (Cosmetics) to wear it (WEARING tag, gold border); click again to take it off. It shows on your fighter when you emote (Tony's beanie comes off for it). It's cosmetic only: every owned hat's boost already counts. Saved as `worn_hat`.
 
 **Enemy labels (2026-10-17):** the Armor number is gone from enemy name tags; the gear on the body says it. The damage-reduction line stays.
 

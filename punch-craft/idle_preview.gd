@@ -1,7 +1,7 @@
 class_name IdlePreview
 extends SubViewportContainer
 ## A small live view of a fighter's hands playing a hand idle on a loop
-## (IdleAnims): the Loadout's idle cards and the Soul Shop.
+## (IdleAnims): the Hand Idles cards in Cosmetics and the Soul Shop.
 
 const GAP := 1.0
 

@@ -4,7 +4,7 @@ extends Control
 ## point web), Armory (kept Crypt gear) and Stats (stat points and a sheet). The class is chosen on the title screen
 ## (Menu button). Built in code because it's generated from the data in GameState.
 
-const PAGES := ["Upgrades", "Skills", "Armory", "Hats", "Bounties", "Shop", "Stats"]
+const PAGES := ["Upgrades", "Skills", "Armory", "Cosmetics", "Bounties", "Shop", "Stats"]
 const WORLD := preload("res://world.gd")
 const DUNGEON := preload("res://dungeon.gd")
 const DETAIL_WIDTH := 340.0
@@ -52,18 +52,19 @@ func _ready() -> void:
 
 
 ## Camp's mini tutorials (Tutorial), each once: after your first hat, the
-## Hat Rack; a new passive or ultimate, the Loadout.
+## Hat Rack (in Cosmetics); a new passive or ultimate, the Loadout.
 func _camp_tips() -> void:
 	if not is_inside_tree():
 		return
 	if not Tutorial.seen("hat_first") or GameState.hats.is_empty() or Tutorial.seen("hat_rack"):
 		_ability_tip()
 		return
-	var first := Tutorial.open(self, "hat_rack", "YOUR FIRST HAT!", "Every hat you take ends up on your Hat Rack. Open it here.",
-			_tab_buttons["Hats"], func() -> bool: return _pages["Hats"].visible, false)
+	var first := Tutorial.open(self, "hat_rack", "YOUR FIRST HAT!", "Hats go on your Hat Rack, in Cosmetics.",
+			_tab_buttons["Cosmetics"], func() -> bool: return _pages["Cosmetics"].visible, false)
 	if first == null:
 		return
 	first.finished.connect(func() -> void:
+		_show_cosmetic("Hats")
 		Tutorial.open(self, "hat_rack_tour", "THE HAT RACK",
 				"Every hat gives a small boost that's yours for good, worn or not, so collect them all!\n\nClick a hat to wear it, and hold %s in a fight to emote and show it off." % Controls.key_name("emote"),
 				_hat_grid, Callable(), false, true))
@@ -154,7 +155,7 @@ func _build_ui() -> void:
 	_add_page(page_area, "Upgrades", _build_tree_page("upgrade"))
 	_add_page(page_area, "Skills", _build_tree_page("skill"))
 	_add_page(page_area, "Armory", _build_armory_page())
-	_add_page(page_area, "Hats", _build_hat_rack())
+	_add_page(page_area, "Cosmetics", _build_cosmetics_page())
 	_add_page(page_area, "Bounties", _build_bounty_page())
 	_add_page(page_area, "Shop", _build_shop_page())
 	_add_page(page_area, "Stats", _build_stats_page())
@@ -258,8 +259,8 @@ func _build_tabs() -> Control:
 		GameState.save_game()
 		Loading.go("res://title.tscn"))
 	tabs.add_child(menu)
-	# Loadout: the fighter's passive, ultimate and hand idle (once there's a choice).
-	if _ability_choices() > 2 or IdleAnims.choices(GameState.player_class).size() > 1:
+	# Loadout: the fighter's passive and ultimate (once there's a choice).
+	if _ability_choices() > 2:
 		_loadout_button = Button.new()
 		_loadout_button.text = "Loadout"
 		_loadout_button.tooltip_text = "Pick your fighter's passive and ultimate."
@@ -335,6 +336,8 @@ func _show_page(page_name: String) -> void:
 	for page in _pages:
 		_pages[page].visible = page == page_name
 		_tab_buttons[page].set_pressed_no_signal(page == page_name)
+	if page_name == "Cosmetics":
+		_show_cosmetic(_cosmetic_tab)
 
 
 # --- Upgrade / skill trees -------------------------------------------------------
@@ -489,8 +492,6 @@ func _power_tip(kind: String) -> void:
 var _loadout_button: Button
 var _loadout_layer: CanvasLayer
 var _loadout_opened := false
-## The Loadout's page: "abilities" or "idle".
-var _loadout_tab := "abilities"
 
 
 ## How many passives and ultimates the fighter has unlocked.
@@ -542,23 +543,7 @@ func _open_loadout() -> void:
 	var heading := UiTheme.title_label("LOADOUT  ·  %s" % GameState.fighter_name().to_upper(), 40, UiTheme.GOLD)
 	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(heading)
-	var tabs := HBoxContainer.new()
-	tabs.alignment = BoxContainer.ALIGNMENT_CENTER
-	tabs.add_theme_constant_override("separation", 8)
-	column.add_child(tabs)
-	for tab in [["abilities", "Abilities"], ["idle", "Hand Idle"]]:
-		var button := Button.new()
-		button.text = tab[1]
-		button.theme_type_variation = "TabButton"
-		button.toggle_mode = true
-		button.button_pressed = _loadout_tab == tab[0]
-		button.pressed.connect(func() -> void:
-			_loadout_tab = tab[0]
-			_open_loadout())
-		tabs.add_child(button)
-	if _loadout_tab == "idle":
-		_idle_cards(column)
-	for slot in ([] if _loadout_tab == "idle" else ["passive", "ultimate"]):
+	for slot in ["passive", "ultimate"]:
 		var label := UiTheme.title_label(slot.to_upper(), 20, UiTheme.MUTED)
 		column.add_child(label)
 		var row := HBoxContainer.new()
@@ -580,13 +565,12 @@ func _open_loadout() -> void:
 
 
 ## The hand idles the fighter can pick, each playing on a loop.
-func _idle_cards(column: VBoxContainer) -> void:
-	column.add_child(_label("What your hands do while you wait.", 15, UiTheme.MUTED))
-	var grid := GridContainer.new()
-	grid.columns = 4
-	grid.add_theme_constant_override("h_separation", 12)
-	grid.add_theme_constant_override("v_separation", 12)
-	column.add_child(grid)
+func _refresh_idles() -> void:
+	if _idle_grid == null:
+		return
+	for child in _idle_grid.get_children():
+		child.queue_free()
+	var grid := _idle_grid
 	var tint := GameState.fighter_color()
 	for id in IdleAnims.choices(GameState.player_class):
 		var equipped: bool = id == GameState.idle_anim()
@@ -614,7 +598,7 @@ func _idle_cards(column: VBoxContainer) -> void:
 		card.pressed.connect(func() -> void:
 			if GameState.equip_idle(id):
 				Sfx.play("unlock", -8.0, 1.4)
-				_open_loadout())
+				_refresh_idles())
 		grid.add_child(card)
 
 
@@ -1206,6 +1190,180 @@ func _armory_card(item: Dictionary) -> Control:
 var _hat_title: Label
 var _hat_yonkers: Label
 var _hat_grid: GridContainer
+
+
+# --- Cosmetics -------------------------------------------------------------------------
+
+const COSMETICS := ["Hats", "Emotes", "Hand Idles", "Skins"]
+var _cosmetic_tab := "Hats"
+var _cosmetic_pages := {}
+var _cosmetic_buttons := {}
+var _idle_grid: GridContainer
+var _emote_grid: GridContainer
+var _emote_title: Label
+var _emote_body: PlayerBody
+
+
+## Hats, emotes, hand idles and (soon) skins, each on its own tab.
+func _build_cosmetics_page() -> Control:
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 8)
+	var tabs := HBoxContainer.new()
+	tabs.add_theme_constant_override("separation", 4)
+	column.add_child(tabs)
+	var area := Control.new()
+	area.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	column.add_child(area)
+	var group := ButtonGroup.new()
+	var builders := {"Hats": _build_hat_rack, "Emotes": _build_emote_page, "Hand Idles": _build_idle_page, "Skins": _build_skins_page}
+	for page_name in COSMETICS:
+		var button := Button.new()
+		button.text = page_name
+		button.toggle_mode = true
+		button.button_group = group
+		button.theme_type_variation = "TabButton"
+		button.pressed.connect(_show_cosmetic.bind(page_name))
+		tabs.add_child(button)
+		_cosmetic_buttons[page_name] = button
+		var page: Control = (builders[page_name] as Callable).call()
+		page.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		area.add_child(page)
+		_cosmetic_pages[page_name] = page
+	_show_cosmetic("Hats")
+	return column
+
+
+func _show_cosmetic(page_name: String) -> void:
+	_cosmetic_tab = page_name
+	for page in _cosmetic_pages:
+		_cosmetic_pages[page].visible = page == page_name
+		_cosmetic_buttons[page].set_pressed_no_signal(page == page_name)
+	match page_name:
+		"Emotes":
+			_refresh_emotes()
+		"Hand Idles":
+			_refresh_idles()
+
+
+## Your fighter on a little stage doing the emote you click (wearing your hat),
+## beside every emote you own.
+func _build_emote_page() -> Control:
+	var panel := PanelContainer.new()
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 16)
+	panel.add_child(row)
+	var stage := SubViewportContainer.new()
+	stage.stretch = true
+	stage.custom_minimum_size = Vector2(320, 0)
+	stage.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(stage)
+	var viewport := SubViewport.new()
+	viewport.own_world_3d = true
+	viewport.transparent_bg = true
+	stage.add_child(viewport)
+	var environment := WorldEnvironment.new()
+	environment.environment = Environment.new()
+	environment.environment.background_mode = Environment.BG_CLEAR_COLOR
+	environment.environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	environment.environment.ambient_light_color = Color(0.6, 0.6, 0.66)
+	viewport.add_child(environment)
+	var sun := DirectionalLight3D.new()
+	sun.rotation = Vector3(-0.6, 0.5, 0)
+	viewport.add_child(sun)
+	var camera := Camera3D.new()
+	camera.fov = 34.0
+	var eye := Vector3(0, 1.15, -4.2)
+	camera.transform = Transform3D(Basis.looking_at(Vector3(0, 0.95, 0) - eye), eye)
+	viewport.add_child(camera)
+	_emote_body = PlayerBody.new(GameState.player_class)
+	_emote_body.build_budget_ms = 12
+	_emote_body.rotation.y = -0.35
+	viewport.add_child(_emote_body)
+	var column := VBoxContainer.new()
+	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	column.add_theme_constant_override("separation", 12)
+	row.add_child(column)
+	_emote_title = UiTheme.title_label("EMOTES", 26, UiTheme.GOLD)
+	column.add_child(_emote_title)
+	var tip := _label("Click to preview. Hold %s in a fight for the wheel." % Controls.key_name("emote"), 13, UiTheme.MUTED)
+	column.add_child(tip)
+	Controls.watch(tip, func() -> void:
+		tip.text = "Click to preview. Hold %s in a fight for the wheel." % Controls.key_name("emote"))
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	column.add_child(scroll)
+	_emote_grid = GridContainer.new()
+	_emote_grid.columns = 3
+	_emote_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_emote_grid.add_theme_constant_override("h_separation", 10)
+	_emote_grid.add_theme_constant_override("v_separation", 10)
+	scroll.add_child(_emote_grid)
+	return panel
+
+
+func _refresh_emotes() -> void:
+	if _emote_grid == null:
+		return
+	_emote_body.wear_hat(GameState.worn_hat)
+	for child in _emote_grid.get_children():
+		child.queue_free()
+	var owned := Achievements.emotes()
+	_emote_title.text = "EMOTES   %d / %d" % [owned.size(), Emotes.ORDER.size()]
+	var tint := GameState.fighter_color()
+	if not _emote_body.playing() in owned and not owned.is_empty():
+		_emote_body.play(owned[0])
+	for id in owned:
+		var showing: bool = id == _emote_body.playing()
+		var card := Button.new()
+		card.text = Emotes.name_of(id)
+		card.custom_minimum_size = Vector2(0, 64)
+		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		card.add_theme_font_override("font", UiTheme.bold_font())
+		card.add_theme_font_size_override("font_size", 17)
+		card.add_theme_color_override("font_color", UiTheme.GOLD if showing else UiTheme.TEXT)
+		card.add_theme_stylebox_override("normal", UiTheme.raised(Color(0.06, 0.05, 0.08, 0.96), UiTheme.GOLD if showing else Color(tint, 0.5), 3 if showing else 2, 10))
+		card.add_theme_stylebox_override("hover", UiTheme.raised(Color(tint.darkened(0.75), 0.98), tint.lightened(0.2), 3, 10))
+		card.add_theme_stylebox_override("pressed", UiTheme.raised(Color(tint.darkened(0.75), 0.98), tint.lightened(0.2), 3, 10))
+		card.pressed.connect(func() -> void:
+			_emote_body.play(id)
+			_refresh_emotes())
+		_emote_grid.add_child(card)
+
+
+func _build_idle_page() -> Control:
+	var panel := PanelContainer.new()
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 12)
+	panel.add_child(column)
+	column.add_child(UiTheme.title_label("HAND IDLES", 26, UiTheme.GOLD))
+	column.add_child(_label("What your hands do while you wait. Click one to equip it.", 13, UiTheme.MUTED))
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	column.add_child(scroll)
+	_idle_grid = GridContainer.new()
+	_idle_grid.columns = 4
+	_idle_grid.add_theme_constant_override("h_separation", 12)
+	_idle_grid.add_theme_constant_override("v_separation", 12)
+	scroll.add_child(_idle_grid)
+	return panel
+
+
+func _build_skins_page() -> Control:
+	var panel := PanelContainer.new()
+	var center := CenterContainer.new()
+	panel.add_child(center)
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 8)
+	center.add_child(column)
+	var title := UiTheme.title_label("SKINS", 40, UiTheme.GOLD)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	column.add_child(title)
+	var soon := _label("Coming soon.", 18, UiTheme.MUTED)
+	soon.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	column.add_child(soon)
+	return panel
 
 
 ## Every hat on a peg: owned ones in color with their boost, missing ones as
