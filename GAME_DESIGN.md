@@ -1077,6 +1077,7 @@ Saved as `drills: {drill: {best, day}}`; the day is your own clock's date.
 | Veteran Slayer | Knock out a veteran | Take the L |
 | No End in Sight | 50 knockouts in the Endless Arena | Horse Ride |
 | Legend | Find a legendary hat | Bros. Shuffle |
+| Untouchable | Beat a Dead League contender without getting hit | Boo-Yah |
 
 Older saves get what they'd already earned, quietly, when camp loads. The list and which emote each gives are expected to change as emotes are added.
 
@@ -1415,6 +1416,7 @@ Hold **Emote** (G; View / Create on a controller, plus D-pad down in Weenie Hut 
 - Horse Ride (reins hop, then the lasso)
 - Running Man
 - Bros. Shuffle (the Mario & Luigi dance: fists bouncing at the chest, knock-kneed sway, alternating fist pumps)
+- Boo-Yah (Vector's "Oh yeah!" from Despicable Me, added 2026-10-24): whip round into a T-pose and sway; lean back, hips thrust, hands wiggling low; claws up by the face; both fists pumping overhead; a double biceps flex; smug hip swivels, fists at the hips. Earned by Untouchable.
 
 **Tightened 2026-10-17:** the dances were stiff from the front, because knee bends and hip dips happen front to back, and the feet sank into the floor.
 - `PlayerBody._plant_feet` now keeps the feet on the canvas: dropping the hips bends the knees, and swaying them sideways leans the legs.

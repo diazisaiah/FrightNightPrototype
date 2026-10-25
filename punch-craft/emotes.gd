@@ -20,11 +20,11 @@ const REST := {
 	"rs": Vector3(0.05, 0, 0.12), "re": Vector3(0.25, 0, 0),
 }
 ## Wheel order (clockwise from the top).
-const ORDER := ["default", "dab", "nae_nae", "floss", "take_the_l", "griddy", "horse_ride", "running_man", "bros_shuffle"]
+const ORDER := ["default", "dab", "nae_nae", "floss", "take_the_l", "griddy", "horse_ride", "running_man", "bros_shuffle", "boo_yah"]
 const NAMES := {
 	"default": "The Default", "dab": "Dab", "nae_nae": "Nae Nae", "floss": "Floss",
 	"take_the_l": "Take the L", "griddy": "Griddy", "horse_ride": "Horse Ride",
-	"running_man": "Running Man", "bros_shuffle": "Bros. Shuffle",
+	"running_man": "Running Man", "bros_shuffle": "Bros. Shuffle", "boo_yah": "Boo-Yah",
 }
 
 
@@ -158,4 +158,42 @@ static func keys(id: String) -> Array:
 			var chest := {"pos": Vector3(0, -0.03, 0), "ls": Vector3(0.7, 0, -0.12), "le": Vector3(2.0, 0, 0),
 					"rs": Vector3(0.7, 0, 0.12), "re": Vector3(2.0, 0, 0), "lh": Vector3(0, 0, 0.08), "rh": Vector3(0, 0, -0.08)}
 			return [[0.18, pump], [0.16, chest], [0.18, mirror(pump)], [0.16, chest]]
+		"boo_yah":
+			# The supervillain's "Oh yeah!": whip round into a T, sway; lean
+			# back, hips out, hands wiggling low; claws up by the face; both
+			# fists pumping overhead; a double biceps flex; smug hip swivels,
+			# fists at the hips.
+			var wind := {"pos": Vector3(0, -0.06, 0), "hips": Vector3(0, 0.9, 0), "torso": Vector3(0, 0.5, 0), "head": Vector3(0, 0.3, 0),
+					"ls": Vector3(1.2, 0, 0.9), "le": Vector3(1.6, 0, 0), "rs": Vector3(1.2, 0, -0.9), "re": Vector3(1.6, 0, 0)}
+			var tee := {"ls": Vector3(0.1, 0, -1.5), "le": Vector3(0.1, 0, 0), "rs": Vector3(0.1, 0, 1.5), "re": Vector3(0.1, 0, 0),
+					"torso": Vector3(0.06, 0, 0), "head": Vector3(0.1, 0, 0.15)}
+			var sway := with(tee, {"pos": Vector3(0.07, -0.03, 0), "torso": Vector3(0.06, 0, -0.12), "head": Vector3(0.05, 0, -0.2),
+					"ls": Vector3(0.1, 0, -1.35), "rs": Vector3(0.1, 0, 1.65)})
+			# Hips thrust forward (the legs angle back to keep the feet put).
+			var lean := {"pos": Vector3(0.04, -0.08, -0.14), "lh": Vector3(-0.16, 0, 0), "rh": Vector3(-0.16, 0, 0),
+					"torso": Vector3(0.58, 0.1, 0.06), "head": Vector3(-0.42, 0.15, 0.12),
+					"ls": Vector3(0.45, 0, -0.4), "le": Vector3(0.5, 0, 0), "rs": Vector3(0.3, 0, 0.5), "re": Vector3(0.7, 0, 0)}
+			var wiggle := with(lean, {"pos": Vector3(-0.03, -0.1, -0.14), "torso": Vector3(0.58, -0.05, -0.04),
+					"ls": Vector3(0.3, 0, -0.5), "le": Vector3(0.75, 0, 0), "rs": Vector3(0.45, 0, 0.4), "re": Vector3(0.45, 0, 0)})
+			var claws := {"pos": Vector3(0.03, -0.06, -0.08), "lh": Vector3(-0.1, 0, 0), "rh": Vector3(-0.1, 0, 0),
+					"torso": Vector3(0.3, -0.15, 0.08), "head": Vector3(-0.1, 0.12, 0.12),
+					"ls": Vector3(0.3, 0, -0.5), "le": Vector3(2.4, 0, 0), "rs": Vector3(0.3, 0, 0.5), "re": Vector3(2.4, 0, 0)}
+			var claws_b := with(claws, {"pos": Vector3(-0.03, -0.08, -0.08), "torso": Vector3(0.3, 0.12, -0.06), "head": Vector3(-0.1, -0.1, -0.1)})
+			var yeah := {"pos": Vector3(0, 0.02, -0.05), "lh": Vector3(-0.06, 0, 0), "rh": Vector3(-0.06, 0, 0),
+					"torso": Vector3(0.35, 0, 0), "head": Vector3(0.45, 0, 0),
+					"ls": Vector3(2.85, 0, -0.35), "le": Vector3(0.5, 0, 0), "rs": Vector3(2.85, 0, 0.35), "re": Vector3(0.5, 0, 0)}
+			var yeah_down := with(yeah, {"pos": Vector3(0, -0.08, -0.05), "le": Vector3(1.1, 0, 0), "re": Vector3(1.1, 0, 0), "head": Vector3(0.3, 0, 0)})
+			var flex := {"pos": Vector3(0, -0.08, -0.06), "lh": Vector3(-0.07, 0, 0), "rh": Vector3(-0.07, 0, 0),
+					"torso": Vector3(0.12, 0, 0), "head": Vector3(0, 0, 0.12),
+					"ls": Vector3(1.57, 0, -1.4), "le": Vector3(2.0, 0, 0), "rs": Vector3(1.57, 0, 1.4), "re": Vector3(2.0, 0, 0)}
+			var flex_pop := with(flex, {"pos": Vector3(0.07, -0.1, -0.08), "torso": Vector3(0.12, 0, -0.1), "head": Vector3(0, 0.15, -0.12)})
+			var swivel := {"pos": Vector3(0.09, -0.07, -0.06), "lh": Vector3(-0.08, 0, 0), "rh": Vector3(-0.08, 0, 0),
+					"torso": Vector3(0.1, 0.15, -0.14), "head": Vector3(-0.05, -0.2, 0.15),
+					"ls": Vector3(0.25, 0, -0.45), "le": Vector3(1.3, 0, 0), "rs": Vector3(0.25, 0, 0.45), "re": Vector3(1.3, 0, 0)}
+			return [[0.2, wind], [0.14, tee], [0.3, sway], [0.3, mirror(sway)], [0.3, sway],
+					[0.2, lean], [0.15, wiggle], [0.15, lean], [0.15, wiggle],
+					[0.18, claws], [0.15, claws_b], [0.15, claws],
+					[0.15, yeah], [0.14, yeah_down], [0.14, yeah], [0.14, yeah_down],
+					[0.18, flex], [0.2, flex_pop], [0.2, flex],
+					[0.16, swivel], [0.16, mirror(swivel)], [0.16, swivel], [0.16, mirror(swivel)]]
 	return [[0.5, {}]]

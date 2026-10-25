@@ -186,6 +186,8 @@ func _finish_victory() -> void:
 	var profile := DeadLeagueRules.boss(GameState.dead_league_bout)
 	var first_clear := GameState.record_dead_league_result(profile.id, grade, points)
 	Bounties.event("league_win")
+	if _damage_taken <= 0.0:
+		Achievements.earn("untouched")
 	var best := int(GameState.dead_league_best.get(profile.id, {}).get("score", 0)) == points
 	var last := GameState.dead_league_bout + 1 >= DeadLeagueRules.BOSS_COUNT
 	var note := "NEW PERSONAL BEST" if best else ""

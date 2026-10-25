@@ -13,6 +13,7 @@ const LIST := {
 	"veteran": {"name": "Veteran Slayer", "desc": "Knock out a veteran monster.", "emote": "take_the_l"},
 	"endless_50": {"name": "No End in Sight", "desc": "Reach 50 knockouts in the Endless Arena.", "emote": "horse_ride"},
 	"legendary_hat": {"name": "Legend", "desc": "Find a legendary hat.", "emote": "bros_shuffle"},
+	"untouched": {"name": "Untouchable", "desc": "Beat a Dead League contender without getting hit.", "emote": "boo_yah"},
 }
 ## Dances everyone has.
 const FREE_EMOTES := ["default"]
