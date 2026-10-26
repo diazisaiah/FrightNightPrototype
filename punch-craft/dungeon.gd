@@ -119,7 +119,7 @@ var _floor := 1
 var _theme: Dictionary = Themes.CRYPT[0]
 ## The floor's hazards (kept apart from _level so batching leaves them be).
 var _hazards: Node3D
-## The floor this run started on (its first floor gets the starter chest).
+## The floor this run started on (the Crypt's difficulty ramps from it).
 var _start_floor := 1
 ## Rooms on this floor: {cell, type ("start", "fight", "chest", "boss"),
 ## depth, size, center, doors: [Vector2i], state, ...}.
@@ -838,10 +838,6 @@ func _update_info() -> void:
 
 # --- Chests, items and stairs -----------------------------------------------
 
-func _place_starter_chest(at: Vector3) -> void:
-	_place_chest(at, "starter", 0.0)
-
-
 ## quality "" = a normal chest (which may turn out cursed, or be a mimic);
 ## "boss" / "elite" roll better; "cursed" holds a cursed item.
 func _place_chest(at: Vector3, quality: String, mimic_chance := MIMIC_CHANCE_DROPPED) -> void:
@@ -1444,9 +1440,6 @@ func _build_room(room: Dictionary) -> void:
 		_level.add_child(mark)
 	if room.type == "start":
 		_build_altar(center + Vector3(-3.0, 0, -3.0))
-	if room.type == "start" and _floor == _start_floor:
-		# Something to start the run with (never a mimic or cursed).
-		_place_starter_chest(center + Vector3(0, 0, 3.0))
 	if room.type == "chest":
 		_place_chest(center, "", MIMIC_CHANCE_CHEST_ROOM)
 	elif room.type == "merchant":

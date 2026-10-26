@@ -71,6 +71,12 @@ const CATALOG := {
 		"desc": "Five servings a day. Too late for this guy."},
 	"fast_quills": {"name": "Fast Guy Fleece Cap", "rarity": "epic", "effects": {"move_speed": 0.05, "punch_speed": 0.04},
 		"desc": "Blue, spiky, and already gone."},
+	"pocket_trainer_cap": {"name": "Pocket Trainer Cap", "rarity": "rare", "effects": {"xp_bonus": 0.04, "coin_bonus": 0.03},
+		"desc": "Gotta punch 'em all."},
+	"straw_hat": {"name": "Straw Hat", "rarity": "epic", "effects": {"knuckles_percent": 0.04, "damage_percent": 0.03},
+		"desc": "Stretchy guy's. He'll want it back."},
+	"rebel_cap": {"name": "Rebellious Guy Hat", "rarity": "epic", "effects": {"punch_speed": 0.04, "damage_percent": 0.03},
+		"desc": "Good grief."},
 	"monkey_mask": {"name": "Big Monkey Mask", "rarity": "epic", "effects": {"damage_percent": 0.03, "dodge_window": 0.03},
 		"desc": "Ook. The dead find it deeply unsettling."},
 	"yonker_brim": {"name": "Yonker with Brim", "rarity": "legendary", "effects": {},
@@ -256,6 +262,12 @@ static func build(id: String, u: float) -> Node3D:
 			_monkey_mask(hat, u)
 		"fast_quills":
 			_quills(hat, u)
+		"pocket_trainer_cap":
+			_trainer_cap(hat, u)
+		"straw_hat":
+			_straw_hat(hat, u)
+		"rebel_cap":
+			_rebel_cap(hat, u)
 		"wig_black":
 			_strong_wig(hat, u, Color(0.13, 0.13, 0.16), false)
 		"wig_blonde":
@@ -351,6 +363,72 @@ static func _quills(hat: Node3D, u: float) -> void:
 	for i in quills.size():
 		var quill: Array = quills[i]
 		_spike(hat, u, quill[0], quill[1], quill[2], quill[3], fleece if i % 2 == 0 else shade)
+
+
+## The pocket trainer's cap: white front panels, red back, a red brim and
+## button, and a green swoosh on the front.
+static func _trainer_cap(hat: Node3D, u: float) -> void:
+	var white := Color(0.97, 0.97, 0.97)
+	var red := Color(0.86, 0.14, 0.12)
+	_b(hat, u, Vector3(1.1, 0.3, 0.56), Vector3(0, 0.12, -0.27), white)
+	_b(hat, u, Vector3(1.1, 0.3, 0.56), Vector3(0, 0.12, 0.27), red)
+	_b(hat, u, Vector3(0.82, 0.12, 0.42), Vector3(0, 0.32, -0.2), white)
+	_b(hat, u, Vector3(0.82, 0.12, 0.42), Vector3(0, 0.32, 0.2), red)
+	_b(hat, u, Vector3(0.12, 0.08, 0.12), Vector3(0, 0.41, 0), red)
+	_b(hat, u, Vector3(0.94, 0.05, 0.66), Vector3(0, 0.0, -0.8), red, Vector3(-0.12, 0, 0))
+	var green := Color(0.1, 0.48, 0.34)
+	# Seen from the front, +x is on the left: a bar running right, a stroke
+	# rising from its left end, a hook at the top.
+	_b(hat, u, Vector3(0.38, 0.06, 0.03), Vector3(-0.02, 0.08, -0.56), green)
+	_b(hat, u, Vector3(0.32, 0.06, 0.03), Vector3(0.05, 0.17, -0.56), green, Vector3(0, 0, -0.7))
+	_b(hat, u, Vector3(0.12, 0.05, 0.03), Vector3(-0.08, 0.25, -0.56), green, Vector3(0, 0, 0.5))
+
+
+## The stretchy guy's straw hat: a wide round brim, a red band round the
+## crown, and darker strands woven through.
+static func _straw_hat(hat: Node3D, u: float) -> void:
+	var straw := Color(0.9, 0.76, 0.46)
+	var strand := straw.darkened(0.25)
+	var red := Color(0.8, 0.12, 0.1)
+	# Two squares a turn apart make the round brim and crown.
+	for turn in [0.0, PI / 4.0]:
+		_b(hat, u, Vector3(1.9, 0.06, 1.9), Vector3(0, 0.02, 0), straw, Vector3(0, turn, 0))
+		_b(hat, u, Vector3(0.98, 0.4, 0.98), Vector3(0, 0.25, 0), straw, Vector3(0, turn, 0))
+		_b(hat, u, Vector3(1.02, 0.13, 1.02), Vector3(0, 0.13, 0), red, Vector3(0, turn, 0))
+		_b(hat, u, Vector3(0.78, 0.08, 0.78), Vector3(0, 0.48, 0), straw, Vector3(0, turn, 0))
+	for i in 12:
+		var a := i * TAU / 12.0
+		var r := 0.7 + 0.12 * (i % 2)
+		_b(hat, u, Vector3(0.04, 0.02, 0.14), Vector3(sin(a) * r, 0.06, cos(a) * r), strand, Vector3(0, a, 0))
+	for i in 6:
+		var a := i * TAU / 6.0 + 0.3
+		_b(hat, u, Vector3(0.03, 0.14, 0.02), Vector3(sin(a) * 0.5, 0.34, cos(a) * 0.5), strand, Vector3(0, a, 0))
+
+
+## The rebellious guy's hat: a black peaked cap whose back melts into spiky
+## hair, a gold chain band, a gold button and a gold hand badge.
+static func _rebel_cap(hat: Node3D, u: float) -> void:
+	var black := Color(0.1, 0.1, 0.12)
+	var hair := Color(0.07, 0.07, 0.09)
+	var gold := Color(0.86, 0.66, 0.26)
+	_b(hat, u, Vector3(1.12, 0.32, 1.12), Vector3(0, 0.12, 0), black)
+	_b(hat, u, Vector3(1.14, 0.16, 0.6), Vector3(0, 0.32, -0.26), black, Vector3(0.12, 0, 0))
+	_b(hat, u, Vector3(1.02, 0.05, 0.58), Vector3(0, 0.0, -0.8), black, Vector3(-0.2, 0, 0), false, 0.3)
+	_b(hat, u, Vector3(1.16, 0.06, 1.16), Vector3(0, 0.02, 0), gold, Vector3.ZERO, false, 0.6)
+	_b(hat, u, Vector3(0.22, 0.22, 0.08), Vector3(-0.16, 0.22, -0.6), gold, Vector3.ZERO, false, 0.6)
+	_b(hat, u, Vector3(0.2, 0.26, 0.05), Vector3(0.18, 0.24, -0.6), gold, Vector3.ZERO, false, 0.6)
+	_b(hat, u, Vector3(0.12, 0.16, 0.02), Vector3(0.18, 0.25, -0.63), gold.darkened(0.35))
+	# The back of the cap is his hair, spiking back and out.
+	var spikes := [
+		[Vector3(0, 0.18, 0.4), Vector3(1.15, 0, 0), 0.75],
+		[Vector3(-0.38, 0.12, 0.32), Vector3(1.0, 0, 0.85), 0.62],
+		[Vector3(0.38, 0.12, 0.32), Vector3(1.0, 0, -0.85), 0.62],
+		[Vector3(-0.28, -0.08, 0.5), Vector3(1.5, 0, 0.5), 0.55],
+		[Vector3(0.28, -0.08, 0.5), Vector3(1.5, 0, -0.5), 0.55],
+		[Vector3(0, -0.2, 0.52), Vector3(1.8, 0, 0), 0.5],
+	]
+	for spike in spikes:
+		_spike(hat, u, spike[0], spike[1], spike[2], 0.4, hair)
 
 
 ## One blocky spike of hair: three blocks narrowing to a point along its +Y.

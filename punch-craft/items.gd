@@ -188,7 +188,7 @@ static func roll_legendary(floor_number: int, id := "") -> Dictionary:
 static func roll_for_chest(floor_number: int, quality: String) -> Dictionary:
 	if floor_number >= LEGENDARY_MIN_FLOOR and randf() < LEGENDARY_CHANCE.get(quality, 0.0):
 		return roll_legendary(floor_number)
-	var too_plain: Array = ["common", "uncommon"] if quality == "boss" else ["common"] if quality in ["elite", "starter"] else []
+	var too_plain: Array = ["common", "uncommon"] if quality == "boss" else ["common"] if quality == "elite" else []
 	var item := roll(floor_number)
 	while item.rarity in too_plain:
 		item = roll(floor_number)

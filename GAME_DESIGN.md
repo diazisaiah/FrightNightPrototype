@@ -541,7 +541,7 @@ A second kind of run, chosen at camp (**Graveyard** or **Crypt**). The Crypt is 
    - **Winning**: beating **floor 5's boss clears the Crypt** — first time: +300 coins, +2 Champion Sigils. Then "Go deeper (endless)" or leave. The info line shows "Floor 3 / 5", then "Floor 6 (endless)".
    - Minimap icons for wares, the healer and shrines.
    - **Balance bot** (headless autoplay, ~20× real time; reacts to 85% of tells, counters, throws combos, opens chests, takes stairs; logs every room). First pass (2026-10-10) and the tuning it led to:
-     - Level-7 Counter Master (≈12 damage, 110 knuckles): floor 1 always cleared; floor 2 too steep (died on floor 2 in 2 of 3 runs). → Floors ramp gentler (progress step per floor 0.25 → 0.15, +1 enemy per room per floor instead of +2, floor HP growth 0.4 → 0.3), **clearing a fight room heals 10% max knuckles**, and floor 1's entrance has a **starter chest** (uncommon+, never a mimic or cursed). After: floors 1–2 cleared every run, runs end around the floor 3 Lich King.
+     - Level-7 Counter Master (≈12 damage, 110 knuckles): floor 1 always cleared; floor 2 too steep (died on floor 2 in 2 of 3 runs). → Floors ramp gentler (progress step per floor 0.25 → 0.15, +1 enemy per room per floor instead of +2, floor HP growth 0.4 → 0.3), **clearing a fight room heals 10% max knuckles**, and floor 1's entrance has a **starter chest** (uncommon+, never a mimic or cursed). (Removed 2026-10-25: the entrance room has no chests.) After: floors 1–2 cleared every run, runs end around the floor 3 Lich King.
      - Fresh level 1 (1.7 damage, 45 knuckles): dies in room 1–2 either way — **open question:** fresh characters are very weak since the upgrade rebalance (each punch costs 1 knuckle HP and a zombie takes ~10 of them).
      - Bugs it caught (fixed): salvaging a cursed item crashed; a lich could raise a skeleton outside the walls (it fell forever and the room could never be cleared — enemies under the floor are now put back in the room); arrows fired straight up/down errored.
 - Rejected: rat swarms, and anything that needs punching the floor or ground slams to answer.
@@ -938,6 +938,10 @@ The humor pillar: a hat collection and a secret character.
   - Added 2026-10-17:
     - **Big Monkey Mask** (epic): a big rubber monkey head over the whole head, with a heavy brow, wide eyes, a toothy grin and round ears. "Ook. The dead find it deeply unsettling." +3% damage, +3% dodge window.
     - **Fast Guy Fleece Cap** (epic): a blue fleece hood with a rolled edge round the face, pointed ears with tan insides and quills swept back, the top one biggest (a speedy hedgehog parody, unnamed like the Strong Guy Wigs). "Blue, spiky, and already gone." +5% move speed, +4% punch speed.
+    - **Pocket Trainer Cap** (rare): a ball cap with a white front, red back panels, a red brim and button, and a green swoosh on the front. "Gotta punch 'em all." +4% XP, +3% coins.
+    - **Straw Hat** (epic): a wide round straw brim with a red band round the crown and darker strands woven through. "Stretchy guy's. He'll want it back." +4% max knuckle HP, +3% damage.
+    - **Rebellious Guy Hat** (epic): a black peaked cap whose back melts into spiky black hair, with a gold chain band, a gold button and a gold hand badge. "Good grief." +4% punch speed, +3% damage.
+    - (References for the parody hats are in `refs/hats/`.)
     - **Strong Guy Wigs:** big blocky spiked hair. The black one fans out every way; the powered-up colors stand straight up and taller.
       - Black (common): +1.5% damage. "Spiky. Suspiciously heroic."
       - Blonde (uncommon): +2.5% damage, +2% ultimate gain. "Took three episodes of screaming to put on."
@@ -945,12 +949,6 @@ The humor pillar: a hat collection and a secret character.
       - White (epic): +6% dodge window, +8% counter damage. "It moves on its own. So do you."
   - **Skeletons love the Fruit Hat:** when a skeleton (including skeleton mages and archers) rolls a hat, 1 in 4 times it's the Fruit Hat. The overall 2% hat rate is unchanged; on other enemies it's as rare as any epic.
 - **Legendaries** (generic navy caps with a stitched "Y", no real logo): **Yonker with Brim, Yonker with No Brim, Brim with No Yonker, No Yonker with No Brim** (an empty spot with legendary sparkles). Each does nothing ("Does nothing. Yet."). All four unlock Tony.
-
-### Hats to add [Planned 2026-10-25]
-Parody hats, unnamed like the Strong Guy Wigs and the Fast Guy Fleece Cap. References are in `refs/hats/`. Boosts are suggestions.
-- **Pocket Trainer Cap** (rare, `pocket_trainer_cap.jpg`): a ball cap with a white front, red back panels, a red brim and a red button on top, and a green swoosh on the front. Suggested: +5% XP, +3% coins. "Gotta punch 'em all."
-- **Straw Hat** (epic, `straw_hat.jpg`): a wide straw brim with a red band around the crown, straw strands showing in the blocks. Suggested: +4% max knuckle HP, +3% damage. "Stretchy guy's. He'll want it back."
-- **Rebellious Guy Hat** (epic, `rebellious_guy_hat.jpg`): a black peaked cap whose back melts into spiky black hair, a gold chain band, a big gold button and a gold hand badge on the front. Suggested: +4% punch speed, +3% damage (a barrage of punches). "Good grief."
 
 ### Tony (secret character)
 - **Unlock:** the fourth legendary pops, the screen goes black, a deli bell dings: "TONY WANTS HIS SANDWICH." Then he appears in the class picker (hidden until then).
