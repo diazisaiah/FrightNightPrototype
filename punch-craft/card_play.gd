@@ -572,11 +572,12 @@ func dash_contact(enemy: Enemy) -> void:
 		return
 	_dash_hits[enemy] = true
 	var forward := player._flat_forward()
+	# Shoulder Charge: knocks it back and hurts, but never stuns (dashing into
+	# a boss again and again would hold it still).
 	if fx("shoulder") > 0.0:
-		if fx("shoulder") >= 2.0:
-			enemy.take_hit(GameState.get_damage() * 2.0, enemy.global_position + Vector3(0, 1.1, 0), forward * 6.0, true, "SHOULDER CHARGE")
-		if not enemy.is_dead():
-			enemy.stun(1.0)
+		var strong := fx("shoulder") >= 2.0
+		enemy.take_hit(GameState.get_damage() * (2.0 if strong else 1.0), enemy.global_position + Vector3(0, 1.1, 0),
+				forward * (10.0 if strong else 6.0), false, "SHOULDER CHARGE")
 	if fx("vault") > 0.0 and not enemy.is_dead():
 		var spot := player.teleport_spot(enemy, enemy.global_position + forward * 1.3)
 		if spot == Vector3.INF:

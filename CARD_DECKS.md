@@ -34,7 +34,7 @@ Grudge / Wrecking Ball / Berserker / Inferno Uppercut / Brimstone Shield. A braw
 | **Hold the Line** | Defense | Hits make you flinch half as long | Hits can't make you flinch |
 | **Lights Out** | Power | Staggered monsters take +20% from you | Staggered monsters take +40% from you |
 | **Haymaker Swing** | Power | Hooks also hit every monster in a wide arc in front of you, for half | Hooks also hit every monster in a wider arc in front of you, for full damage |
-| **Shoulder Charge** | Movement | Dashing into a monster knocks it down for 1s | Dashing into a monster knocks it down for 1s and hits it for 2x your base damage |
+| **Shoulder Charge** | Movement | Dashing into a monster knocks it back and hits it for your base damage | Dashing into a monster knocks it far back and hits it for 2x your base damage |
 | **Second Breath** | Rage | Below 30% knuckle HP, punches cost nothing | Below 40% knuckle HP, punches cost nothing |
 
 **Epics**

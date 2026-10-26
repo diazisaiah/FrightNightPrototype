@@ -53,7 +53,7 @@ const DECKS := {
 		"haymaker_swing": {"name": "Haymaker Swing", "rarity": "rare", "icon": "swoosh", "tags": ["Power"],
 			"text": ["Hooks also hit every monster in a wide arc in front of you, for half", "Hooks also hit every monster in a wider arc in front of you, for full damage"], "effects": {"cleave": [1, 2]}},
 		"shoulder_charge": {"name": "Shoulder Charge", "rarity": "rare", "icon": "chevrons", "tags": ["Movement"],
-			"text": ["Dashing into a monster knocks it down for 1s", "Dashing into a monster knocks it down for 1s and hits it for 2x your base damage"], "effects": {"shoulder": [1, 2]}},
+			"text": ["Dashing into a monster knocks it back and hits it for your base damage", "Dashing into a monster knocks it far back and hits it for 2x your base damage"], "effects": {"shoulder": [1, 2]}},
 		"second_breath": {"name": "Second Breath", "rarity": "rare", "icon": "wind", "tags": ["Rage"],
 			"text": ["Below 30% knuckle HP, punches cost nothing", "Below 40% knuckle HP, punches cost nothing"], "effects": {"second_breath": [0.3, 0.4]}},
 		"blood_feud": {"name": "Blood Feud", "rarity": "epic", "icon": "skull", "tags": ["Rage"], "upgrades": "grudge",
