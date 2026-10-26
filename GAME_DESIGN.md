@@ -940,7 +940,7 @@ The humor pillar: a hat collection and a secret character.
     - **Fast Guy Fleece Cap** (epic): a blue fleece hood with a rolled edge round the face, pointed ears with tan insides and quills swept back, the top one biggest (a speedy hedgehog parody, unnamed like the Strong Guy Wigs). "Blue, spiky, and already gone." +5% move speed, +4% punch speed.
     - **Pocket Trainer Cap** (rare): a ball cap with a white front, red back panels, a red brim and button, and a green swoosh on the front. "Gotta punch 'em all." +4% XP, +3% coins.
     - **Straw Hat** (epic): a wide round straw brim with a red band round the crown and darker strands woven through. "Stretchy guy's. He'll want it back." +4% max knuckle HP, +3% damage.
-    - **Rebellious Guy Hat** (epic): a black peaked cap whose back melts into spiky black hair, with a gold chain band, a gold button and a gold hand badge. "Good grief." +4% punch speed, +3% damage.
+    - **Rebellious Guy Hat** (epic): a tall black peaked cap leaning forward, a drooping visor with a sheen, a linked gold chain across the front, a round gold button and a gold hand badge, the back torn into jagged hair sweeping up and back with locks by the ears. "Good grief." +4% punch speed, +3% damage.
     - (References for the parody hats are in `refs/hats/`.)
     - **Strong Guy Wigs:** big blocky spiked hair. The black one fans out every way; the powered-up colors stand straight up and taller.
       - Black (common): +1.5% damage. "Spiky. Suspiciously heroic."

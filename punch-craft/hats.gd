@@ -405,30 +405,66 @@ static func _straw_hat(hat: Node3D, u: float) -> void:
 		_b(hat, u, Vector3(0.03, 0.14, 0.02), Vector3(sin(a) * 0.5, 0.34, cos(a) * 0.5), strand, Vector3(0, a, 0))
 
 
-## The rebellious guy's hat: a black peaked cap whose back melts into spiky
-## hair, a gold chain band, a gold button and a gold hand badge.
+## The rebellious guy's hat: a tall peaked cap leaning forward, a drooping
+## visor with a sheen, a gold chain across the front, a round gold button and
+## a gold hand badge, and the back torn into jagged hair sweeping up and back.
 static func _rebel_cap(hat: Node3D, u: float) -> void:
-	var black := Color(0.1, 0.1, 0.12)
-	var hair := Color(0.07, 0.07, 0.09)
-	var gold := Color(0.86, 0.66, 0.26)
-	_b(hat, u, Vector3(1.12, 0.32, 1.12), Vector3(0, 0.12, 0), black)
-	_b(hat, u, Vector3(1.14, 0.16, 0.6), Vector3(0, 0.32, -0.26), black, Vector3(0.12, 0, 0))
-	_b(hat, u, Vector3(1.02, 0.05, 0.58), Vector3(0, 0.0, -0.8), black, Vector3(-0.2, 0, 0), false, 0.3)
-	_b(hat, u, Vector3(1.16, 0.06, 1.16), Vector3(0, 0.02, 0), gold, Vector3.ZERO, false, 0.6)
-	_b(hat, u, Vector3(0.22, 0.22, 0.08), Vector3(-0.16, 0.22, -0.6), gold, Vector3.ZERO, false, 0.6)
-	_b(hat, u, Vector3(0.2, 0.26, 0.05), Vector3(0.18, 0.24, -0.6), gold, Vector3.ZERO, false, 0.6)
-	_b(hat, u, Vector3(0.12, 0.16, 0.02), Vector3(0.18, 0.25, -0.63), gold.darkened(0.35))
-	# The back of the cap is his hair, spiking back and out.
+	var black := Color(0.1, 0.1, 0.13)
+	var sheen := Color(0.32, 0.33, 0.38)
+	var hair := Color(0.06, 0.06, 0.09)
+	var hair_light := Color(0.13, 0.14, 0.22)
+	var gold := Color(0.88, 0.68, 0.28)
+	# The crown: a band, the body, and a top sloping down from a tall front.
+	_b(hat, u, Vector3(1.1, 0.16, 1.1), Vector3(0, 0.08, 0), black)
+	_b(hat, u, Vector3(1.1, 0.3, 0.82), Vector3(0, 0.27, -0.1), black)
+	_b(hat, u, Vector3(1.14, 0.52, 0.12), Vector3(0, 0.33, -0.52), black, Vector3(-0.18, 0, 0))
+	_b(hat, u, Vector3(1.12, 0.1, 0.95), Vector3(0, 0.46, -0.12), black, Vector3(0.34, 0, 0))
+	_b(hat, u, Vector3(1.0, 0.03, 0.08), Vector3(0, 0.6, -0.55), sheen, Vector3(-0.18, 0, 0))
+	# The visor, tipped down, with a highlight across it.
+	_b(hat, u, Vector3(1.0, 0.05, 0.44), Vector3(0, 0.01, -0.74), black, Vector3(-0.35, 0, 0), false, 0.3)
+	_b(hat, u, Vector3(0.86, 0.012, 0.07), Vector3(0, 0.04, -0.76), sheen, Vector3(-0.35, 0, 0))
+	# The chain: links across the front, a gold knob at each end.
+	for i in 11:
+		var x := -0.5 + i * 0.1
+		var link := Vector3(0.12, 0.04, 0.03) if i % 2 == 0 else Vector3(0.07, 0.065, 0.03)
+		_b(hat, u, link, Vector3(x, 0.17, -0.6), gold, Vector3.ZERO, false, 0.6)
+	for side in [-1.0, 1.0]:
+		_b(hat, u, Vector3(0.09, 0.09, 0.09), Vector3(0.56 * side, 0.17, -0.5), gold, Vector3.ZERO, false, 0.6)
+	# Seen from the front +x is on the left: the round button there, the badge on the right.
+	var button := MeshInstance3D.new()
+	var disc := CylinderMesh.new()
+	disc.top_radius = 0.1 * u
+	disc.bottom_radius = 0.1 * u
+	disc.height = 0.06 * u
+	disc.radial_segments = 20
+	disc.rings = 1
+	disc.material = Look.block_material(gold, 0.6)
+	button.mesh = disc
+	button.position = Vector3(0.15, 0.36, -0.62) * u
+	button.rotation = Vector3(PI / 2.0 - 0.18, 0, 0)
+	hat.add_child(button)
+	_b(hat, u, Vector3(0.06, 0.06, 0.02), Vector3(0.19, 0.4, -0.66), gold.lightened(0.45), Vector3(-0.18, 0, 0))
+	_b(hat, u, Vector3(0.2, 0.27, 0.05), Vector3(-0.2, 0.36, -0.62), gold, Vector3(-0.18, 0, 0), false, 0.6)
+	_b(hat, u, Vector3(0.15, 0.21, 0.02), Vector3(-0.2, 0.36, -0.65), gold.darkened(0.3), Vector3(-0.18, 0, 0))
+	_b(hat, u, Vector3(0.08, 0.07, 0.02), Vector3(-0.2, 0.32, -0.665), gold, Vector3(-0.18, 0, 0))
+	for k in 4:
+		_b(hat, u, Vector3(0.016, 0.07, 0.02), Vector3(-0.23 + k * 0.02, 0.39, -0.668), gold, Vector3(-0.18, 0, 0))
+	# The hair: [base, tilt (x back, z out), length, width], jagged and swept back.
 	var spikes := [
-		[Vector3(0, 0.18, 0.4), Vector3(1.15, 0, 0), 0.75],
-		[Vector3(-0.38, 0.12, 0.32), Vector3(1.0, 0, 0.85), 0.62],
-		[Vector3(0.38, 0.12, 0.32), Vector3(1.0, 0, -0.85), 0.62],
-		[Vector3(-0.28, -0.08, 0.5), Vector3(1.5, 0, 0.5), 0.55],
-		[Vector3(0.28, -0.08, 0.5), Vector3(1.5, 0, -0.5), 0.55],
-		[Vector3(0, -0.2, 0.52), Vector3(1.8, 0, 0), 0.5],
+		[Vector3(0, 0.3, 0.25), Vector3(0.75, 0, 0), 0.8, 0.34],
+		[Vector3(-0.25, 0.28, 0.25), Vector3(0.85, 0, 0.35), 0.72, 0.32],
+		[Vector3(0.25, 0.28, 0.25), Vector3(0.85, 0, -0.35), 0.72, 0.32],
+		[Vector3(-0.45, 0.18, 0.2), Vector3(0.9, 0, 0.9), 0.6, 0.3],
+		[Vector3(0.45, 0.18, 0.2), Vector3(0.9, 0, -0.9), 0.6, 0.3],
+		[Vector3(-0.15, 0.12, 0.45), Vector3(1.2, 0, 0.25), 0.65, 0.3],
+		[Vector3(0.15, 0.12, 0.45), Vector3(1.2, 0, -0.25), 0.65, 0.3],
+		[Vector3(0, 0.0, 0.5), Vector3(1.45, 0, 0), 0.55, 0.3],
+		[Vector3(-0.5, 0.0, 0.15), Vector3(2.6, 0, 0.3), 0.42, 0.22],
+		[Vector3(0.5, 0.0, 0.15), Vector3(2.6, 0, -0.3), 0.42, 0.22],
 	]
-	for spike in spikes:
-		_spike(hat, u, spike[0], spike[1], spike[2], 0.4, hair)
+	for i in spikes.size():
+		var spike: Array = spikes[i]
+		_spike(hat, u, spike[0], spike[1], spike[2], spike[3], hair if i % 3 else hair_light)
 
 
 ## One blocky spike of hair: three blocks narrowing to a point along its +Y.
