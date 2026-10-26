@@ -946,6 +946,12 @@ The humor pillar: a hat collection and a secret character.
   - **Skeletons love the Fruit Hat:** when a skeleton (including skeleton mages and archers) rolls a hat, 1 in 4 times it's the Fruit Hat. The overall 2% hat rate is unchanged; on other enemies it's as rare as any epic.
 - **Legendaries** (generic navy caps with a stitched "Y", no real logo): **Yonker with Brim, Yonker with No Brim, Brim with No Yonker, No Yonker with No Brim** (an empty spot with legendary sparkles). Each does nothing ("Does nothing. Yet."). All four unlock Tony.
 
+### Hats to add [Planned 2026-10-25]
+Parody hats, unnamed like the Strong Guy Wigs and the Fast Guy Fleece Cap. References are in `refs/hats/`. Boosts are suggestions.
+- **Pocket Trainer Cap** (rare, `pocket_trainer_cap.jpg`): a ball cap with a white front, red back panels, a red brim and a red button on top, and a green swoosh on the front. Suggested: +5% XP, +3% coins. "Gotta punch 'em all."
+- **Straw Hat** (epic, `straw_hat.jpg`): a wide straw brim with a red band around the crown, straw strands showing in the blocks. Suggested: +4% max knuckle HP, +3% damage. "Stretchy guy's. He'll want it back."
+- **Rebellious Guy Hat** (epic, `rebellious_guy_hat.jpg`): a black peaked cap whose back melts into spiky black hair, a gold chain band, a big gold button and a gold hand badge on the front. Suggested: +4% punch speed, +3% damage (a barrage of punches). "Good grief."
+
 ### Tony (secret character)
 - **Unlock:** the fourth legendary pops, the screen goes black, a deli bell dings: "TONY WANTS HIS SANDWICH." Then he appears in the class picker (hidden until then).
 - **Who he is:** Tony, class **Wise Guy**. He found out too late that processed meat is a carcinogen, and he's punching his way out of the underworld for one more bite of that deli sandwich. First-person fists: taped knuckles, a gold chain and a gold pinky ring, a black tracksuit with white stripes (matching his card art).
