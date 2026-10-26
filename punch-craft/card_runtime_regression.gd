@@ -36,6 +36,7 @@ func _run() -> void:
 		await _exercise_fighter(fighter)
 		for ultimate in Abilities.ultimates(fighter):
 			await _exercise_ultimate(fighter, ultimate.id)
+	await _test_teleport_walls()
 	TimeFx.clear()
 	GameState._reset_fields()
 	# Let the last delayed echo/FX coroutine and status-clear callback release
@@ -226,3 +227,33 @@ func _exercise_ultimate(fighter: String, ultimate: String) -> void:
 			"%s's %s activates and spends meter" % [fighter, ultimate])
 	await _free_rig(holder)
 	print("Card runtime: %s / %s OK" % [fighter, ultimate])
+
+
+## Phantom Step and Vault jump behind a monster: never through a wall (the
+## training ring's ropes, a Crypt room's walls).
+func _test_teleport_walls() -> void:
+	var rig := await _make_rig("counter_master")
+	var holder: Node3D = rig[0]
+	var player: Player = rig[1]
+	var dummies: Array[Enemy] = rig[2]
+	var wall := StaticBody3D.new()
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(10.0, 3.0, 0.2)
+	shape.shape = box
+	wall.add_child(shape)
+	wall.position = Vector3(0, 1.5, -4.0)
+	holder.add_child(wall)
+	player.global_position = Vector3.ZERO
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	var near_wall := dummies[3]  # 0.6m in front of the wall.
+	_check(player.teleport_spot(near_wall, Vector3(0, 0, -4.7)) == Vector3.INF,
+			"No room behind a monster against a wall: Phantom Step stays put")
+	var roomy := dummies[0]
+	var spot := player.teleport_spot(roomy, Vector3(0, 0, -4.7))
+	_check(spot != Vector3.INF and spot.z > -4.0, "Phantom Step stops short of a wall (got %s)" % spot)
+	var open := player.teleport_spot(roomy, Vector3(0, 0, -3.1))
+	_check(open.is_equal_approx(Vector3(0, 0, -3.1)), "With room behind, Phantom Step lands where it means to")
+	await _free_rig(holder)
+	print("Card runtime: teleports stay inside walls OK")

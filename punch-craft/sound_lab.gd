@@ -187,7 +187,7 @@ func _build_panel() -> void:
 	help.add_theme_color_override("font_color", UiTheme.MUTED)
 	help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	column.add_child(help)
-	var scroll := ScrollContainer.new()
+	var scroll := KeptScroll.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	column.add_child(scroll)

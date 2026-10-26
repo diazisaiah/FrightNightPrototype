@@ -771,7 +771,7 @@ func _build_attributes_page() -> Control:
 	var left := PanelContainer.new()
 	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(left)
-	var scroll := ScrollContainer.new()
+	var scroll := KeptScroll.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	left.add_child(scroll)
 	var list := VBoxContainer.new()
@@ -890,7 +890,10 @@ func _refresh_attributes() -> void:
 
 
 func _refresh_sheet() -> void:
+	# Out of the grid now, not at the end of the frame: for a frame it would
+	# hold both sets of rows and stretch the page.
 	for child in _sheet.get_children():
+		_sheet.remove_child(child)
 		child.queue_free()
 	var damage := GameState.get_damage()
 	var lines := [
@@ -1175,7 +1178,7 @@ func _build_armory_page() -> Control:
 	kept_panel.add_child(kept_box)
 	_armory_title = UiTheme.title_label("KEPT GEAR", 24, UiTheme.GOLD)
 	kept_box.add_child(_armory_title)
-	var scroll := ScrollContainer.new()
+	var scroll := KeptScroll.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	kept_box.add_child(scroll)
@@ -1352,7 +1355,7 @@ func _build_emote_page() -> Control:
 	column.add_child(tip)
 	Controls.watch(tip, func() -> void:
 		tip.text = "Click to preview. Hold %s in a fight for the wheel." % Controls.key_name("emote"))
-	var scroll := ScrollContainer.new()
+	var scroll := KeptScroll.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	column.add_child(scroll)
@@ -1404,7 +1407,7 @@ func _build_idle_page() -> Control:
 	panel.add_child(column)
 	column.add_child(UiTheme.title_label("HAND IDLES", 26, UiTheme.GOLD))
 	column.add_child(_label("What your hands do while you wait. Click one to equip it.", 13, UiTheme.MUTED))
-	var scroll := ScrollContainer.new()
+	var scroll := KeptScroll.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	column.add_child(scroll)
@@ -1430,7 +1433,7 @@ func _build_skins_page() -> Control:
 	column.add_child(UiTheme.title_label("SKINS", 26, UiTheme.GOLD))
 	_skin_note = _label("", 13, UiTheme.MUTED)
 	column.add_child(_skin_note)
-	var scroll := ScrollContainer.new()
+	var scroll := KeptScroll.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	column.add_child(scroll)
@@ -1499,7 +1502,7 @@ func _build_hat_rack() -> Control:
 	column.add_child(tip)
 	Controls.watch(tip, func() -> void:
 		tip.text = "Click a hat to wear it. Hold %s in a fight to emote and see it." % Controls.key_name("emote"))
-	var scroll := ScrollContainer.new()
+	var scroll := KeptScroll.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	column.add_child(scroll)
@@ -1716,7 +1719,7 @@ func _build_shop_page() -> Control:
 	header.add_child(restock)
 	header.move_child(restock, 1)
 	# Cards wrap onto more rows when the screen's too narrow for them all.
-	var scroll := ScrollContainer.new()
+	var scroll := KeptScroll.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	column.add_child(scroll)

@@ -1553,6 +1553,8 @@ Replaces the skill webs and the four stats. Why: every skill got bought eventual
 - `cards.gd` (the decks and draws), `attributes.gd`, `card_play.gd` (a node on the player: every card and perk in a fight, called from a handful of hooks), `card_draw.gd` (the draw screen), `card_tile.gd`, `deck_page.gd`.
 - Cards are effects (`GameState.get_effect` adds the fighter's cards at their ranks and the attribute points); perks are `GameState.perk(id)`.
 - Effects that change a passive or ultimate live with it in `player.gd` and `ult.gd`. Enemies gained `delay` (hold still without a stagger), `scare`, a time slow for every monster, and `tell_time()` (Read the Tell). The Catalyst's cards hear every power go off (`Powers.listener`).
+- Jumps past a monster (Phantom Step, Vault) land short of any wall on the way, and stay put if the monster has its back to one (`Player.teleport_spot`), so they never leave the ring or a Crypt room.
+- Every scroll box is a `KeptScroll`: spending a point, buying or equipping keeps your place instead of jumping back to the top.
 
 ## Multiplayer: the Versus ladder and co-op [Planned 2026-10-25]
 

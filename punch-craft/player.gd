@@ -1936,6 +1936,28 @@ func _clear_grudge() -> void:
 	_grudge_hits = 0
 
 
+## Where a jump past a monster (Phantom Step, Vault) can land: the spot
+## behind it, pulled in short of any wall on the way. INF if the monster has
+## its back to a wall (no room behind it): stay put.
+func teleport_spot(enemy: Enemy, spot: Vector3) -> Vector3:
+	var from := global_position + Vector3.UP
+	var to := Vector3(spot.x, global_position.y, spot.z) + Vector3.UP
+	var query := PhysicsRayQueryParameters3D.create(from, to, 1)  # The world.
+	query.exclude = [get_rid()]
+	var hit := get_world_3d().direct_space_state.intersect_ray(query)
+	if hit.is_empty():
+		return spot
+	var flat := to - from
+	flat.y = 0.0
+	var landing: Vector3 = hit.position - flat.normalized() * 0.6
+	var past := enemy.global_position - global_position
+	past.y = 0.0
+	# Not past the monster: there's no room behind it.
+	if (landing - global_position).dot(past.normalized()) <= past.length() + 0.3:
+		return Vector3.INF
+	return Vector3(landing.x, spot.y, landing.z)
+
+
 ## Phantom Step: dodged a thrown attack, so appear behind whoever threw it.
 ## True if it did.
 func _phantom_step(attacker: Node3D) -> bool:
@@ -1945,12 +1967,13 @@ func _phantom_step(attacker: Node3D) -> bool:
 	_phantom_cooldown = maxf(1.0, PHANTOM_COOLDOWN - 0.2 * _pp())
 	var away := enemy.global_position - global_position
 	away.y = 0.0
-	var spot := enemy.global_position + away.normalized() * PHANTOM_BEHIND
-	HitFx.burst(get_parent(), global_position + Vector3.UP, Vector3.UP, Color(0.45, 0.85, 1.0), 20, 3.0, true, 0.05)
-	global_position = Vector3(spot.x, enemy.global_position.y + 0.1, spot.z)
-	look_at(Vector3(enemy.global_position.x, global_position.y, enemy.global_position.z), Vector3.UP)
-	_camera.rotation.x = -0.05
-	HitFx.burst(get_parent(), global_position + Vector3.UP, Vector3.UP, Color(0.45, 0.85, 1.0), 20, 3.0, true, 0.05)
+	var spot := teleport_spot(enemy, enemy.global_position + away.normalized() * PHANTOM_BEHIND)
+	if spot != Vector3.INF:
+		HitFx.burst(get_parent(), global_position + Vector3.UP, Vector3.UP, Color(0.45, 0.85, 1.0), 20, 3.0, true, 0.05)
+		global_position = Vector3(spot.x, enemy.global_position.y + 0.1, spot.z)
+		look_at(Vector3(enemy.global_position.x, global_position.y, enemy.global_position.z), Vector3.UP)
+		_camera.rotation.x = -0.05
+		HitFx.burst(get_parent(), global_position + Vector3.UP, Vector3.UP, Color(0.45, 0.85, 1.0), 20, 3.0, true, 0.05)
 	Sfx.play("slip", 0.0, 1.5)
 	_ready_counter("any")
 	class_event.emit("PHANTOM STEP!")

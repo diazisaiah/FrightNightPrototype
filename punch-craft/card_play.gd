@@ -572,7 +572,9 @@ func dash_contact(enemy: Enemy) -> void:
 		if not enemy.is_dead():
 			enemy.stun(1.0)
 	if fx("vault") > 0.0 and not enemy.is_dead():
-		var spot := enemy.global_position + forward * 1.3
+		var spot := player.teleport_spot(enemy, enemy.global_position + forward * 1.3)
+		if spot == Vector3.INF:
+			return  # Its back's to a wall: nowhere to land.
 		player._dash = Vector3.ZERO
 		player.global_position = Vector3(spot.x, player.global_position.y, spot.z)
 		player.rotation.y = atan2(forward.x, forward.z)

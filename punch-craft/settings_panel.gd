@@ -137,7 +137,7 @@ func _ready() -> void:
 		Sfx.play("tell", -6.0))
 	rail.add_child(defaults)
 
-	_content = ScrollContainer.new()
+	_content = KeptScroll.new()
 	_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_content.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	body.add_child(_content)

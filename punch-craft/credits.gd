@@ -33,7 +33,7 @@ func _ready() -> void:
 	var heading := UiTheme.title_label("CREDITS", 44, UiTheme.GOLD)
 	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(heading)
-	var scroll := ScrollContainer.new()
+	var scroll := KeptScroll.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	column.add_child(scroll)

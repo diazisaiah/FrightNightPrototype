@@ -45,7 +45,7 @@ func _ready() -> void:
 	_draw.add_theme_font_size_override("font_size", 18)
 	_draw.pressed.connect(func() -> void: draw_requested.emit())
 	top.add_child(_draw)
-	var scroll := ScrollContainer.new()
+	var scroll := KeptScroll.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	column.add_child(scroll)
