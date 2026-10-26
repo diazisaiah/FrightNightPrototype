@@ -900,6 +900,13 @@ Enemies wear tiered armor and weapons (`enemy_gear.gd`), so you can see you're f
   - **Possessed Armor:** its own metal is reskinned.
   - **No gear:** Dead League contenders (built-in defense, tuned in `configure`), the training dummy and the mimic.
 
+## Boss poise [Built 2026-10-25]
+
+Every set-up hook and uppercut staggers, and a stagger cancels what the monster is doing. The Mauler's heavies need no set-up, so spamming hooks staggered a boss every half second and it never got to attack (a 3,143 POWER Mauler beat contenders rated 15,636).
+- **After a stagger or stun, a boss holds its poise** for the stagger plus 3s (`Enemy.BOSS_POISE`): further staggers and stuns don't take, and hits during the stagger can't stretch it. Hits still do full damage. The first one it shrugs off shows "STEADY".
+- Bosses are everything with `is_boss`: Arena and Crypt bosses and the Dead League contenders. Regular monsters, elites and champions have no poise, so the Mauler's hook spam still works on a crowd.
+- Checked in `card_runtime_regression`.
+
 ## Hats and Tony [Built 2026-10-15]
 
 **Code:**

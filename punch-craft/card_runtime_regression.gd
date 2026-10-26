@@ -38,6 +38,7 @@ func _run() -> void:
 			await _exercise_ultimate(fighter, ultimate.id)
 	await _test_teleport_walls()
 	await _test_head_stomp()
+	await _test_boss_poise()
 	TimeFx.clear()
 	GameState._reset_fields()
 	# Let the last delayed echo/FX coroutine and status-clear callback release
@@ -286,3 +287,31 @@ func _test_head_stomp() -> void:
 	_check(target.is_staggered() and player.velocity.y > 0.0, "Coming down by a head stomps it")
 	await _free_rig(holder)
 	print("Card runtime: head stomp OK")
+
+
+## Boss poise: a staggered boss can't be staggered or stunned again (or have
+## its stagger stretched) until it has held its poise a while: no hook-spam lock.
+func _test_boss_poise() -> void:
+	var rig := await _make_rig("berserker")
+	var holder: Node3D = rig[0]
+	var dummies: Array[Enemy] = rig[2]
+	var boss := dummies[1]
+	boss.is_boss = true
+	var at := boss.global_position + Vector3(0, 1.2, 0)
+	boss.take_hit(1.0, at, Vector3.ZERO, true)
+	_check(boss.is_staggered(), "The first set-up hook staggers a boss")
+	boss._stagger_timer = 0.05
+	boss.take_hit(1.0, at, Vector3.ZERO, true)
+	boss.stun(2.0)
+	_check(boss._stagger_timer <= 0.05, "A boss holding its poise isn't re-staggered or stunned")
+	boss._stagger_timer = 0.0
+	boss._poise_time = 0.0
+	boss.take_hit(1.0, at, Vector3.ZERO, true)
+	_check(boss.is_staggered(), "Once its poise runs out, a boss staggers again")
+	var regular := dummies[2]
+	regular.take_hit(1.0, regular.global_position + Vector3(0, 1.2, 0), Vector3.ZERO, true)
+	regular._stagger_timer = 0.05
+	regular.take_hit(1.0, regular.global_position + Vector3(0, 1.2, 0), Vector3.ZERO, true)
+	_check(regular._stagger_timer > 0.05, "Regular monsters have no poise")
+	await _free_rig(holder)
+	print("Card runtime: boss poise OK")

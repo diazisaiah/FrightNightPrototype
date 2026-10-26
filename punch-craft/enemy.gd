@@ -8,6 +8,10 @@ signal died(enemy: Enemy)
 
 const FLASH_TIME := 0.08
 const STAGGER_TIME := 0.5
+## Boss poise: after a stagger or stun ends, a boss shrugs off the next ones
+## for this long (hits still land). Without it the Mauler's hooks, which need
+## no set-up and all stagger, kept a boss from ever attacking.
+const BOSS_POISE := 3.0
 const KNOCKBACK_DECAY := 12.0
 const TURN_SPEED := 8.0
 const RECOIL_DISTANCE := 0.18
@@ -124,6 +128,8 @@ var _knockback := Vector3.ZERO
 var _stagger_timer := 0.0
 ## Held still without a stagger (delay, scare): no moving, no attacking.
 var _hold_time := 0.0
+## Bosses: staggers and stuns don't take until this runs out (BOSS_POISE).
+var _poise_time := 0.0
 var _flash_timer := 0.0
 var _dead := false
 var _recoil := 0.0
@@ -260,6 +266,7 @@ func _physics_process(delta: float) -> void:
 			_set_flash(false)
 		_stagger_timer -= delta
 		_hold_time -= delta
+		_poise_time -= delta
 		if _taunt_time > 0.0:
 			_taunt_time -= delta
 			if _taunt_time <= 0.0:
@@ -327,8 +334,11 @@ func take_hit(raw_damage: float, hit_point: Vector3, push: Vector3, stagger: boo
 	_knockback = push
 	_recoil = RECOIL_DISTANCE * (2.0 if stagger else 1.0)
 	_set_flash(true)
+	if stagger and not _can_stagger():
+		stagger = false
 	if stagger:
 		_stagger_timer = maxf(_stagger_timer, STAGGER_TIME * (HEAVY_HANDS if GameState.perk("heavy_hands") else 1.0))
+		_set_poise()
 		_on_staggered()
 
 	var parent := get_parent()
@@ -561,11 +571,30 @@ func hit_zone(hit_point: Vector3) -> String:
 
 ## Knocked silly (e.g. by a Combo Master shockwave): can't act for a while.
 func stun(duration: float) -> void:
-	if _dead:
+	if _dead or not _can_stagger():
 		return
 	_stagger_timer = maxf(_stagger_timer, duration)
+	_set_poise()
 	_on_staggered()
 	DamagePopup.spawn(get_parent(), "STUNNED", Color(1, 0.8, 0.3), 40, global_position + Vector3(0, 2.0, 0))
+
+
+## A boss holding its poise shrugs off staggers and stuns ("STEADY", once a
+## poise). That includes hits during its stagger: they can't stretch it.
+func _can_stagger() -> bool:
+	if not is_boss or _poise_time <= 0.0:
+		return true
+	if not has_meta("steady_shown"):
+		set_meta("steady_shown", true)
+		DamagePopup.spawn(get_parent(), "STEADY", Color(0.8, 0.8, 0.85), 34, global_position + Vector3(0, 2.4 * _body.scale.y, 0))
+	return false
+
+
+func _set_poise() -> void:
+	if is_boss:
+		_poise_time = _stagger_timer + BOSS_POISE
+		if has_meta("steady_shown"):
+			remove_meta("steady_shown")
 
 
 ## Holds it still for a moment (no move, no attack) without a stagger: its
@@ -606,7 +635,7 @@ func is_staggered() -> bool:
 
 ## A stagger that's already on lasts longer (Stun Lock).
 func extend_stagger(seconds: float) -> void:
-	if is_staggered():
+	if is_staggered() and not is_boss:
 		_stagger_timer += seconds
 
 
