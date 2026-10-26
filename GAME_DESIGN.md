@@ -906,6 +906,15 @@ Enemies wear tiered armor and weapons (`enemy_gear.gd`), so you can see you're f
 - **Dazed stars** circle a monster's head for any stun of 0.6s or more (they ride down with it when it's knocked over).
 - **The Catalyst:** fireballs and icicles have a white-hot core in a glowing shell, a brighter light and a longer trail; fireballs burst with a ring of flame, icicles flash on each hit. His runes flare in a power's color whenever it goes off (on the hand that threw it), and in each Elemental Fists spell's color; the blood heal streams drops of blood back into his fist. A flare, not a glow: the steady glow is still only for a ready ultimate.
 
+## Livelier passives and ultimates, pass 2 [Built 2026-10-25]
+
+`MoveFx` (streaks, afterimages, ghost fists, view swooshes, speed lines, the Grudge skull):
+- **The Answer:** Phantom Step leaves a fading blue afterimage where he stood and a streak to where he lands. Riposte Stance and Flow State whip a blue swoosh across the view with every slip they make for him.
+- **The Blur:** Echo Fists' echo is a violet ghost fist flying into the target a beat behind the punch. From 10 hits in a combo violet speed lines rush past the edges of the view, faster as the combo grows.
+- **The Stray:** green speed lines build with Momentum, and run hard all through Hype Train. Head Stomp squashes the monster flat for a moment before it springs back.
+- **The Mauler:** the Grudge mark is a glowing red skull turning over the marked monster's head, bigger with every hit it lands on him.
+- Tony has nothing new here: an insult bubble over the monster would read as the monster talking.
+
 ## Boss poise [Built 2026-10-25]
 
 Every set-up hook and uppercut staggers, and a stagger cancels what the monster is doing. The Mauler's heavies need no set-up, so spamming hooks staggered a boss every half second and it never got to attack (a 3,143 POWER Mauler beat contenders rated 15,636).

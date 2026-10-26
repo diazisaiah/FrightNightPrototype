@@ -273,12 +273,14 @@ var _perfect_cooldown := 0.0
 ## Passives (Abilities; the equipped one per fighter).
 ## Grudge: the monster that last hit the Mauler, marked for a triple punch.
 var _grudge: Enemy
-var _grudge_mark: Label3D
+var _grudge_mark: Node3D
 ## Dodge Chain: dodges in a row, spent on the next punch.
 var _dodge_chain_charge := 0
 ## Phantom Step: cooldown between teleports.
 var _phantom_cooldown := 0.0
 ## Ghost Walk: Phantom Step on melee attacks, every few seconds.
+## Speed lines in the view (MoveFx.speed_lines), for the Blur and the Stray.
+var _speed_lines: CPUParticles3D
 ## Blood Feud: hits the grudge monster has landed since it was marked.
 var _grudge_hits := 0
 ## Bounce House: bounces since you last touched the floor.
@@ -394,6 +396,9 @@ func _ready() -> void:
 	cards = CardPlay.new()
 	cards.player = self
 	add_child(cards)
+	# Speed lines: the Blur's long combos, the Stray's momentum and Hype Train.
+	if GameState.player_class in ["combo_master", "free_runner"]:
+		_speed_lines = MoveFx.speed_lines(_camera, GameState.fighter_color().lightened(0.3))
 	_body = PlayerBody.new()
 	_body.visible = false
 	add_child(_body)
@@ -1855,6 +1860,10 @@ func _after_punch_passives(target: Enemy, damage: float, killed: bool, push: Vec
 
 ## A violet echo of the punch, a beat later (Double Echo: it echoes again, for half).
 func _echo(target: Enemy, damage: float, again := true) -> void:
+	# The echo is a violet ghost of the fist, flying in a beat behind.
+	var side := -1.0 if _last_hand == "left" else 1.0
+	var from := _camera.global_position + _camera.global_basis * Vector3(0.25 * side, -0.3, -0.5)
+	MoveFx.ghost_fist(get_parent(), from, target.global_position + Vector3(0, 1.3, 0), Color(0.7, 0.45, 1.0), ECHO_DELAY)
 	await get_tree().create_timer(ECHO_DELAY, false).timeout
 	if not is_instance_valid(target) or target.is_dead() or not active:
 		return
@@ -1923,17 +1932,13 @@ func _on_hit_passives(attacker: Node3D) -> void:
 		_clear_grudge()
 		_grudge_hits = hits
 		_grudge = enemy
-		_grudge_mark = Label3D.new()
-		_grudge_mark.text = "GRUDGE"
-		_grudge_mark.modulate = Color(1.0, 0.15, 0.1)
-		_grudge_mark.position.y = 2.9 * enemy._body.scale.y
-		_grudge_mark.fixed_size = true
-		_grudge_mark.pixel_size = 0.0012
-		_grudge_mark.font_size = 34
-		_grudge_mark.outline_size = 10
-		_grudge_mark.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-		_grudge_mark.no_depth_test = true
+		# A red skull over its head, bigger with every hit it lands on you.
+		_grudge_mark = MoveFx.skull(Color(1.0, 0.12, 0.08))
+		_grudge_mark.position.y = enemy.top_height() + 0.55
 		enemy.add_child(_grudge_mark)
+		var size := 0.55 + 0.15 * mini(_grudge_hits, 4)
+		_grudge_mark.scale = Vector3.ONE * size * 1.5
+		_grudge_mark.create_tween().tween_property(_grudge_mark, "scale", Vector3.ONE * size, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 
 func _clear_grudge() -> void:
@@ -1982,7 +1987,11 @@ func _phantom_step(attacker: Node3D) -> bool:
 	var spot := teleport_spot(enemy, enemy.global_position + away.normalized() * PHANTOM_BEHIND)
 	if spot != Vector3.INF:
 		HitFx.burst(get_parent(), global_position + Vector3.UP, Vector3.UP, Color(0.45, 0.85, 1.0), 20, 3.0, true, 0.05)
+		var was := global_position
 		global_position = Vector3(spot.x, enemy.global_position.y + 0.1, spot.z)
+		MoveFx.afterimage(get_parent(), was, Color(0.45, 0.85, 1.0))
+		MoveFx.streak(get_parent(), was + Vector3.UP, global_position + Vector3.UP, Color(0.45, 0.85, 1.0), 0.1, 0.4)
+		_kick_fov(6.0)
 		look_at(Vector3(enemy.global_position.x, global_position.y, enemy.global_position.z), Vector3.UP)
 		_camera.rotation.x = -0.05
 		HitFx.burst(get_parent(), global_position + Vector3.UP, Vector3.UP, Color(0.45, 0.85, 1.0), 20, 3.0, true, 0.05)
@@ -1994,6 +2003,10 @@ func _phantom_step(attacker: Node3D) -> bool:
 
 func _update_passive_timers(delta: float) -> void:
 	_phantom_cooldown = maxf(0.0, _phantom_cooldown - delta)
+	if is_instance_valid(_grudge_mark):
+		_grudge_mark.rotation.y += delta * 2.0
+		_grudge_mark.position.y = _grudge.top_height() + 0.55 + 0.06 * sin(Time.get_ticks_msec() * 0.005) if is_instance_valid(_grudge) else _grudge_mark.position.y
+	_update_speed_lines()
 	_stomp_cooldown = maxf(0.0, _stomp_cooldown - delta)
 	if unbroken_time > 0.0:
 		unbroken_time -= delta
@@ -2111,6 +2124,7 @@ func _stomp(enemy: Enemy) -> void:
 		Sfx.play("heavy", -4.0, 1.4)
 		return
 	enemy.stun(STOMP_STUN + 0.1 * _pp())
+	enemy.squash()
 	# Bounce House: each bounce in a chain hits harder; three give the dash back.
 	var bounce := 1.0
 	if GameState.has_effect("bounce_house"):
@@ -2125,6 +2139,23 @@ func _stomp(enemy: Enemy) -> void:
 	_combo_timer = GameState.get_combo_window()
 	Sfx.play("heavy", -2.0, 1.3)
 	HitFx.burst(get_parent(), head, Vector3.UP, Color(0.4, 1.0, 0.5), 16, 4.0, true, 0.05)
+
+
+## The Blur: from 10 hits in a combo, faster the longer it runs. The Stray:
+## as Momentum builds, and all through Hype Train.
+func _update_speed_lines() -> void:
+	if _speed_lines == null:
+		return
+	var rush := 0.0
+	if GameState.is_player_class("combo_master") and combo >= 10:
+		rush = 0.7 + minf(combo, 50) / 50.0
+	elif GameState.is_player_class("free_runner"):
+		if ult.hype > 0.0:
+			rush = 1.6
+		elif GameState.has_passive("momentum") and _momentum > 0.25:
+			rush = 0.5 + _momentum
+	_speed_lines.emitting = rush > 0.0 and active
+	_speed_lines.speed_scale = maxf(rush, 0.5)
 
 
 func _shockwave_every() -> int:

@@ -648,6 +648,8 @@ func _riposte_dodge(attack: String, attacker: Enemy) -> void:
 	var answers: Array = Player.ANSWERS.get(attack, [])
 	var move: String = answers[0] if not answers.is_empty() else "back_step"
 	player._animate_defense(move)
+	# The attack whips past: a swoosh across the view, toward the slip.
+	MoveFx.swoosh(player._camera, -1.0 if move.ends_with("left") else (1.0 if move.ends_with("right") else [-1.0, 1.0].pick_random()), Color(0.4, 0.8, 1.0))
 	player._on_dodge(move, true)
 	if _riposte_counters and attacker and not attacker.is_dead() \
 			and attacker.global_position.distance_to(player.global_position) <= RIPOSTE_RANGE:

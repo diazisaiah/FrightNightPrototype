@@ -131,6 +131,7 @@ var _hold_time := 0.0
 ## The pivot the body falls over on (knock_down), and its fall.
 var _topple: Node3D
 var _topple_tween: Tween
+var _squash_tween: Tween
 ## Stars circling the head while it's stunned.
 var _daze_fx: Node3D
 ## Bosses: staggers and stuns don't take until this runs out (BOSS_POISE).
@@ -614,6 +615,17 @@ func _daze() -> void:
 		bit.position = Vector3(cos(a), 0.04 * i, sin(a)) * 0.3
 		bit.rotation = Vector3(0.6, a, 0.6)
 		_daze_fx.add_child(bit)
+
+
+## Stomped on: squashed flat for a moment, then it springs back.
+func squash() -> void:
+	if _dead or _topple == null:
+		return
+	if _squash_tween:
+		_squash_tween.kill()
+	_squash_tween = create_tween()
+	_squash_tween.tween_property(_topple, "scale", Vector3(1.3, 0.55, 1.3), 0.06).set_ease(Tween.EASE_OUT)
+	_squash_tween.tween_property(_topple, "scale", Vector3.ONE, 0.45).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
 
 
 ## Knocked off its feet: it topples away from the blow, hits the ground with a
@@ -1146,9 +1158,12 @@ var _wait_sign := 1.0
 func _die(push: Vector3) -> void:
 	if _topple_tween:
 		_topple_tween.kill()
+	if _squash_tween:
+		_squash_tween.kill()
 	if _topple:
 		_topple.rotation = Vector3.ZERO
 		_topple.position = Vector3.ZERO
+		_topple.scale = Vector3.ONE
 	if _daze_fx:
 		_daze_fx.queue_free()
 		_daze_fx = null
