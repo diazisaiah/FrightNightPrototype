@@ -1001,7 +1001,7 @@ Why: skill webs couldn't be finished (28 points by the Coffin King against 57-73
 
 **Icons:** `art/icons/<icon>.png` replaces a vector icon everywhere; prompts for every icon in use are in `art/icons/ICON_PROMPTS.md`.
 
-**Secret:** typing FUGGEDABOUDIT anywhere in Settings unlocks Tony (with his unlock screen; the title reloads so he's in the picker).
+**Secret:** typing FUGGEDABOUDIT anywhere in Settings unlocks Tony (with his unlock screen; the title reloads so he's in the picker). Typing ABRACADABRA unlocks the Catalyst the same way, as if bought in the Soul Shop (his own unlock screen: "THE OLD WIZARD THROWS HANDS").
 
 **Old saves:** upgrade web version 5 refunds every coin spent at the version-4 prices (`V4_PRICES`); skill web version 2 clears every class's skills and returns all its points (level - 1). Kept Piercing gear converts to the new percent. Camp says so once.
 

@@ -1140,6 +1140,12 @@ func unlock_tony() -> void:
 	_commit()
 
 
+## The Catalyst's secret code: as if he'd been bought in the Soul Shop.
+func unlock_catalyst() -> void:
+	fighters_bought["elementalist"] = true
+	_commit()
+
+
 ## A drill run ended: records the best score and, on the first run of the day,
 ## pays coins and XP for the score (scaled to your Arena division's pay).
 ## Returns {paid, coins, xp, best, new_best}.

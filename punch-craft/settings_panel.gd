@@ -66,7 +66,7 @@ var _listening := ""
 var _listen_button: Button
 ## True while the waiting binding is a controller one.
 var _listen_pad := false
-## The last letters typed (for TONY_CODE).
+## The last letters typed (for TONY_CODE and CATALYST_CODE).
 var _typed := ""
 static var _knob: ImageTexture
 
@@ -230,19 +230,27 @@ func _input(event: InputEvent) -> void:
 	_refresh()
 
 
-## A secret: typing FUGGEDABOUDIT anywhere in Settings unlocks Tony.
+## Secrets: typing FUGGEDABOUDIT anywhere in Settings unlocks Tony, and
+## ABRACADABRA the Catalyst (as if bought in the Soul Shop).
 const TONY_CODE := "fuggedaboudit"
+const CATALYST_CODE := "abracadabra"
 
 
 func _type_secret(event: InputEventKey) -> void:
 	var letter := String.chr(event.unicode).to_lower() if event.unicode > 0 else ""
 	if letter.length() != 1 or letter < "a" or letter > "z":
 		return
-	_typed = (_typed + letter).right(TONY_CODE.length())
-	if _typed == TONY_CODE and not GameState.tony_unlocked:
-		_typed = ""
+	_typed = (_typed + letter).right(maxi(TONY_CODE.length(), CATALYST_CODE.length()))
+	var fighter := ""
+	if _typed.ends_with(TONY_CODE) and not GameState.tony_unlocked:
 		GameState.unlock_tony()
-		var screen := TonyUnlock.open(get_tree())
+		fighter = "wise_guy"
+	elif _typed.ends_with(CATALYST_CODE) and not GameState.fighters_bought.has("elementalist"):
+		GameState.unlock_catalyst()
+		fighter = "elementalist"
+	if fighter != "":
+		_typed = ""
+		var screen := TonyUnlock.open(get_tree(), fighter)
 		# The title's fighter picker was built without him: rebuild it.
 		var scene := get_tree().current_scene
 		if scene and scene.scene_file_path.ends_with("title.tscn"):

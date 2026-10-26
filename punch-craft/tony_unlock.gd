@@ -1,16 +1,26 @@
 class_name TonyUnlock
 extends CanvasLayer
 ## The fourth Yonker: the screen goes black, a deli bell dings, and Tony
-## steps out. "TONY WANTS HIS SANDWICH." He's playable from now on.
+## steps out. "TONY WANTS HIS SANDWICH." He's playable from now on. The
+## Catalyst's secret code plays the same screen with his own look (LOOKS).
 
 signal closed
 
+const LOOKS := {
+	"wise_guy": {"art": "res://art/fighter_wise_guy.jpg", "headline": "TONY WANTS\nHIS SANDWICH",
+		"color": Color(0.95, 0.2, 0.15), "who": "TONY  ·  WISE GUY", "button": "FUGGEDABOUDIT"},
+	"elementalist": {"art": "res://art/fighter_elementalist.jpg", "headline": "THE OLD WIZARD\nTHROWS HANDS",
+		"color": Color(0.95, 0.4, 0.7), "who": "THE CATALYST  ·  ELEMENTALIST", "button": "ABRACADABRA"},
+}
+
+var fighter := "wise_guy"
 var _was_paused := false
 var _mouse_mode := Input.MOUSE_MODE_VISIBLE
 
 
-static func open(tree: SceneTree) -> TonyUnlock:
+static func open(tree: SceneTree, class_id := "wise_guy") -> TonyUnlock:
 	var screen := TonyUnlock.new()
+	screen.fighter = class_id
 	screen.layer = 96
 	screen.process_mode = Node.PROCESS_MODE_ALWAYS
 	(tree.current_scene if tree.current_scene else tree.root).add_child(screen)
@@ -27,7 +37,8 @@ func _ready() -> void:
 	black.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(black)
 	var art := TextureRect.new()
-	art.texture = load("res://art/fighter_wise_guy.jpg")
+	var look: Dictionary = LOOKS[fighter]
+	art.texture = load(look.art)
 	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	art.anchor_left = 0.5
@@ -47,13 +58,13 @@ func _ready() -> void:
 	add_child(words)
 	var small := UiTheme.title_label("NEW FIGHTER", 22, UiTheme.GOLD)
 	words.add_child(small)
-	var big := UiTheme.title_label("TONY WANTS\nHIS SANDWICH", 72, Color(0.95, 0.2, 0.15))
+	var big := UiTheme.title_label(look.headline, 72, look.color)
 	big.add_theme_constant_override("outline_size", 14)
 	words.add_child(big)
-	var who := UiTheme.title_label("TONY  ·  WISE GUY", 30, UiTheme.TEXT)
+	var who := UiTheme.title_label(look.who, 30, UiTheme.TEXT)
 	words.add_child(who)
 	var button := Button.new()
-	button.text = "FUGGEDABOUDIT"
+	button.text = look.button
 	button.theme_type_variation = "PrimaryButton"
 	button.custom_minimum_size = Vector2(300, 58)
 	button.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
