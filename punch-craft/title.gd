@@ -60,6 +60,8 @@ var _class_panel: Control
 const CARD_SIZE := Vector2(286, 548)
 const CARD_TOP := 104.0
 const CARD_GAP := 16.0
+## More fighters than this go in two rows.
+const MAX_ROW := 5
 const CARD_SLIDE_TIME := 0.45
 var _cards := {}
 var _card_left := 0.0
@@ -757,20 +759,29 @@ func _build_class_panel() -> void:
 	_class_heading.size = Vector2(1280, 56)
 	_class_panel.add_child(_class_heading)
 
-	# Five fighters (Tony unlocked) still fit: the cards shrink a little.
+	# Up to five fighters in a row (the cards shrink a little); six or more in
+	# two rows (three a row for six).
 	var ids := GameState.class_ids()
-	_card_scale = minf(1.0, (1240.0 - CARD_GAP * (ids.size() - 1)) / (CARD_SIZE.x * ids.size()))
+	var columns := ids.size() if ids.size() <= MAX_ROW else ceili(ids.size() / 2.0)
+	var rows := ceili(ids.size() / float(columns))
+	var fit_wide := (1240.0 - CARD_GAP * (columns - 1)) / (CARD_SIZE.x * columns)
+	var fit_tall := (720.0 - CARD_TOP - 12.0 - CARD_GAP * (rows - 1)) / (CARD_SIZE.y * rows)
+	_card_scale = minf(1.0, minf(fit_wide, fit_tall))
 	var width := CARD_SIZE.x * _card_scale
-	var start_x := (1280.0 - width * ids.size() - CARD_GAP * (ids.size() - 1)) / 2.0
+	var height := CARD_SIZE.y * _card_scale
 	var i := 0
 	for id in ids:
+		var row := i / columns
+		var in_row := mini(columns, ids.size() - row * columns)
+		var start_x := (1280.0 - width * in_row - CARD_GAP * (in_row - 1)) / 2.0
 		var card := _fighter_card(id)
 		card.scale = Vector2.ONE * _card_scale
-		card.position = Vector2(start_x + i * (width + CARD_GAP), CARD_TOP)
+		card.position = Vector2(start_x + (i % columns) * (width + CARD_GAP), CARD_TOP + row * (height + CARD_GAP))
 		_cards[id].home = card.position
 		_class_panel.add_child(card)
 		i += 1
-	_card_left = start_x
+	# A picked card slides to the left edge, full size, beside its details.
+	_card_left = (1280.0 - width * columns - CARD_GAP * (columns - 1)) / 2.0 if rows == 1 else 24.0
 
 	_class_back = Button.new()
 	_class_back.text = "Back"
@@ -974,10 +985,12 @@ func _pick_fighter(id: String) -> void:
 	for card_id in _cards:
 		var card: Control = _cards[card_id].panel
 		card.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		card.scale = Vector2.ONE
 		var tween := card.create_tween()
 		if card_id == id:
-			tween.tween_property(card, "position:x", _card_left, CARD_SLIDE_TIME).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+			# Grows to full size as it slides (a bottom-row card would spill off the screen if it popped).
+			tween.set_parallel()
+			tween.tween_property(card, "position", Vector2(_card_left, CARD_TOP), CARD_SLIDE_TIME).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+			tween.tween_property(card, "scale", Vector2.ONE, CARD_SLIDE_TIME).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 		else:
 			tween.tween_property(card, "modulate:a", 0.0, 0.25)
 			tween.tween_callback(card.hide)
@@ -1029,6 +1042,7 @@ func _unpick_fighter() -> void:
 		var tween := card.create_tween()
 		if card_id == id:
 			tween.tween_property(card, "position", _cards[card_id].home, CARD_SLIDE_TIME).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+			tween.parallel().tween_property(card, "scale", Vector2.ONE * _card_scale, CARD_SLIDE_TIME).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 		else:
 			card.show()
 			tween.tween_property(card, "modulate:a", 1.0, 0.3).set_delay(0.2)
