@@ -35,7 +35,7 @@ const CLASSES := {
 		"name": "Counter Master", "icon": "target",
 		"fighter": "The Answer", "color": Color(0.31, 0.83, 1.0),
 		"tagline": "Every attack is a question.",
-		"traits": [["shield", "Perfect Defense", "Read their move."], ["target", "Counter Focus", "Turn their strength against them."], ["star", "Perfect Counter", "One hit. Game over."]],
+		"traits": [["shield", "Perfect Defense", "Read their move."], ["target", "Counter Focus", "Turn their strength against them."], ["star", "Perfect Counter", "Counter for x2.5."]],
 		"bars": {"Power": 55, "Defense": 70, "Speed": 60, "Combo": 45, "Counter": 100},
 		"desc": "Less damage and knuckles. Counters deal x3, dodge windows are wider, and counters have a 50% chance to cost no knuckle HP. Perfect counter: dodge, then a hook or uppercut with the matching hand deals x2.5 more (12s cooldown).",
 		"mods": {"damage": 0.85, "knuckles": 0.9, "counter": 3.0, "dodge_window": 1.4},
@@ -539,10 +539,6 @@ const UPGRADES := {
 # How each effect reads in the UI. Percent effects are stored as fractions.
 const EFFECT_FORMATS := {
 	"insult_time": "Enraged monsters stay mad %ss longer",
-	"wise_up": "+%s%% damage to enraged monsters",
-	"fugget_cut": "Fuggedaboudit recharges %ss faster",
-	"fugget_heal": "Fuggedaboudit restores %s%% knuckle HP",
-	"hustle": "+%s%% coins from enraged KOs",
 	"damage": "+%s damage",
 	"defense": "+%s defense",
 	"max_knuckles": "+%s max knuckle HP",
@@ -560,10 +556,7 @@ const EFFECT_FORMATS := {
 	"dawn_bonus": "+%s%% Arena purse",
 	"punch_speed": "+%s%% punch speed",
 	"head_bonus": "+%s head shot multiplier",
-	"body_bonus": "+%s%% body shot slowdown",
-	"liver_shot": "Body shots stagger WINDED enemies",
 	"combo_window": "+%ss combo time",
-	"double_jab": "A third jab in a row keeps the combo too",
 	"free_punch_chance": "%s%% chance a punch costs no knuckle HP",
 	"wave_heal": "Restore %s%% knuckle HP every tenth of the bout (and every Crypt room)",
 	"finisher_bonus": "+%s%% damage to enemies under 30%% HP",
@@ -572,25 +565,8 @@ const EFFECT_FORMATS := {
 	"graze_reduction": "-%s%% graze damage",
 	"counter_bonus": "+%s counter multiplier",
 	"counter_window": "+%ss counter window",
-	"armor_charges": "+%s super armor charge(s)",
 	"passive_power": "+%s passive power",
-	"power_amp": "+%s%% power strength",
-	"spell_chance": "+%s%% Elemental Fists chance",
-	"spell_damage": "+%s%% spell damage",
 	"spell_time": "+%ss Elemental Fists",
-	"burst_damage": "+%s%% Flame Burst damage",
-	"burst_radius": "+%sm Flame Burst radius",
-	"burst_burn": "+%s%% Flame Burst burn",
-	"armor_recharge_cut": "Super armor recharges %ss faster",
-	"retaliation_bonus": "+%s%% damage on super armor counters",
-	"perfect_cooldown_cut": "Perfect counter cooldown -%ss",
-	"counter_free_bonus": "+%s%% chance counters are free",
-	"boss_ko_bonus": "Perfect counters take +%s%% of a boss's HP",
-	"shockwave_radius": "+%sm shockwave radius",
-	"shockwave_stun": "+%ss shockwave stun",
-	"shockwave_every_cut": "Shockwave every %s fewer hits",
-	"opener_bonus": "+%s dash punch multiplier",
-	"finisher_threshold": "Jump punch finishers work on enemies with +%s%% more HP",
 	"sprint_bonus": "+%s%% sprint speed",
 	"fire_punch": "Fire deals %s%% of the hit to enemies nearby",
 	"chain_lightning": "Lightning arcs to %s enemies",
@@ -610,14 +586,10 @@ const EFFECT_FORMATS := {
 	"chain_damage": "+%s%% lightning damage",
 	"chain_every_cut": "Lightning every %s fewer combo hits",
 	"chain_stun": "Lightning staggers",
-	"pound_radius": "+%sm shockwave radius",
-	"pound_stun": "Shockwave launches and stuns",
 	"seal": "Breaks the seal: opens the upgrades beyond",
 	"damage_percent": "+%s%% damage",
 	"knuckles_percent": "+%s%% max knuckle HP",
-	"armor_absorb_reduction": "-%s%% damage from hits absorbed by super armor",
 	"perfect_any_punch": "Perfect counters work with any punch",
-	"shockwave_damage": "Shockwaves deal %sx your base damage",
 	"jump_bonus": "+%s%% jump height",
 	"dive_kick": "Jump punches stagger",
 	# Crypt item specials.
@@ -652,19 +624,17 @@ const EFFECT_FORMATS := {
 	"ult_power": "Empowered ultimate",
 }
 const PERCENT_EFFECTS := [
-	"wise_up", "fugget_heal", "hustle",
 	"armor_pierce", "crit_chance", "crit_damage", "move_speed", "coin_bonus", "heavy_bonus", "wave_bonus", "boss_damage", "dawn_bonus", "punch_speed",
-	"body_bonus", "free_punch_chance", "finisher_bonus", "dodge_window", "flinch_reduction", "graze_reduction",
-	"retaliation_bonus", "counter_free_bonus", "boss_ko_bonus", "finisher_threshold", "sprint_bonus",
+	"free_punch_chance", "finisher_bonus", "dodge_window", "flinch_reduction", "graze_reduction",
+	"sprint_bonus",
 	"fire_punch", "xp_bonus", "chain_damage", "fire_chance", "frost_punch", "frost_chance", "brittle",
-	"damage_percent", "knuckles_percent", "armor_absorb_reduction", "jump_bonus",
+	"damage_percent", "knuckles_percent", "jump_bonus",
 	"shatter", "lunging_jab", "thorns", "grit", "frost_slip", "executioner", "glass_jaw", "damage_taken",
 	"last_stand", "blood_price", "ult_gain",
-	"power_amp", "spell_chance", "spell_damage", "burst_damage", "burst_burn",
 ]
 ## Effects that are on/off: their text has no number.
 const FLAG_EFFECTS := [
-	"liver_shot", "double_jab", "chain_stun", "pound_stun", "seal", "chain_on_counter", "perfect_any_punch", "dive_kick",
+	"chain_stun", "seal", "chain_on_counter", "perfect_any_punch", "dive_kick",
 	"iron_will", "spear_jab", "bone_breaker", "long_count", "champions_hands", "gravewalker", "lantern",
 	"pyre", "thunderhead", "frost_shatter", "bloodbath", "ult_power",
 ]
@@ -1624,13 +1594,25 @@ func card_rank(id: String) -> int:
 	return int(cards.get(id, 0))
 
 
+## The seals whose legendary cards this fighter can draw: broken, and the
+## fighter at the level par puts there (Progression.PAR_LEVEL), so a new
+## fighter in a late save doesn't draw every legendary at level 1.
+func card_seals() -> Dictionary:
+	var seals := {}
+	for i in Cards.SEALS.size():
+		var seal: String = Cards.SEALS[i]
+		if dead_league_clears.get(seal, false) and level >= Progression.PAR_LEVEL[i + 1]:
+			seals[seal] = true
+	return seals
+
+
 ## The three cards on the table (drawn when a draw is waiting).
 func card_offer() -> Array:
 	var progress := _current()
 	if progress.draws <= 0:
 		return []
 	if progress.offer.is_empty():
-		progress.offer = Cards.draw(player_class, progress.cards, 3, dead_league_clears)
+		progress.offer = Cards.draw(player_class, progress.cards, 3, card_seals())
 		if progress.offer.is_empty():
 			# The deck is spent (or everything's sealed): the draw waits.
 			return []
@@ -1666,9 +1648,9 @@ func reroll_offer() -> bool:
 	var hidden: Dictionary = progress.cards.duplicate()
 	for id in shown:
 		hidden[id] = Cards.copies(Cards.info(player_class, id))
-	var fresh := Cards.draw(player_class, hidden, 3, dead_league_clears)
+	var fresh := Cards.draw(player_class, hidden, 3, card_seals())
 	if fresh.size() < 3:
-		for id in Cards.draw(player_class, progress.cards, 3, dead_league_clears):
+		for id in Cards.draw(player_class, progress.cards, 3, card_seals()):
 			if fresh.size() < 3 and not id in fresh:
 				fresh.append(id)
 	progress.offer = fresh
@@ -1692,9 +1674,9 @@ func swap_card(id: String) -> bool:
 	progress.draws += 1
 	var without: Dictionary = progress.cards.duplicate()
 	without[id] = Cards.copies(Cards.info(player_class, id))
-	progress.offer = Cards.draw(player_class, without, 3, dead_league_clears)
+	progress.offer = Cards.draw(player_class, without, 3, card_seals())
 	if progress.offer.is_empty():
-		progress.offer = Cards.draw(player_class, progress.cards, 3, dead_league_clears)
+		progress.offer = Cards.draw(player_class, progress.cards, 3, card_seals())
 	progress.rerolls = 0
 	_commit()
 	return true
@@ -1720,7 +1702,7 @@ func redraft() -> bool:
 ## Draws the deck can fill now. Past about level 40 there are more draws than
 ## cards; the rest wait for a swap, a redraft or a seal.
 func usable_draws() -> int:
-	return mini(draws, Cards.left_in_deck(player_class, cards, dead_league_clears))
+	return mini(draws, Cards.left_in_deck(player_class, cards, card_seals()))
 
 
 func cards_kept() -> int:

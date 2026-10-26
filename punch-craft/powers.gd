@@ -20,8 +20,6 @@ const BURN_TIME := 3.0
 const FROST_RADIUS := 2.5
 const FROST_TIME := 2.0
 const MAX_FROST_SLOW := 0.85
-const LAUNCH_KNOCKBACK_MULTIPLIER := 2.0
-const LAUNCH_STUN := 1.5
 
 ## Hears every power go off: (root, target) (CardPlay, for the Catalyst's cards).
 static var listener: Callable
@@ -103,20 +101,15 @@ static func ground_pound(player: Node3D, damage: float) -> void:
 		var direction := Vector3.FORWARD.rotated(Vector3.UP, TAU * i / 8.0)
 		HitFx.burst(world, center + direction * 0.6 + Vector3(0, 0.1, 0), direction + Vector3.UP * 0.4, POUND_COLOR, 6, 6.0, false, 0.08)
 	Sfx.play_at("quake", center)
-	var radius := POUND_RADIUS + GameState.get_effect("pound_radius")
-	var launch := GameState.has_effect("pound_stun")
 	for node in player.get_tree().get_nodes_in_group("enemies"):
 		var enemy := node as Enemy
 		if enemy == null or enemy.is_dead():
 			continue
 		var offset := enemy.global_position - center
 		offset.y = 0.0
-		if offset.length() > radius:
+		if offset.length() > POUND_RADIUS:
 			continue
-		var knockback := POUND_KNOCKBACK * (LAUNCH_KNOCKBACK_MULTIPLIER if launch else 1.0)
-		enemy.take_hit(damage, enemy.global_position + Vector3(0, 1.0, 0), offset.normalized() * knockback, true, "QUAKE")
-		if launch:
-			enemy.knock_down(LAUNCH_STUN, offset)
+		enemy.take_hit(damage, enemy.global_position + Vector3(0, 1.0, 0), offset.normalized() * POUND_KNOCKBACK, true, "QUAKE")
 
 
 ## A power's hit. Overflow (the Catalyst's card): what's left over after a

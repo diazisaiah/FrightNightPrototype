@@ -162,6 +162,15 @@ static func par_build(tier: int, share: float) -> Dictionary:
 	return {"damage": damage, "knuckles": knuckles, "defense": defense, "ehp": knuckles * (10.0 + defense) / 10.0, "effects": effects, "factor": factor}
 
 
+## Where a fighter of this level sits on the climb (PAR_LEVEL): 0 at level
+## 1, 1 at the start of tier 2, and so on.
+static func level_position(level: int) -> float:
+	for t in range(1, PAR_LEVEL.size()):
+		if level < PAR_LEVEL[t]:
+			return t - 1 + float(level - PAR_LEVEL[t - 1]) / (PAR_LEVEL[t] - PAR_LEVEL[t - 1])
+	return PAR_LEVEL.size() - 1.0
+
+
 ## Attribute points par puts in each of PAR_ATTRIBUTES at a level.
 static func par_points(level: int) -> float:
 	return minf(floorf(Attributes.POINTS_PER_LEVEL * (level - 1) / float(PAR_ATTRIBUTES.size())), Attributes.MAX)

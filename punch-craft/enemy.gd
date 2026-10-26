@@ -332,17 +332,13 @@ func take_hit(raw_damage: float, hit_point: Vector3, push: Vector3, stagger: boo
 		raw_damage *= HEAD_MULTIPLIER + GameState.get_effect("head_bonus")
 	# Wise Up: an enraged monster bleeds easier (Tony's punches only).
 	if is_taunted() and not finisher.is_empty():
-		raw_damage *= TAUNT_TAKEN + GameState.get_effect("wise_up")
+		raw_damage *= TAUNT_TAKEN
 	var worn := armor + (head_armor if head_shot else 0.0)
 	var effective_armor := 0.0 if pierce or crush else worn * (1.0 - GameState.get_armor_pierce())
 	var damage := maxf(0.0, raw_damage - effective_armor) * (1.0 - (0.0 if crush else damage_reduction))
 	if not head_shot and damage > 0.0:
 		var was_winded := _body_damage >= WINDED_THRESHOLD
-		# Liver Shot skill: a body shot on an already-winded enemy doubles it over.
-		if was_winded and GameState.has_effect("liver_shot") and not stagger:
-			stagger = true
-			DamagePopup.spawn(get_parent(), "LIVER SHOT", BODY_COLOR, 48, global_position + Vector3(0, 1.4, 0))
-		_body_damage = minf(1.0, _body_damage + BODY_DAMAGE_PER_HIT * (1.0 + GameState.get_effect("body_bonus")))
+		_body_damage = minf(1.0, _body_damage + BODY_DAMAGE_PER_HIT)
 		if not was_winded and _body_damage >= WINDED_THRESHOLD:
 			DamagePopup.spawn(get_parent(), "WINDED", BODY_COLOR, 44, global_position + Vector3(0, 1.2, 0))
 	hp -= damage
@@ -749,7 +745,7 @@ static func slow_time(seconds: float) -> void:
 ## or a big chunk of a boss.
 func get_knockout_damage() -> float:
 	if is_boss:
-		return max_hp * (0.25 + GameState.get_effect("boss_ko_bonus")) + armor
+		return max_hp * 0.25 + armor
 	return (hp + armor) + 1.0
 
 

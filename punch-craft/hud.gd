@@ -64,6 +64,11 @@ var _ult_fill: StyleBoxFlat
 var _ult_name := ""
 var _ult_status := ""
 var _ult_ready := false
+var _passive_chip: PanelContainer
+var _passive_icon: IconView
+var _passive_name: Label
+var _passive_value: Label
+var _passive_ready := false
 var _time_stop: Control
 var _time_clock: Control
 var _time_keys: Label
@@ -373,9 +378,56 @@ func show_graze() -> void:
 	announce_small("GRAZE", Color(1.0, 0.6, 0.2))
 
 
+## The passive's readout from the player ("" for nothing to count): shown on
+## the passive chip, bottom left, lit gold when it's READY.
 func set_class_status(text: String) -> void:
-	_class_label.text = text
-	_class_label.visible = false  # Mid-fight, class moments pop as callouts instead.
+	_class_label.visible = false
+	var info := Abilities.info(GameState.player_class, GameState.passive())
+	if info.is_empty():
+		return
+	if _passive_chip == null:
+		_build_passive_chip()
+	_passive_icon.icon = info.icon
+	_passive_name.text = String(info.name).to_upper()
+	_passive_value.text = text
+	_passive_value.visible = text != ""
+	var ready := text == "READY"
+	_passive_value.add_theme_color_override("font_color", UiTheme.GOLD if ready else UiTheme.TEXT)
+	_passive_icon.color = UiTheme.GOLD if ready else GameState.fighter_color().lightened(0.2)
+	if ready and not _passive_ready:
+		_passive_chip.pivot_offset = _passive_chip.size / 2.0
+		_passive_chip.scale = Vector2.ONE * 1.15
+		_passive_chip.create_tween().tween_property(_passive_chip, "scale", Vector2.ONE, 0.25).set_trans(Tween.TRANS_BACK)
+	_passive_ready = ready
+
+
+func _build_passive_chip() -> void:
+	_passive_chip = PanelContainer.new()
+	_passive_chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_passive_chip.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	_passive_chip.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_passive_chip.offset_left = 20.0
+	_passive_chip.offset_top = -64.0
+	_passive_chip.offset_bottom = -24.0
+	_passive_chip.add_theme_stylebox_override("panel", UiTheme.box(Color(0.04, 0.03, 0.06, 0.7), Color(GameState.fighter_color(), 0.5), 1, 8, 8.0))
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_passive_chip.add_child(row)
+	_passive_icon = IconView.new()
+	_passive_icon.custom_minimum_size = Vector2(24, 24)
+	_passive_icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_passive_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(_passive_icon)
+	_passive_name = _make_label(15, UiTheme.MUTED)
+	_passive_name.add_theme_font_override("font", UiTheme.bold_font())
+	row.add_child(_passive_name)
+	_passive_value = _make_label(17, UiTheme.TEXT)
+	_passive_value.add_theme_font_override("font", UiTheme.bold_font())
+	row.add_child(_passive_value)
+	add_child(_passive_chip)
+	# Under the pause and dawn screens.
+	move_child(_passive_chip, mini(_pause_panel.get_index(), _summary_panel.get_index()))
 
 
 func show_class_event(text: String) -> void:

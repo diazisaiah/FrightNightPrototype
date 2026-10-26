@@ -350,16 +350,13 @@ func say(line: String) -> void:
 		Sfx.play("bleep", -6.0)
 
 
-## An enraged monster went down: half the meter back, a KO line, and Hustle's coins.
-func _on_duel_won(enemy: Enemy) -> void:
+## An enraged monster went down: half the meter back and a KO line.
+func _on_duel_won(_enemy: Enemy) -> void:
 	if not is_instance_valid(player):
 		return
 	meter = clampf(meter + MAX_METER * MOUTH_REFUND, 0.0, MAX_METER)
 	meter_changed.emit(meter, is_full())
 	say(Insults.knockout())
-	var hustle := GameState.get_effect("hustle")
-	if hustle > 0.0 and is_instance_valid(enemy):
-		GameState.add_resource("coins", roundi(enemy.coin_reward * hustle))
 
 
 ## The monsters closest to where Tony's looking (within 60 degrees), nearest
@@ -794,7 +791,7 @@ func on_landed(target: Enemy, dealt: float, hand: String) -> void:
 		_riposte += 0.2
 	if spellfists <= 0.0 or target == null or not is_instance_valid(target):
 		return
-	var chance := minf(SPELL_CHANCE + GameState.get_effect("spell_chance"), SPELL_CHANCE_MAX)
+	var chance := SPELL_CHANCE
 	# Elemental Fists II: 25% each, and every spell finds a second monster.
 	var twice := _card("elemental_fists_ii")
 	if twice:
@@ -805,7 +802,7 @@ func on_landed(target: Enemy, dealt: float, hand: String) -> void:
 			if enemy != target and enemy.global_position.distance_to(target.global_position) <= 8.0 \
 					and (other == null or enemy.global_position.distance_to(target.global_position) < other.global_position.distance_to(target.global_position)):
 				other = enemy
-	var strength := GameState.get_damage() * (1.0 + GameState.get_effect("spell_damage") + 0.25 * _power())
+	var strength := GameState.get_damage() * (1.0 + 0.25 * _power())
 	var camera: Camera3D = player._camera
 	var side := -1.0 if hand == "left" else 1.0
 	var fist := camera.global_position + camera.global_basis * Vector3(0.25 * side, -0.3, -0.6)
@@ -872,9 +869,9 @@ func _flame_burst() -> void:
 func _burst_ring() -> void:
 	var world := player.get_parent()
 	var center := player.global_position
-	var radius := BURST_RADIUS + GameState.get_effect("burst_radius") + _power()
-	var damage := GameState.get_damage() * BURST_DAMAGE * (1.0 + GameState.get_effect("burst_damage") + 0.25 * _power())
-	var burn := GameState.get_damage() * BURST_BURN * (1.0 + GameState.get_effect("burst_burn"))
+	var radius := BURST_RADIUS + _power()
+	var damage := GameState.get_damage() * BURST_DAMAGE * (1.0 + 0.25 * _power())
+	var burn := GameState.get_damage() * BURST_BURN
 	Sfx.play("fire", 4.0, 0.6)
 	Sfx.play("quake", -2.0, 0.8)
 	player.shake(0.08)

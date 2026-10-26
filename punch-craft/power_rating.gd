@@ -26,10 +26,9 @@ class_name PowerRating
 ## Weights: how much of your damage each conditional bonus usually touches
 ## (about 40% of punches are set-up heavies, 30% of a fight is finishing...).
 const OFFENSE := {
-	"heavy_bonus": 0.4, "counter_bonus": 0.13, "body_bonus": 0.15,
+	"heavy_bonus": 0.4, "counter_bonus": 0.13,
 	"finisher_bonus": 0.3, "boss_damage": 0.3, "armor_pierce": 0.3,
-	"last_stand": 0.35, "retaliation_bonus": 0.1, "opener_bonus": 0.13, "wise_up": 0.4,
-	"shockwave_damage": 0.1, "boss_ko_bonus": 0.8,
+	"last_stand": 0.35,
 	# Passive power (a point every few levels): each passive turns it into
 	# damage and staying power.
 	"passive_power": 0.02,
@@ -37,16 +36,14 @@ const OFFENSE := {
 const POWERS := {
 	"fire_punch": 0.5, "burn": 0.4, "chain_lightning": 0.08, "frost_punch": 0.3,
 	"ult_power": 0.25, "ult_gain": 0.3,
-	# The Catalyst's web: stronger powers, Elemental Fists, Flame Burst.
-	"power_amp": 0.3, "spell_chance": 1.5, "spell_damage": 0.3, "spell_time": 0.02,
-	"burst_damage": 0.2, "burst_radius": 0.04, "burst_burn": 0.15,
+	# The Catalyst's Elemental Fists.
+	"spell_time": 0.02,
 }
 ## Heals are percent of max knuckle HP (per kill, per milestone, per counter).
 const DEFENSE := {
 	"dodge_window": 0.6, "counter_window": 0.3, "graze_reduction": 0.3, "move_speed": 0.15,
 	"flinch_reduction": 0.1, "free_punch_chance": 0.6, "heal_on_kill": 0.12, "wave_heal": 0.04,
-	"counter_heal": 0.06, "fugget_heal": 0.6, "fugget_cut": 0.03, "counter_free_bonus": 0.2,
-	"armor_charges": 0.08, "armor_recharge_cut": 0.02, "armor_absorb_reduction": 0.15,
+	"counter_heal": 0.06,
 	"passive_power": 0.025,
 }
 ## Level-up cards (Cards): [offense, defense] for each unit of the effect. How
@@ -106,7 +103,7 @@ const PERKS := {
 const CAPS := {"dodge_window": 0.25, "counter_window": 0.5, "armor_pierce": 0.75}
 const SPECIALS := [
 	"venom", "serrated", "shatter", "lunging_jab", "spear_jab", "executioner", "rhythm",
-	"glass_jaw", "blood_price", "bone_breaker", "chain_on_counter", "double_jab", "liver_shot",
+	"glass_jaw", "blood_price", "bone_breaker", "chain_on_counter",
 	"jump_bonus", "pyre", "thunderhead", "bloodbath", "ground_pound", "perfect_any_punch", "dive_kick",
 	"thorns", "iron_will", "grit", "long_count", "slipknot", "gravewalker",
 	"frost_slip", "clean_read", "lantern",

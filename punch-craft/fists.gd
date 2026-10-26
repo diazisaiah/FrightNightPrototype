@@ -71,6 +71,9 @@ const POWER_COLORS := {
 ## Rotation is (pitch, yaw, roll): pitch tilts the forearm up, yaw swings it
 ## inward, roll twists the fist around the forearm.
 const REST_POS := Vector3(0.24, -0.36, -0.1)
+## Where a fighter's pair sits, past the bob: the Mauler's huge mitts sit
+## lower so they don't fill the view.
+const SIT := {"berserker": Vector3(0, -0.045, 0)}
 const REST_ROT := Vector3(0.5, 0.18, -0.5)
 
 # Offsets from rest for the right arm (left arm uses the mirrored pose).
@@ -195,7 +198,7 @@ func _process(delta: float) -> void:
 	_bob_time += delta * lerpf(1.5, 10.0, move_amount)
 	var amplitude := lerpf(0.004, 0.02, move_amount)
 	_flinch_offset = _flinch_offset.move_toward(Vector3.ZERO, 0.6 * delta)
-	position = Vector3(cos(_bob_time * 0.5) * amplitude, sin(_bob_time) * amplitude, 0) + _flinch_offset + Vector3(0, -drop, drop * 0.3)
+	position = Vector3(cos(_bob_time * 0.5) * amplitude, sin(_bob_time) * amplitude, 0) + _flinch_offset + Vector3(0, -drop, drop * 0.3) + SIT.get(fighter, Vector3.ZERO)
 	_update_effects(delta)
 	if idle_playing:
 		_run_idle(delta)

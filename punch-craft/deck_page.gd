@@ -104,7 +104,7 @@ func refresh() -> void:
 	_title.text = "DECK  ·  %s" % GameState.fighter_name().to_upper()
 	var shown := 0
 	for id in deck:
-		if Cards.available(deck[id], GameState.dead_league_clears):
+		if Cards.available(deck[id], GameState.card_seals()):
 			shown += Cards.copies(deck[id])
 	_count.text = "%d of %d cards drawn" % [GameState.cards_kept(), shown]
 	_draw.text = "DRAW  (%d)" % draws if draws > 0 else "DRAW"
@@ -115,7 +115,7 @@ func refresh() -> void:
 		child.queue_free()
 	# Drawn first, by rarity (rarest first), then the rest face down.
 	var ids: Array = deck.keys().filter(func(id: String) -> bool:
-		return GameState.card_rank(id) > 0 or Cards.available(deck[id], GameState.dead_league_clears))
+		return GameState.card_rank(id) > 0 or Cards.available(deck[id], GameState.card_seals()))
 	ids.sort_custom(func(a: String, b: String) -> bool:
 		var owned_a := GameState.card_rank(a) > 0
 		var owned_b := GameState.card_rank(b) > 0

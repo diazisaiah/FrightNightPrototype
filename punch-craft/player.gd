@@ -299,7 +299,7 @@ var _muscle_timer := 6.0
 ## Unbroken (the Blur's alternate ultimate): seconds left.
 var unbroken_time := 0.0
 var _combo_freeze := 0.0
-var _class_status := ""
+var _class_status := "-"
 var _lean_tween: Tween
 ## Time each movement key was last pressed, for double taps.
 var _last_tap := {}
@@ -716,7 +716,7 @@ func receive_attack(amount: float, from: Vector3, attack: String, attacker: Node
 			_fugget_spare = true
 		else:
 			_fugget_spare = false
-		var recharge := FUGGET_TIME - GameState.get_effect("fugget_cut") - 0.25 * _pp() - 3.0 * GameState.get_effect("fuggedaboudit_ii")
+		var recharge := FUGGET_TIME - 0.25 * _pp() - 3.0 * GameState.get_effect("fuggedaboudit_ii")
 		_fugget_cooldown = maxf(3.0, recharge)
 		Sfx.play("block", -2.0, 1.25)
 		class_event.emit("FUGGEDABOUDIT!")
@@ -724,9 +724,6 @@ func receive_attack(amount: float, from: Vector3, attack: String, attacker: Node
 		var made := GameState.get_effect("made_man")
 		if made > 0.0 and _last_attacker and not _last_attacker.is_dead():
 			_last_attacker.stun(made)
-		var patch_up := GameState.get_effect("fugget_heal")
-		if patch_up > 0.0:
-			heal(max_knuckles * patch_up)
 		ult.add(FUGGET_METER)
 		return "armored"
 	_shake = maxf(_shake, 0.08)
@@ -1397,7 +1394,7 @@ func _land_punch(type: String, hand: String, _dashing := false, airborne := fals
 	_last_target_id = target.get_instance_id()
 	var jab_repeat := type == "jab" and _last_type == "jab" and hand == _last_hand and not new_target
 	_jab_run = _jab_run + 1 if jab_repeat else (1 if type == "jab" else 0)
-	var jabs_allowed := 2 + int(GameState.get_effect("double_jab"))
+	var jabs_allowed := 2
 	if hand == _last_hand and not new_target and not (jab_repeat and _jab_run <= jabs_allowed) and unbroken_time <= 0.0:
 		combo = 0
 	_last_hand = hand
@@ -1440,12 +1437,12 @@ func _land_punch(type: String, hand: String, _dashing := false, airborne := fals
 	if set_up:
 		caption = type.to_upper() + "!"
 	if GameState.has_passive("dash_punches"):
-		var jump_threshold := FINISHER_HP_FRACTION + GameState.get_effect("finisher_threshold")
+		var jump_threshold := FINISHER_HP_FRACTION
 		if _dash_style == "spear":
-			raw_damage *= SPEAR_JAB_MULTIPLIER + GameState.get_effect("opener_bonus") + 0.08 * _pp()
+			raw_damage *= SPEAR_JAB_MULTIPLIER + 0.08 * _pp()
 			caption = "SPEAR JAB!"
 		elif _dash_style == "haymaker":
-			raw_damage *= HAYMAKER_MULTIPLIER + GameState.get_effect("opener_bonus") + 0.08 * _pp()
+			raw_damage *= HAYMAKER_MULTIPLIER + 0.08 * _pp()
 			caption = "HAYMAKER!"
 		elif airborne and target.hp < target.max_hp * jump_threshold:
 			raw_damage *= FINISHER_MULTIPLIER
@@ -1475,7 +1472,7 @@ func _land_punch(type: String, hand: String, _dashing := false, airborne := fals
 		raw_damage *= PERFECT_COUNTER_BONUS
 		caption = "PERFECT COUNTER!"
 		if not free_perfect:
-			_perfect_cooldown = PERFECT_COUNTER_COOLDOWN - GameState.get_effect("perfect_cooldown_cut") - 0.3 * _pp()
+			_perfect_cooldown = PERFECT_COUNTER_COOLDOWN - 0.3 * _pp()
 		class_event.emit("PERFECT COUNTER!")
 		# Checkmate: a weakened monster goes down (a boss loses a chunk).
 		if GameState.has_effect("checkmate") and target.hp < target.max_hp * 0.4:
@@ -1646,8 +1643,7 @@ func _flat_forward() -> Vector3:
 func _pay_for_punch(punch: Dictionary, counter: bool) -> void:
 	var free_chance := GameState.get_effect("free_punch_chance")
 	if counter and GameState.is_player_class("counter_master"):
-		var counter_free := COUNTER_MASTER_FREE_CHANCE + GameState.get_effect("counter_free_bonus")
-		free_chance = 1.0 - (1.0 - free_chance) * (1.0 - counter_free)
+		free_chance = 1.0 - (1.0 - free_chance) * (1.0 - COUNTER_MASTER_FREE_CHANCE)
 	if randf() < free_chance or _free_punch:
 		_free_punch = false
 		return
@@ -1755,23 +1751,21 @@ func _check_ground_pound(was_airborne: bool, delta: float) -> void:
 
 ## Combo Master: every 5th hit stuns everything nearby and freezes the combo timer.
 func _shockwave() -> void:
-	var radius := SHOCKWAVE_RADIUS + GameState.get_effect("shockwave_radius")
-	var stun := SHOCKWAVE_STUN + GameState.get_effect("shockwave_stun")
-	var damage := GameState.get_damage() * (GameState.get_effect("shockwave_damage") + 0.2 * _pp())
+	var damage := GameState.get_damage() * 0.2 * _pp()
 	# Aftershock: the stun hits too, and holds the combo longer.
 	var aftershock := GameState.has_effect("aftershock")
 	if aftershock:
 		damage += GameState.get_damage()
 	for node in get_tree().get_nodes_in_group("enemies"):
 		var enemy := node as Enemy
-		if enemy and not enemy.is_dead() and enemy.global_position.distance_to(global_position) <= radius:
+		if enemy and not enemy.is_dead() and enemy.global_position.distance_to(global_position) <= SHOCKWAVE_RADIUS:
 			# Rolling Thunder: the shockwave hits too.
 			if damage > 0.0:
 				var away := enemy.global_position - global_position
 				away.y = 0.0
 				enemy.take_hit(damage, enemy.global_position + Vector3(0, 1.0, 0), away.normalized() * 3.0, false, "SHOCK")
 			if not enemy.is_dead():
-				enemy.stun(stun)
+				enemy.stun(SHOCKWAVE_STUN)
 	_combo_freeze = 2.0 if aftershock else COMBO_FREEZE_TIME
 	HitFx.burst(get_parent(), global_position + Vector3.UP, Vector3.UP, Color(1, 0.8, 0.3), 40, 7.0, true, 0.06)
 	Sfx.play("counter", -2.0, 0.7)
@@ -2159,45 +2153,37 @@ func _update_speed_lines() -> void:
 
 
 func _shockwave_every() -> int:
-	return SHOCKWAVE_EVERY - int(GameState.get_effect("shockwave_every_cut"))
+	return SHOCKWAVE_EVERY
 
 
 func _update_class_timers(delta: float) -> void:
 	_perfect_cooldown = maxf(0.0, _perfect_cooldown - delta)
 	_fugget_cooldown = maxf(0.0, _fugget_cooldown - delta)
 	_update_passive_timers(delta)
-	var status: String = GameState.fighter_name()
+	# What the passive is doing now, for the HUD's passive chip ("" for
+	# nothing to count).
+	var status := ""
 	match GameState.passive():
 		"grudge":
-			status += "  |  Grudge: " + ("MARKED" if is_instance_valid(_grudge) and not _grudge.is_dead() else "hit me first")
-		"wrecking_ball":
-			status += "  |  Wrecking Ball"
+			status = "MARKED" if is_instance_valid(_grudge) and not _grudge.is_dead() else ""
 		"berserker":
-			status += "  |  Berserker: +%d%% damage" % roundi((_berserker_mult() - 1.0) * 100.0)
+			status = "+%d%%" % roundi((_berserker_mult() - 1.0) * 100.0)
 		"perfect_counter":
-			status += "  |  Perfect counter: " + ("READY" if _perfect_cooldown <= 0.0 else "%ds" % ceili(_perfect_cooldown))
+			status = "READY" if _perfect_cooldown <= 0.0 else "%ds" % ceili(_perfect_cooldown)
 		"phantom_step":
-			status += "  |  Phantom step: " + ("READY" if _phantom_cooldown <= 0.0 else "%ds" % ceili(_phantom_cooldown))
+			status = "READY" if _phantom_cooldown <= 0.0 else "%ds" % ceili(_phantom_cooldown)
 		"dodge_chain":
-			status += "  |  Dodge chain: x%d" % _dodge_chain_charge
+			status = "x%d" % _dodge_chain_charge
 		"rapid_combos":
-			status += "  |  Shockwave in %d hits" % (_shockwave_every() - combo % _shockwave_every())
-		"echo_fists":
-			status += "  |  Echo fists"
-		"long_reach":
-			status += "  |  Long reach"
-		"dash_punches":
-			status += "  |  Dash (%s) then %s spear / %s haymaker  |  jump punch weak ones" % [Controls.text("dash"), Controls.key_name("punch_left"), Controls.key_name("punch_right")]
-		"head_stomp":
-			status += "  |  Jump on their heads"
+			status = "%d hits" % (_shockwave_every() - combo % _shockwave_every())
 		"momentum":
-			status += "  |  Momentum: x%.1f" % _momentum_mult()
+			status = "x%.1f" % _momentum_mult()
 		"fuggedaboudit":
-			status += "  |  Fuggedaboudit: " + ("READY" if _fugget_cooldown <= 0.0 else "%ds" % ceili(_fugget_cooldown))
+			status = "READY" if _fugget_cooldown <= 0.0 else "%ds" % ceili(_fugget_cooldown)
 		"the_muscle":
-			status += "  |  Vinnie in %ds" % ceili(maxf(_muscle_timer, 0.0))
+			status = "%ds" % ceili(maxf(_muscle_timer, 0.0))
 		"the_take":
-			status += "  |  The Take: +%d%% coins" % roundi(_take_bonus() * 100.0)
+			status = "+%d%%" % roundi(_take_bonus() * 100.0)
 	if status != _class_status:
 		_class_status = status
 		class_status_changed.emit(status)

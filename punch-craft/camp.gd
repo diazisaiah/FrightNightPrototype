@@ -347,6 +347,19 @@ func _new_badge(text := "NEW") -> Control:
 	return badge
 
 
+## Something waiting on a tab (card draws, attribute points): a pulsing
+## count on its corner, like Daily's READY.
+func _set_tab_count(page: String, count: int) -> void:
+	var button: Button = _tab_buttons[page]
+	var old := button.get_node_or_null("Count")
+	if old:
+		old.free()
+	if count > 0:
+		var badge := _new_badge(str(count))
+		badge.name = "Count"
+		button.add_child(badge)
+
+
 func _add_page(area: Control, page_name: String, page: Control) -> void:
 	page.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	area.add_child(page)
@@ -535,7 +548,7 @@ func _ability_tip() -> void:
 			if not Abilities.unlocked(GameState.player_class, entry.id, GameState.level):
 				continue
 			if Tutorial.open(self, "ability_" + entry.id, "NEW %s: %s" % [slot.to_upper(), String(entry.name).to_upper()],
-					"%s\n\nEquip it in your Loadout. Your cards for it come with it." % entry.desc,
+					"%s\n\nEquip it in your Loadout. Its cards join your deck." % entry.desc,
 					_loadout_button, func() -> bool: return _loadout_opened, false) != null:
 				return
 
@@ -597,7 +610,10 @@ func _refresh_idles() -> void:
 		var equipped: bool = id == GameState.idle_anim()
 		var card := Button.new()
 		card.custom_minimum_size = Vector2(230, 170)
-		card.add_theme_stylebox_override("normal", UiTheme.raised(Color(0.06, 0.05, 0.08, 0.96), UiTheme.GOLD if equipped else Color(tint, 0.5), 3 if equipped else 2, 12))
+		# Equipped: lit in the fighter's colour with a gold rim. The rest sit grey
+		# and dim (a gold-tinted fighter like Tony made them all look equipped).
+		card.add_theme_stylebox_override("normal", UiTheme.raised(Color(tint.darkened(0.78), 0.98) if equipped else Color(0.06, 0.05, 0.08, 0.96),
+			UiTheme.GOLD if equipped else Color(1, 1, 1, 0.16), 3 if equipped else 2, 12))
 		card.add_theme_stylebox_override("hover", UiTheme.raised(Color(tint.darkened(0.75), 0.98), tint.lightened(0.2), 3, 12))
 		card.add_theme_stylebox_override("pressed", UiTheme.raised(Color(tint.darkened(0.75), 0.98), tint.lightened(0.2), 3, 12))
 		var inside := VBoxContainer.new()
@@ -634,7 +650,10 @@ func _ability_card(slot: String, entry: Dictionary, equipped: bool) -> Button:
 	var tint: Color = GameState.fighter_color()
 	var card := Button.new()
 	card.custom_minimum_size = Vector2(250, 230)
-	card.add_theme_stylebox_override("normal", UiTheme.raised(Color(0.06, 0.05, 0.08, 0.96), UiTheme.GOLD if equipped else Color(tint, 0.5), 3 if equipped else 2, 12))
+	# Equipped: lit in the fighter's colour with a gold rim. The rest sit grey
+	# and dim (a gold-tinted fighter like Tony made them all look equipped).
+	card.add_theme_stylebox_override("normal", UiTheme.raised(Color(tint.darkened(0.78), 0.98) if equipped else Color(0.06, 0.05, 0.08, 0.96),
+		UiTheme.GOLD if equipped else Color(1, 1, 1, 0.16), 3 if equipped else 2, 12))
 	card.add_theme_stylebox_override("hover", UiTheme.raised(Color(tint.darkened(0.75), 0.98), tint.lightened(0.2), 3, 12))
 	card.add_theme_stylebox_override("pressed", UiTheme.raised(Color(tint.darkened(0.75), 0.98), tint.lightened(0.2), 3, 12))
 	var inside := VBoxContainer.new()
@@ -645,6 +664,8 @@ func _ability_card(slot: String, entry: Dictionary, equipped: bool) -> Button:
 	inside.offset_bottom = -12
 	inside.add_theme_constant_override("separation", 8)
 	inside.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if not equipped:
+		inside.modulate = Color(1, 1, 1, 0.6)
 	card.add_child(inside)
 	var icon := IconView.new()
 	icon.icon = entry.icon
@@ -952,9 +973,8 @@ func _refresh() -> void:
 			tree.selected_id = GameState.tree(kind).keys()[0]
 			tree.refresh()
 		_refresh_detail(kind)
-	var draws := GameState.usable_draws()
-	_tab_buttons["Deck"].text = "Deck  (%d)" % draws if draws > 0 else "Deck"
-	_tab_buttons["Attributes"].text = "Attributes  (%d)" % GameState.attribute_points if GameState.attribute_points > 0 else "Attributes"
+	_set_tab_count("Deck", GameState.usable_draws())
+	_set_tab_count("Attributes", GameState.attribute_points)
 	_refresh_attributes()
 	_refresh_sheet()
 
@@ -1789,14 +1809,14 @@ func _shop_card(index: int, offer: Dictionary) -> Control:
 		preview.custom_minimum_size = Vector2(200, 64)
 		column.add_child(preview)
 	elif offer.kind == "emote":
-		var stage := EmotePreview.new(GameState.player_class, 3.0)
+		var stage := EmotePreview.new(GameState.player_class, 3.2)
 		stage.emote_id = offer.id
-		stage.custom_minimum_size = Vector2(200, 82)
+		stage.custom_minimum_size = Vector2(200, 124)
 		column.add_child(stage)
 	elif offer.kind == "skin":
-		var stage := EmotePreview.new(Skins.CATALOG[offer.id].fighter, 3.0, offer.id)
+		var stage := EmotePreview.new(Skins.CATALOG[offer.id].fighter, 3.2, offer.id)
 		stage.emote_id = "default"
-		stage.custom_minimum_size = Vector2(200, 82)
+		stage.custom_minimum_size = Vector2(200, 124)
 		column.add_child(stage)
 	else:
 		var icon := IconView.new()

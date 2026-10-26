@@ -355,7 +355,7 @@ The camera drifts slowly and follows the mouse a little. Lightning strikes every
 - **Menu:** PLAY (fade to camp; Enter also works), CLASS, SETTINGS, QUIT (not shown in the browser). The buttons slide in and nudge right on hover.
 - **Footer:** the current class, its level and ultimate, plus Graveyard and Crypt progress.
 - **First start:** the first time, PLAY opens the class picker ("CHOOSE YOUR FIRST FIGHTER", with a Continue button), then asks "Learn to fight the dead?" with **Play the tutorial (recommended)** or **Skip - straight to camp**. Either choice sets `onboarded` in the save; after that, PLAY goes straight to camp. Saves from before this existed count as already onboarded, and resetting the save starts it again.
-- **Class picker:** four cards with icon, level, description, stat changes, and the ultimate with what it does. Click a card or CHOOSE. The camp no longer has a Class tab; its **Menu** button goes back to the title.
+- **Class picker:** four cards with icon, level, description, stat changes, and the ultimate with what it does. Click a card or CHOOSE. The camp no longer has a Class tab; its **Menu** button goes back to the title. The detail and the title footer name the **equipped** ultimate, not the default. The picker darkens the title behind it almost to black (the logo and menu showing through was clutter).
 
 **Settings** (`settings.gd` autoload, saved to `user://settings.cfg`, separate from the save so a reset keeps them; window in `settings_panel.gd`, opened from the title and from the pause menu):
 
@@ -697,6 +697,7 @@ Big title (gold for wins, red for knockouts), one short subtitle, a grade that s
 - No controls bar: controls are a **CONTROLS tab in the pause menu** (`Controls.rows()`).
 - **One top row** (`Hud.TOP_ROW`): knuckle bar on the left (HP centered in it, "55 / 69"), the bout bar ("12 / 30" kills) or boss bar (name) in the center, coins on the right, all the same height with gaps between them. The info line ("GRAVEDIGGER DIVISION · BOUT 3", "FLOOR 1", "ROUND 2") sits under the center bar, or in the row when there's no bar.
 - Under the knuckles: "LV 3" and a thin XP bar. No class status line: mid-fight, class moments pop as callouts.
+- **Passive chip** (bottom left, 2026-10-26): the equipped passive's icon and name, plus its live readout when it has one (Perfect Counter / Phantom Step / Fuggedaboudit cooldown or READY, Berserker +%, Dodge Chain xN, Momentum x1.2, Shockwave in N hits, Vinnie's timer, The Take +%, Grudge MARKED). READY turns it gold with a small pop.
 - **Ultimate gauge** (`UltGauge`): a slanted 10-segment meter in the fighter's color with a flowing shine, the ultimate's name over it and a diamond badge with the percent. It bumps as it charges; full, it turns gold, throbs, sparks, reads "READY" and the badge shows the key.
 - No worn-gear list in the fight and no kill-reward feed (the coin chip counts up). Combo reads "12 HITS  x2.25"; counters read "< COUNTER" / "COUNTER >".
 - Boss taunts and the Arena announcer are a speech line across the top (`Hud.say`), not feed text. LEVEL UP! is a callout.
@@ -1538,7 +1539,7 @@ Replaces the skill webs and the four stats. Why: every skill got bought eventual
   - **20 commons:** 5 cards, 4 copies each. Each copy you draw ranks it up (I-IV).
   - **10 rares:** 5 cards, 2 copies each (ranks I-II).
   - **5 epics:** one copy each.
-  - **5 legendaries:** one copy each, and each joins the deck only when its Dead League seal breaks (one per contender), so every contender win adds a new possibility.
+  - **5 legendaries:** one copy each, and each joins the deck only when its Dead League seal breaks (one per contender), so every contender win adds a new possibility. The fighter must also be at the par level for that seal (`Progression.PAR_LEVEL`: 9, 14, 19, 24, 29; `GameState.card_seals()`), so a new fighter in a late save doesn't draw every legendary at level 1.
 - **Every level-up draws 3 different cards; you keep 1.** The other two go back in the deck. Draws are even across the copies left, so commons come up most; legendaries count double once they're in. By the Coffin King's par (level 29) you've kept about 28 of the 40, so no two runs of a fighter end up with the same hand.
 - **No copies of other systems.** A card never gives what a Sigil power (burn, freeze, lightning, heal on kill) does, or copies a coin-web or gear special or an attribute perk. Commons can give plain stats (damage, knuckle HP, speed). Everything else builds on the fighter's own kit: their moves, passive, ultimate and signature mechanic (the Mauler's super armor, the Answer's counters, the Blur's combo, the Stray's movement, Tony's taunts, the Catalyst's spells).
 - **The decks** are in `CARD_DECKS.md` (generated from `cards.gd`): 5 commons, 5 rares, an epic for each of the fighter's 3 passives and 2 ultimates (so a hand pulls you toward a loadout), and a legendary per seal (Ultimate Surge is every deck's Southpaw legendary).
@@ -1564,7 +1565,7 @@ Replaces the skill webs and the four stats. Why: every skill got bought eventual
 | **Fortune** | +2% coins, +1% XP | **Pickpocket:** elites and champions burst with 3x their coins | **Soul Collector:** bosses drop +1 Soul | **Hat Trick:** monsters wear hats twice as often |
 
 - **Fortune is the tradeoff:** no fighting power, but faster progress (more coins, Souls and hats, and hats are permanent boosts).
-- **Resetting attributes** costs coins: 60 x the tier's pay (90 in the Gravedigger Division, about 59,000 in the Crown).
+- **Resetting attributes** costs coins: 1.5 per point spent x the pay where this fighter's level fights (`Progression.level_position`, never past your climb), minimum 25. A level-7 fighter with 18 points pays about 140; a new fighter in a late save no longer pays Crown prices.
 - **Notes:** Get Up is once per bout and has no stun, unlike the Crypt's Long Count gear (once a floor, stuns everything). Technique's per-point bonus and perks count toward the dodge (+25%) and counter (+0.5s) caps like everything else.
 
 ### Balance
@@ -1695,3 +1696,14 @@ Godot 4.5.1 project in `punch-craft/`, exported for the web to `builds/web` and 
 **Climb balance check:** run `balance_report.gd` (headless, test save) for par per tier, what each seal ring adds, and every class's POWER against each contender. After the 2026-10-15 revamp every class rates 0.94-1.13 of its contender at par, and `balance_regression` keeps it there.
 
 The old fist models and scenes (`fist.tscn`, `sketchfab_scene.tscn`, the `.glb` fists and their textures, about 93 MB) were moved out of the project to `../unused_assets/`.
+
+## Audit polish (2026-10-26)
+
+- Soul Shop emote and skin cards: taller stages (124 px), so the dancer reads.
+- Hat Rack thumbnails rendered for Fast Quills, Pocket Trainer Cap, Straw Hat and Rebel Cap.
+- The Answer's Perfect Counter trait: "Counter for x2.5."
+- New ability tip: "Equip it in your Loadout. Its cards join your deck."
+- Loadout and Hand Idle cards: the equipped one is lit in the fighter's colour with a gold rim; the rest are grey-rimmed and dimmed (Tony's gold tint made them all look equipped).
+- Deck and Attributes tabs wear a pulsing count badge (like Daily's READY) when draws or points are waiting.
+- The Mauler's mitts sit a little lower (`Fists.SIT`) so they don't fill the view.
+- Dead effects removed (nothing granted them since the skill webs went): wise_up, fugget_cut/heal, hustle, body_bonus, liver_shot, double_jab, the super-armor set, power_amp, spell_chance/damage, burst_*, perfect_cooldown_cut, counter_free_bonus, boss_ko_bonus, shockwave_*, opener_bonus, finisher_threshold, pound_radius/stun. `ult_power` stays as the ultimates' empower hook.

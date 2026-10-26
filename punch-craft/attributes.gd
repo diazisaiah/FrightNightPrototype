@@ -60,6 +60,12 @@ static func perk_needs(id: String) -> Array:
 	return _perks.get(id, ["", 999])
 
 
-## Coins to reset attributes: grows with the climb.
+## Coins to reset attributes: a little per point spent, on the pay ladder
+## where this fighter's level fights (no further than you've climbed), so a
+## new fighter in a late save doesn't pay late prices.
 static func reset_cost() -> int:
-	return roundi(60.0 * Progression.pay(Progression.current_tier() - 1))
+	var spent := 0
+	for attribute in GameState.attributes:
+		spent += int(GameState.attributes[attribute])
+	var x := minf(Progression.level_position(GameState.class_level(GameState.player_class)), GameState.climb_position())
+	return maxi(25, roundi(1.5 * spent * Progression.pay(x)))

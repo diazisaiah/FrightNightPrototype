@@ -704,7 +704,7 @@ func _refresh_class() -> void:
 	var info: Dictionary = GameState.CLASSES[id]
 	_class_icon.icon = info.icon
 	_class_icon.color = GameState.fighter_color(id)
-	_class_label.text = "%s   -   %s   -   Level %d\nUltimate: %s" % [GameState.fighter_name(id).to_upper(), info.name, GameState.class_level(id), Ult.NAMES[id].capitalize()]
+	_class_label.text = "%s   -   %s   -   Level %d\nUltimate: %s" % [GameState.fighter_name(id).to_upper(), info.name, GameState.class_level(id), Abilities.info(id, GameState.ultimate(id)).get("name", Ult.NAMES[id].capitalize())]
 	for card_id in _cards:
 		var card: Dictionary = _cards[card_id]
 		card.level.text = "LV %d" % GameState.class_level(card_id)
@@ -1015,8 +1015,10 @@ func _pick_fighter(id: String) -> void:
 		_detail_bars.add_child(bar)
 		bar.create_tween().tween_property(bar, "value", float(bars[stat]), 0.6).set_delay(0.35).set_trans(Tween.TRANS_CUBIC)
 	_detail_ult_tag.add_theme_color_override("font_color", accent)
-	_detail_ult_name.text = Ult.NAMES[id]
-	_detail_ult_how.text = Ult.DESCRIPTIONS[id]
+	# The ultimate they have on, not always the first.
+	var ult := Abilities.info(id, GameState.ultimate(id))
+	_detail_ult_name.text = String(ult.get("name", Ult.NAMES[id])).to_upper()
+	_detail_ult_how.text = ult.get("desc", Ult.DESCRIPTIONS[id])
 	_choose_button.text = "Choose %s" % info.fighter
 	_detail.visible = true
 	_detail.position.x = _card_left + CARD_SIZE.x + 64
@@ -1132,6 +1134,9 @@ func _open_classes() -> void:
 	_refresh_class()
 	_reset_picker()
 	_class_heading.text = "CHOOSE YOUR FIRST FIGHTER" if _onboarding else "CHOOSE YOUR FIGHTER"
+	# Darker than for settings: the cards fill the screen, and the logo and
+	# menu showing through behind them is clutter.
+	_overlay.color.a = 0.95
 	_overlay.visible = true
 	_class_panel.visible = true
 	_class_panel.modulate.a = 0.0
@@ -1154,6 +1159,7 @@ func _close_panels() -> void:
 		_reset_picker()
 	_onboarding = false
 	_overlay.visible = false
+	_overlay.color.a = 0.78
 	_class_panel.visible = false
 	_settings_holder.visible = false
 	_tutorial_offer.visible = false
