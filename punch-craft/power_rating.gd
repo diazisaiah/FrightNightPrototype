@@ -63,7 +63,7 @@ const CARDS := {
 	# The Answer.
 	"closing": [0.07, 0.0], "exploit": [0.08, 0.0], "sting_delay": [0.0, 0.15], "counter_ult": [0.08, 0.0],
 	"two_answers": [0.06, 0.0], "turnabout": [0.04, 0.05], "read_twice": [0.02, 0.0], "return_sender": [0.01, 0.0],
-	"crowd_reader": [0.0, 0.15], "checkmate": [0.1, 0.0], "ghost_walk": [0.0, 0.06], "stored_answers": [0.12, 0.0],
+	"crowd_reader": [0.0, 0.15], "checkmate": [0.1, 0.0], "ghost_walk": [0.03, 0.04], "stored_answers": [0.12, 0.0],
 	"riposte_ii": [0.04, 0.03], "untouchable_flow": [0.0, 0.06], "free_flow": [0.06, 0.0], "mirror_match": [0.0, 0.06],
 	"last_word": [0.06, 0.0],
 	# The Blur.

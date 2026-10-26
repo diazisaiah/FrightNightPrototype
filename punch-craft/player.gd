@@ -272,8 +272,6 @@ var _dodge_chain_charge := 0
 ## Phantom Step: cooldown between teleports.
 var _phantom_cooldown := 0.0
 ## Ghost Walk: Phantom Step on melee attacks, every few seconds.
-var _ghost_walk_cooldown := 0.0
-const GHOST_WALK_COOLDOWN := 6.0
 ## Blood Feud: hits the grudge monster has landed since it was marked.
 var _grudge_hits := 0
 ## Bounce House: bounces since you last touched the floor.
@@ -671,8 +669,6 @@ func receive_attack(amount: float, from: Vector3, attack: String, attacker: Node
 			_dodged_attack = ""
 			if attack in ["arrow", "fireball"]:
 				_phantom_step(attacker)
-			elif GameState.has_effect("ghost_walk") and _ghost_walk_cooldown <= 0.0 and _phantom_step(attacker):
-				_ghost_walk_cooldown = GHOST_WALK_COOLDOWN
 			return "dodged"
 		_defense_cooldown = minf(_defense_cooldown, GRAZE_RECOVERY)
 		Sfx.play("block", -6.0, 0.7)
@@ -1964,7 +1960,11 @@ func _phantom_step(attacker: Node3D) -> bool:
 	var enemy := attacker as Enemy
 	if not GameState.has_passive("phantom_step") or _phantom_cooldown > 0.0 or enemy == null or enemy.is_dead():
 		return false
-	_phantom_cooldown = maxf(1.0, PHANTOM_COOLDOWN - 0.2 * _pp())
+	# Ghost Walk (a card): back twice as fast, and the thrower reels.
+	var ghost := GameState.has_effect("ghost_walk")
+	_phantom_cooldown = maxf(1.0, PHANTOM_COOLDOWN - 0.2 * _pp()) * (0.5 if ghost else 1.0)
+	if ghost:
+		enemy.stun(1.0)
 	var away := enemy.global_position - global_position
 	away.y = 0.0
 	var spot := teleport_spot(enemy, enemy.global_position + away.normalized() * PHANTOM_BEHIND)
@@ -1982,7 +1982,6 @@ func _phantom_step(attacker: Node3D) -> bool:
 
 func _update_passive_timers(delta: float) -> void:
 	_phantom_cooldown = maxf(0.0, _phantom_cooldown - delta)
-	_ghost_walk_cooldown = maxf(0.0, _ghost_walk_cooldown - delta)
 	_stomp_cooldown = maxf(0.0, _stomp_cooldown - delta)
 	if unbroken_time > 0.0:
 		unbroken_time -= delta

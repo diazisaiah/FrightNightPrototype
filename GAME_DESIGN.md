@@ -937,6 +937,7 @@ The humor pillar: a hat collection and a secret character.
   - Epics: Paper Crown, Witch's Hat, Grim Reaper's Hood, and the **Fruit Hat**: a towering voxel fruit basket (pineapple leaves, oranges, a banana, grapes, cherries, strawberries) on a ruffled hot-pink brim with pink and yellow ruffles trailing down. "Five servings a day. Too late for this guy." +4% max knuckle HP and +1 heal on kill.
   - Added 2026-10-17:
     - **Big Monkey Mask** (epic): a big rubber monkey head over the whole head, with a heavy brow, wide eyes, a toothy grin and round ears. "Ook. The dead find it deeply unsettling." +3% damage, +3% dodge window.
+    - **Fast Guy Fleece Cap** (epic): a blue fleece hood with a rolled edge round the face, pointed ears with tan insides and quills swept back, the top one biggest (a speedy hedgehog parody, unnamed like the Strong Guy Wigs). "Blue, spiky, and already gone." +5% move speed, +4% punch speed.
     - **Strong Guy Wigs:** big blocky spiked hair. The black one fans out every way; the powered-up colors stand straight up and taller.
       - Black (common): +1.5% damage. "Spiky. Suspiciously heroic."
       - Blonde (uncommon): +2.5% damage, +2% ultimate gain. "Took three episodes of screaming to put on."
@@ -1554,6 +1555,8 @@ Replaces the skill webs and the four stats. Why: every skill got bought eventual
 - Cards are effects (`GameState.get_effect` adds the fighter's cards at their ranks and the attribute points); perks are `GameState.perk(id)`.
 - Effects that change a passive or ultimate live with it in `player.gd` and `ult.gd`. Enemies gained `delay` (hold still without a stagger), `scare`, a time slow for every monster, and `tell_time()` (Read the Tell). The Catalyst's cards hear every power go off (`Powers.listener`).
 - Jumps past a monster (Phantom Step, Vault) land short of any wall on the way, and stay put if the monster has its back to one (`Player.teleport_spot`), so they never leave the ring or a Crypt room.
+- Follow-up counters (Two Answers, Free Flow) go to the other hand: a one-two, never the same hand twice (that would break the combo anyway).
+- Phantom Step only answers thrown attacks (teleporting off a melee dodge was disorienting); its epic, Ghost Walk, makes it recharge twice as fast and stuns the thrower for 1s.
 - Every scroll box is a `KeptScroll`: spending a point, buying or equipping keeps your place instead of jumping back to the top.
 
 ## Multiplayer: the Versus ladder and co-op [Planned 2026-10-25]

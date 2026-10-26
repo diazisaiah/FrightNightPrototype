@@ -69,6 +69,8 @@ const CATALOG := {
 		"desc": "He left it at the coat check."},
 	"fruit_hat": {"name": "Fruit Hat", "rarity": "epic", "effects": {"knuckles_percent": 0.04, "heal_on_kill": 1.0},
 		"desc": "Five servings a day. Too late for this guy."},
+	"fast_quills": {"name": "Fast Guy Fleece Cap", "rarity": "epic", "effects": {"move_speed": 0.05, "punch_speed": 0.04},
+		"desc": "Blue, spiky, and already gone."},
 	"monkey_mask": {"name": "Big Monkey Mask", "rarity": "epic", "effects": {"damage_percent": 0.03, "dodge_window": 0.03},
 		"desc": "Ook. The dead find it deeply unsettling."},
 	"yonker_brim": {"name": "Yonker with Brim", "rarity": "legendary", "effects": {},
@@ -252,6 +254,8 @@ static func build(id: String, u: float) -> Node3D:
 			_fruit_hat(hat, u)
 		"monkey_mask":
 			_monkey_mask(hat, u)
+		"fast_quills":
+			_quills(hat, u)
 		"wig_black":
 			_strong_wig(hat, u, Color(0.13, 0.13, 0.16), false)
 		"wig_blonde":
@@ -317,6 +321,36 @@ static func _strong_wig(hat: Node3D, u: float, tint: Color, powered: bool) -> vo
 		tilt *= 0.45 if powered else 0.8
 		length *= 1.45 if powered else 1.15
 		_spike(hat, u, spike[0], tilt, length, 0.4, tint if i % 2 == 0 else tint.lightened(0.08))
+
+
+## The fast guy's fleece cap: a blue hood with a rolled edge round the face,
+## pointed ears with tan insides, and quills swept back, the top one biggest.
+static func _quills(hat: Node3D, u: float) -> void:
+	var fleece := Color(0.08, 0.5, 0.9)
+	var shade := fleece.darkened(0.18)
+	var edge := fleece.lightened(0.1)
+	# The hood: over the top, down the sides and the back of the head.
+	_b(hat, u, Vector3(1.12, 0.28, 1.1), Vector3(0, 0.04, 0.02), fleece)
+	for side in [-1.0, 1.0]:
+		_b(hat, u, Vector3(0.14, 0.55, 0.95), Vector3(0.56 * side, -0.22, 0.04), shade)
+		_b(hat, u, Vector3(0.12, 0.55, 0.12), Vector3(0.58 * side, -0.22, -0.47), edge)
+	_b(hat, u, Vector3(1.12, 0.65, 0.18), Vector3(0, -0.24, 0.52), shade)
+	_b(hat, u, Vector3(1.18, 0.11, 0.13), Vector3(0, 0.0, -0.52), edge)
+	# Ears, tan inside.
+	for side in [-1.0, 1.0]:
+		_spike(hat, u, Vector3(0.36 * side, 0.16, -0.12), Vector3(-0.15, 0, -0.35 * side), 0.38, 0.3, fleece)
+		_spike(hat, u, Vector3(0.36 * side, 0.18, -0.2), Vector3(-0.15, 0, -0.35 * side), 0.26, 0.16, Color(0.95, 0.88, 0.58))
+	# [base, tilt (x back and down, z out), length, width]: the big one up top.
+	var quills := [
+		[Vector3(0, 0.22, 0.05), Vector3(1.05, 0, 0), 1.05, 0.6],
+		[Vector3(0, -0.05, 0.42), Vector3(1.55, 0, 0), 0.85, 0.5],
+		[Vector3(-0.32, -0.25, 0.4), Vector3(1.75, 0, 0.5), 0.7, 0.42],
+		[Vector3(0.32, -0.25, 0.4), Vector3(1.75, 0, -0.5), 0.7, 0.42],
+		[Vector3(0, -0.45, 0.48), Vector3(2.0, 0, 0), 0.55, 0.38],
+	]
+	for i in quills.size():
+		var quill: Array = quills[i]
+		_spike(hat, u, quill[0], quill[1], quill[2], quill[3], fleece if i % 2 == 0 else shade)
 
 
 ## One blocky spike of hair: three blocks narrowing to a point along its +Y.

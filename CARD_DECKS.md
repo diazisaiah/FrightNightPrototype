@@ -73,7 +73,7 @@ Perfect Counter / Phantom Step / Dodge Chain / Riposte Stance / Flow State. Slip
 **Rares (I-II)**
 | Card | Tag | I | II |
 |---|---|---|---|
-| **Two Answers** | Counter | A counter that knocks out its target makes your next punch a counter too, no dodge needed | A counter that knocks out its target makes your next punch a counter too, up to twice in a row |
+| **Two Answers** | Counter | A counter that knocks out its target readies another counter with your other hand, no dodge needed | A counter that knocks out its target readies another counter with your other hand, up to twice in a row |
 | **Turnabout** | Counter | Counters stun the target for 0.6s | Counters stun the target for 1.2s and stagger every monster within 2m of it |
 | **Read Twice** | Counter | A clean dodge cuts Perfect Counter's cooldown by 1s | A clean dodge cuts Perfect Counter's cooldown by 2s |
 | **Return to Sender** | Dodge | Dodging an arrow, fireball or bolt sends it back at the thrower for 2x your base damage | Dodging an arrow, fireball or bolt sends it back at the thrower for 4x your base damage |
@@ -83,7 +83,7 @@ Perfect Counter / Phantom Step / Dodge Chain / Riposte Stance / Flow State. Slip
 | Card | Upgrades | Effect |
 |---|---|---|
 | **Checkmate** | Perfect Counter | Perfect Counter: on a monster under 40% HP it knocks it out (a boss loses 15% of its max HP) |
-| **Ghost Walk** | Phantom Step | Phantom Step: works on melee attacks too, every 6s |
+| **Ghost Walk** | Phantom Step | Phantom Step: recharges twice as fast, and whoever threw it is stunned for 1s |
 | **Stored Answers** | Dodge Chain | Dodge Chain: each punch spends one dodge instead of all of them, and chains go up to 10 |
 | **Riposte II** | Riposte Stance | Riposte Stance: lasts 50% longer, and every counter in it is a Perfect Counter |
 | **Untouchable** | Flow State | Flow State: every punch that lands while it lasts adds 0.2s |
@@ -91,7 +91,7 @@ Perfect Counter / Phantom Step / Dodge Chain / Riposte Stance / Flow State. Slip
 **Legendaries**
 | Seal | Card | Effect |
 |---|---|---|
-| Bellman | **Free Flow** | A counter keeps your counter ready for one more punch |
+| Bellman | **Free Flow** | A counter readies one more counter with your other hand |
 | Headless | **Precision Strike** | Perfect Counters work with any punch |
 | Southpaw | **Ultimate Surge** | Every bout starts with your ultimate a quarter full, and using it gives a quarter back |
 | Plague Doctor | **Mirror Match** | After a counter, the next attack aimed at you within 1s is slipped for you |

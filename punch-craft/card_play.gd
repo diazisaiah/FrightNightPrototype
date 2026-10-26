@@ -499,15 +499,21 @@ func _counter_landed(target: Enemy, hand: String, killed: bool) -> void:
 		_slow_time("THE LAST WORD")
 	if killed and _two_answers < int(fx("two_answers")):
 		_two_answers += 1
-		player._ready_counter("any")
+		player._ready_counter(_other(hand))
 		player.class_event.emit("TWO ANSWERS")
 	else:
 		_two_answers = 0
 		if fx("free_flow") > 0.0 and not _free_flow_used and not player.is_counter_ready():
 			_free_flow_used = true
-			player._ready_counter(hand)
+			player._ready_counter(_other(hand))
 	if fx("mirror_match") > 0.0:
 		_mirror = 1.0
+
+
+## Follow-up counters (Two Answers, Free Flow) go to the other hand, a
+## one-two (the same hand twice would break the combo anyway).
+static func _other(hand: String) -> String:
+	return "right" if hand == "left" else "left"
 
 
 ## Perfect Counters off cooldown: The Last Word's slow, Riposte II's stance.
