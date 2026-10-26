@@ -751,6 +751,12 @@ The contenders carry no crosses or pendants: Sister Southpaw's headband is plain
 - **Contenders:**
   - Each is one code-built undead boxer with its own silhouette, accent color and combo pool (`dead_league_boss.gd`, data in `dead_league_rules.gd`).
   - At low HP they enrage: faster windups, never summons.
+  - **Signature moves (2026-10-26)**, so each later contender is a clear step up:
+    - **The Headless, Skull Toss:** the skull rises, flashes blue and flies at your face (`skull_shot.gd`). Slip it (either side) and it bites air and floats home. **Punch it** out of the air and the Headless takes x3 the punch, the skull drops to the floor, and the body fights **blind** for 5s: staggering about and throwing wild hook combos at whatever it faces (only the swings that face you can land). Then the skull floats back on. Punches reach "punchable" things before monsters (`Player._punch_thing`).
+    - **Sister Southpaw:** slips 40% of the time between combos, and also at the tail of her open window if you keep punching. She answers every slip with a right-handed jab (the right straight, at minimum windup), doubled 40% of the time. Once a combo (40%) she **pivots** around your side to behind you between punches (0.24s, afterimages, "BEHIND YOU"); the next punch waits 0.2s longer so you can turn.
+    - **The Plague Doctor:** no more single punches: 3-4 punch strings, each follow-up stuttered early or late. Every punch that lands **heals him 4%** of his max HP (a graze 1.5%). Below 70% HP his **Adrenaline Shot** (head back, a green burst) sets off a 7s **RAMPAGE**: 5-punch strings, windups x0.75, pauses x0.45, moving x1.3, heals x1.5. Then 20s before the next shot.
+    - **The Coffin King:** quicker the more he's hurt: windups up to 40% shorter, pauses up to 60% shorter, footwork up to 30% faster and specials up to 35% sooner; 5-punch strings below half HP. "THE KING QUICKENS" at 2/3 and 1/3 HP.
+    - Stat steps widened: the Plague Doctor 104 HP / 6.9 damage / windup 0.72 / idle 0.26 (was 98 / 6.7 / 0.76 / 0.3), the Coffin King 134 / 8.1 / 0.64 / 0.2 (was 120 / 7.6 / 0.68 / 0.24).
 - **Three rounds** in a roped ring.
   - The boss gets +16% / +34% HP and +8% / +17% damage in rounds 2 and 3.
   - Between rounds you get back 18% of your knuckle HP.

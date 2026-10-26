@@ -1322,6 +1322,19 @@ func _punch(type: String, hand: String) -> void:
 		_dash_style = ""
 
 
+## Punches something that isn't a monster (group "punchable", with a
+## punched(type, hand, player) method) if one is in reach and in front.
+func _punch_thing(type: String, hand: String) -> bool:
+	var eye := _camera.global_position
+	var forward := -_camera.global_basis.z
+	for node in get_tree().get_nodes_in_group("punchable"):
+		var to: Vector3 = (node as Node3D).global_position - eye
+		if to.length() <= PUNCH_REACH + 0.5 and forward.dot(to.normalized()) > 0.75:
+			node.punched(type, hand, self)
+			return true
+	return false
+
+
 ## forced: hit this enemy instead of whatever the punch ray finds (ultimates).
 ## bonus multiplies the damage; forced_caption goes above the number.
 func _land_punch(type: String, hand: String, _dashing := false, airborne := false, forced: Enemy = null, bonus := 1.0, forced_caption := "") -> void:
@@ -1332,6 +1345,9 @@ func _land_punch(type: String, hand: String, _dashing := false, airborne := fals
 			return
 		hit_point = target.global_position + Vector3(0, 1.3, 0)
 	else:
+		# A punchable thing in reach (the Headless's thrown skull) comes first.
+		if _punch_thing(type, hand):
+			return
 		_punch_ray.force_raycast_update()
 		target = _punch_ray.get_collider() as Enemy
 		hit_point = _punch_ray.get_collision_point()

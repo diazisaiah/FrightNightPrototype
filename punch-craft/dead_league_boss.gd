@@ -35,8 +35,58 @@ const GUARD_SHOULDER := -0.25
 const GUARD_SPREAD := 0.3
 const GUARD_ELBOW := 1.45
 
+## Sister Southpaw: once a combo she may pivot behind you between punches
+## (PIVOT_CHANCE, in PIVOT_TIME). She slips often, even at the end of her
+## open window if you get greedy, and answers with a right-handed jab (a
+## southpaw's jab), sometimes two.
+const PIVOT_CHANCE := 0.4
+const PIVOT_TIME := 0.24
+const PIVOT_DISTANCE := 1.7
+## The Plague Doctor heals this share of his max HP for every punch that
+## lands (a graze: GRAZE_DOSE), half again in a Rampage. Below
+## ADRENALINE_BELOW HP his Adrenaline Shot sets off RAMPAGE_TIME of faster,
+## longer combos (then ADRENALINE_COOLDOWN before the next shot).
+const DOSE := 0.04
+const GRAZE_DOSE := 0.015
+const INJECT_TIME := 1.0
+const RAMPAGE_TIME := 7.0
+const RAMPAGE_WINDUP := 0.75
+const RAMPAGE_SPEED := 1.3
+const ADRENALINE_BELOW := 0.7
+const ADRENALINE_COOLDOWN := 20.0
+## The Headless: winds up its Skull Toss this long, and fights blind (wild
+## combos at whatever it's facing) this long after you punch the skull down.
+const SKULL_WIND := 0.8
+const BLIND_TIME := 5.0
+## The Coffin King gets quicker as he's hurt: near 0 HP, windups this much
+## shorter (KING_HASTE) and pauses between combos this much shorter.
+const KING_HASTE := 0.4
+const KING_REST := 0.6
+const OWN_SPECIAL_NAMES := {"skull_toss": "SKULL TOSS", "adrenaline": "ADRENALINE SHOT"}
+const WILD_COMBOS := [
+	["left_hook", "right_hook", "left_hook"], ["right_hook", "left_hook", "uppercut"],
+	["jab", "cross", "left_hook", "right_hook"], ["cross", "cross", "slam"], ["left_hook", "uppercut", "right_hook"],
+]
+const RAMPAGE_COMBOS := [
+	["jab", "cross", "jab", "cross", "uppercut"], ["left_hook", "right_hook", "left_hook", "right_hook", "slam"],
+	["jab", "jab", "cross", "left_hook", "uppercut"], ["cross", "left_hook", "cross", "right_hook", "uppercut"],
+]
+
 var profile_index := 0
 var round_number := 1
+var _pivoted := false
+var _rampage_time := 0.0
+var _adrenaline_wait := 0.0
+var _rampage_fx: CPUParticles3D
+var _blind_time := 0.0
+var _blind_dir := Vector3.FORWARD
+var _blind_turn := 0.0
+var _skull_shot: SkullShot
+var _head_parent: Node3D
+var _head_rest := Vector3.ZERO
+var _base_windup := 1.0
+var _base_speed := 1.0
+var _king_stage := 0
 ## The Headless's skull floats free above its shoulders.
 var _float_head: Node3D
 var _float_base := 0.0
@@ -67,6 +117,8 @@ func configure(index: int, bout_round: int) -> void:
 	hit_color = profile.accent
 	special_kit = KITS[profile_index]
 	special_first = FIRST_SPECIAL
+	_base_windup = windup_scale
+	_base_speed = move_speed
 
 
 func _ready() -> void:
@@ -80,12 +132,18 @@ func _pick_combo() -> Array:
 		[["jab", "cross"], ["cross", "left_hook"], ["jab", "cross", "slam"], ["left_hook", "right_hook"], ["slam"]],
 		[["jab", "cross", "jab"], ["cross", "left_hook"], ["jab", "right_hook", "cross"], ["left_hook", "cross"]],
 		[["jab", "left_hook"], ["jab", "cross", "left_hook"], ["left_hook", "cross", "left_hook"], ["cross", "left_hook", "uppercut"]],
-		[["jab"], ["cross"], ["jab", "uppercut"], ["cross", "left_hook", "uppercut"], ["jab", "cross", "slam"]],
+		[["jab", "jab", "uppercut"], ["jab", "cross", "left_hook", "uppercut"], ["cross", "left_hook", "cross"],
+			["jab", "cross", "jab", "cross"], ["left_hook", "uppercut", "cross"], ["jab", "cross", "slam"]],
 		[["jab", "cross", "left_hook", "right_hook"], ["cross", "left_hook", "uppercut"], ["left_hook", "right_hook", "slam"], ["slam", "jab", "cross"]],
 	]
+	if _rampage_time > 0.0:
+		return RAMPAGE_COMBOS.pick_random()
 	var pool: Array = pools[profile_index]
 	if _enraged:
 		pool = pool + [["jab", "cross", "left_hook", "uppercut"], ["left_hook", "right_hook", "left_hook", "slam"]]
+	# The Coffin King strings more together the more he's hurt.
+	if profile_index == 4 and _hurt() > 0.5:
+		pool = pool + [["jab", "cross", "left_hook", "right_hook", "uppercut"], ["cross", "left_hook", "cross", "right_hook", "slam"]]
 	return pool.pick_random()
 
 
@@ -97,11 +155,30 @@ var _evade_cooldown := 0.0
 func _physics_process(delta: float) -> void:
 	super(delta)
 	_evade_cooldown -= delta
+	_adrenaline_wait -= delta
+	if _rampage_time > 0.0:
+		_rampage_time -= delta
+		if _rampage_time <= 0.0:
+			_end_rampage()
+	if _blind_time > 0.0:
+		_blind_time -= delta
+		if _blind_time <= 0.0 and is_instance_valid(_skull_shot) and not is_dead():
+			_skull_shot.recall()
+	if profile_index == 4 and not is_dead():
+		_king_haste()
+
+
+## Share of its HP gone (0 fresh, 1 down).
+func _hurt() -> float:
+	return 1.0 - clampf(hp / maxf(max_hp, 1.0), 0.0, 1.0)
 
 
 ## Only between combos (never mid-combo, mid-special, reeling or left open).
+## Sister Southpaw also slips at the tail of her open window: don't get greedy.
 func try_evade(_punch_type: String, hand: String) -> bool:
-	if _state != State.IDLE or _special != "" or _evade_cooldown > 0.0 or _stagger_timer > 0.0 or is_dead():
+	var greedy := profile_index == 2 and _state == State.RECOVER and _state_timer < 0.4
+	if (_state != State.IDLE and not greedy) or _special != "" or _blind_time > 0.0 or _evade_cooldown > 0.0 \
+			or _stagger_timer > 0.0 or is_dead():
 		return false
 	var chance: float = DeadLeagueRules.boss(profile_index).evade + 0.05 * (round_number - 1) + (0.1 if _enraged else 0.0)
 	if randf() >= chance:
@@ -116,7 +193,12 @@ func try_evade(_punch_type: String, hand: String) -> bool:
 
 func _idle_time() -> float:
 	var base: float = DeadLeagueRules.boss(profile_index).idle
-	return randf_range(base * 0.75, base * 1.2) * (0.75 if _enraged else 1.0)
+	var rest := randf_range(base * 0.75, base * 1.2) * (0.75 if _enraged else 1.0)
+	if _rampage_time > 0.0:
+		rest *= 0.45
+	if profile_index == 4:
+		rest *= 1.0 - KING_REST * _hurt()
+	return rest
 
 
 func _recover_time() -> float:
@@ -150,8 +232,10 @@ func _arm_pose(arm: String) -> Array:
 func _animate(delta: float, speed: float) -> void:
 	super(delta, speed)
 	_look_time += delta
-	if _float_head:
-		_float_head.position.y = _float_base + sin(_look_time * 2.2) * 0.035
+	if _float_head and _skull_shot == null:
+		# Rises over the neck as it winds up a Skull Toss.
+		var lift := 0.25 * minf(_step_time / SKULL_WIND, 1.0) if _step == "wind" else 0.0
+		_float_head.position.y = _float_base + sin(_look_time * 2.2) * 0.035 + lift
 		_float_head.rotation.z = sin(_look_time * 1.3) * 0.08
 
 
@@ -509,16 +593,27 @@ func _gear_style() -> String:
 ## leaping slam, the Headless's ghost charge, Sister Southpaw's judgment
 ## circles and charge, the Plague Doctor's miasma and slam, all of them for
 ## the Coffin King.
-const KITS := [["leap_slam"], ["charge"], ["zones", "charge"], ["miasma", "leap_slam"], ["leap_slam", "charge", "zones"]]
+const KITS := [["leap_slam"], ["charge", "skull_toss"], ["zones", "charge"], ["miasma", "leap_slam", "adrenaline"], ["leap_slam", "charge", "zones"]]
 ## Seconds between specials per contender in round 1; each later round
 ## brings them 12% sooner, the final bell 30% sooner.
-const SPECIAL_EVERY := [9.0, 8.5, 8.0, 8.0, 7.0]
+const SPECIAL_EVERY := [9.0, 8.5, 8.0, 9.0, 7.0]
 const FIRST_SPECIAL := 5.0
 
 
-## The ring is small and they fight up close: every move is always on.
-func _special_in_range(_kind: String, _distance: float) -> bool:
-	return true
+## The ring is small and they fight up close: every move is always on, but
+## the skull can only be thrown while it's on, and an Adrenaline Shot comes
+## first whenever it's ready.
+func _special_in_range(kind: String, _distance: float) -> bool:
+	match kind:
+		"skull_toss":
+			return _skull_shot == null
+		"adrenaline":
+			return _adrenaline_ready()
+	return not ("adrenaline" in special_kit and _adrenaline_ready())
+
+
+func _adrenaline_ready() -> bool:
+	return _rampage_time <= 0.0 and _adrenaline_wait <= 0.0 and hp < max_hp * ADRENALINE_BELOW
 
 
 func _special_tint() -> Color:
@@ -531,7 +626,8 @@ func _special_repeats(kind: String) -> int:
 
 
 func _special_delay() -> float:
-	return SPECIAL_EVERY[profile_index] * (1.0 - 0.12 * (round_number - 1)) * (0.7 if _enraged else 1.0) * randf_range(0.85, 1.15)
+	var delay: float = SPECIAL_EVERY[profile_index] * (1.0 - 0.12 * (round_number - 1)) * (0.7 if _enraged else 1.0) * randf_range(0.85, 1.15)
+	return delay * (1.0 - 0.35 * _hurt()) if profile_index == 4 else delay
 
 
 func _zone_count() -> int:
@@ -539,7 +635,7 @@ func _zone_count() -> int:
 
 
 func _announce_special(kind: String) -> void:
-	DamagePopup.spawn(get_parent(), SPECIAL_NAMES[kind], _special_tint(), 46, global_position + Vector3(0, 3.0, 0))
+	DamagePopup.spawn(get_parent(), SPECIAL_NAMES.get(kind, OWN_SPECIAL_NAMES.get(kind, "")), _special_tint(), 46, global_position + Vector3(0, 3.0, 0))
 	# The marks can be under your feet, out of view: say what to do.
 	var hud := get_tree().get_first_node_in_group("hud")
 	if hud:
@@ -548,5 +644,261 @@ func _announce_special(kind: String) -> void:
 			"charge": "STEP OUT OF THE LANE  -  or roll (%s)" % Controls.text("roll"),
 			"zones": "STAY OUT OF THE CIRCLES",
 			"miasma": "STAY OUT OF THE POISON",
+			"skull_toss": "PUNCH THE SKULL  -  or slip it",
+			"adrenaline": "HE'S ABOUT TO RAMPAGE",
 		}
 		hud.announce_small(how.get(kind, ""), Telegraphs.DANGER.lightened(0.3))
+
+
+# --- Signature moves ---------------------------------------------------------------
+
+func _start_combo() -> void:
+	_pivoted = false
+	super()
+
+
+func _begin_attack(attack: String, windup: float) -> void:
+	if profile_index == 2 and _state == State.EVADE:
+		# Sister Southpaw answers a slip with her jab: the right hand, quick,
+		# sometimes doubled.
+		attack = "cross"
+		windup = 0.0
+		_pivoted = false
+		if randf() < 0.4:
+			_queue.append("cross")
+	elif _state == State.STRIKE and _blind_time <= 0.0:
+		if profile_index == 2 and not _pivoted and randf() < PIVOT_CHANCE:
+			_pivoted = true
+			windup += _pivot_behind()
+		elif profile_index == 3:
+			# The Plague Doctor stutters: each follow-up comes early or late.
+			windup *= randf_range(0.6, 1.5)
+	super(attack, windup)
+
+
+func _strike(distance: float) -> void:
+	# Blind, it swings at whatever's in front of it.
+	if _blind_time > 0.0 and facing(player.global_position) < 0.7:
+		_last_result = ""
+		_enter(State.STRIKE, STRIKE_TIME)
+		_cue_label.visible = false
+		Sfx.play_at("whoosh", global_position + Vector3.UP * 1.5, -4.0, 0.8)
+		return
+	super(distance)
+	# The Plague Doctor's dose: every punch that lands patches him up.
+	if profile_index == 3 and not is_dead():
+		var dose := DOSE if _last_result == "hit" else GRAZE_DOSE if _last_result == "grazed" else 0.0
+		if dose > 0.0:
+			heal(max_hp * dose * (1.5 if _rampage_time > 0.0 else 1.0))
+
+
+func _think(delta: float) -> Vector3:
+	if _blind_time > 0.0:
+		return _think_blind(delta)
+	return super(delta)
+
+
+## Sister Southpaw, mid-combo: around your side and behind you in a blink.
+## Returns how much longer the next punch waits (time to turn and find her).
+func _pivot_behind() -> float:
+	var back := player.global_basis.z
+	back.y = 0.0
+	back = back.normalized() if back.length() > 0.01 else -_to_player().normalized()
+	var side := back.cross(Vector3.UP) * (1.0 if randf() < 0.5 else -1.0)
+	var around := _clamp_to_arena(player.global_position + side * PIVOT_DISTANCE)
+	var behind := _clamp_to_arena(player.global_position + back * PIVOT_DISTANCE)
+	var accent: Color = DeadLeagueRules.boss(profile_index).accent
+	MoveFx.afterimage(get_parent(), global_position, accent, 0.4)
+	Sfx.play_at("whoosh", global_position, 2.0, 1.3)
+	collision_mask &= ~2
+	var tween := create_tween()
+	tween.tween_property(self, "global_position", around, PIVOT_TIME * 0.5)
+	tween.tween_property(self, "global_position", behind, PIVOT_TIME * 0.5)
+	tween.tween_callback(func() -> void:
+		collision_mask |= 2
+		var to := _to_player()
+		rotation.y = atan2(-to.x, -to.z)
+		MoveFx.afterimage(get_parent(), global_position, accent, 0.3))
+	DamagePopup.spawn(get_parent(), "PIVOT", accent, 40, behind + Vector3(0, 2.6, 0))
+	var hud := get_tree().get_first_node_in_group("hud")
+	if hud:
+		hud.announce_small("BEHIND YOU", accent.lightened(0.3))
+	return PIVOT_TIME + 0.2
+
+
+func _start_special(kind: String) -> void:
+	super(kind)
+	match kind:
+		"skull_toss":
+			_locked = false
+			_set_step("wind")
+		"adrenaline":
+			_locked = false
+			_set_step("inject")
+
+
+func _run_special(delta: float) -> Vector3:
+	match _step:
+		"wind":
+			_step_time += delta
+			_turn_toward(_to_player(), delta)
+			if not _locked and _step_time >= SKULL_WIND - tell_time():
+				_locked = true
+				_flash_tell(SLIP_COLOR, 2.1)
+			if _step_time >= SKULL_WIND:
+				_locked = false
+				_throw_skull()
+				_set_step("toss")
+			return Vector3.ZERO
+		"toss":
+			# Waits on the skull (skull_back / skull_down end it).
+			_step_time += delta
+			_turn_toward(_to_player(), delta)
+			if _step_time > 6.0:
+				_end_special()
+			return Vector3.ZERO
+		"inject":
+			_step_time += delta
+			if not _locked and _step_time >= INJECT_TIME * 0.5:
+				_locked = true
+				var neck := global_position + Vector3.UP * 1.6 * _body.scale.y
+				HitFx.burst(get_parent(), neck, Vector3.UP, DeadLeagueRules.boss(profile_index).accent, 24, 4.0, true, 0.06)
+				Sfx.play_at("draw", neck, 2.0, 0.6)
+			if _step_time >= INJECT_TIME:
+				_locked = false
+				_start_rampage()
+				_end_special()
+			return Vector3.ZERO
+	return super(delta)
+
+
+func _animate_special(delta: float) -> void:
+	super(delta)
+	if _step == "inject":
+		# Head back, the needle in.
+		_body.rotation.x = lerpf(_body.rotation.x, -0.3, minf(1.0, 10.0 * delta))
+	elif _step == "wind":
+		_body.rotation.x = lerpf(_body.rotation.x, -0.2, minf(1.0, 10.0 * delta))
+
+
+# The Headless's skull.
+
+func _throw_skull() -> void:
+	if _float_head == null:
+		return
+	_head_parent = _float_head.get_parent()
+	_head_rest = _float_head.position
+	_skull_shot = SkullShot.toss(self, _float_head, player)
+
+
+## Where the skull floats over the neck, in the world.
+func skull_home() -> Vector3:
+	if _head_parent == null:
+		return global_position + Vector3.UP * 2.4
+	return _head_parent.to_global(Vector3(_head_rest.x, _float_base, _head_rest.z))
+
+
+func skull_back(head: Node3D) -> void:
+	head.reparent(_head_parent, false)
+	head.transform = Transform3D(Basis.IDENTITY, Vector3(_head_rest.x, _float_base, _head_rest.z))
+	_skull_shot = null
+	if _special == "skull_toss":
+		_end_special()
+
+
+## Punched down: it fights blind until the skull floats back.
+func skull_down() -> void:
+	if _special == "skull_toss":
+		_end_special()
+	_blind_time = BLIND_TIME
+	_queue.clear()
+	_enter(State.IDLE, 0.3)
+	DamagePopup.spawn(get_parent(), "BLIND", DeadLeagueRules.boss(profile_index).accent, 50, global_position + Vector3(0, 3.0, 0))
+	var hud := get_tree().get_first_node_in_group("hud")
+	if hud:
+		hud.announce_small("IT CAN'T SEE YOU  -  but it's swinging", Color(0.6, 0.85, 1.0))
+
+
+## Blind: staggers about, turning every which way (now and then toward you,
+## by sound), throwing wild combos at whatever's in front of it.
+func _think_blind(delta: float) -> Vector3:
+	_blind_turn -= delta
+	if _blind_turn <= 0.0:
+		_blind_turn = randf_range(0.4, 0.9)
+		var toward := _to_player()
+		var base := toward.normalized() if toward.length() > 0.1 else -global_basis.z
+		_blind_dir = base.rotated(Vector3.UP, randf_range(-PI, PI) if randf() < 0.6 else randf_range(-0.3, 0.3))
+	_turn_toward(_blind_dir, delta)
+	_state_timer -= delta
+	match _state:
+		State.IDLE, State.RECOVER, State.EVADE:
+			if _state_timer <= 0.0:
+				_queue.assign(WILD_COMBOS.pick_random())
+				_power_arm = ["left", "right"].pick_random()
+				_begin_attack(_queue.pop_front(), FOLLOW_UP_WINDUP)
+		State.WINDUP:
+			if not _flashed and _state_timer <= tell_time():
+				_flashed = true
+				if glow_tells:
+					_flash_tell(CUES[_attack].color)
+			if _state_timer <= 0.0:
+				_strike(_to_player().length())
+		State.STRIKE:
+			if _state_timer <= 0.0:
+				if _queue.is_empty():
+					_enter(State.RECOVER, randf_range(0.25, 0.5))
+				else:
+					_power_arm = _next_power_arm
+					_begin_attack(_queue.pop_front(), FOLLOW_UP_WINDUP * 0.8)
+					_previewed = true
+	return Vector3.ZERO if _state == State.STRIKE else _blind_dir * move_speed * 0.45
+
+
+# The Plague Doctor's Rampage.
+
+func _start_rampage() -> void:
+	_rampage_time = RAMPAGE_TIME
+	windup_scale *= RAMPAGE_WINDUP
+	move_speed *= RAMPAGE_SPEED
+	var accent: Color = DeadLeagueRules.boss(profile_index).accent
+	DamagePopup.spawn(get_parent(), "RAMPAGE!", accent, 60, global_position + Vector3(0, 3.2, 0))
+	Sfx.play_at("growl", global_position + Vector3.UP * 2.0, 4.0, 0.8)
+	if _rampage_fx == null:
+		_rampage_fx = CPUParticles3D.new()
+		_rampage_fx.amount = 30
+		_rampage_fx.lifetime = 0.6
+		_rampage_fx.position = Vector3(0, 1.2, 0)
+		_rampage_fx.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+		_rampage_fx.emission_box_extents = Vector3(0.5, 0.8, 0.35) * BODY_SCALE[profile_index]
+		_rampage_fx.direction = Vector3.UP
+		_rampage_fx.spread = 20.0
+		_rampage_fx.gravity = Vector3(0, 2.0, 0)
+		_rampage_fx.initial_velocity_min = 1.0
+		_rampage_fx.initial_velocity_max = 2.2
+		var mote := BoxMesh.new()
+		mote.size = Vector3.ONE * 0.07
+		mote.material = _glow_material(accent)
+		_rampage_fx.mesh = mote
+		add_child(_rampage_fx)
+	_rampage_fx.emitting = true
+
+
+func _end_rampage() -> void:
+	_rampage_time = 0.0
+	windup_scale /= RAMPAGE_WINDUP
+	move_speed /= RAMPAGE_SPEED
+	_adrenaline_wait = ADRENALINE_COOLDOWN
+	if _rampage_fx:
+		_rampage_fx.emitting = false
+
+
+## The Coffin King: quicker windups and footwork the more he's hurt.
+func _king_haste() -> void:
+	var hurt := _hurt()
+	windup_scale = _base_windup * (1.0 - KING_HASTE * hurt) * (0.88 if _enraged else 1.0)
+	move_speed = _base_speed * (1.0 + 0.3 * hurt) * (1.12 if _enraged else 1.0)
+	var stage := mini(int(hurt * 3.0), 2)
+	if stage > _king_stage:
+		_king_stage = stage
+		DamagePopup.spawn(get_parent(), "THE KING QUICKENS", DeadLeagueRules.boss(profile_index).accent, 46,
+				global_position + Vector3(0, 3.4, 0))
