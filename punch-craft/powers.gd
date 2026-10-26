@@ -116,7 +116,7 @@ static func ground_pound(player: Node3D, damage: float) -> void:
 		var knockback := POUND_KNOCKBACK * (LAUNCH_KNOCKBACK_MULTIPLIER if launch else 1.0)
 		enemy.take_hit(damage, enemy.global_position + Vector3(0, 1.0, 0), offset.normalized() * knockback, true, "QUAKE")
 		if launch:
-			enemy.stun(LAUNCH_STUN)
+			enemy.knock_down(LAUNCH_STUN, offset)
 
 
 ## A power's hit. Overflow (the Catalyst's card): what's left over after a

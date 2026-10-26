@@ -139,6 +139,9 @@ var _materials := {}
 var _fx := {}
 var _ability_ready := false
 var _ult_ready := false
+## The Catalyst's runes flaring as a power or spell goes off: {side: [color, seconds left]}.
+var _rune_flash := {}
+const RUNE_FLASH := 0.45
 var _hot_hand := ""
 var _time := 0.0
 var _bolt_timer := 0.0
@@ -219,6 +222,16 @@ func flinch() -> void:
 ## What the fighter's hands should show. ult: the meter is full (the hands
 ## glow). ability and hot_hand ("left", "right", "any": a counter is ready)
 ## add small touches.
+## A power or spell just went off: the Catalyst's runes on that hand (both
+## for "" or "any") flare in its color for a moment. Not a glow that stays:
+## that's only for a ready ultimate.
+func flash_runes(color: Color, hand := "") -> void:
+	if fighter != "elementalist":
+		return
+	for side in (["left", "right"] if hand in ["", "any"] else [hand]):
+		_rune_flash[side] = [color, RUNE_FLASH]
+
+
 func set_power_state(ability: bool, ult: bool, hot_hand := "") -> void:
 	_ability_ready = ability
 	_ult_ready = ult
@@ -1378,10 +1391,19 @@ func _update_effects(delta: float) -> void:
 			var rune: StandardMaterial3D = _materials["rune_left" if i == 0 else "rune_right"]
 			rune.emission = colors[i]
 			rune.emission_energy_multiplier = (0.5 + pulse * 0.7) if _ult_ready else 0.0
+			var side := "left" if i == 0 else "right"
+			var flash: Array = _rune_flash.get(side, [])
+			var flare := 0.0
+			if not flash.is_empty() and flash[1] > 0.0:
+				flash[1] -= delta
+				flare = clampf(flash[1] / RUNE_FLASH, 0.0, 1.0)
+				rune.emission = flash[0]
+				rune.emission_energy_multiplier = maxf(rune.emission_energy_multiplier, 4.0 * flare)
 			# The hand's own light takes its rune's color too.
-			var hand_fx: Dictionary = _fx.get("left" if i == 0 else "right", {})
+			var hand_fx: Dictionary = _fx.get(side, {})
+			hand_fx["flare"] = flare
 			if hand_fx.has("light"):
-				(hand_fx.light as OmniLight3D).light_color = colors[i]
+				(hand_fx.light as OmniLight3D).light_color = flash[0] if flare > 0.0 else colors[i]
 				var sparks: StandardMaterial3D = hand_fx.bit
 				sparks.albedo_color = colors[i]
 				sparks.emission = colors[i]
@@ -1393,7 +1415,7 @@ func _update_effects(delta: float) -> void:
 		var fx: Dictionary = _fx[hand]
 		# The Catalyst's pale tape washes out under a strong light.
 		var light_scale := 0.3 if fighter == "elementalist" else 1.0
-		(fx.light as OmniLight3D).light_energy = (0.3 + pulse * 0.3) * light_scale if _ult_ready else 0.0
+		(fx.light as OmniLight3D).light_energy = maxf((0.3 + pulse * 0.3) * light_scale if _ult_ready else 0.0, 0.5 * float(fx.get("flare", 0.0)))
 		var particles: CPUParticles3D = fx.particles
 		particles.emitting = _ult_ready
 		match fighter:

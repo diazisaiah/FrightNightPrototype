@@ -1533,6 +1533,8 @@ func _land_punch(type: String, hand: String, _dashing := false, airborne := fals
 	var killed := target.is_dead()
 	if not killed:
 		target.finisher = {}
+	if _dash_style == "haymaker" and not killed:
+		target.knock_down(0.9, push)
 	_dash_punch_splash(target, raw_damage, hand)
 	_after_punch_passives(target, raw_damage, killed, push, forced != null)
 	_punch_specials(type, hand, target, raw_damage, counter, dash_jab, killed)
@@ -1589,6 +1591,7 @@ func _dash_punch_splash(target: Enemy, damage: float, hand: String) -> void:
 			enemy.take_hit(damage * 0.4, enemy.global_position + Vector3(0, 1.2, 0), away.normalized() * 9.0, true, "KNOCKED BACK")
 			if not enemy.is_dead():
 				enemy.finisher = {}
+				enemy.knock_down(0.9, away)
 				if GameState.has_effect("spear_line"):
 					_bowl_into(enemy, damage * 0.3)
 
@@ -1601,6 +1604,8 @@ func _bowl_into(flier: Enemy, damage: float) -> void:
 	for enemy in _enemies_near(flier.global_position, 1.6):
 		if enemy != flier:
 			enemy.take_hit(damage, enemy.global_position + Vector3(0, 1.0, 0), Vector3.ZERO, true, "BOWLED")
+			if not enemy.is_dead():
+				enemy.knock_down(0.7, enemy.global_position - flier.global_position)
 
 
 func _spear_reach() -> float:
@@ -1881,9 +1886,9 @@ func _wrecking_ball(from: Vector3, push: Vector3) -> void:
 			enemy.take_hit(GameState.get_damage() * (WRECKING_DAMAGE + 0.3 * _pp()), enemy.global_position + Vector3(0, 1.0, 0),
 					direction * 6.0, true, "STRIKE!")
 			HitFx.burst(get_parent(), enemy.global_position + Vector3(0, 1.0, 0), direction, Color(1.0, 0.55, 0.2), 14, 5.0, false, 0.05)
-			# Strike!: knocked down for 2s.
-			if GameState.has_effect("strike") and not enemy.is_dead():
-				enemy.stun(2.0)
+			# Bowled over (Strike!: and kept down for 2s).
+			if not enemy.is_dead():
+				enemy.knock_down(2.0 if GameState.has_effect("strike") else 0.9, direction)
 		if not hit.is_empty() and step == 0:
 			Sfx.play_at("heavy", at, 0.0, 0.7)
 	if GameState.has_effect("strike") and hit.size() >= 3:
@@ -2029,6 +2034,8 @@ func _hype_bowl() -> void:
 		_bowled[enemy] = now
 		enemy.take_hit(GameState.get_damage() * (Ult.HYPE_DAMAGE + 0.5 * ult._power()) * get_combo_multiplier(),
 				enemy.global_position + Vector3(0, 1.0, 0), ahead.normalized() * 10.0 + Vector3.UP * 2.0, true, "BOWLED!")
+		if not enemy.is_dead():
+			enemy.knock_down(1.0, ahead)
 		ult.on_bowled()
 		_set_combo(combo + 1)
 		_combo_timer = GameState.get_combo_window()

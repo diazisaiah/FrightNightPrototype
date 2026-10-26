@@ -128,6 +128,11 @@ var _knockback := Vector3.ZERO
 var _stagger_timer := 0.0
 ## Held still without a stagger (delay, scare): no moving, no attacking.
 var _hold_time := 0.0
+## The pivot the body falls over on (knock_down), and its fall.
+var _topple: Node3D
+var _topple_tween: Tween
+## Stars circling the head while it's stunned.
+var _daze_fx: Node3D
 ## Bosses: staggers and stuns don't take until this runs out (BOSS_POISE).
 var _poise_time := 0.0
 var _flash_timer := 0.0
@@ -187,8 +192,12 @@ func setup(target: Player, is_armored: bool, scaling := {}) -> void:
 
 func _ready() -> void:
 	add_to_group("enemies")
+	# The body sits on a pivot at the feet, so knock_down can topple it
+	# while the monster's own animation keeps posing the body.
+	_topple = Node3D.new()
+	add_child(_topple)
 	_body = Node3D.new()
-	add_child(_body)
+	_topple.add_child(_body)
 	_build_body()
 	armor = base_armor
 	# Tiered gear for where on the Climb it spawns (EnemyGear). The old
@@ -266,6 +275,11 @@ func _physics_process(delta: float) -> void:
 			_set_flash(false)
 		_stagger_timer -= delta
 		_hold_time -= delta
+		if _daze_fx:
+			_daze_fx.rotation.y += delta * 6.0
+			if _stagger_timer <= 0.0:
+				_daze_fx.queue_free()
+				_daze_fx = null
 		_poise_time -= delta
 		if _taunt_time > 0.0:
 			_taunt_time -= delta
@@ -577,6 +591,60 @@ func stun(duration: float) -> void:
 	_set_poise()
 	_on_staggered()
 	DamagePopup.spawn(get_parent(), "STUNNED", Color(1, 0.8, 0.3), 40, global_position + Vector3(0, 2.0, 0))
+	if duration >= 0.6:
+		_daze()
+
+
+## Stars circling over its head until the stun wears off.
+func _daze() -> void:
+	if _daze_fx:
+		return
+	_daze_fx = Node3D.new()
+	_daze_fx.position.y = top_height() + 0.2
+	# On the toppling pivot, so the stars stay over the head when it's down.
+	_topple.add_child(_daze_fx)
+	var star := Enemy._glow_material(Color(1.0, 0.88, 0.3))
+	for i in 3:
+		var a := TAU * i / 3.0
+		var bit := MeshInstance3D.new()
+		var mesh := BoxMesh.new()
+		mesh.size = Vector3(0.1, 0.1, 0.1)
+		mesh.material = star
+		bit.mesh = mesh
+		bit.position = Vector3(cos(a), 0.04 * i, sin(a)) * 0.3
+		bit.rotation = Vector3(0.6, a, 0.6)
+		_daze_fx.add_child(bit)
+
+
+## Knocked off its feet: it topples away from the blow, hits the ground with a
+## thud and a bounce, lies there, then hops back up. Out of the fight the whole
+## time. Bosses are too heavy to fall (a stun, which their poise can refuse).
+func knock_down(seconds: float, push: Vector3) -> void:
+	if _dead:
+		return
+	if is_boss or not _can_stagger():
+		stun(minf(seconds, 1.0))
+		return
+	_stagger_timer = maxf(_stagger_timer, seconds)
+	_on_staggered()
+	var away := global_basis.inverse() * Vector3(push.x, 0.0, push.z)
+	away = away.normalized() if away.length() > 0.01 else Vector3(0, 0, 1)
+	# +x tips the top toward +z, -z toward +x: over, away from the blow.
+	var fall := Vector3(away.z, 0.0, -away.x) * 1.45
+	if _topple_tween:
+		_topple_tween.kill()
+	_topple_tween = create_tween()
+	_topple_tween.tween_property(_topple, "rotation", fall * 1.06, 0.3).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	_topple_tween.tween_callback(func() -> void:
+		var ground := global_position + global_basis * Vector3(-fall.z, 0.15, fall.x) * 0.7
+		HitFx.burst(get_parent(), ground, Vector3.UP, Color(0.45, 0.38, 0.3), 14, 2.5, false, 0.07)
+		Sfx.play_at("heavy", ground, -6.0, 0.6))
+	_topple_tween.tween_property(_topple, "rotation", fall, 0.12).set_trans(Tween.TRANS_SINE)
+	_topple_tween.tween_interval(maxf(seconds - 0.85, 0.15))
+	# Back up: a quick hop and straight.
+	_topple_tween.tween_property(_topple, "rotation", Vector3.ZERO, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_topple_tween.parallel().tween_property(_topple, "position:y", 0.3, 0.15).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	_topple_tween.tween_property(_topple, "position:y", 0.0, 0.13).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 
 
 ## A boss holding its poise shrugs off staggers and stuns ("STEADY", once a
@@ -1076,6 +1144,14 @@ var _wait_sign := 1.0
 
 
 func _die(push: Vector3) -> void:
+	if _topple_tween:
+		_topple_tween.kill()
+	if _topple:
+		_topple.rotation = Vector3.ZERO
+		_topple.position = Vector3.ZERO
+	if _daze_fx:
+		_daze_fx.queue_free()
+		_daze_fx = null
 	# The hat lesson's monster only goes down to an uppercut.
 	if hat_lesson and hat != "" and finisher.get("type", "") != "uppercut":
 		hp = 1.0

@@ -507,7 +507,7 @@ func _inferno_at(target: Enemy) -> void:
 	if not boss and target.collision_mask != 0:
 		target.velocity.y = INFERNO_LAUNCH * 1.4
 		target.global_position.y += 0.1
-	target.stun(INFERNO_STUN)
+	target.knock_down(INFERNO_STUN, target.global_position - player.global_position)
 
 
 # --- Combo Master: Temporal Break --------------------------------------------------------
@@ -719,6 +719,7 @@ func _shield_break() -> void:
 			enemy.take_hit(damage, enemy.global_position + Vector3(0, 1.0, 0), away.normalized() * 8.0, true, "BRIMSTONE!")
 			if not enemy.is_dead():
 				enemy.ignite(GameState.get_damage() * 1.5, INFERNO_BURN_TIME)
+				enemy.knock_down(0.8, away)
 	player.class_event.emit("BRIMSTONE!")
 
 
@@ -808,22 +809,51 @@ func on_landed(target: Enemy, dealt: float, hand: String) -> void:
 	var fist := camera.global_position + camera.global_basis * Vector3(0.25 * side, -0.3, -0.6)
 	var ahead := -camera.global_basis.z
 	ahead.y = 0.0
+	# Each spell flares the throwing hand's runes in its color.
+	var colors := Fists.POWER_COLORS
 	if randf() < chance:
+		player._fists.flash_runes(colors.sigil_fire, hand)
 		SpellBolt.fling(player.get_parent(), fist, ahead, "fire", strength * SPELL_FIRE, target)
 		if other:
 			SpellBolt.fling(player.get_parent(), fist, ahead, "fire", strength * SPELL_FIRE, other)
 	if randf() < chance:
+		player._fists.flash_runes(colors.sigil_frost, hand)
 		SpellBolt.fling(player.get_parent(), fist, ahead, "ice", strength * SPELL_ICE, target)
 		if other:
 			SpellBolt.fling(player.get_parent(), fist, ahead, "ice", strength * SPELL_ICE, other)
 	if randf() < chance and not target.is_dead():
+		player._fists.flash_runes(colors.sigil_storm, hand)
 		Powers.chain_lightning(target, strength * SPELL_LIGHTNING, SPELL_JUMPS)
 	if randf() < chance and dealt > 0.0:
+		player._fists.flash_runes(colors.sigil_blood, hand)
 		var amount := maxf(1.0, dealt * SPELL_HEAL)
 		player.heal(amount)
 		var at := target.global_position + Vector3(0, 1.2, 0)
 		HitFx.burst(player.get_parent(), at, (player.global_position - at).normalized(), Color(0.85, 0.05, 0.08), 16, 4.0, true, 0.05)
+		_blood_stream(at, fist)
 		DamagePopup.spawn(player.get_parent(), "+%d" % roundi(amount), Color(0.95, 0.2, 0.25), 36, at + Vector3(0, 0.5, 0))
+
+
+## The blood heal: drops of blood stream from the monster back into the fist.
+func _blood_stream(from: Vector3, to: Vector3) -> void:
+	var world := player.get_parent()
+	var blood := Enemy._glow_material(Color(0.85, 0.05, 0.1))
+	for i in 7:
+		var drop := MeshInstance3D.new()
+		var mesh := BoxMesh.new()
+		mesh.size = Vector3.ONE * (0.09 - i * 0.006)
+		mesh.material = blood
+		drop.mesh = mesh
+		drop.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		world.add_child(drop)
+		drop.global_position = from
+		var bend := Vector3(randf_range(-0.4, 0.4), randf_range(0.2, 0.6), randf_range(-0.4, 0.4))
+		var tween := drop.create_tween()
+		tween.tween_interval(i * 0.035)
+		tween.tween_method(func(t: float) -> void:
+			if is_instance_valid(player):
+				drop.global_position = from.lerp(to, t) + bend * sin(t * PI), 0.0, 1.0, 0.32).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		tween.tween_callback(drop.queue_free)
 
 
 ## Flame Burst: fire bursts out in a ring; everything in it is hit and burns.
@@ -919,6 +949,8 @@ func _start_reel() -> void:
 		player._free_punch = true
 		if last:
 			player._land_punch(type, hand, false, false, target, REEL_FINISHER * (1.0 + 0.3 * _power()), "HAYMAKER!")
+			if is_instance_valid(target) and not target.is_dead():
+				target.knock_down(1.2, target.global_position - player.global_position)
 			player._shake = maxf(player._shake, 0.1)
 			player._kick_fov(8.0)
 		else:

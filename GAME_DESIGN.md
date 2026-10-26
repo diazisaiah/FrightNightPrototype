@@ -900,6 +900,12 @@ Enemies wear tiered armor and weapons (`enemy_gear.gd`), so you can see you're f
   - **Possessed Armor:** its own metal is reskinned.
   - **No gear:** Dead League contenders (built-in defense, tuned in `configure`), the training dummy and the mimic.
 
+## Livelier passives and ultimates, pass 1 [Built 2026-10-25]
+
+- **Knockdowns** (`Enemy.knock_down`): the monster topples away from the blow on a pivot at its feet (its own animation keeps posing the body), thuds with a puff of dust, lies there, then hops back up. Out of the fight while down. Used by Wrecking Ball strikes (2s with Strike!), the Haymaker dash punch and its blast, Hype Train, Inferno Uppercut's launch, Highlight Reel's finisher, Avalanche, the Brimstone burst, Spear Line's bowling and the Ground Pound launch. Bosses are too heavy to fall: they get a stun their poise can refuse.
+- **Dazed stars** circle a monster's head for any stun of 0.6s or more (they ride down with it when it's knocked over).
+- **The Catalyst:** fireballs and icicles have a white-hot core in a glowing shell, a brighter light and a longer trail; fireballs burst with a ring of flame, icicles flash on each hit. His runes flare in a power's color whenever it goes off (on the hand that threw it), and in each Elemental Fists spell's color; the blood heal streams drops of blood back into his fist. A flare, not a glow: the steady glow is still only for a ready ultimate.
+
 ## Boss poise [Built 2026-10-25]
 
 Every set-up hook and uppercut staggers, and a stagger cancels what the monster is doing. The Mauler's heavies need no set-up, so spamming hooks staggered a boss every half second and it never got to attack (a 3,143 POWER Mauler beat contenders rated 15,636).

@@ -596,6 +596,8 @@ func dash_contact(enemy: Enemy) -> void:
 ## A power went off on a target (Powers.listener).
 func _on_power(root: String, target: Enemy) -> void:
 	_afterglow = 1.0
+	# The Catalyst's runes flare in the power's color.
+	player._fists.flash_runes(Fists.POWER_COLORS.get(root, Color.WHITE), player.last_hand())
 	if fx("ward") > 0.0:
 		var cap := fx("ward") * player.max_knuckles * WARD_STACKS
 		_ward = minf(_ward + fx("ward") * player.max_knuckles, cap)
@@ -693,6 +695,8 @@ func _avalanche() -> void:
 			continue
 		any = true
 		enemy.take_hit(GameState.get_damage() * 0.5, enemy.global_position + Vector3(0, 1.0, 0), offset.normalized() * 9.0, true, "AVALANCHE")
+		if not enemy.is_dead():
+			enemy.knock_down(0.8, offset)
 	if any:
 		Sfx.play("quake", -4.0, 1.1)
 		player._shake = maxf(player._shake, 0.05)
