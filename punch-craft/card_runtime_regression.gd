@@ -226,6 +226,11 @@ func _exercise_ultimate(fighter: String, ultimate: String) -> void:
 	await get_tree().create_timer(settle, false, false, true).timeout
 	_check(player.ult.meter < Ult.MAX_METER,
 			"%s's %s activates and spends meter" % [fighter, ultimate])
+	# While it lasts, nothing charges the meter (Brimstone Shield could stay up forever).
+	if ultimate in ["bulwark", "hype_train", "unbroken", "riposte", "flow_state", "elemental_fists"]:
+		var before: float = player.ult.meter
+		player.ult.add(50.0)
+		_check(is_equal_approx(player.ult.meter, before), "%s's %s doesn't charge while it's up" % [fighter, ultimate])
 	await _free_rig(holder)
 	print("Card runtime: %s / %s OK" % [fighter, ultimate])
 

@@ -188,7 +188,7 @@ func busy() -> bool:
 
 
 func add(amount: float) -> void:
-	if busy() or _riposte > 0.0 or spellfists > 0.0:
+	if busy() or _riposte > 0.0 or spellfists > 0.0 or _shield_hits > 0 or hype > 0.0 or player.unbroken_time > 0.0:
 		return  # No charging while an ultimate runs.
 	var was_full := is_full()
 	if amount > 0.0:

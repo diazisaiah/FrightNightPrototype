@@ -94,20 +94,26 @@ const FALL_LIMIT := -20.0
 ## one Endless Arena after the Crown Division): no bar, no champion, just
 ## waves in the division's own place. ENDLESS_CLEAR knockouts win the bout
 ## (its first-win bonus and Souls), then it's for a high score per division. Every ENDLESS_WAVE knockouts the dead get tougher and
-## a mini-boss (an elite veteran) steps in; any spawn has a MINI_BOSS_CHANCE of
+## a mini-boss (an elite of a monster already in this bout, its veteran from
+## the Bone Division on) steps in; any spawn has a small MINI_BOSS_CHANCE of
 ## being one too. Score: ENDLESS_KO a knockout, ENDLESS_MINI_BOSS a mini-boss.
 const ENDLESS_WAVE := 25
 const ENDLESS_CLEAR := 50
-const MINI_BOSS_CHANCE := 0.02
+## 2026-10-25: was 2% with any veteran in the game at 6x HP and +0.3 tier a
+## wave; mini-bosses buried the first divisions.
+const MINI_BOSS_CHANCE := 0.005
 const ENDLESS_KO := 10
 const ENDLESS_MINI_BOSS := 150
 ## Each wave climbs this far past the Crown par (difficulty), and pays this
 ## much further up the ladder.
-const ENDLESS_STEP := 0.3
+const ENDLESS_STEP := 0.15
 const ENDLESS_PAY_STEP := 0.25
 ## Ending purse: score x pay x this.
 const ENDLESS_PURSE := 0.3
-const MINI_BOSS_HP := 3.0
+## A mini-boss's HP over the elite's own (x2): 3x a regular in all.
+const MINI_BOSS_HP := 1.5
+## No Brutal mini-bosses (a veteran hitting 50% harder flattened you).
+const MINI_BOSS_TRAITS := ["Swift", "Ironclad", "Hulking"]
 ## Elites and champions among the Arena's regular spawns, by division
 ## (Gravedigger to Crown). Champions start in the Plague Division. Not on the
 ## first bout, nor among escorts and summons. Toward the bar an elite counts as
@@ -574,9 +580,14 @@ func _win_endless() -> void:
 		_hud.add_feed("%s AWAITS IN THE DEAD LEAGUE" % DeadLeagueRules.boss(_division - 1).name, UiTheme.GOLD)
 
 
-## An elite veteran, three times the health, crowned with a name.
+## An elite of a monster this bout has already brought (its veteran from the
+## Bone Division on), three times a regular's health, crowned with a name.
 func _spawn_mini_boss() -> void:
-	var scene: PackedScene = Veterans.SCENES.values().pick_random()
+	var kinds: Array = _seen_types.keys().filter(func(kind: String) -> bool: return SCENES.has(kind) and kind != "boss")
+	var kind: String = kinds.pick_random() if not kinds.is_empty() else "zombie"
+	var scene: PackedScene = SCENES[kind]
+	if _division > 1 and Veterans.UPGRADES.has(kind):
+		scene = Veterans.SCENES[Veterans.UPGRADES[kind]]
 	var enemy: Enemy = scene.instantiate()
 	var scaling := _spawn_scaling()
 	scaling.hp *= MINI_BOSS_HP
@@ -586,7 +597,7 @@ func _spawn_mini_boss() -> void:
 	enemy.set_meta("veteran", true)
 	enemy.position = _spawn_point()
 	_enemies.add_child(enemy)
-	enemy.make_elite(Enemy.ELITE_TRAITS.pick_random())
+	enemy.make_elite(MINI_BOSS_TRAITS.pick_random())
 	enemy.display_name = "MINI-BOSS  " + enemy.display_name
 	enemy.died.connect(_on_enemy_died)
 	_alive += 1

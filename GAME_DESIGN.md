@@ -1088,9 +1088,9 @@ Older saves get what they'd already earned, quietly, when camp loads. The list a
 
 **Endless bouts (2026-10-25: every division's third bout is endless).** The one Endless Arena after the Crown Division became the Crown's third bout, and every other division's third bout works the same way, in that division's own place with its own monsters. It's the ENDLESS card in the bout picker (with your best). Finishing bout 2 and choosing Next bout goes straight into it.
 - No progress bar and no champion.
-- It starts at the division's third-bout difficulty. Every **25 knockouts** starts a new wave: monsters get tougher (difficulty climbs 0.3 of a tier a wave, pay 0.25 a wave), you get the wave heal, and a **mini-boss** steps in.
+- It starts at the division's third-bout difficulty. Every **25 knockouts** starts a new wave: monsters get tougher (difficulty climbs 0.15 of a tier a wave, was 0.3; pay 0.25 a wave), you get the wave heal, and a **mini-boss** steps in.
 - **50 knockouts win the bout** (`ENDLESS_CLEAR`): it counts as bout 3 won, with its first-win bonus and Souls, and the Dead League contender is called out if you haven't beaten them. Then you keep going for the score.
-- Any spawn has a **2%** chance of being a mini-boss too. A mini-boss is an elite veteran (Swift, Brutal, Ironclad or Hulking) with 3x health.
+- Any spawn has a **0.5%** chance of being a mini-boss too (was 2%). A mini-boss is an elite (Swift, Ironclad or Hulking; no Brutal) of a monster this bout has already brought, its veteran from the Bone Division on, with 3x a regular's health. (2026-10-25: it used to be any veteran in the game, so Banshees and Crushers turned up in the Gravedigger Division, at 6x health.)
 - Monsters attacking at once follow the division (one through Ghost, two in Crown).
 - **Score:** 10 a knockout, 30 an elite, 75 a champion, 150 a mini-boss. Each division keeps its own best (`GameState.endless_bests`); an old Endless Arena best moved to the Crown Division.
 - **Pay:** kills pay as usual, plus a purse at the end of score x pay x 0.3.
