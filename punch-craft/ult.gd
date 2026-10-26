@@ -107,9 +107,9 @@ const HYPE_DAMAGE := 2.0
 const FAMILY_TIME := 10.0
 const FAMILY_SIZE := 3
 ## The Catalyst. Elemental Fists: each landed punch rolls each element
-## (SPELL_CHANCE, up to SPELL_CHANCE_MAX with skills).
+## (SPELL_CHANCE; Elemental Fists II raises it to SPELL_CHANCE_MAX).
 const SPELL_TIME := 10.0
-const SPELL_CHANCE := 0.15
+const SPELL_CHANCE := 0.2
 const SPELL_CHANCE_MAX := 0.25
 const SPELL_FIRE := 1.6
 const SPELL_ICE := 1.1
@@ -792,10 +792,10 @@ func on_landed(target: Enemy, dealt: float, hand: String) -> void:
 	if spellfists <= 0.0 or target == null or not is_instance_valid(target):
 		return
 	var chance := minf(SPELL_CHANCE + GameState.get_effect("spell_chance"), SPELL_CHANCE_MAX)
-	# Elemental Fists II: 20% each, and every spell finds a second monster.
+	# Elemental Fists II: 25% each, and every spell finds a second monster.
 	var twice := _card("elemental_fists_ii")
 	if twice:
-		chance = maxf(chance, 0.2)
+		chance = SPELL_CHANCE_MAX
 	var other: Enemy = null
 	if twice:
 		for enemy in _alive_enemies():

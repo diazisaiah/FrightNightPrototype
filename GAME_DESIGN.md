@@ -1142,7 +1142,7 @@ A buff old wizard with a white beard and long white hair who put his spells into
 
 | Ultimate | Level | What it does |
 |---|---|---|
-| Elemental Fists (default) | 1 | 10s. Every landed punch rolls each element at 15% (up to 25% with skills): a **fireball** flies ahead from the fist and bursts on the first monster (splash, burn); an **icicle** flies ahead and pierces the line (freezes each); **lightning** chains to 3 more; a **blood heal** of 30% of the damage dealt (`SpellBolt`, `Ult.on_landed`). |
+| Elemental Fists (default) | 1 | 10s. Every landed punch rolls each element at 20% (was 15%; 25% with the Elemental Fists II card): a **fireball** flies ahead from the fist and bursts on the first monster (splash, burn); an **icicle** flies ahead and pierces the line (freezes each); **lightning** chains to 3 more; a **blood heal** of 30% of the damage dealt (`SpellBolt`, `Ult.on_landed`). |
 | Flame Burst | 10 | A ring of fire 6m around him: 5x damage to everything in it (staggers, knocks back), and they burn (0.8x/s for 5s). |
 
 **Skill web:**

@@ -268,7 +268,7 @@ const DECKS := {
 		"spectrum": {"name": "Spectrum", "rarity": "epic", "icon": "star", "tags": ["Spell"], "upgrades": "prism",
 			"text": ["Prism: each different power you set off in a row adds +10% damage, up to +40%"], "effects": {"spectrum": [1]}},
 		"elemental_fists_ii": {"name": "Elemental Fists II", "rarity": "epic", "icon": "bolt", "tags": ["Ultimate"], "upgrades": "elemental_fists",
-			"text": ["Elemental Fists: each element's chance is 20%, and every spell hits a second monster"], "effects": {"elemental_fists_ii": [1]}},
+			"text": ["Elemental Fists: each element's chance is 25%, and every spell hits a second monster"], "effects": {"elemental_fists_ii": [1]}},
 		"flame_burst_ii": {"name": "Flame Burst II", "rarity": "epic", "icon": "burst", "tags": ["Ultimate"], "upgrades": "flame_burst",
 			"text": ["Flame Burst: the ring of fire goes off twice"], "effects": {"flame_burst_ii": [1]}},
 		"archmage": {"name": "Archmage", "rarity": "legendary", "icon": "crown", "tags": ["Spell"], "seal": "bellman",

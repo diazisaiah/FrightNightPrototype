@@ -52,7 +52,7 @@ const PASSIVES := {
 		{"id": "dual_sigil", "name": "Dual Sigil", "icon": "flame", "level": 1,
 			"desc": "Select two of your powers at once. Both work, with all their upgrades."},
 		{"id": "attunement", "name": "Attunement", "icon": "target", "level": 5,
-			"desc": "One power, amplified: its damage, reach and chances are half again as strong."},
+			"desc": "One power, 50% stronger: more damage, more reach, better odds."},
 		{"id": "prism", "name": "Prism", "icon": "star", "level": 15,
 			"desc": "All your powers at once, but only their base effect: no upgrades."},
 	],
@@ -91,7 +91,7 @@ const ULTIMATES := {
 	],
 	"elementalist": [
 		{"id": "elemental_fists", "name": "Elemental Fists", "icon": "bolt", "level": 1,
-			"desc": "For 10s every punch can throw a fireball, an icicle, lightning or a blood heal (15% each)."},
+			"desc": "For 10s every punch can throw a fireball, an icicle, lightning or a blood heal (20% each)."},
 		{"id": "flame_burst", "name": "Flame Burst", "icon": "burst", "level": 10,
 			"desc": "A ring of fire bursts out around you: big damage, and everything in it burns."},
 	],

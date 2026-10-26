@@ -253,7 +253,7 @@ Dual Sigil / Attunement / Prism / Elemental Fists / Flame Burst. Punches that se
 | **Sigil Weave** | Dual Sigil | Dual Sigil: when both your powers hit the same monster within 2s, it bursts for 2x your base damage |
 | **Deep Attunement** | Attunement | Attunement: the attuned power is 25% stronger, and every time it goes off you're 10% faster for 2s |
 | **Spectrum** | Prism | Prism: each different power you set off in a row adds +10% damage, up to +40% |
-| **Elemental Fists II** | Elemental Fists | Elemental Fists: each element's chance is 20%, and every spell hits a second monster |
+| **Elemental Fists II** | Elemental Fists | Elemental Fists: each element's chance is 25%, and every spell hits a second monster |
 | **Flame Burst II** | Flame Burst | Flame Burst: the ring of fire goes off twice |
 
 **Legendaries**
