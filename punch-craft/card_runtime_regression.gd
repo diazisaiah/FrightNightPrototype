@@ -37,6 +37,7 @@ func _run() -> void:
 		for ultimate in Abilities.ultimates(fighter):
 			await _exercise_ultimate(fighter, ultimate.id)
 	await _test_teleport_walls()
+	await _test_head_stomp()
 	TimeFx.clear()
 	GameState._reset_fields()
 	# Let the last delayed echo/FX coroutine and status-clear callback release
@@ -257,3 +258,26 @@ func _test_teleport_walls() -> void:
 	_check(open.is_equal_approx(Vector3(0, 0, -3.1)), "With room behind, Phantom Step lands where it means to")
 	await _free_rig(holder)
 	print("Card runtime: teleports stay inside walls OK")
+
+
+## Head Stomp: the Stray's jump reaches a monster's head, and coming down by
+## it stomps it (a bounce, a stun, damage).
+func _test_head_stomp() -> void:
+	var rig := await _make_rig("free_runner")
+	var holder: Node3D = rig[0]
+	var player: Player = rig[1]
+	var dummies: Array[Enemy] = rig[2]
+	GameState.loadouts.free_runner.passive = "head_stomp"
+	var target := dummies[0]
+	var gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
+	var peak := pow(Player.JUMP_VELOCITY * player._stomp_jump(), 2.0) / (2.0 * gravity)
+	_check(peak >= target.top_height() + Player.STOMP_BAND.x + 0.2,
+			"The Stray's jump (%.2fm) reaches a head (%.2fm)" % [peak, target.top_height()])
+	player.global_position = target.global_position + Vector3(0.3, target.top_height() + 0.1, 0)
+	player.velocity = Vector3(0, -2.0, 0)
+	player._stomp_cooldown = 0.0
+	player._check_head_stomp()
+	# (The training dummy never loses HP: the stun and the bounce show it.)
+	_check(target.is_staggered() and player.velocity.y > 0.0, "Coming down by a head stomps it")
+	await _free_rig(holder)
+	print("Card runtime: head stomp OK")

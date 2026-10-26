@@ -589,6 +589,17 @@ func scare(seconds: float, from: Vector3) -> void:
 	delay(seconds, "SCARED")
 
 
+## How high its head reaches (the top of its collision shape), for stomps.
+func top_height() -> float:
+	for child in get_children():
+		var shape := child as CollisionShape3D
+		if shape and shape.shape is CapsuleShape3D:
+			return shape.position.y + (shape.shape as CapsuleShape3D).height / 2.0
+		if shape and shape.shape is BoxShape3D:
+			return shape.position.y + (shape.shape as BoxShape3D).size.y / 2.0
+	return 1.8
+
+
 func is_staggered() -> bool:
 	return _stagger_timer > 0.0 and not _dead
 

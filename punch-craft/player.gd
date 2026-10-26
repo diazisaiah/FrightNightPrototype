@@ -31,6 +31,13 @@ signal class_event(text: String)
 const WALK_SPEED := 5.0
 const SPRINT_SPEED := 8.0
 const JUMP_VELOCITY := 4.8
+## Head Stomp (and the Parkour card) jump this much higher: a plain jump
+## peaks around 1.2m, short of a monster's head (about 1.8m).
+const STOMP_JUMP := 1.3
+## A stomp counts from this far beside a monster, with your feet this far
+## below the top of its head to this far above it, on the way down.
+const STOMP_REACH := 1.0
+const STOMP_BAND := Vector2(-0.35, 0.6)
 const MOUSE_SENSITIVITY := 0.0025
 const MAX_COMBO_MULTIPLIER := 4.0
 const INPUT_BUFFER_TIME := 0.2
@@ -571,7 +578,7 @@ func _physics_process(delta: float) -> void:
 	var speed := WALK_SPEED
 	if active:
 		if _jump_requested and is_on_floor():
-			velocity.y = JUMP_VELOCITY * (1.0 + GameState.get_effect("jump_bonus"))
+			velocity.y = JUMP_VELOCITY * (1.0 + GameState.get_effect("jump_bonus")) * _stomp_jump()
 		_jump_requested = false
 		if _suppressed_move != "" and not Input.is_action_pressed(_suppressed_move):
 			_suppressed_move = ""
@@ -2057,38 +2064,60 @@ func _cousin_vinnie(second := false) -> void:
 	ult.say(["Hold him still, Vinnie.", "Vinnie! Little help.", "That's my cousin. Say hi."].pick_random())
 
 
-## Head Stomp: landed on a monster's head, so bounce off it, stunning it.
-## Parkour (a card) bounces any fighter off heads, with a short stun.
+## Head Stomp: came down on a monster's head, so bounce off it, stunning it.
+## Parkour (a card) bounces any fighter off heads, with a short stun. Lands
+## on top count, and so does coming down within reach of the head (capsule
+## tops are round, so a true landing is rare).
 func _check_head_stomp() -> void:
-	var stomps := GameState.has_passive("head_stomp")
-	if not (stomps or GameState.has_effect("parkour")) or _stomp_cooldown > 0.0:
+	if not _can_stomp() or _stomp_cooldown > 0.0:
 		return
 	for i in get_slide_collision_count():
 		var hit := get_slide_collision(i)
 		var enemy := hit.get_collider() as Enemy
 		if enemy and not enemy.is_dead() and hit.get_normal().y > 0.6:
-			_stomp_cooldown = 0.35
-			velocity.y = JUMP_VELOCITY * 1.15
-			if not stomps:
-				enemy.stun(0.5)
-				Sfx.play("heavy", -4.0, 1.4)
-				return
-			enemy.stun(STOMP_STUN + 0.1 * _pp())
-			# Bounce House: each bounce in a chain hits harder; three give the dash back.
-			var bounce := 1.0
-			if GameState.has_effect("bounce_house"):
-				bounce = pow(1.5, _stomp_chain)
-				_stomp_chain += 1
-				if _stomp_chain == 3:
-					_forward_dash_cooldown = 0.0
-					class_event.emit("BOUNCE HOUSE!")
-			enemy.take_hit(GameState.get_damage() * STOMP_DAMAGE * bounce * get_combo_multiplier(), enemy.global_position + Vector3(0, 1.8, 0),
-					Vector3.ZERO, true, "STOMP!")
-			_set_combo(combo + 1)
-			_combo_timer = GameState.get_combo_window()
-			Sfx.play("heavy", -2.0, 1.3)
-			HitFx.burst(get_parent(), enemy.global_position + Vector3(0, 1.8, 0), Vector3.UP, Color(0.4, 1.0, 0.5), 16, 4.0, true, 0.05)
+			_stomp(enemy)
 			return
+	if is_on_floor() or velocity.y > 0.5:
+		return
+	for node in _enemies_near(global_position, STOMP_REACH):
+		var enemy := node as Enemy
+		var above := global_position.y - (enemy.global_position.y + enemy.top_height())
+		if above >= STOMP_BAND.x and above <= STOMP_BAND.y:
+			_stomp(enemy)
+			return
+
+
+func _can_stomp() -> bool:
+	return GameState.has_passive("head_stomp") or GameState.has_effect("parkour")
+
+
+func _stomp_jump() -> float:
+	return STOMP_JUMP if _can_stomp() else 1.0
+
+
+func _stomp(enemy: Enemy) -> void:
+	_stomp_cooldown = 0.35
+	velocity.y = JUMP_VELOCITY * 1.15 * _stomp_jump()
+	var head := enemy.global_position + Vector3(0, enemy.top_height(), 0)
+	if not GameState.has_passive("head_stomp"):
+		enemy.stun(0.5)
+		Sfx.play("heavy", -4.0, 1.4)
+		return
+	enemy.stun(STOMP_STUN + 0.1 * _pp())
+	# Bounce House: each bounce in a chain hits harder; three give the dash back.
+	var bounce := 1.0
+	if GameState.has_effect("bounce_house"):
+		bounce = pow(1.5, _stomp_chain)
+		_stomp_chain += 1
+		if _stomp_chain == 3:
+			_forward_dash_cooldown = 0.0
+			class_event.emit("BOUNCE HOUSE!")
+	enemy.take_hit(GameState.get_damage() * STOMP_DAMAGE * bounce * get_combo_multiplier(), head,
+			Vector3.ZERO, true, "STOMP!")
+	_set_combo(combo + 1)
+	_combo_timer = GameState.get_combo_window()
+	Sfx.play("heavy", -2.0, 1.3)
+	HitFx.burst(get_parent(), head, Vector3.UP, Color(0.4, 1.0, 0.5), 16, 4.0, true, 0.05)
 
 
 func _shockwave_every() -> int:

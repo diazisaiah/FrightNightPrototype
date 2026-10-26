@@ -1273,7 +1273,7 @@ Each fighter has **three passives and two ultimates** (`abilities.gd`): the defa
 | Passive | Level | What it does |
 |---|---|---|
 | Dash Punches | 1 | Spear Jab and Haymaker out of a dash. |
-| Head Stomp | 5 | Land on a monster's head: bounce off, stun it 1s, deal 1.5x; chain head to head. |
+| Head Stomp | 5 | Land on a monster's head: bounce off, stun it 1s, deal 1.5x; chain head to head. With it you jump 30% higher (a plain jump peaks around 1.2m, short of a head at about 1.8m), and coming down within 1m of a head counts, not just a landing on its round top (2026-10-25). |
 | Momentum | 15 | Sprinting builds momentum (up to x2); your next punch that lands spends it as a multiplier. It fades if you stand still. |
 
 | Ultimate | Level | What it does |
