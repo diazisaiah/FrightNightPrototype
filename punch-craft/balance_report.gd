@@ -28,7 +28,7 @@ func _initialize() -> void:
 			if int(node.get("ring", 1)) != ring:
 				continue
 			for level in int(node.max_level):
-				cost += node.cost * pow(node.cost_growth, level)
+				cost += GameState.price_at(node, level)
 				for effect in node.effects:
 					fx[effect] = fx.get(effect, 0.0) + float(node.effects[effect])
 		print("ring %d  cost %6d  dmg +%4.1f  knuckles +%3d  def +%4.1f" % [ring, cost, fx.get("damage", 0.0), fx.get("max_knuckles", 0.0), fx.get("defense", 0.0)])
@@ -71,7 +71,7 @@ static func set_build(gs, prog, cls: String, tier: int, cards := true) -> void:
 		if int(node.get("ring", 1)) > tier or not prog._is_power(node):
 			continue
 		for level in int(node.max_level):
-			levels.append([node.cost * pow(node.cost_growth, level), id])
+			levels.append([GameState.price_at(node, level), id])
 	levels.sort_custom(func(a, b) -> bool: return a[0] < b[0])
 	var owned := {}
 	for i in ceili(levels.size() * prog.PAR_SHARE):

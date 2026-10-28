@@ -136,7 +136,7 @@ static func par_build(tier: int, share: float) -> Dictionary:
 			if int(node.get("ring", 1)) > tier or not _is_power(node):
 				continue
 			for level in int(node.max_level):
-				levels.append([node.cost * pow(node.cost_growth, level), id])
+				levels.append([GameState.price_at(node, level), id])
 		levels.sort_custom(func(a, b) -> bool: return a[0] < b[0])
 		var take := ceili(levels.size() * share)
 		for i in take:

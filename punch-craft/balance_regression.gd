@@ -156,7 +156,7 @@ func _test_control_preset() -> void:
 func _node_cost(node: Dictionary) -> int:
 	var total := 0
 	for level in node.max_level:
-		total += roundi(node.cost * pow(node.cost_growth, level))
+		total += GameState.price_at(node, level)
 	return total
 
 
@@ -194,7 +194,7 @@ func _test_progression_webs() -> void:
 		if tier.ring_power != "":
 			_check(int(GameState.UPGRADES[tier.ring_power].ring) == i + 2, "%s must open with contender %d's seal" % [tier.ring_power, i + 1])
 		_check(int(GameState.UPGRADES[tier.trophy].ring) == i + 2, "Trophy %s must sit in ring %d" % [tier.trophy, i + 2])
-	_check(GameState.UPGRADE_VERSION == 7 and GameState.V5_PRICES.size() > 50 and GameState.V4_PRICES.size() > 50,
+	_check(GameState.UPGRADE_VERSION == 8 and GameState.V7_PRICES.size() > 100 and GameState.V5_PRICES.size() > 50 and GameState.V4_PRICES.size() > 50,
 			"The spoke web must refund version-4 and version-5 saves at their old prices")
 	# v6 -> v7 (prices tamed): levels are kept and the difference comes back.
 	var bought := {"wrapped_knuckles": 1, "dmg_1": 5, "hp_1": 5, "dmg_2": 3}
@@ -205,10 +205,20 @@ func _test_progression_webs() -> void:
 	var expected := 0
 	for id in bought:
 		for level in bought[id]:
-			expected += maxi(0, roundi(GameState.V6_PRICES[id][0] * pow(GameState.V6_PRICES[id][1], level)) - roundi(GameState.UPGRADES[id].cost * pow(GameState.UPGRADES[id].cost_growth, level)))
+			expected += maxi(0, roundi(GameState.V6_PRICES[id][0] * pow(GameState.V6_PRICES[id][1], level)) - GameState.price_at(GameState.UPGRADES[id], level))
 	_check(tamed.upgrade_levels.get("dmg_1", 0) == 5 and tamed.upgrade_levels.get("dmg_2", 0) == 3, "Taming prices keeps every bought level")
 	_check(expected > 0 and tamed.resources.coins == expected, "Taming prices refunds the difference (%d, expected %d)" % [tamed.resources.coins, expected])
 	tamed.free()
+	# Seal rings (v8): round prices; Dirty Shot folds into Lucky Shot.
+	for id in GameState.UPGRADES:
+		var price := GameState.price_at(GameState.UPGRADES[id], 0)
+		_check(price == GameState.nice_price(price), "%s costs a round number (%d)" % [id, price])
+	_check(GameState.nice_price(102.0) == 100 and GameState.nice_price(153.0) == 150 and GameState.nice_price(18753.0) == 19000, "Prices round to two figures")
+	var merged = load("res://game_state.gd").new()
+	merged._reset_fields()
+	merged._load_upgrades({"lucky_shot": 3, "dirty_shot": 2})
+	_check(merged.upgrade_levels.get("lucky_shot", 0) == 5 and not merged.upgrade_levels.has("dirty_shot"), "Dirty Shot's levels join Lucky Shot")
+	merged.free()
 	_check(GameState.SKILL_VERSION == 3, "Level-up v3 must turn old levels into card draws and attributes")
 	_test_card_migration()
 
@@ -420,8 +430,12 @@ func _test_climb_economy() -> void:
 		var par := Progression.par(tier)
 		_check(par.damage > previous.damage and par.ehp > previous.ehp, "Par must grow every tier (tier %d)" % tier)
 		previous = par
+		# The ring's spend, less the Endless powers (optional; par ignores them).
 		var ring_cost := 0
 		for id in GameState.UPGRADES:
+			var root := GameState.power_of(id)
+			if root != "" and GameState.UPGRADES[root].has("endless"):
+				continue
 			if int(GameState.UPGRADES[id].get("ring", 1)) == tier:
 				ring_cost += _node_cost(GameState.UPGRADES[id])
 		# A B-grade bout, averaged over the division's bouts (each pays 1.5x the
@@ -451,7 +465,7 @@ func _par_with_share(tier: int, share: float) -> Dictionary:
 		if int(node.get("ring", 1)) > tier or not Progression._is_power(node):
 			continue
 		for level in int(node.max_level):
-			levels.append([node.cost * pow(node.cost_growth, level), id])
+			levels.append([GameState.price_at(node, level), id])
 	levels.sort_custom(func(a, b) -> bool: return a[0] < b[0])
 	var effects := {}
 	for i in ceili(levels.size() * share):

@@ -333,15 +333,26 @@ func _draw() -> void:
 func _draw_map() -> void:
 	var tree: Dictionary = GameState.tree(kind)
 	var color := accent()
-	# Constellation rings and spokes around the center.
-	for ring in [1.5, 3.0, 4.5]:
+	# The upgrade web's seal rings: every node sits on the ring of the seal
+	# that opens it, brighter once that seal is broken.
+	if kind == "upgrade":
+		for ring in range(1, 7):
+			var open := ring <= Progression.open_ring()
+			var radius := (ring + 0.5) * SPACING
+			var segments := 72
+			for i in segments:
+				if i % 2 == 0:
+					_links.draw_arc(Vector2.ZERO, radius, TAU * i / segments, TAU * (i + 1) / segments, 4,
+							Color(color, 0.16 if open else 0.06), 1.5, true)
+	# Constellation rings and spokes around the center (fighter skill webs).
+	for ring in ([] if kind == "upgrade" else [1.5, 3.0, 4.5]):
 		var radius: float = ring * SPACING
 		_links.draw_arc(Vector2.ZERO, radius, 0.0, TAU, 96, Color(color, 0.05), 1.0, true)
 		for i in 24:
 			var a: float = TAU * i / 24.0 + ring
 			var dir := Vector2.from_angle(a)
 			_links.draw_line(dir * (radius - 3.0), dir * (radius + 3.0), Color(color, 0.08), 1.0)
-	for i in 8:
+	for i in (0 if kind == "upgrade" else 8):
 		var dir := Vector2.from_angle(TAU * i / 8.0 + PI / 8.0)
 		_links.draw_dashed_line(dir * 40.0, dir * 4.8 * SPACING, Color(color, 0.035), 1.0, 6.0)
 

@@ -1765,3 +1765,26 @@ Four more powers, one past each spoke of the upgrade web: **Quake north, Gale ea
 - **Colors:** Quake sandstone, Gale mint, Iron steel, Doom acid green.
 - **Balance:** par ignores them (they hold no damage, knuckle or defense nodes; they are optional side power). POWER weighs them (`power_rating.gd`), and the Catalyst's amplifying covers their numbers (not Iron's plates).
 - **Tests:** `balance_regression` (seals, Prism's four), `card_runtime_regression` (each power in a real fight).
+
+## Seal rings: the upgrade web laid out by seal (2026-10-28)
+
+**Layout:** the core upgrade web is radial. Every node sits on the ring of the seal that opens it (ring 1 open from the start, ring 2 with the Bellman, up to ring 6 with the Coffin King), ring r at r + 0.5 cells out, drawn as dashed circles that brighten once their seal breaks. The four spokes run straight out (damage east, defense south, knuckle HP west, coins north); side branches sit on their ring beside their spoke, so a branch steps outward one ring per seal. The eight powers sit outside the rings (elements in the corners, Endless powers past the spoke ends). Fighter skill webs keep their grid.
+
+**Branches (merges):** Dirty Shot merged into Lucky Shot (5 levels of +5% crit; a save's Dirty Shot levels join it). Healing between waves is one chain off the knuckle HP spoke (Cornerman, Ice Bath, Second Wind), XP one chain (Sparring Partner, Film Study), graze reduction one chain off defense (Thick Skull, Rope-a-Dope). Jump Rope and Bob and Weave sit with defense, Speed Bag with damage, the speed nodes with coins. The Trophies are one chain beside the defense spoke, one a seal (each needs the last maxed).
+
+**Round numbers** (per level, 5 levels; coins 3):
+
+| Spoke | Tiers 1 to 6 | Full spoke |
+|---|---|---|
+| Damage | 1, 1, 2, 3, 4, 6 | 85 |
+| Knuckle HP | 5, 10, 15, 20, 30, 40 | 600 |
+| Defense | 0.5, 1, 1, 2, 2, 3 | 47.5 (each point is about +10% effective knuckle HP) |
+| Coins | 5%, 5%, 5%, 10%, 10%, 15% | 150% |
+
+Side nodes: Haymaker 10%, Rib Shot 15%, crit 5% a level, Jump Rope 0.05s, Snap Wraps 5%. Trophies: Bell 2 damage / 10 HP, Helm 2 / 15 / 1 defense, Veil 3 / 20 / 2, Censer 4 / 30 / 2, Crown 5 / 40 / 3.
+
+**Prices** round to two figures at every level (`GameState.price_at` / `nice_price`): 80, 100, 120, 150... never 102 or 153. Spokes start at 80 / 400 / 1,600 / 8,000 / 60,000 / 300,000 by ring (defense 1.5x, coins 100 / 500 / 2,000 / 10,000 / 75,000 / 380,000), x1.22 a level; side nodes 130 / 550 / 2,000 / 9,400 / 36,000, x1.3; Trophies 900 / 3,500 / 15,000 / 110,000 / 800,000; capstones 500,000.
+
+**Balance:** about the same as before: 2.0 / 3.3 / 3.2 / 2.3 / 3.0 good bouts to reach par by tier (was 2.0 / 3.1 / 2.9 / 2.6 / 3.1), class POWER unchanged. The bouts-to-par check leaves out the Endless powers (optional; par ignores them).
+
+**Old saves:** upgrade web version 8. Bought levels are kept (same ids); any level that got cheaper refunds the difference (`V7_PRICES`).
