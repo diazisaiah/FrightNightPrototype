@@ -1747,7 +1747,7 @@ The five Dead League contenders and the three Crypt floor bosses (Grave Champion
 
 ## The Endless powers (2026-10-28)
 
-Four more powers, one past each spoke of the upgrade web: **Quake north, Gale east, Iron south, Doom west**. Each is a diamond: a Sigil, three branches, and a capstone where they meet. The four elements keep the corners.
+Four more powers, one past each spoke of the upgrade web: **Quake north, Gale east, Iron south, Doom west**. Each is a diamond: a Sigil, three branches, and a capstone where they meet. The four elements keep the corners. The corners moved two cells farther out each way (each element's Sigil at (5, 5) from the center, its capstone at (8, 8)), so all eight sit around the core with space between.
 
 **Unlocks:** each Sigil opens when you **win that division's endless bout** (bout 3, 50 knockouts) for the first time: Gravedigger opens Quake, Bone opens Gale, Ghost opens Iron, Plague opens Doom (`"endless"` on the node, `GameState.endless_won`). Saves that already won them have them open. The win's feed says "X UNSEALED". Sealed Sigils read "SEALED - win the GRAVEDIGGER ENDLESS". Their branch steps follow the seal rings like the elements' (each step one ring later, the capstone in the Crown ring).
 
