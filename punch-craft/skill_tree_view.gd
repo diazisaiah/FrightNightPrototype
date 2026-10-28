@@ -155,7 +155,7 @@ func _build_nodes() -> void:
 			node_shape = "root"
 		elif node.get("medallion", false):
 			node_shape = "sigil"
-		elif node.max_level == 1:
+		elif node.max_level == 1 and kind != "upgrade":
 			node_shape = "keystone"
 		view.setup_shape(node_shape)
 		view.position = _cell_center(node.pos) - view.size / 2.0

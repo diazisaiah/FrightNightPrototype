@@ -1794,3 +1794,16 @@ Side nodes: Haymaker 10%, Rib Shot 15%, crit 5% a level, Jump Rope 0.05s, Snap W
 **All eight powers 9 cells out:** the Endless powers' Sigils sit 9 cells out on the axes and the elements' 9 cells out on the diagonals, so all eight ring the core at the same distance with room for their names.
 
 **Links follow the rings (2026-10-28):** a link between two nodes on the same seal ring curves along that ring; every other link runs straight out from the center, so nothing cuts across on a slant (`SkillTreeView._link_path`). Side branches are small spokes: the first node steps off its spoke along the ring, the rest run straight outward at that angle. Branches that start on a later ring sit nearer their spoke, so no ring arc passes through another node.
+
+**Even rings (2026-10-28):** every seal ring holds eight nodes, 45 degrees apart: the four spokes and one side node halfway between each pair, linked to its own spoke by an arc along the ring. Rings fill evenly from the inside out, and no link runs on a slant. Side nodes by ring:
+
+| Ring | Damage / defense (SE) | Defense / HP (SW) | HP / coins (NW) | Coins / damage (NE) |
+|---|---|---|---|---|
+| 1 | Jump Rope | Cornerman | Twinkle Toes | Sparring Partner |
+| 2 | Haymaker | Bob and Weave | Chin Check | Speed Bag |
+| 3 | Lucky Shot | Calloused | Crowd Pleaser | Counterpuncher |
+| 4 | Glass Breaker | Thick Skull | Snap Wraps | Can Opener |
+| 5 | Bigger They Fall | Ice Bath | Prize Fighter | Lead Tape |
+| 6 | Rope-a-Dope | Second Wind | Cemetery Sprint | Film Study |
+
+Haymaker absorbs Rib Shot (5 levels of +15% set-up heavies) and Counterpuncher absorbs Return Fire (5 levels of +30% counters); saves' levels in the absorbed nodes join them. Each side node needs only its spoke's node on that ring. Lead Tape (the web's only one-level node) is a square like the rest. Ring 6 side nodes cost 150,000. Bouts to reach par: 2.0 / 3.1 / 2.9 / 2.3 / 3.1.
