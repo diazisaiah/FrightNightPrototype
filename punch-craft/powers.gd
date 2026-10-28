@@ -42,6 +42,22 @@ static var listener: Callable
 static func went_off(root: String, target: Enemy) -> void:
 	if listener.is_valid():
 		listener.call(root, target)
+	_callout(root, target)
+
+
+## The word over the target when a power goes off (so you know what just
+## happened), and a ring at its feet, in the power's color.
+const CALLOUTS := {"sigil_fire": "IGNITE!", "sigil_frost": "FREEZE!", "sigil_storm": "CHAIN!", "sigil_blood": "DRAIN!", "sigil_doom": "DOOMED!"}
+
+
+static func _callout(root: String, target: Enemy) -> void:
+	if not CALLOUTS.has(root) or target == null or not is_instance_valid(target) or target.get_parent() == null:
+		return
+	var color: Color = SkillTreeView.BRANCHES[root].color
+	var world := target.get_parent()
+	var head := target.global_position + Vector3(0, 2.4 * target._body.scale.y + 0.3, 0)
+	DamagePopup.spawn(world, CALLOUTS[root], color.lightened(0.25), 64, head)
+	HitFx.ring(world, target.global_position + Vector3(0, 0.15, 0), Color(color, 0.8), 2.2)
 
 
 ## Flames burst from the punched enemy and burn everyone else nearby.

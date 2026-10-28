@@ -838,4 +838,13 @@ func _test_one_power() -> void:
 	var true_mark := Progression.true_par()
 	print("True Coffin King mark: damage %.1f ehp %.0f (Coffin King par: %.1f, %.0f)" % [true_mark.damage, true_mark.ehp, top.damage, top.ehp])
 	_check(true_mark.damage > top.damage * 1.2 and true_mark.ehp > top.ehp * 1.2, "The True Coffin King wants far more than the Coffin King's par")
+	# Powers have a cooldown on top of their chance.
+	var play := PowerPlay.new()
+	_check(play.ready("sigil_fire"), "Powers start ready")
+	play.spend("sigil_fire")
+	play.tick(PowerPlay.COOLDOWNS.sigil_fire - 0.1)
+	_check(not play.ready("sigil_fire") and play.ready("sigil_doom"), "A power that went off waits out its own cooldown")
+	play.tick(0.2)
+	_check(play.ready("sigil_fire"), "Then it's ready again")
+	play.free()
 	GameState._reset_fields()

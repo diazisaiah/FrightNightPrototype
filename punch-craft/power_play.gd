@@ -19,6 +19,13 @@ const QUAKE_RADIUS := 3.0
 const QUAKE_COOLDOWN := 4.0
 const STOMP_COOLDOWN := 1.0
 const QUAKE_MIN_AIR := 0.3
+## Seconds before a punch can set a power off again, on top of its chance (so
+## they land as moments, not a constant fizz). The Catalyst's cards set them
+## off regardless.
+const COOLDOWNS := {"sigil_fire": 1.5, "sigil_frost": 3.0, "sigil_storm": 1.5, "sigil_blood": 2.0, "sigil_doom": 4.0}
+## The power each one's effect switches on.
+const COOLDOWN_EFFECTS := {"sigil_fire": "fire_punch", "sigil_frost": "frost_punch", "sigil_storm": "chain_lightning",
+	"sigil_blood": "counter_heal", "sigil_doom": "doom"}
 
 var player: Player
 var gale := 0
@@ -28,6 +35,7 @@ var _unbreakable := 0.0
 var _quake_cooldown := 0.0
 var _stomp_cooldown := 0.0
 var _cache := {}
+var _cooldown := {}
 
 
 func _ready() -> void:
@@ -45,6 +53,8 @@ func fx(key: String) -> float:
 
 
 func tick(delta: float) -> void:
+	for root in _cooldown:
+		_cooldown[root] -= delta
 	_unbreakable -= delta
 	_quake_cooldown -= delta
 	_stomp_cooldown -= delta
@@ -54,6 +64,10 @@ func tick(delta: float) -> void:
 ## something to count.
 func status() -> Array:
 	var out := []
+	for root in COOLDOWNS:
+		if fx(COOLDOWN_EFFECTS[root]) > 0.0:
+			var left: float = _cooldown.get(root, 0.0)
+			out.append([root, "READY" if left <= 0.0 else "%ds" % ceili(left)])
 	if fx("quake_power") > 0.0:
 		out.append(["sigil_quake", "READY" if _quake_cooldown <= 0.0 else "%ds" % ceili(_quake_cooldown)])
 	if fx("gale") > 0.0:
@@ -61,6 +75,16 @@ func status() -> Array:
 	if fx("plate_guard") > 0.0:
 		out.append(["sigil_iron", "%d/%d" % [plates, plates_max()]])
 	return out
+
+
+## Off cooldown (a power without one always is).
+func ready(root: String) -> bool:
+	return _cooldown.get(root, 0.0) <= 0.0
+
+
+## It went off: starts its cooldown.
+func spend(root: String) -> void:
+	_cooldown[root] = COOLDOWNS.get(root, 0.0)
 
 
 # --- Gale -----------------------------------------------------------------------

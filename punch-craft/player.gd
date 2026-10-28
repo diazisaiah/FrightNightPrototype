@@ -1767,22 +1767,31 @@ func _follow_up(hand: String) -> void:
 ## Nth combo hit (and with Conductor, every counter) sets off Chain
 ## Lightning; Blood heals on counters; Iron forges and Quake stomps (PowerPlay).
 func _trigger_powers(target: Enemy, damage: float, big_hit: bool, counter := false) -> void:
+	# Each power has a cooldown on top of its chance (PowerPlay.COOLDOWNS).
 	var fire := GameState.get_effect("fire_punch")
-	if fire > 0.0 and (big_hit or randf() < GameState.get_effect("fire_chance")):
+	if fire > 0.0 and powers.ready("sigil_fire") and (big_hit or randf() < GameState.get_effect("fire_chance")):
+		powers.spend("sigil_fire")
 		Powers.fire_burst(target, damage * fire)
-	if GameState.get_effect("frost_punch") > 0.0 and not target.is_dead() 			and (big_hit or randf() < GameState.get_effect("frost_chance")):
+	if GameState.get_effect("frost_punch") > 0.0 and not target.is_dead() and powers.ready("sigil_frost") \
+			and (big_hit or randf() < GameState.get_effect("frost_chance")):
+		powers.spend("sigil_frost")
 		Powers.frost_burst(target)
 	var jumps := int(GameState.get_effect("chain_lightning"))
 	var every := CHAIN_LIGHTNING_EVERY - int(GameState.get_effect("chain_every_cut"))
-	if jumps > 0 and ((_combo_grew and combo % every == 0) or (counter and GameState.has_effect("chain_on_counter"))):
+	if jumps > 0 and powers.ready("sigil_storm") \
+			and ((_combo_grew and combo % every == 0) or (counter and GameState.has_effect("chain_on_counter"))):
+		powers.spend("sigil_storm")
 		# Lightning gets only half of the combo bonus.
 		var multiplier := get_combo_multiplier()
 		Powers.chain_lightning(target, damage / multiplier * (1.0 + (multiplier - 1.0) * 0.5), jumps)
-	if counter and GameState.get_effect("counter_heal") > 0.0:
+	if counter and GameState.get_effect("counter_heal") > 0.0 and powers.ready("sigil_blood"):
+		powers.spend("sigil_blood")
 		heal(GameState.heal_amount("counter_heal", max_knuckles))
+		HitFx.burst(get_parent(), target.global_position + Vector3(0, 1.2, 0), Vector3.UP, Color(0.85, 0.05, 0.08), 22, 4.0, true, 0.06)
 		Powers.went_off("sigil_blood", target)
-	if GameState.get_effect("doom") > 0.0 and not target.is_dead() \
+	if GameState.get_effect("doom") > 0.0 and not target.is_dead() and powers.ready("sigil_doom") \
 			and (big_hit or randf() < GameState.get_effect("doom_chance")):
+		powers.spend("sigil_doom")
 		Powers.doom_mark(target)
 	powers.on_landed()
 

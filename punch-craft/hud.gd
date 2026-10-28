@@ -73,6 +73,8 @@ var _passive_ready := false
 ## charges, Iron plates.
 var _power_chip: PanelContainer
 var _power_row: HBoxContainer
+## Last readout per power: READY turning into a countdown means it just went off.
+var _power_last := {}
 var _time_stop: Control
 var _time_clock: Control
 var _time_keys: Label
@@ -456,6 +458,11 @@ func set_power_status(status: Array) -> void:
 		add_child(_power_chip)
 		move_child(_power_chip, mini(_pause_panel.get_index(), _summary_panel.get_index()))
 	_power_chip.visible = true
+	for entry in status:
+		var was: String = _power_last.get(entry[0], "")
+		if was == "READY" and entry[1] != "READY" and not String(entry[1]).contains("/"):
+			_power_went_off(SkillTreeView.BRANCHES[entry[0]].color)
+		_power_last[entry[0]] = entry[1]
 	for child in _power_row.get_children():
 		child.queue_free()
 	for entry in status:
@@ -705,6 +712,15 @@ func say(speaker: String, line: String, color := Color.WHITE, hold := 3.5) -> vo
 	_speech_tween.tween_property(_speech, "modulate:a", 1.0, 0.25)
 	_speech_tween.tween_interval(hold)
 	_speech_tween.tween_property(_speech, "modulate:a", 0.0, 0.6)
+
+
+## A power just went off: the screen edges flash its color, the chip pops.
+func _power_went_off(color: Color) -> void:
+	flash(color, 0.35)
+	_power_chip.pivot_offset = _power_chip.size / 2.0
+	var pop := _power_chip.create_tween()
+	pop.tween_property(_power_chip, "scale", Vector2.ONE * 1.18, 0.07)
+	pop.tween_property(_power_chip, "scale", Vector2.ONE, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 
 func flash_damage() -> void:
