@@ -481,7 +481,7 @@ func _on_node_selected(kind: String) -> void:
 
 func _buy_selected(kind: String) -> void:
 	var tree: SkillTreeView = _trees[kind]
-	var id := tree.selected_id
+	var id := GameState.shown_node(kind, tree.selected_id)
 	var node: Dictionary = GameState.tree(kind)[id]
 	var before := GameState.node_level(kind, id)
 	# An owned power's button selects it instead (one power at a time).
@@ -717,6 +717,7 @@ func _refresh_detail(kind: String) -> void:
 	var id: String = _trees[kind].selected_id
 	if id == "" or not _details.has(kind):
 		return
+	id = GameState.shown_node(kind, id)
 	var node: Dictionary = GameState.tree(kind)[id]
 	var detail: Dictionary = _details[kind]
 	var level := GameState.node_level(kind, id)

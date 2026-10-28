@@ -140,6 +140,9 @@ func _build_nodes() -> void:
 		_branch[id] = _find_branch(nodes, id)
 	for id in nodes:
 		var node: Dictionary = nodes[id]
+		# The Trophies show through the center node (GameState.center_stage).
+		if node.get("center", false):
+			continue
 		var view := TreeNodeView.new()
 		view.id = id
 		view.icon = node.icon
@@ -203,6 +206,15 @@ func refresh() -> void:
 		view.state = GameState.node_state(kind, id)
 		view.affordable = GameState.can_buy_node(kind, id)
 		view.sealed_by = GameState.node_sealed_by(kind, id)
+		if kind == "upgrade" and id == GameState.CENTER_STAGES[0]:
+			var stage := GameState.center_stage()
+			var levels := GameState.center_levels()
+			view.icon = GameState.UPGRADES[stage].icon
+			view.title = GameState.UPGRADES[stage].name
+			view.max_level = levels.y
+			view.level = levels.x
+			view.state = "maxed" if levels.x >= levels.y else ("owned" if levels.x > 0 else "available")
+			view.affordable = GameState.can_buy_node(kind, stage)
 		view.is_selected = id == selected_id
 		view.visible = view.state != "hidden"
 		if view.visible and not _was_visible.get(id, false) and _ready_to_animate:
@@ -224,6 +236,11 @@ func refresh() -> void:
 
 ## A node was just bought: burst it and run a pulse down the link into it.
 func celebrate(id: String) -> void:
+	if kind == "upgrade" and id in GameState.CENTER_STAGES:
+		var level := GameState.node_level(kind, id)
+		var max_level := int(GameState.UPGRADES[id].max_level)
+		_views[GameState.CENTER_STAGES[0]].celebrate("MAX" if level >= max_level else "LV %d" % GameState.center_levels().x)
+		return
 	if not _views.has(id):
 		return
 	var level := GameState.node_level(kind, id)
@@ -237,6 +254,8 @@ func celebrate(id: String) -> void:
 
 ## Can't buy it: the node shakes red.
 func deny(id: String) -> void:
+	if kind == "upgrade" and id in GameState.CENTER_STAGES:
+		id = GameState.CENTER_STAGES[0]
 	if _views.has(id):
 		_views[id].deny()
 
@@ -359,7 +378,7 @@ func _draw_map() -> void:
 	# Branch clouds behind each power's revealed nodes, and the power's name.
 	for id in tree:
 		var branch: String = _branch[id]
-		if branch == "" or not _views[id].visible:
+		if branch == "" or not _views.has(id) or not _views[id].visible:
 			continue
 		var tint: Color = BRANCHES[branch].color
 		var owned_node := GameState.node_level(kind, id) > 0
@@ -385,6 +404,8 @@ func _draw_map() -> void:
 
 	# Links.
 	for id in tree:
+		if not _views.has(id):
+			continue
 		var view: TreeNodeView = _views[id]
 		var owned := GameState.node_level(kind, id) > 0
 		var tint := branch_color(id)
@@ -542,6 +563,7 @@ func _on_hovered(id: String, on: bool) -> void:
 
 
 func _fill_hover_card(id: String) -> void:
+	id = GameState.shown_node(kind, id)
 	var node: Dictionary = GameState.tree(kind)[id]
 	var level := GameState.node_level(kind, id)
 	var tint := branch_color(id)

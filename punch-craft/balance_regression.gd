@@ -168,6 +168,8 @@ func _audit_tree(name: String, nodes: Dictionary) -> void:
 		for required in node.requires:
 			_check(nodes.has(required), "%s node %s requires missing node %s" % [name, id, required])
 		var position: Vector2 = node.pos
+		if node.get("center", false):
+			continue  # The Trophies show through the center node.
 		_check(not positions.has(position), "%s nodes %s and %s overlap at %s" % [name, positions.get(position, ""), id, position])
 		positions[position] = id
 
@@ -209,6 +211,14 @@ func _test_progression_webs() -> void:
 	_check(tamed.upgrade_levels.get("dmg_1", 0) == 5 and tamed.upgrade_levels.get("dmg_2", 0) == 3, "Taming prices keeps every bought level")
 	_check(expected > 0 and tamed.resources.coins == expected, "Taming prices refunds the difference (%d, expected %d)" % [tamed.resources.coins, expected])
 	tamed.free()
+	# The center node stands for the Trophies: each seal raises its cap.
+	GameState._reset_fields()
+	_check(GameState.center_stage() == "wrapped_knuckles" and GameState.center_levels() == Vector2i(0, 1), "The center starts as Taped Up, one level")
+	GameState.upgrade_levels["wrapped_knuckles"] = 1
+	GameState.dead_league_clears = {"bellman": true}
+	_check(GameState.center_stage() == "bellmans_bell" and GameState.center_levels() == Vector2i(1, 4), "Beating the Bellman raises the center's cap (got %s)" % GameState.center_levels())
+	_check(GameState.shown_node("upgrade", "wrapped_knuckles") == "bellmans_bell" and GameState.node_state("upgrade", "bellmans_bell") == "available", "The center buys the Bellman's Bell next")
+	GameState._reset_fields()
 	# Seal rings (v8): round prices; Dirty Shot folds into Lucky Shot.
 	for id in GameState.UPGRADES:
 		var price := GameState.price_at(GameState.UPGRADES[id], 0)

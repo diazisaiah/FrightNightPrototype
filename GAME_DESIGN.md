@@ -1770,7 +1770,7 @@ Four more powers, one past each spoke of the upgrade web: **Quake north, Gale ea
 
 **Layout:** the core upgrade web is radial. Every node sits on the ring of the seal that opens it (ring 1 open from the start, ring 2 with the Bellman, up to ring 6 with the Coffin King), ring r at r + 0.5 cells out, drawn as dashed circles that brighten once their seal breaks. The four spokes run straight out (damage east, defense south, knuckle HP west, coins north); side branches sit on their ring beside their spoke, so a branch steps outward one ring per seal. The eight powers sit outside the rings (elements in the corners, Endless powers past the spoke ends). Fighter skill webs keep their grid.
 
-**Branches (merges):** Dirty Shot merged into Lucky Shot (5 levels of +5% crit; a save's Dirty Shot levels join it). Healing between waves is one chain off the knuckle HP spoke (Cornerman, Ice Bath, Second Wind), XP one chain (Sparring Partner, Film Study), graze reduction one chain off defense (Thick Skull, Rope-a-Dope). Jump Rope and Bob and Weave sit with defense, Speed Bag with damage, the speed nodes with coins. The Trophies are one chain beside the defense spoke, one a seal (each needs the last maxed).
+**Branches (merges):** Dirty Shot merged into Lucky Shot (5 levels of +5% crit; a save's Dirty Shot levels join it). Healing between waves is one chain off the knuckle HP spoke (Cornerman, Ice Bath, Second Wind), XP one chain (Sparring Partner, Film Study), graze reduction one chain off defense (Thick Skull, Rope-a-Dope). Jump Rope and Bob and Weave sit with defense, Speed Bag with damage, the speed nodes with coins. The Trophies are gone from the web: they live in the center node (below).
 
 **Round numbers** (per level, 5 levels; coins 3):
 
@@ -1788,3 +1788,7 @@ Side nodes: Haymaker 10%, Rib Shot 15%, crit 5% a level, Jump Rope 0.05s, Snap W
 **Balance:** about the same as before: 2.0 / 3.3 / 3.2 / 2.3 / 3.0 good bouts to reach par by tier (was 2.0 / 3.1 / 2.9 / 2.6 / 3.1), class POWER unchanged. The bouts-to-par check leaves out the Endless powers (optional; par ignores them).
 
 **Old saves:** upgrade web version 8. Bought levels are kept (same ids); any level that got cheaper refunds the difference (`V7_PRICES`).
+
+**The center node grows with every contender (2026-10-28):** Taped Up stands for the Trophies. It starts at one level; each contender beaten raises its level cap by their Trophy (the Bellman's Bell +3, Headless Helm +3, Southpaw's Veil +3, Plague Censer +3, the Coffin Crown +5: 18 levels in all). It shows and buys the first stage that isn't maxed, taking that Trophy's name, icon and numbers (Bell 2 damage / 10 HP a level up to Crown 5 / 40 / 3 defense), so its icon changes as you climb: wraps, bell, helm, medal, censer, crown. Each stage needs the last maxed. The Trophy nodes keep their ids (saves keep them) and are drawn through the center (`GameState.CENTER_STAGES`, `center_stage`, `center_levels`, `shown_node`).
+
+**All eight powers 9 cells out:** the Endless powers' Sigils sit 9 cells out on the axes and the elements' 9 cells out on the diagonals, so all eight ring the core at the same distance with room for their names.
