@@ -116,8 +116,9 @@ const PASSIVE_POWER_MAX := 9
 # The web sits around a center node (x = columns right, y = rows down),
 # with upgrade types mixed together, in five sealed rings (see Progression).
 # Four Sigil nodes each unlock a power (Fire, Frost, Storm, Blood) when their
-# ring opens; the nodes past a sigil upgrade that power in different ways
-# (damage, duration, reach, how often it triggers).
+# ring opens. Each sits in its own corner of the web (needing nothing but its
+# seal), with three branches upgrading it different ways (damage, duration,
+# reach, how often it triggers) that meet at its capstone.
 const UPGRADES := {
 	"wrapped_knuckles": {
 		"name": "Taped Up", "icon": "wraps", "pos": Vector2(0, 0), "requires": [], "ring": 1,
@@ -290,79 +291,9 @@ const UPGRADES := {
 		"max_level": 2, "cost": 9376, "cost_growth": 1.3, "effects": {"crit_chance": 0.04},
 	},
 	"glass_breaker": {
-		"name": "Glass Breaker", "icon": "burst", "pos": Vector2(3, -3), "requires": ["dirty_shot"], "ring": 4,
+		"name": "Glass Breaker", "icon": "burst", "pos": Vector2(4, -2), "requires": ["dirty_shot"], "ring": 4,
 		"desc": "Critical hits hit even harder.",
 		"max_level": 3, "cost": 9376, "cost_growth": 1.3, "effects": {"crit_damage": 0.25},
-	},
-	"sigil_fire": {
-		"name": "Hellfire", "icon": "flame", "pos": Vector2(2, -1), "requires": ["dmg_2"], "ring": 2, "medallion": true,
-		"desc": "Awakens FIRE: set-up heavies and counters burst into flame.",
-		"max_level": 1, "cost": 1356, "cost_growth": 1.0, "effects": {"fire_punch": 0.3, "burn": 0.25},
-	},
-	"hotter_flames": {
-		"name": "Brimstone", "icon": "thermometer", "pos": Vector2(2, -2), "requires": ["sigil_fire"], "ring": 2,
-		"desc": "Bigger fire bursts.",
-		"max_level": 3, "cost": 542, "cost_growth": 1.3, "effects": {"fire_punch": 0.2},
-	},
-	"lingering_flames": {
-		"name": "Slow Burn", "icon": "clock", "pos": Vector2(2, -3), "requires": ["hotter_flames"], "ring": 3,
-		"desc": "Burns last longer.",
-		"max_level": 3, "cost": 1991, "cost_growth": 1.3, "effects": {"burn_time": 1.5},
-	},
-	"searing": {
-		"name": "Scorch", "icon": "burst", "pos": Vector2(2, -4), "requires": ["lingering_flames"], "ring": 3,
-		"desc": "Burns hurt more.",
-		"max_level": 3, "cost": 1991, "cost_growth": 1.3, "effects": {"burn": 0.2},
-	},
-	"kindling": {
-		"name": "Firestarter", "icon": "match", "pos": Vector2(2, -5), "requires": ["searing"], "ring": 4,
-		"desc": "Any punch can burst into flame.",
-		"max_level": 3, "cost": 9376, "cost_growth": 1.3, "effects": {"fire_chance": 0.06},
-	},
-	"wildfire": {
-		"name": "Wildfire", "icon": "ripple", "pos": Vector2(2, -6), "requires": ["kindling"], "ring": 4,
-		"desc": "Fire spreads farther.",
-		"max_level": 2, "cost": 9376, "cost_growth": 1.3, "effects": {"fire_radius": 1.0},
-	},
-	"pyre": {
-		"name": "Pyre", "icon": "pyre", "pos": Vector2(2, -7), "requires": ["wildfire"], "ring": 6, "medallion": true,
-		"desc": "Burning enemies explode when they die.",
-		"max_level": 1, "cost": 503100, "cost_growth": 1.0, "effects": {"pyre": 1},
-	},
-	"sigil_storm": {
-		"name": "Thunderclap", "icon": "bolt", "pos": Vector2(4, -1), "requires": ["dmg_4"], "ring": 4, "medallion": true,
-		"desc": "Awakens STORM: combos arc lightning.",
-		"max_level": 1, "cost": 18753, "cost_growth": 1.0, "effects": {"chain_lightning": 2},
-	},
-	"forked": {
-		"name": "Forked Lightning", "icon": "fork", "pos": Vector2(4, -2), "requires": ["sigil_storm"], "ring": 4,
-		"desc": "Lightning jumps to one more enemy.",
-		"max_level": 2, "cost": 9376, "cost_growth": 1.3, "effects": {"chain_lightning": 1},
-	},
-	"overcharge": {
-		"name": "Overcharge", "icon": "battery", "pos": Vector2(4, -3), "requires": ["forked"], "ring": 4,
-		"desc": "Lightning hits harder.",
-		"max_level": 3, "cost": 9376, "cost_growth": 1.3, "effects": {"chain_damage": 0.15},
-	},
-	"static_shock": {
-		"name": "Static Shock", "icon": "spark", "pos": Vector2(4, -4), "requires": ["overcharge"], "ring": 4,
-		"desc": "Lightning staggers.",
-		"max_level": 1, "cost": 9376, "cost_growth": 1.0, "effects": {"chain_stun": 1},
-	},
-	"conductor": {
-		"name": "Lightning Rod", "icon": "magnet", "pos": Vector2(4, -5), "requires": ["static_shock"], "ring": 5,
-		"desc": "Every counter arcs lightning.",
-		"max_level": 1, "cost": 67620, "cost_growth": 1.0, "effects": {"chain_on_counter": 1},
-	},
-	"storm": {
-		"name": "Perfect Storm", "icon": "storm", "pos": Vector2(4, -6), "requires": ["conductor"], "ring": 5,
-		"desc": "Lightning comes every 4th combo hit.",
-		"max_level": 1, "cost": 67620, "cost_growth": 1.0, "effects": {"chain_every_cut": 1},
-	},
-	"thunderhead": {
-		"name": "Thunderhead", "icon": "thunderhead", "pos": Vector2(4, -7), "requires": ["storm"], "ring": 6, "medallion": true,
-		"desc": "Clean dodges call lightning on the attacker.",
-		"max_level": 1, "cost": 503100, "cost_growth": 1.0, "effects": {"thunderhead": 1},
 	},
 	"ice_bath": {
 		"name": "Ice Bath", "icon": "bucket", "pos": Vector2(-2, -1), "requires": ["hp_2"], "ring": 2,
@@ -389,31 +320,6 @@ const UPGRADES := {
 		"desc": "Recover more every tenth of the bout.",
 		"max_level": 2, "cost": 9376, "cost_growth": 1.3, "effects": {"wave_heal": 1},
 	},
-	"sigil_blood": {
-		"name": "Blood Moon", "icon": "drop", "pos": Vector2(-5, -1), "requires": ["hp_5"], "ring": 5, "medallion": true,
-		"desc": "Awakens BLOOD: every kill heals you.",
-		"max_level": 1, "cost": 135240, "cost_growth": 1.0, "effects": {"heal_on_kill": 1},
-	},
-	"vampiric_knuckles": {
-		"name": "Bloodsucker", "icon": "fang", "pos": Vector2(-5, -2), "requires": ["sigil_blood"], "ring": 5,
-		"desc": "Kills heal more.",
-		"max_level": 3, "cost": 67620, "cost_growth": 1.3, "effects": {"heal_on_kill": 0.5},
-	},
-	"bloodletting": {
-		"name": "Bloodletting", "icon": "heartbeat", "pos": Vector2(-5, -3), "requires": ["vampiric_knuckles"], "ring": 5,
-		"desc": "Counters heal you.",
-		"max_level": 3, "cost": 67620, "cost_growth": 1.3, "effects": {"counter_heal": 0.5},
-	},
-	"blood_rage": {
-		"name": "Seeing Red", "icon": "blood_burst", "pos": Vector2(-5, -4), "requires": ["bloodletting"], "ring": 5,
-		"desc": "The closer you are to dropping, the harder you hit.",
-		"max_level": 3, "cost": 67620, "cost_growth": 1.3, "effects": {"last_stand": 0.15},
-	},
-	"bloodbath": {
-		"name": "Bloodbath", "icon": "bloodbath", "pos": Vector2(-5, -5), "requires": ["blood_rage"], "ring": 6, "medallion": true,
-		"desc": "Healing doubled under half knuckle HP.",
-		"max_level": 1, "cost": 503100, "cost_growth": 1.0, "effects": {"bloodbath": 1},
-	},
 	"cornerman": {
 		"name": "Cornerman", "icon": "medkit", "pos": Vector2(-1, 1), "requires": ["def_1"], "ring": 1,
 		"desc": "Recover a little every tenth of the bout.",
@@ -433,41 +339,6 @@ const UPGRADES := {
 		"name": "Rope-a-Dope", "icon": "anchor", "pos": Vector2(1, 4), "requires": ["def_4"], "ring": 4,
 		"desc": "Grazes hurt less.",
 		"max_level": 3, "cost": 9376, "cost_growth": 1.3, "effects": {"graze_reduction": 0.1},
-	},
-	"sigil_frost": {
-		"name": "Deathchill", "icon": "snowflake", "pos": Vector2(1, 3), "requires": ["def_3"], "ring": 3, "medallion": true,
-		"desc": "Awakens FROST: set-up heavies and counters freeze.",
-		"max_level": 1, "cost": 3982, "cost_growth": 1.0, "effects": {"frost_punch": 0.4},
-	},
-	"deep_freeze": {
-		"name": "Deep Freeze", "icon": "shard", "pos": Vector2(2, 3), "requires": ["sigil_frost"], "ring": 3,
-		"desc": "Frozen enemies are slower.",
-		"max_level": 3, "cost": 1991, "cost_growth": 1.3, "effects": {"frost_punch": 0.1},
-	},
-	"permafrost": {
-		"name": "Permafrost", "icon": "hourglass", "pos": Vector2(3, 3), "requires": ["deep_freeze"], "ring": 3,
-		"desc": "Freezes last longer.",
-		"max_level": 3, "cost": 1991, "cost_growth": 1.3, "effects": {"frost_time": 1.0},
-	},
-	"frost_nova": {
-		"name": "Frost Nova", "icon": "nova", "pos": Vector2(4, 3), "requires": ["permafrost"], "ring": 3,
-		"desc": "Freezes reach farther.",
-		"max_level": 2, "cost": 1991, "cost_growth": 1.3, "effects": {"frost_radius": 1.0},
-	},
-	"brittle": {
-		"name": "Brittle Bones", "icon": "broken_shield", "pos": Vector2(5, 3), "requires": ["frost_nova"], "ring": 4,
-		"desc": "Frozen enemies take extra damage from everything.",
-		"max_level": 3, "cost": 9376, "cost_growth": 1.3, "effects": {"brittle": 0.1},
-	},
-	"cold_snap": {
-		"name": "Cold Snap", "icon": "icicle", "pos": Vector2(6, 3), "requires": ["brittle"], "ring": 4,
-		"desc": "Any punch can freeze.",
-		"max_level": 3, "cost": 9376, "cost_growth": 1.3, "effects": {"frost_chance": 0.08},
-	},
-	"frost_shatter": {
-		"name": "Shatter", "icon": "shatter", "pos": Vector2(7, 3), "requires": ["cold_snap"], "ring": 6, "medallion": true,
-		"desc": "Frozen enemies burst into frost when they die.",
-		"max_level": 1, "cost": 503100, "cost_growth": 1.0, "effects": {"frost_shatter": 1},
 	},
 	"bellmans_bell": {
 		"name": "The Bellman's Bell", "icon": "belt", "pos": Vector2(-1, 2), "requires": ["def_2"], "ring": 2, "medallion": true,
@@ -533,6 +404,209 @@ const UPGRADES := {
 		"name": "Prize Fighter", "icon": "sun", "pos": Vector2(1, -5), "requires": ["gold_5"], "ring": 5,
 		"desc": "Bigger Arena purses.",
 		"max_level": 2, "cost": 67620, "cost_growth": 1.3, "effects": {"dawn_bonus": 0.25},
+	},
+	# The four powers, one in each corner (2026-10-27): a Sigil that needs only
+	# its seal, three branches out of it, and a capstone where they meet
+	# (every branch maxed first).
+	"sigil_fire": {
+		"name": "Hellfire", "icon": "flame", "pos": Vector2(3, -3), "requires": [], "ring": 2, "medallion": true,
+		"desc": "Awakens FIRE: set-up heavies and counters burst into flame.",
+		"max_level": 1, "cost": 1356, "cost_growth": 1.0, "effects": {"fire_punch": 0.3, "burn": 0.25},
+	},
+	"hotter_flames": {
+		"name": "Brimstone", "icon": "thermometer", "pos": Vector2(4, -3), "requires": ["sigil_fire"], "ring": 2,
+		"desc": "Bigger fire bursts.",
+		"max_level": 3, "cost": 542, "cost_growth": 1.3, "effects": {"fire_punch": 0.2},
+	},
+	"fire_heart": {
+		"name": "Furnace Heart", "icon": "flame", "pos": Vector2(5, -3), "requires": ["hotter_flames"], "ring": 3,
+		"desc": "Even bigger fire bursts.",
+		"max_level": 3, "cost": 1991, "cost_growth": 1.3, "effects": {"fire_punch": 0.15},
+	},
+	"wildfire": {
+		"name": "Wildfire", "icon": "ripple", "pos": Vector2(6, -3), "requires": ["fire_heart"], "ring": 4,
+		"desc": "Fire spreads farther.",
+		"max_level": 2, "cost": 9376, "cost_growth": 1.3, "effects": {"fire_radius": 1.0},
+	},
+	"lingering_flames": {
+		"name": "Slow Burn", "icon": "clock", "pos": Vector2(4, -4), "requires": ["sigil_fire"], "ring": 2,
+		"desc": "Burns last longer.",
+		"max_level": 3, "cost": 542, "cost_growth": 1.3, "effects": {"burn_time": 1.5},
+	},
+	"searing": {
+		"name": "Scorch", "icon": "burst", "pos": Vector2(5, -5), "requires": ["lingering_flames"], "ring": 3,
+		"desc": "Burns hurt more.",
+		"max_level": 3, "cost": 1991, "cost_growth": 1.3, "effects": {"burn": 0.2},
+	},
+	"kindling": {
+		"name": "Firestarter", "icon": "match", "pos": Vector2(3, -4), "requires": ["sigil_fire"], "ring": 2,
+		"desc": "Any punch can burst into flame.",
+		"max_level": 3, "cost": 542, "cost_growth": 1.3, "effects": {"fire_chance": 0.06},
+	},
+	"tinderbox": {
+		"name": "Tinderbox", "icon": "match", "pos": Vector2(3, -5), "requires": ["kindling"], "ring": 3,
+		"desc": "More punches burst into flame.",
+		"max_level": 2, "cost": 1991, "cost_growth": 1.3, "effects": {"fire_chance": 0.04},
+	},
+	"ember_rain": {
+		"name": "Ember Rain", "icon": "ripple", "pos": Vector2(3, -6), "requires": ["tinderbox"], "ring": 4,
+		"desc": "Fire bursts reach a little farther.",
+		"max_level": 2, "cost": 9376, "cost_growth": 1.3, "effects": {"fire_radius": 0.5},
+	},
+	"pyre": {
+		"name": "Pyre", "icon": "pyre", "pos": Vector2(6, -6), "requires": ["wildfire", "searing", "ember_rain"], "ring": 6, "medallion": true,
+		"desc": "Burning enemies explode when they die.",
+		"max_level": 1, "cost": 503100, "cost_growth": 1.0, "effects": {"pyre": 1},
+	},
+	"sigil_frost": {
+		"name": "Deathchill", "icon": "snowflake", "pos": Vector2(-3, 3), "requires": [], "ring": 3, "medallion": true,
+		"desc": "Awakens FROST: set-up heavies and counters freeze.",
+		"max_level": 1, "cost": 3982, "cost_growth": 1.0, "effects": {"frost_punch": 0.4},
+	},
+	"deep_freeze": {
+		"name": "Deep Freeze", "icon": "shard", "pos": Vector2(-4, 3), "requires": ["sigil_frost"], "ring": 3,
+		"desc": "Frozen enemies are slower.",
+		"max_level": 3, "cost": 1991, "cost_growth": 1.3, "effects": {"frost_punch": 0.1},
+	},
+	"brittle": {
+		"name": "Brittle Bones", "icon": "broken_shield", "pos": Vector2(-5, 3), "requires": ["deep_freeze"], "ring": 4,
+		"desc": "Frozen enemies take extra damage from everything.",
+		"max_level": 3, "cost": 9376, "cost_growth": 1.3, "effects": {"brittle": 0.1},
+	},
+	"black_ice": {
+		"name": "Black Ice", "icon": "shard", "pos": Vector2(-6, 3), "requires": ["brittle"], "ring": 5,
+		"desc": "Frozen enemies take even more damage.",
+		"max_level": 3, "cost": 36000, "cost_growth": 1.3, "effects": {"brittle": 0.05},
+	},
+	"permafrost": {
+		"name": "Permafrost", "icon": "hourglass", "pos": Vector2(-4, 4), "requires": ["sigil_frost"], "ring": 3,
+		"desc": "Freezes last longer.",
+		"max_level": 3, "cost": 1991, "cost_growth": 1.3, "effects": {"frost_time": 1.0},
+	},
+	"frost_nova": {
+		"name": "Frost Nova", "icon": "nova", "pos": Vector2(-5, 5), "requires": ["permafrost"], "ring": 4,
+		"desc": "Freezes reach farther.",
+		"max_level": 2, "cost": 9376, "cost_growth": 1.3, "effects": {"frost_radius": 1.0},
+	},
+	"cold_snap": {
+		"name": "Cold Snap", "icon": "icicle", "pos": Vector2(-3, 4), "requires": ["sigil_frost"], "ring": 3,
+		"desc": "Any punch can freeze.",
+		"max_level": 3, "cost": 1991, "cost_growth": 1.3, "effects": {"frost_chance": 0.08},
+	},
+	"hoarfrost": {
+		"name": "Hoarfrost", "icon": "snowflake", "pos": Vector2(-3, 5), "requires": ["cold_snap"], "ring": 4,
+		"desc": "Freezes last a little longer.",
+		"max_level": 2, "cost": 9376, "cost_growth": 1.3, "effects": {"frost_time": 0.5},
+	},
+	"glacier": {
+		"name": "Glacier", "icon": "icicle", "pos": Vector2(-3, 6), "requires": ["hoarfrost"], "ring": 5,
+		"desc": "More punches freeze.",
+		"max_level": 2, "cost": 36000, "cost_growth": 1.3, "effects": {"frost_chance": 0.04},
+	},
+	"frost_shatter": {
+		"name": "Shatter", "icon": "shatter", "pos": Vector2(-6, 6), "requires": ["black_ice", "frost_nova", "glacier"], "ring": 6, "medallion": true,
+		"desc": "Frozen enemies burst into frost when they die.",
+		"max_level": 1, "cost": 503100, "cost_growth": 1.0, "effects": {"frost_shatter": 1},
+	},
+	"sigil_storm": {
+		"name": "Thunderclap", "icon": "bolt", "pos": Vector2(3, 3), "requires": [], "ring": 4, "medallion": true,
+		"desc": "Awakens STORM: combos arc lightning.",
+		"max_level": 1, "cost": 18753, "cost_growth": 1.0, "effects": {"chain_lightning": 2},
+	},
+	"forked": {
+		"name": "Forked Lightning", "icon": "fork", "pos": Vector2(4, 3), "requires": ["sigil_storm"], "ring": 4,
+		"desc": "Lightning jumps to one more enemy.",
+		"max_level": 2, "cost": 9376, "cost_growth": 1.3, "effects": {"chain_lightning": 1},
+	},
+	"overcharge": {
+		"name": "Overcharge", "icon": "battery", "pos": Vector2(5, 3), "requires": ["forked"], "ring": 5,
+		"desc": "Lightning hits harder.",
+		"max_level": 3, "cost": 36000, "cost_growth": 1.3, "effects": {"chain_damage": 0.15},
+	},
+	"high_voltage": {
+		"name": "High Voltage", "icon": "battery", "pos": Vector2(6, 3), "requires": ["overcharge"], "ring": 5,
+		"desc": "Lightning hits harder still.",
+		"max_level": 3, "cost": 36000, "cost_growth": 1.3, "effects": {"chain_damage": 0.1},
+	},
+	"static_shock": {
+		"name": "Static Shock", "icon": "spark", "pos": Vector2(4, 4), "requires": ["sigil_storm"], "ring": 4,
+		"desc": "Lightning staggers.",
+		"max_level": 1, "cost": 9376, "cost_growth": 1.3, "effects": {"chain_stun": 1},
+	},
+	"conductor": {
+		"name": "Lightning Rod", "icon": "magnet", "pos": Vector2(5, 5), "requires": ["static_shock"], "ring": 5,
+		"desc": "Every counter arcs lightning.",
+		"max_level": 1, "cost": 36000, "cost_growth": 1.3, "effects": {"chain_on_counter": 1},
+	},
+	"ball_lightning": {
+		"name": "Ball Lightning", "icon": "spark", "pos": Vector2(3, 4), "requires": ["sigil_storm"], "ring": 4,
+		"desc": "Lightning jumps to one more enemy.",
+		"max_level": 1, "cost": 9376, "cost_growth": 1.3, "effects": {"chain_lightning": 1},
+	},
+	"storm": {
+		"name": "Perfect Storm", "icon": "storm", "pos": Vector2(3, 5), "requires": ["ball_lightning"], "ring": 5,
+		"desc": "Lightning comes every 4th combo hit.",
+		"max_level": 1, "cost": 36000, "cost_growth": 1.3, "effects": {"chain_every_cut": 1},
+	},
+	"tesla_coil": {
+		"name": "Tesla Coil", "icon": "bolt", "pos": Vector2(3, 6), "requires": ["storm"], "ring": 5,
+		"desc": "Lightning hits harder.",
+		"max_level": 2, "cost": 36000, "cost_growth": 1.3, "effects": {"chain_damage": 0.1},
+	},
+	"thunderhead": {
+		"name": "Thunderhead", "icon": "thunderhead", "pos": Vector2(6, 6), "requires": ["high_voltage", "conductor", "tesla_coil"], "ring": 6, "medallion": true,
+		"desc": "Clean dodges call lightning on the attacker.",
+		"max_level": 1, "cost": 503100, "cost_growth": 1.0, "effects": {"thunderhead": 1},
+	},
+	"sigil_blood": {
+		"name": "Blood Moon", "icon": "drop", "pos": Vector2(-3, -3), "requires": [], "ring": 5, "medallion": true,
+		"desc": "Awakens BLOOD: every kill heals you.",
+		"max_level": 1, "cost": 135240, "cost_growth": 1.0, "effects": {"heal_on_kill": 1},
+	},
+	"vampiric_knuckles": {
+		"name": "Bloodsucker", "icon": "fang", "pos": Vector2(-4, -3), "requires": ["sigil_blood"], "ring": 5,
+		"desc": "Kills heal more.",
+		"max_level": 3, "cost": 36000, "cost_growth": 1.3, "effects": {"heal_on_kill": 0.5},
+	},
+	"blood_bank": {
+		"name": "Blood Bank", "icon": "drop", "pos": Vector2(-5, -3), "requires": ["vampiric_knuckles"], "ring": 5,
+		"desc": "Kills heal even more.",
+		"max_level": 2, "cost": 36000, "cost_growth": 1.3, "effects": {"heal_on_kill": 0.5},
+	},
+	"transfusion": {
+		"name": "Transfusion", "icon": "heartbeat", "pos": Vector2(-6, -3), "requires": ["blood_bank"], "ring": 5,
+		"desc": "Counters heal more.",
+		"max_level": 2, "cost": 36000, "cost_growth": 1.3, "effects": {"counter_heal": 0.3},
+	},
+	"bloodletting": {
+		"name": "Bloodletting", "icon": "heartbeat", "pos": Vector2(-4, -4), "requires": ["sigil_blood"], "ring": 5,
+		"desc": "Counters heal you.",
+		"max_level": 3, "cost": 36000, "cost_growth": 1.3, "effects": {"counter_heal": 0.5},
+	},
+	"open_vein": {
+		"name": "Open Vein", "icon": "fang", "pos": Vector2(-5, -5), "requires": ["bloodletting"], "ring": 5,
+		"desc": "Counters heal more.",
+		"max_level": 2, "cost": 36000, "cost_growth": 1.3, "effects": {"counter_heal": 0.3},
+	},
+	"blood_rage": {
+		"name": "Seeing Red", "icon": "blood_burst", "pos": Vector2(-3, -4), "requires": ["sigil_blood"], "ring": 5,
+		"desc": "The closer you are to dropping, the harder you hit.",
+		"max_level": 3, "cost": 36000, "cost_growth": 1.3, "effects": {"last_stand": 0.15},
+	},
+	"death_wish": {
+		"name": "Death Wish", "icon": "skull", "pos": Vector2(-3, -5), "requires": ["blood_rage"], "ring": 5,
+		"desc": "Even harder the closer you are to dropping.",
+		"max_level": 2, "cost": 36000, "cost_growth": 1.3, "effects": {"last_stand": 0.1},
+	},
+	"red_tide": {
+		"name": "Red Tide", "icon": "blood_burst", "pos": Vector2(-3, -6), "requires": ["death_wish"], "ring": 5,
+		"desc": "Kills heal more.",
+		"max_level": 2, "cost": 36000, "cost_growth": 1.3, "effects": {"heal_on_kill": 0.3},
+	},
+	"bloodbath": {
+		"name": "Bloodbath", "icon": "bloodbath", "pos": Vector2(-6, -6), "requires": ["transfusion", "open_vein", "red_tide"], "ring": 6, "medallion": true,
+		"desc": "Healing doubled under half knuckle HP.",
+		"max_level": 1, "cost": 503100, "cost_growth": 1.0, "effects": {"bloodbath": 1},
 	},
 }
 
