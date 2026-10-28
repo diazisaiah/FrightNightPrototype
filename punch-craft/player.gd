@@ -56,7 +56,7 @@ const PERFECT_COUNTER_COOLDOWN := 12.0
 ## Perfect Counter's extra multiplier (2026-10-24: was an instant KO).
 const PERFECT_COUNTER_BONUS := 2.5
 const GRUDGE_MULT := 3.0
-const WRECKING_DAMAGE := 2.0
+const WRECKING_DAMAGE := 1.1
 const WRECKING_RADIUS := 1.8
 const BERSERKER_MAX := 0.6
 const PHANTOM_COOLDOWN := 3.0
@@ -85,6 +85,8 @@ const FINISHER_MULTIPLIER := 2.0
 const FINISHER_HP_FRACTION := 0.3
 ## Sigil powers: a landing counts as a Ground Pound after this long in the air.
 const GROUND_POUND_MIN_AIR_TIME := 0.3
+## Seconds between landing shockwaves (Quaking boots), so hopping can't spam them.
+const GROUND_POUND_COOLDOWN := 4.0
 ## Chain Lightning fires on every this-many combo hits (Storm lowers it).
 const CHAIN_LIGHTNING_EVERY := 5
 ## Plain jabs and crosses only build the combo this many hits in a row; past
@@ -300,6 +302,7 @@ var _muscle_timer := 6.0
 var unbroken_time := 0.0
 var _combo_freeze := 0.0
 var _class_status := "-"
+var _pound_cooldown := 0.0
 var _lean_tween: Tween
 ## Time each movement key was last pressed, for double taps.
 var _last_tap := {}
@@ -1372,7 +1375,7 @@ func _land_punch(type: String, hand: String, _dashing := false, airborne := fals
 		DamagePopup.spawn(get_parent(), "SHIELD", Color(0.75, 0.75, 0.8), 40, hit_point)
 		_set_combo(0)
 		punch_landed.emit("blocked", false)
-		_pay_for_punch(PUNCHES[type], false)
+		_pay_for_punch(PUNCHES[type], false, type)
 		return
 	target.take_turn()  # Punching an enemy pulls it into the fight.
 	if target.try_evade(type, hand):
@@ -1579,7 +1582,7 @@ func _land_punch(type: String, hand: String, _dashing := false, airborne := fals
 	if GameState.has_passive("rapid_combos") and _combo_grew and combo > 0 \
 			and combo % _shockwave_every() == 0:
 		_shockwave()
-	_pay_for_punch(punch, counter)
+	_pay_for_punch(punch, counter, type)
 
 
 ## The Stray's dash punches carry on past the target: a Spear Jab runs through
@@ -1656,10 +1659,13 @@ func _flat_forward() -> Vector3:
 
 ## Every landed punch costs a fixed amount of knuckle HP (Defense doesn't help);
 ## Hard Knuckles and the Counter Master sometimes make it free.
-func _pay_for_punch(punch: Dictionary, counter: bool) -> void:
+func _pay_for_punch(punch: Dictionary, counter: bool, type := "") -> void:
 	var free_chance := GameState.get_effect("free_punch_chance")
 	if counter and GameState.is_player_class("counter_master"):
 		free_chance = 1.0 - (1.0 - free_chance) * (1.0 - COUNTER_MASTER_FREE_CHANCE)
+	# Light Hands (the Blur's card): straights, and hooks at rank II.
+	if type in ["jab", "cross"] or (type == "hook" and GameState.get_effect("light_hooks") > 0.0):
+		free_chance = 1.0 - (1.0 - free_chance) * (1.0 - GameState.get_effect("light_hands"))
 	if randf() < free_chance or _free_punch:
 		_free_punch = false
 		return
@@ -1752,11 +1758,13 @@ func _thunderhead() -> void:
 
 
 func _check_ground_pound(was_airborne: bool, delta: float) -> void:
+	_pound_cooldown -= delta
 	if not is_on_floor():
 		_air_time += delta
 		return
 	var pound := GameState.get_effect("ground_pound")
-	if was_airborne and active and pound > 0.0 and _air_time >= GROUND_POUND_MIN_AIR_TIME:
+	if was_airborne and active and pound > 0.0 and _air_time >= GROUND_POUND_MIN_AIR_TIME and _pound_cooldown <= 0.0:
+		_pound_cooldown = GROUND_POUND_COOLDOWN
 		Powers.ground_pound(self, GameState.get_damage() * pound)
 		_shake = maxf(_shake, 0.09)
 		_kick_fov(5.0)
@@ -1813,7 +1821,7 @@ func _passive_punch(target: Enemy, forced: bool) -> Dictionary:
 					result.mult += _grudge_hits
 					for enemy in _enemies_near(target.global_position, 3.0):
 						if enemy != target:
-							enemy.stun(Enemy.STAGGER_TIME)
+							enemy.stun(Enemy.STAGGER_TIME * 0.6)
 					if _grudge_hits > 0:
 						result.caption = "BLOOD FEUD x%d!" % (_grudge_hits + 1)
 				_clear_grudge()
@@ -1902,12 +1910,12 @@ func _wrecking_ball(from: Vector3, push: Vector3) -> void:
 			if enemy == null or enemy.is_dead() or hit.has(enemy):
 				continue
 			hit[enemy] = true
-			enemy.take_hit(GameState.get_damage() * (WRECKING_DAMAGE + 0.3 * _pp()), enemy.global_position + Vector3(0, 1.0, 0),
+			enemy.take_hit(GameState.get_damage() * (WRECKING_DAMAGE + 0.2 * _pp()), enemy.global_position + Vector3(0, 1.0, 0),
 					direction * 6.0, true, "STRIKE!")
 			HitFx.burst(get_parent(), enemy.global_position + Vector3(0, 1.0, 0), direction, Color(1.0, 0.55, 0.2), 14, 5.0, false, 0.05)
 			# Bowled over (Strike!: and kept down for 2s).
 			if not enemy.is_dead():
-				enemy.knock_down(2.0 if GameState.has_effect("strike") else 0.9, direction)
+				enemy.knock_down(1.3 if GameState.has_effect("strike") else 0.9, direction)
 		if not hit.is_empty() and step == 0:
 			Sfx.play_at("heavy", at, 0.0, 0.7)
 	if GameState.has_effect("strike") and hit.size() >= 3:

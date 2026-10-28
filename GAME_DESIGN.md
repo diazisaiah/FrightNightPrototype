@@ -1713,3 +1713,12 @@ The old fist models and scenes (`fist.tscn`, `sketchfab_scene.tscn`, the `.glb` 
 - Deck and Attributes tabs wear a pulsing count badge (like Daily's READY) when draws or points are waiting.
 - The Mauler's mitts sit a little lower (`Fists.SIT`) so they don't fill the view.
 - Dead effects removed (nothing granted them since the skill webs went): wise_up, fugget_cut/heal, hustle, body_bonus, liver_shot, double_jab, the super-armor set, power_amp, spell_chance/damage, burst_*, perfect_cooldown_cut, counter_free_bonus, boss_ko_bonus, shockwave_*, opener_bonus, finisher_threshold, pound_radius/stun. `ult_power` stays as the ultimates' empower hook.
+
+## Balance pass (2026-10-27)
+
+- **Brimstone Shield:** Brimstone Wall now adds 1 hit (was double). A boss's punch takes 2 hits off the shield.
+- **No stun-locks:** a run of punch staggers holds a monster at most 1s (`Enemy.STAGGER_CHAIN_MAX`), then punches can't stagger it for 1s (`STAGGER_GRACE`). Single staggers are unchanged (0.5s). Bosses keep their poise. The Blur's Stun Lock card is gone.
+- **The Mauler's AoE, cut hard:** Haymaker Swing hits the arc for 20% / 35% of the hook (was 50% / 100%); Avalanche deals a quarter of base damage and only staggers (no knockdown); Wrecking Ball bowls for 1.1x base (+0.2x a passive point; was 2.0x / 0.3x), Strike! keeps them down 1.3s (was 2s); Blood Feud's crowd stun is 0.3s; Mob Magnet +2-5% a monster, up to 3.
+- **The Blur's new cards:** Keen Eye (common, +3-12% crit chance) and Vital Points (common, +15-60% crit damage) replace Through and Through and Endurance; Light Hands (rare: jabs and crosses 30% free; rank II adds hooks) replaces Stun Lock. Cards a save had of the removed ones come back as draws.
+- **Crypt gear gives no elemental powers** except the Quaking boots' landing shockwave and Venomous gloves. Burning gloves became +damage% gloves, Storm charms +ultimate gain charms, frost-slip boots are gone; old ones in a save turn into those on load (`Items.retire_powers`). The landing shockwave has a 4s cooldown.
+- **Contenders:** Sister Southpaw's pivot takes 0.55s (was 0.24s) and gives 0.35s to turn. The Plague Doctor hops back 3.5m before his Adrenaline Shot. The Headless specials come every 6.5s (was 8.5s) and only 35% are charges; from round 2 it catches its skull and throws it straight back (once in round 2, twice in round 3).

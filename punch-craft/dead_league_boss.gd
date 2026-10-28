@@ -40,7 +40,7 @@ const GUARD_ELBOW := 1.45
 ## open window if you get greedy, and answers with a right-handed jab (a
 ## southpaw's jab), sometimes two.
 const PIVOT_CHANCE := 0.4
-const PIVOT_TIME := 0.24
+const PIVOT_TIME := 0.55
 const PIVOT_DISTANCE := 1.7
 ## The Plague Doctor heals this share of his max HP for every punch that
 ## lands (a graze: GRAZE_DOSE), half again in a Rampage. Below
@@ -56,7 +56,14 @@ const ADRENALINE_BELOW := 0.7
 const ADRENALINE_COOLDOWN := 20.0
 ## The Headless: winds up its Skull Toss this long, and fights blind (wild
 ## combos at whatever it's facing) this long after you punch the skull down.
+## It throws it often (a charge only CHARGE_SHARE of the time), and from
+## round 2 it catches the skull and throws it straight back: once in round 2,
+## twice in round 3 (CATCH_WIND to wind up again).
 const SKULL_WIND := 0.8
+const CATCH_WIND := 0.5
+const CHARGE_SHARE := 0.35
+## How far the Plague Doctor hops back before his Adrenaline Shot.
+const HOP_BACK := 3.5
 const BLIND_TIME := 5.0
 ## The Coffin King gets quicker as he's hurt: near 0 HP, windups this much
 ## shorter (KING_HASTE) and pauses between combos this much shorter.
@@ -82,6 +89,7 @@ var _blind_time := 0.0
 var _blind_dir := Vector3.FORWARD
 var _blind_turn := 0.0
 var _skull_shot: SkullShot
+var _rethrows := 0
 var _head_parent: Node3D
 var _head_rest := Vector3.ZERO
 var _base_windup := 1.0
@@ -596,7 +604,7 @@ func _gear_style() -> String:
 const KITS := [["leap_slam"], ["charge", "skull_toss"], ["zones", "charge"], ["miasma", "leap_slam", "adrenaline"], ["leap_slam", "charge", "zones"]]
 ## Seconds between specials per contender in round 1; each later round
 ## brings them 12% sooner, the final bell 30% sooner.
-const SPECIAL_EVERY := [9.0, 8.5, 8.0, 9.0, 7.0]
+const SPECIAL_EVERY := [9.0, 6.5, 8.0, 9.0, 7.0]
 const FIRST_SPECIAL := 5.0
 
 
@@ -607,6 +615,9 @@ func _special_in_range(kind: String, _distance: float) -> bool:
 	match kind:
 		"skull_toss":
 			return _skull_shot == null
+		"charge":
+			if profile_index == 1:
+				return randf() < CHARGE_SHARE
 		"adrenaline":
 			return _adrenaline_ready()
 	return not ("adrenaline" in special_kit and _adrenaline_ready())
@@ -723,7 +734,7 @@ func _pivot_behind() -> float:
 	var hud := get_tree().get_first_node_in_group("hud")
 	if hud:
 		hud.announce_small("BEHIND YOU", accent.lightened(0.3))
-	return PIVOT_TIME + 0.2
+	return PIVOT_TIME + 0.35
 
 
 func _start_special(kind: String) -> void:
@@ -731,10 +742,14 @@ func _start_special(kind: String) -> void:
 	match kind:
 		"skull_toss":
 			_locked = false
+			_rethrows = round_number - 1
 			_set_step("wind")
 		"adrenaline":
+			# Hops back out of reach first, then the needle.
 			_locked = false
-			_set_step("inject")
+			var away := -_to_player()
+			away = away.normalized() if away.length() > 0.1 else global_basis.z
+			_begin_leap(_clamp_to_arena(global_position + away * HOP_BACK))
 
 
 func _run_special(delta: float) -> Vector3:
@@ -772,6 +787,17 @@ func _run_special(delta: float) -> Vector3:
 	return super(delta)
 
 
+## The Plague Doctor lands his hop back: then the needle.
+func _land() -> void:
+	if _special != "adrenaline":
+		super()
+		return
+	collision_mask |= 2
+	velocity.y = 0.0
+	Sfx.play_at("quake", global_position, -4.0, 0.9)
+	_set_step("inject")
+
+
 func _animate_special(delta: float) -> void:
 	super(delta)
 	if _step == "inject":
@@ -802,8 +828,17 @@ func skull_back(head: Node3D) -> void:
 	head.reparent(_head_parent, false)
 	head.transform = Transform3D(Basis.IDENTITY, Vector3(_head_rest.x, _float_base, _head_rest.z))
 	_skull_shot = null
-	if _special == "skull_toss":
-		_end_special()
+	if _special != "skull_toss":
+		return
+	# Rounds 2 and 3: caught, and straight back at you.
+	if _rethrows > 0 and not is_dead():
+		_rethrows -= 1
+		DamagePopup.spawn(get_parent(), "CAUGHT", DeadLeagueRules.boss(profile_index).accent, 42, global_position + Vector3(0, 3.0, 0))
+		_locked = false
+		_set_step("wind")
+		_step_time = SKULL_WIND - CATCH_WIND
+		return
+	_end_special()
 
 
 ## Punched down: it fights blind until the skull floats back.

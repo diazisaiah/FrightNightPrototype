@@ -63,7 +63,7 @@ const ULTIMATES := {
 		{"id": "inferno", "name": "Inferno Uppercut", "icon": "flame", "level": 1,
 			"desc": "Leap at the nearest monster with a flaming uppercut that launches it and sets it alight."},
 		{"id": "bulwark", "name": "Brimstone Shield", "icon": "shield", "level": 10,
-			"desc": "A burning shield soaks the next hits. When it breaks it explodes, hurting everything near you by what it took."},
+			"desc": "A burning shield soaks the next hits (a boss punch counts twice). When it breaks it explodes, hurting everything near you by what it took."},
 	],
 	"counter_master": [
 		{"id": "riposte", "name": "Riposte Stance", "icon": "target", "level": 1,
@@ -105,7 +105,7 @@ const POWER_TEXT := {
 	"dash_punches": [0.08, "+%sx dash punch damage"],
 	"fuggedaboudit": [0.25, "-%ss Fuggedaboudit recharge"],
 	"dual_sigil": [5.0, "+%s%% power (both)"],
-	"wrecking_ball": [0.3, "+%sx Wrecking Ball damage"],
+	"wrecking_ball": [0.2, "+%sx Wrecking Ball damage"],
 	"berserker": [5.0, "+%s%% Berserker damage"],
 	"phantom_step": [0.2, "-%ss Phantom Step cooldown"],
 	"dodge_chain": [5.0, "+%s%% per chained dodge"],

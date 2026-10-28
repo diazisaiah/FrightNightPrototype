@@ -671,8 +671,8 @@ func _riposte_counter(enemy: Enemy) -> void:
 ## The Mauler's Brimstone Shield: soaks the next hits, then bursts.
 func _start_shield() -> void:
 	_spend()
-	# Brimstone Wall: twice the hits.
-	_shield_hits = (SHIELD_HITS + int(_power())) * (2 if _card("brimstone_wall") else 1)
+	# Brimstone Wall: one more hit.
+	_shield_hits = SHIELD_HITS + int(_power()) + (1 if _card("brimstone_wall") else 0)
 	_shield_soaked = 0.0
 	_shield_time = SHIELD_TIME + 3.0 * _power()
 	Sfx.play("unlock", 0.0, 0.6)
@@ -688,7 +688,8 @@ func _start_shield() -> void:
 
 
 func _shield_absorb(amount: float, attacker: Enemy = null) -> void:
-	_shield_hits -= 1
+	# A boss's punch takes two hits off it.
+	_shield_hits -= 2 if attacker and attacker.is_boss else 1
 	_shield_soaked += amount
 	# Brimstone Wall: every soaked hit burns the attacker back.
 	if _card("brimstone_wall") and attacker and not attacker.is_dead():

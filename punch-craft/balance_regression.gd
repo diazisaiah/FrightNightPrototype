@@ -247,7 +247,7 @@ func _test_decks() -> void:
 			var copies := Cards.copies(card)
 			for effect in card.effects:
 				_check(card.effects[effect].size() == copies, "%s card %s needs a value per rank for %s" % [fighter, id, effect])
-				_check(PowerRating.CARDS.has(effect) or PowerRating.EVERY.has(effect) or effect in PowerRating.SPECIALS or effect in ["damage_percent", "knuckles_percent", "move_speed", "spell_time"],
+				_check(PowerRating.CARDS.has(effect) or PowerRating.EVERY.has(effect) or effect in PowerRating.SPECIALS or effect in ["damage_percent", "knuckles_percent", "move_speed", "spell_time", "crit_chance", "crit_damage"],
 						"POWER must rate %s card %s's %s" % [fighter, id, effect])
 			if card.text is Array:
 				_check(card.text.size() == copies, "%s card %s needs a line per rank" % [fighter, id])

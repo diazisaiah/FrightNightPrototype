@@ -570,7 +570,7 @@ const EFFECT_FORMATS := {
 	"sprint_bonus": "+%s%% sprint speed",
 	"fire_punch": "Fire deals %s%% of the hit to enemies nearby",
 	"chain_lightning": "Lightning arcs to %s enemies",
-	"ground_pound": "Landing shockwave deals %sx your base damage",
+	"ground_pound": "Landing shockwave (every 4s) deals %sx your base damage",
 	"xp_bonus": "+%s%% XP",
 	"fire_radius": "+%sm fire radius",
 	"burn": "Burned enemies take %sx your base damage per second",
@@ -1929,6 +1929,9 @@ func load_game() -> void:
 		crypt_new = true
 	souls = int(data.get("souls", 0))
 	armory = data.get("armory", []).duplicate(true) if data.get("armory", []) is Array else []
+	for item in armory:
+		if item is Dictionary:
+			Items.retire_powers(item)
 	_next_uid = int(data.get("next_uid", 1))
 	var saved_equipped = data.get("equipped", {})
 	equipped = {}
@@ -1954,6 +1957,9 @@ func load_game() -> void:
 	power_pick_2 = String(data.get("power_pick_2", ""))
 	power_pick_3 = String(data.get("power_pick_3", ""))
 	shop_stock = data.get("shop_stock", []).duplicate(true) if data.get("shop_stock", []) is Array else []
+	for offer in shop_stock:
+		if offer is Dictionary and offer.get("item") is Dictionary:
+			Items.retire_powers(offer.item)
 	shop_restock_at = int(data.get("shop_restock_at", -1))
 	shop_rerolls = int(data.get("shop_rerolls", 0))
 	emotes_bought = data.get("emotes_bought", {}).duplicate() if data.get("emotes_bought", {}) is Dictionary else {}

@@ -350,7 +350,7 @@ func punch_mod(target: Enemy, type: String, counter: bool, airborne: bool, set_u
 		_payback = false
 		bonus += fx("payback")
 	if fx("mob_bonus") > 0.0:
-		bonus += fx("mob_bonus") * mini(_near_count(3.0), 4)
+		bonus += fx("mob_bonus") * mini(_near_count(3.0), 3)
 	if was_staggered:
 		bonus += fx("staggered_bonus")
 	if counter and target.combo_finished():
@@ -440,10 +440,6 @@ func after_punch(target: Enemy, type: String, hand: String, raw: float, dealt: f
 		_sting_from = null
 		target.delay(fx("sting_delay"), "STUNG")
 	# The Blur.
-	if fx("pierce_hit") > 0.0:
-		var behind := _behind(target, 2.0)
-		if behind:
-			behind.take_hit(raw * fx("pierce_hit"), behind.global_position + Vector3(0, 1.2, 0), player._flat_forward() * 2.0, false, "THROUGH")
 	if fx("thousand_fists") > 0.0 and combo >= int(fx("thousand_fists")) and not killed:
 		_extra_hit(target, raw * 0.5)
 	if killed and combo > 1 and fx("ricochet") > 0.0:
@@ -451,12 +447,6 @@ func after_punch(target: Enemy, type: String, hand: String, raw: float, dealt: f
 		_ricochet = fx("ricochet")
 	if player._combo_grew and fx("rhythm_guard") > 0.0 and combo % int(fx("rhythm_guard")) == 0:
 		_guard = true
-	if not killed and was_staggered and fx("stun_lock") > 0.0 and target.is_staggered():
-		var spent := float(target.get_meta("lock_spent", 0.0))
-		var add := minf(0.35, fx("stun_lock") - spent)
-		if add > 0.0:
-			target.extend_stagger(add)
-			target.set_meta("lock_spent", spent + add)
 	if player._combo_grew and fx("flurry") > 0.0 and combo > 0 and combo % 25 == 0 and not killed:
 		_flurry(target)
 	if fx("fifty") > 0.0 and combo >= 50 and not _fifty_done:
@@ -670,7 +660,8 @@ func _power_value(root: String, effect: String) -> float:
 
 # --- Effects ------------------------------------------------------------------------------
 
-## Haymaker Swing: a hook sweeps the arc in front.
+## Haymaker Swing: a hook sweeps the arc in front (2026-10-27: a fifth of
+## the hook, a third at rank II; it was half and full).
 func _cleave(target: Enemy, raw: float) -> void:
 	var wide := fx("cleave") >= 2.0
 	var forward := player._flat_forward()
@@ -681,10 +672,11 @@ func _cleave(target: Enemy, raw: float) -> void:
 		offset.y = 0.0
 		if offset.length() > 3.0 or offset.normalized().dot(forward) < (0.2 if wide else 0.55):
 			continue
-		enemy.take_hit(raw * (1.0 if wide else 0.5), enemy.global_position + Vector3(0, 1.2, 0), offset.normalized() * 4.0, false, "SWING")
+		enemy.take_hit(raw * (0.35 if wide else 0.2), enemy.global_position + Vector3(0, 1.2, 0), offset.normalized() * 4.0, false, "SWING")
 
 
-## Avalanche: everything in front is shoved back and staggered.
+## Avalanche: everything in front is shoved back and staggered (no longer
+## knocked down).
 func _avalanche() -> void:
 	var forward := player._flat_forward()
 	var any := false
@@ -694,9 +686,7 @@ func _avalanche() -> void:
 		if offset.length() > 3.5 or offset.normalized().dot(forward) < 0.3:
 			continue
 		any = true
-		enemy.take_hit(GameState.get_damage() * 0.5, enemy.global_position + Vector3(0, 1.0, 0), offset.normalized() * 9.0, true, "AVALANCHE")
-		if not enemy.is_dead():
-			enemy.knock_down(0.8, offset)
+		enemy.take_hit(GameState.get_damage() * 0.25, enemy.global_position + Vector3(0, 1.0, 0), offset.normalized() * 9.0, true, "AVALANCHE")
 	if any:
 		Sfx.play("quake", -4.0, 1.1)
 		player._shake = maxf(player._shake, 0.05)
@@ -812,17 +802,4 @@ func _nearest(from: Vector3, radius: float, exclude: Array) -> Enemy:
 	return best
 
 
-## The monster right behind the target, from where you stand.
-func _behind(target: Enemy, reach: float) -> Enemy:
-	var forward := player._flat_forward()
-	var best: Enemy = null
-	var best_distance := reach
-	for enemy in _enemies():
-		if enemy == target:
-			continue
-		var offset := enemy.global_position - target.global_position
-		offset.y = 0.0
-		if offset.length() <= best_distance and offset.normalized().dot(forward) > 0.3:
-			best = enemy
-			best_distance = offset.length()
-	return best
+

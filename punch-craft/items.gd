@@ -49,7 +49,7 @@ const SPECIALS := {
 		"lunging_jab": {"lunging_jab": 0.6},
 	},
 	"wraps": {"thorns": {"thorns": 1.0}, "iron_will": {"iron_will": 1.0}, "grit": {"grit": 0.3}},
-	"boots": {"frost_slip": {"frost_slip": 0.3}, "spear_jab": {"spear_jab": 1.0}, "clean_read": {"clean_read": 2.0}},
+	"boots": {"spear_jab": {"spear_jab": 1.0}, "clean_read": {"clean_read": 2.0}},
 	"charm": {"rhythm": {"rhythm": 0.15}, "executioner": {"executioner": 0.25}},
 }
 ## Big upside, real downside. Any slot.
@@ -90,7 +90,10 @@ const LEGENDARIES := {
 }
 
 ## Per slot: effect -> [base value, rounding step]. "powers" are the special
-## ones (only on epics, or sometimes rares).
+## ones (only on epics, or sometimes rares). Since 2026-10-27 the only
+## elemental powers gear gives are the Quaking boots' landing shockwave and
+## Venomous gloves (powers come from the upgrade web); Burning gloves, Storm
+## charms and frost-slip boots are gone (POWER_SWAPS turns old ones over).
 const AFFIXES := {
 	"gloves": {
 		"normal": {
@@ -98,7 +101,7 @@ const AFFIXES := {
 			"head_bonus": [0.15, 0.05], "counter_bonus": [0.4, 0.1], "punch_speed": [0.08, 0.01],
 			"boss_damage": [0.15, 0.05], "finisher_bonus": [0.2, 0.05],
 		},
-		"powers": {"fire_punch": [0.3, 0.05]},
+		"powers": {"damage_percent": [0.12, 0.02]},
 	},
 	"wraps": {
 		"normal": {
@@ -119,14 +122,32 @@ const AFFIXES := {
 			"coin_bonus": [0.15, 0.05], "xp_bonus": [0.15, 0.05], "combo_step": [0.05, 0.01],
 			"combo_window": [0.3, 0.05], "finisher_bonus": [0.2, 0.05],
 		},
-		"powers": {"chain_lightning": [2.0, 1.0]},
+		"powers": {"ult_gain": [0.15, 0.05]},
 	},
 }
+## Old gear powers and what they become: [new effect, value per old point].
+const POWER_SWAPS := {
+	"fire_punch": ["damage_percent", 0.4], "chain_lightning": ["ult_gain", 0.075], "frost_slip": ["clean_read", 6.67],
+}
+
+
+## Turns an old item's retired power into its replacement (on load).
+static func retire_powers(item: Dictionary) -> void:
+	var effects = item.get("effects")
+	if not effects is Dictionary:
+		return
+	for old in POWER_SWAPS:
+		if effects.has(old):
+			var swap: Array = POWER_SWAPS[old]
+			effects[swap[0]] = float(effects.get(swap[0], 0.0)) + snappedf(float(effects[old]) * float(swap[1]), 0.01)
+			effects.erase(old)
+
+
 ## Words for item names, keyed by the effect that leads the item.
 const NAME_WORDS := {
 	"damage": "Heavy", "heavy_bonus": "Brutal", "armor_pierce": "Piercing", "head_bonus": "Skullcracker",
 	"counter_bonus": "Counterpuncher's", "punch_speed": "Quick", "boss_damage": "Champion's", "finisher_bonus": "Executioner's",
-	"fire_punch": "Burning", "max_knuckles": "Thick", "defense": "Iron", "heal_on_kill": "Bloodsoaked",
+	"damage_percent": "Fierce", "ult_gain": "Surging", "max_knuckles": "Thick", "defense": "Iron", "heal_on_kill": "Bloodsoaked",
 	"free_punch_chance": "Lucky", "graze_reduction": "Padded", "flinch_reduction": "Steady", "knuckles_percent": "Titan's",
 	"move_speed": "Light", "sprint_bonus": "Sprinter's", "dodge_window": "Shifty", "jump_bonus": "Springy",
 	"counter_window": "Patient", "ground_pound": "Quaking", "coin_bonus": "Gilded", "xp_bonus": "Scholar's",

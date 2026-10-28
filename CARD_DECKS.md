@@ -1,4 +1,4 @@
-# Fright Night — Card Decks [Built 2026-10-25]
+# Fright Night — Card Decks [Built 2026-10-25, updated 2026-10-27]
 
 Each fighter's deck for level-up draws (see "Level-ups: the card draw and attributes" in GAME_DESIGN.md). Every deck is 40 cards (20 different cards):
 
@@ -26,14 +26,14 @@ Grudge / Wrecking Ball / Berserker / Inferno Uppercut / Brimstone Shield. A braw
 | **Heavy Hitter** | Power | +4/8/12/16% damage |
 | **Thick Hide** | Defense | Hits deal 2/4/6/8% less to you |
 | **Short Fuse** | Ultimate | Taking a hit fills your ultimate by 3/6/9/12 |
-| **Mob Magnet** | Power | +2/4/6/8% damage for every monster within 3m (up to 4) |
+| **Mob Magnet** | Power | +2/3/4/5% damage for every monster within 3m (up to 3) |
 
 **Rares (I-II)**
 | Card | Tag | I | II |
 |---|---|---|---|
 | **Hold the Line** | Defense | Hits make you flinch half as long | Hits can't make you flinch |
 | **Lights Out** | Power | Staggered monsters take +20% from you | Staggered monsters take +40% from you |
-| **Haymaker Swing** | Power | Hooks also hit every monster in a wide arc in front of you, for half | Hooks also hit every monster in a wider arc in front of you, for full damage |
+| **Haymaker Swing** | Power | Hooks also hit every monster in a wide arc in front of you, for 20% | Hooks also hit every monster in a wider arc in front of you, for 35% |
 | **Shoulder Charge** | Movement | Dashing into a monster knocks it back and hits it for your base damage | Dashing into a monster knocks it far back and hits it for 2x your base damage |
 | **Second Breath** | Rage | Below 30% knuckle HP, punches cost nothing | Below 40% knuckle HP, punches cost nothing |
 
@@ -41,10 +41,10 @@ Grudge / Wrecking Ball / Berserker / Inferno Uppercut / Brimstone Shield. A braw
 | Card | Upgrades | Effect |
 |---|---|---|
 | **Blood Feud** | Grudge | Grudge: every hit from the marked monster adds +1x to your Grudge punch on it, and the Grudge punch staggers everything within 3m |
-| **Strike!** | Wrecking Ball | Wrecking Ball: bowled monsters are knocked down for 2s, and a strike of 3 or more fills a quarter of your ultimate |
+| **Strike!** | Wrecking Ball | Wrecking Ball: bowled monsters stay down longer, and a strike of 3 or more fills a quarter of your ultimate |
 | **Red Mist** | Berserker | Berserker: the lower your knuckles, the faster you punch too (up to +40%) |
 | **Inferno II** | Inferno Uppercut | Inferno Uppercut: after it lands, you leap at a second monster |
-| **Brimstone Wall** | Brimstone Shield | Brimstone Shield: holds twice as many hits, and every hit it soaks hits the attacker back for your base damage |
+| **Brimstone Wall** | Brimstone Shield | Brimstone Shield: holds 1 more hit, and every hit it soaks hits the attacker back for your base damage |
 
 **Legendaries**
 | Seal | Card | Effect |
@@ -52,7 +52,7 @@ Grudge / Wrecking Ball / Berserker / Inferno Uppercut / Brimstone Shield. A braw
 | Bellman | **Thrill of the Fight** | Every monster within 4m makes hits deal 5% less to you (up to 25%) |
 | Headless | **Juggernaut** | Above half knuckle HP, hits deal 25% less and can't make you flinch |
 | Southpaw | **Ultimate Surge** | Every bout starts with your ultimate a quarter full, and using it gives a quarter back |
-| Plague Doctor | **Avalanche** | Every 4th punch you land shoves every monster in front of you back and staggers them |
+| Plague Doctor | **Avalanche** | Every 4th punch you land shoves every monster in front of you back and staggers them, for a quarter of your base damage |
 | Coffin King | **Berserk** | Once a bout, dropping below half knuckle HP makes you hit twice as hard and take half damage for 8s |
 
 ---
@@ -108,8 +108,8 @@ Rapid Combos / Echo Fists / Long Reach / Temporal Break / Unbroken. Long combos,
 |---|---|---|
 | **Second Gear** | Combo | From the 5th hit of a combo, +4/8/12/16% punch speed |
 | **Bounce Back** | Combo | Getting hit leaves 40/55/70/85% of your combo instead of none |
-| **Through and Through** | Power | Punches also hit the monster right behind your target for 10/20/30/40% |
-| **Endurance** | Defense | +5/10/15/20% max knuckle HP |
+| **Keen Eye** | Power | +3/6/9/12% chance of a critical hit (x1.5) |
+| **Vital Points** | Power | Critical hits deal +15/30/45/60% |
 | **Speed Bag** | Combo | The first 5 hits of each combo come 6/12/18/24% faster |
 
 **Rares (I-II)**
@@ -119,7 +119,7 @@ Rapid Combos / Echo Fists / Long Reach / Temporal Break / Unbroken. Long combos,
 | **Ricochet** | Combo | When a monster you're comboing goes down, the combo timer refills and your next punch dashes you to the nearest monster within 5m | When a monster you're comboing goes down, the combo timer refills and your next punch dashes you to the nearest monster within 10m |
 | **Rhythm Guard** | Dodge | Every 8th hit in a combo slips the next attack aimed at you | Every 6th hit in a combo slips the next attack aimed at you |
 | **Afterimage** | Dodge | A dodge leaves a violet afterimage that punches the attacker for your base damage | A dodge leaves a violet afterimage that punches the attacker twice for your base damage |
-| **Stun Lock** | Combo | A staggered monster stays staggered while you keep hitting it, up to 1s | A staggered monster stays staggered while you keep hitting it, up to 2s |
+| **Light Hands** | Defense | Jabs and crosses have a 30% chance to cost no knuckle HP | Jabs, crosses and hooks have a 30% chance to cost no knuckle HP |
 
 **Epics**
 | Card | Upgrades | Effect |

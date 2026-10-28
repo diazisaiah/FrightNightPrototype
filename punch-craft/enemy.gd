@@ -8,6 +8,11 @@ signal died(enemy: Enemy)
 
 const FLASH_TIME := 0.08
 const STAGGER_TIME := 0.5
+## Punches can't stun-lock (2026-10-27): a run of punch staggers holds a
+## monster at most STAGGER_CHAIN_MAX, then it shrugs off punch staggers for
+## STAGGER_GRACE (hits still land). Bosses have their poise instead.
+const STAGGER_CHAIN_MAX := 1.0
+const STAGGER_GRACE := 1.0
 ## Boss poise: after a stagger or stun ends, a boss shrugs off the next ones
 ## for this long (hits still land). Without it the Mauler's hooks, which need
 ## no set-up and all stagger, kept a boss from ever attacking.
@@ -126,6 +131,10 @@ var _hp_label: Label3D
 var _meshes: Array[MeshInstance3D] = []
 var _knockback := Vector3.ZERO
 var _stagger_timer := 0.0
+## How long the current run of punch staggers has held it, and the grace left
+## after one (see STAGGER_CHAIN_MAX).
+var _stagger_run := 0.0
+var _stagger_grace := 0.0
 ## Held still without a stagger (delay, scare): no moving, no attacking.
 var _hold_time := 0.0
 ## The pivot the body falls over on (knock_down), and its fall.
@@ -274,6 +283,11 @@ func _physics_process(delta: float) -> void:
 		_flash_timer -= delta
 		if _flash_timer <= 0.0:
 			_set_flash(false)
+		if _stagger_timer > 0.0:
+			_stagger_run += delta
+			if _stagger_timer <= delta and _stagger_run >= STAGGER_CHAIN_MAX - 0.05:
+				_stagger_grace = STAGGER_GRACE
+		_stagger_grace -= delta
 		_stagger_timer -= delta
 		_hold_time -= delta
 		if _daze_fx:
@@ -347,8 +361,16 @@ func take_hit(raw_damage: float, hit_point: Vector3, push: Vector3, stagger: boo
 	_set_flash(true)
 	if stagger and not _can_stagger():
 		stagger = false
+	if stagger and not is_boss:
+		if _stagger_grace > 0.0 or (_stagger_timer > 0.0 and _stagger_run >= STAGGER_CHAIN_MAX - 0.05):
+			stagger = false
+		elif _stagger_timer <= 0.0:
+			_stagger_run = 0.0
 	if stagger:
-		_stagger_timer = maxf(_stagger_timer, STAGGER_TIME * (HEAVY_HANDS if GameState.perk("heavy_hands") else 1.0))
+		var hold := STAGGER_TIME * (HEAVY_HANDS if GameState.perk("heavy_hands") else 1.0)
+		if not is_boss:
+			hold = minf(hold, STAGGER_CHAIN_MAX - _stagger_run)
+		_stagger_timer = maxf(_stagger_timer, hold)
 		_set_poise()
 		_on_staggered()
 
@@ -707,12 +729,6 @@ func top_height() -> float:
 
 func is_staggered() -> bool:
 	return _stagger_timer > 0.0 and not _dead
-
-
-## A stagger that's already on lasts longer (Stun Lock).
-func extend_stagger(seconds: float) -> void:
-	if is_staggered() and not is_boss:
-		_stagger_timer += seconds
 
 
 ## How squarely it faces a point: 1 straight at it, -1 its back to it.
