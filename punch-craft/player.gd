@@ -1787,7 +1787,7 @@ func _trigger_powers(target: Enemy, damage: float, big_hit: bool, counter := fal
 	if counter and GameState.get_effect("counter_heal") > 0.0 and powers.ready("sigil_blood"):
 		powers.spend("sigil_blood")
 		heal(GameState.heal_amount("counter_heal", max_knuckles))
-		HitFx.burst(get_parent(), target.global_position + Vector3(0, 1.2, 0), Vector3.UP, Color(0.85, 0.05, 0.08), 22, 4.0, true, 0.06)
+		Powers.blood_drain(target, self)
 		Powers.went_off("sigil_blood", target)
 	if GameState.get_effect("doom") > 0.0 and not target.is_dead() and powers.ready("sigil_doom") \
 			and (big_hit or randf() < GameState.get_effect("doom_chance")):

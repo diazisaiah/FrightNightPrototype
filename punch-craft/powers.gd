@@ -216,6 +216,12 @@ static func cyclone(player: Node3D) -> void:
 static func doom_mark(target: Enemy, spread := true) -> void:
 	if target == null or target.is_dead():
 		return
+	# Marked already: it goes off now, then the new mark starts fresh (it used
+	# to just reset the timer, so steady hitting never let it go off).
+	if target.is_doomed():
+		target.detonate_doom()
+		if target.is_dead():
+			return
 	var seconds := DOOM_TIME + GameState.get_effect("doom_time")
 	target.doom(seconds)
 	if spread and GameState.has_effect("pall"):
@@ -247,6 +253,40 @@ static func doom_burst(target: Enemy, stored: float) -> void:
 		if next:
 			_bolt(world, center, next.global_position + Vector3(0, 1.3, 0))
 			doom_mark(next, false)
+
+
+## Blood: red drops pulled out of the target into you, a red pulse when they
+## land.
+static func blood_drain(target: Enemy, player: Node3D) -> void:
+	var world := target.get_parent()
+	var from := target.global_position + Vector3(0, 1.2, 0)
+	HitFx.burst(world, from, Vector3.UP, BLOOD_COLOR, 18, 3.0, true, 0.06)
+	for i in 10:
+		var drop := MeshInstance3D.new()
+		var mesh := BoxMesh.new()
+		mesh.size = Vector3.ONE * randf_range(0.06, 0.11)
+		mesh.material = Enemy._glow_material(BLOOD_COLOR)
+		drop.mesh = mesh
+		world.add_child(drop)
+		drop.global_position = from + Vector3(randf_range(-0.3, 0.3), randf_range(-0.3, 0.3), randf_range(-0.3, 0.3))
+		var lift := Vector3(randf_range(-0.6, 0.6), randf_range(0.4, 1.0), randf_range(-0.6, 0.6))
+		var start := drop.global_position
+		var tween := drop.create_tween()
+		tween.tween_interval(i * 0.025)
+		tween.tween_method(func(t: float) -> void:
+			if is_instance_valid(player) and is_instance_valid(drop):
+				var to := player.global_position + Vector3(0, 1.2, 0)
+				drop.global_position = start.lerp(to, t) + lift * sin(t * PI), 0.0, 1.0, 0.38)
+		tween.tween_callback(drop.queue_free)
+	var pulse := player.create_tween()
+	pulse.tween_interval(0.45)
+	pulse.tween_callback(func() -> void:
+		if is_instance_valid(player):
+			HitFx.ring(player.get_parent(), player.global_position + Vector3(0, 0.15, 0), Color(BLOOD_COLOR, 0.8), 1.8)
+			HitFx.burst(player.get_parent(), player.global_position + Vector3(0, 1.0, 0), Vector3.UP, BLOOD_COLOR, 14, 2.5, true, 0.05))
+
+
+const BLOOD_COLOR := Color(0.85, 0.05, 0.1)
 
 
 ## A power's hit. Overflow (the Catalyst's card): what's left over after a

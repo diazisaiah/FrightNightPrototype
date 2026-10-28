@@ -1855,3 +1855,11 @@ The jokes nod at famous characters; they never copy a mark. Not legal advice, ju
 Powers that a punch sets off now have a **cooldown on top of their chance** (`PowerPlay.COOLDOWNS`), so they land as moments instead of a constant fizz: Fire 1.5s, Frost 3s, Storm 1.5s, Blood 2s, Doom 4s. A big hit still skips the chance but not the cooldown. Gale (charges from dodges), Iron (a plate every 5 hits) and Quake (its own 4s landing and 1s stomp) were already self-limiting. The Catalyst's cards set powers off regardless (that's the card).
 
 **Making them apparent:** every power that goes off shouts its word over the target in its color (IGNITE!, FREEZE!, CHAIN!, DRAIN!, DOOMED!) with a ring at its feet (`Powers._callout`); the screen edges flash the power's color and the HUD power chip pops. The chip now lists every running power with READY or its countdown.
+
+**Follow-up (2026-10-28):**
+- **Doom** went off only once on a monster you kept hitting: a proc on a marked monster reset its timer to full, so steady hits (4s cooldown, marks up to 5s) kept it from ever bursting. Now a proc on a marked monster **detonates** the mark (`Enemy.detonate_doom`) and starts a fresh one.
+- **Iron plates float**: one plate per plate you have, circling you low and wide (so in first person they ride the bottom of the view), bobbing, with a soft iron rim; they burst off as they break (`PowerPlay._show_plates`).
+- **Burning and frozen monsters look it**: flames and embers rise off a burning body with a flickering orange light; a frozen one wears an icy blue sheen with ice drifting down (`Enemy._status_particles`, `_set_frozen_look`). Both fade when the status ends or the monster drops.
+- **Blood drains**: red drops pull out of the target and fly into you, then a red pulse at your feet (`Powers.blood_drain`).
+- **Power tiles, bottom right** (`PowerTiles`, replacing the bottom-left chip): one tile per selected power with its icon, glowing and breathing in its color while it can go off, dim while it recovers; READY or the countdown under it, and pips for Gale's charges and Iron's plates. A tile pops and the screen edges flash when its power goes off.
+- Character Lab (playground): after a knockout the avatar now gets back up once you're revived (it waited for a punch or jump).

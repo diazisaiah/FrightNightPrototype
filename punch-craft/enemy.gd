@@ -151,6 +151,10 @@ var _recoil := 0.0
 var _body_damage := 0.0
 var _burn_per_second := 0.0
 var _burn_time := 0.0
+## Burning and frozen looks (flames off the body; frost on it, ice drifting).
+var _burn_fx: Node3D
+var _frost_fx: Node3D
+var _frost_overlay: StandardMaterial3D
 var _burn_tick := 0.0
 var _scaling := {}
 var _chill_time := 0.0
@@ -319,6 +323,8 @@ func _physics_process(delta: float) -> void:
 		if _chill_time > 0.0:
 			_chill_time -= delta
 			pace *= 1.0 - _chill_amount
+			if _chill_time <= 0.0:
+				_set_frozen_look(false)
 		if Time.get_ticks_msec() < slow_until:
 			pace *= TIME_SLOW
 		_update_statuses(delta)
@@ -531,6 +537,7 @@ func chill(duration: float, amount: float, quiet := false) -> void:
 		return
 	_chill_time = maxf(_chill_time, chill_length(duration))
 	_chill_amount = maxf(_chill_amount, amount)
+	_set_frozen_look(true)
 	if quiet:
 		return
 	DamagePopup.spawn(get_parent(), "CHILLED", FROST_COLOR, 36, global_position + Vector3(0, 2.0, 0))
@@ -556,6 +563,15 @@ func doom(seconds: float) -> void:
 
 func is_doomed() -> bool:
 	return _doom_time > 0.0
+
+
+## The mark goes off now (a fresh one from Powers.doom_mark).
+func detonate_doom() -> void:
+	if _doom_time <= 0.0:
+		return
+	var stored := _doom_store
+	_clear_doom()
+	Powers.doom_burst(self, stored)
 
 
 ## Adds a stack of poison (Venom): damage per second per stack, ignoring armor.
@@ -627,6 +643,8 @@ func ignite(damage_per_second: float, duration: float) -> void:
 		return
 	_burn_per_second = maxf(_burn_per_second, damage_per_second)
 	_burn_time = maxf(_burn_time, duration)
+	if _burn_fx == null:
+		_burn_fx = _status_particles(Powers.FIRE_COLOR, Color(1.0, 0.85, 0.3), 3.2, true)
 
 
 func _update_burn(delta: float) -> void:
@@ -646,6 +664,8 @@ func _update_burn(delta: float) -> void:
 		_update_label()
 	if _burn_time <= 0.0:
 		_burn_per_second = 0.0
+		_end_status_fx(_burn_fx)
+		_burn_fx = null
 
 
 ## "head" or "body", from how high on the enemy the punch landed.
@@ -1146,7 +1166,100 @@ func _set_flash(on: bool) -> void:
 		if on:
 			mesh.material_overlay = _flash_material
 		else:
-			mesh.material_overlay = mesh.get_meta("elite_overlay") if mesh.has_meta("elite_overlay") else null
+			mesh.material_overlay = _rest_overlay(mesh)
+
+
+## The overlay a mesh wears when it isn't flashing: frost while frozen, the
+## elite glow, or nothing.
+func _rest_overlay(mesh: MeshInstance3D) -> Material:
+	if _frost_fx and _frost_overlay:
+		return _frost_overlay
+	return mesh.get_meta("elite_overlay") if mesh.has_meta("elite_overlay") else null
+
+
+## Frozen: an icy sheen over the whole body and ice drifting off it.
+func _set_frozen_look(on: bool) -> void:
+	if on == (_frost_fx != null) or (on and _dead):
+		return
+	if on:
+		if _frost_overlay == null:
+			_frost_overlay = StandardMaterial3D.new()
+			_frost_overlay.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			_frost_overlay.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			_frost_overlay.albedo_color = Color(0.3, 0.65, 1.0, 0.3)
+		_frost_fx = _status_particles(FROST_COLOR, Color(0.92, 0.98, 1.0), -0.6, false)
+	else:
+		_end_status_fx(_frost_fx)
+		_frost_fx = null
+	if _flash_timer <= 0.0:
+		for mesh in _meshes:
+			if is_instance_valid(mesh):
+				mesh.material_overlay = _rest_overlay(mesh)
+
+
+## A cloud of glowing motes around the body: flames rising (rise > 0) or ice
+## drifting down, with a light in the same color.
+func _status_particles(color: Color, core: Color, rise: float, flicker: bool) -> Node3D:
+	var holder := Node3D.new()
+	var height := top_height() * _body.scale.y
+	holder.position.y = height * 0.5
+	var motes := CPUParticles3D.new()
+	motes.amount = 14 if Settings.use_web_profile() else 24
+	motes.lifetime = 0.7 if rise > 0.0 else 1.2
+	motes.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	motes.emission_box_extents = Vector3(0.32, height * 0.42, 0.26) * maxf(_body.scale.x, 1.0)
+	motes.direction = Vector3.UP if rise > 0.0 else Vector3.DOWN
+	motes.spread = 15.0
+	motes.gravity = Vector3(0, rise, 0)
+	motes.initial_velocity_min = 0.3 if rise > 0.0 else 0.05
+	motes.initial_velocity_max = 1.0 if rise > 0.0 else 0.2
+	var shrink := Curve.new()
+	shrink.add_point(Vector2(0, 1))
+	shrink.add_point(Vector2(1, 0))
+	motes.scale_amount_curve = shrink
+	var mote := BoxMesh.new()
+	mote.size = Vector3(0.09, 0.2, 0.09) if rise > 0.0 else Vector3.ONE * 0.06
+	mote.material = _glow_material(color)
+	motes.mesh = mote
+	holder.add_child(motes)
+	var inner := CPUParticles3D.new()
+	inner.amount = 6 if Settings.use_web_profile() else 10
+	inner.lifetime = motes.lifetime * 0.8
+	inner.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	inner.emission_box_extents = motes.emission_box_extents * 0.8
+	inner.direction = motes.direction
+	inner.gravity = motes.gravity
+	inner.initial_velocity_min = motes.initial_velocity_min
+	inner.initial_velocity_max = motes.initial_velocity_max
+	inner.scale_amount_curve = shrink
+	var spark := BoxMesh.new()
+	spark.size = mote.size * 0.6
+	spark.material = _glow_material(core)
+	inner.mesh = spark
+	holder.add_child(inner)
+	var light := OmniLight3D.new()
+	light.light_color = color
+	light.light_energy = 1.4 if flicker else 0.8
+	light.omni_range = 2.5
+	holder.add_child(light)
+	if flicker:
+		light.create_tween().set_loops().tween_property(light, "light_energy", 0.7, 0.12).from(1.6)
+	_topple.add_child(holder)
+	return holder
+
+
+## Stops the motes and lets the last ones finish before it goes.
+func _end_status_fx(holder: Node3D) -> void:
+	if holder == null or not is_instance_valid(holder):
+		return
+	for child in holder.get_children():
+		if child is CPUParticles3D:
+			(child as CPUParticles3D).emitting = false
+		elif child is OmniLight3D:
+			child.queue_free()
+	get_tree().create_timer(1.3).timeout.connect(func() -> void:
+		if is_instance_valid(holder):
+			holder.queue_free())
 
 
 # --- Attack turns ---------------------------------------------------------------
@@ -1261,6 +1374,9 @@ func _die(push: Vector3) -> void:
 		Powers.pyre(self)
 	if _chill_time > 0.0 and GameState.has_effect("frost_shatter"):
 		Powers.frost_burst(self)
+	_end_status_fx(_burn_fx)
+	_burn_fx = null
+	_set_frozen_look(false)
 	_set_flash(false)
 	_hp_label.visible = false
 	collision_layer = 0

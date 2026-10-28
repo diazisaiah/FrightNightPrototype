@@ -71,10 +71,8 @@ var _passive_value: Label
 var _passive_ready := false
 ## The Endless powers' chip, over the passive's: Quake's recharge, Gale
 ## charges, Iron plates.
-var _power_chip: PanelContainer
-var _power_row: HBoxContainer
-## Last readout per power: READY turning into a countdown means it just went off.
-var _power_last := {}
+## The selected powers, bottom right.
+var _power_tiles: PowerTiles
 var _time_stop: Control
 var _time_clock: Control
 var _time_keys: Label
@@ -436,53 +434,23 @@ func _build_passive_chip() -> void:
 	move_child(_passive_chip, mini(_pause_panel.get_index(), _summary_panel.get_index()))
 
 
-## The Endless powers' readouts ([[root, text], ...]; empty hides the chip).
+## The selected powers' tiles ([[root, readout, ready, pips], ...] from
+## PowerPlay.status; empty hides them). When one goes off the screen edges
+## flash its color.
 func set_power_status(status: Array) -> void:
-	if status.is_empty():
-		if _power_chip:
-			_power_chip.visible = false
-		return
-	if _power_chip == null:
-		_power_chip = PanelContainer.new()
-		_power_chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		_power_chip.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-		_power_chip.grow_vertical = Control.GROW_DIRECTION_BEGIN
-		_power_chip.offset_left = 20.0
-		_power_chip.offset_top = -112.0
-		_power_chip.offset_bottom = -72.0
-		_power_chip.add_theme_stylebox_override("panel", UiTheme.box(Color(0.04, 0.03, 0.06, 0.7), Color(1, 1, 1, 0.2), 1, 8, 8.0))
-		_power_row = HBoxContainer.new()
-		_power_row.add_theme_constant_override("separation", 8)
-		_power_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		_power_chip.add_child(_power_row)
-		add_child(_power_chip)
-		move_child(_power_chip, mini(_pause_panel.get_index(), _summary_panel.get_index()))
-	_power_chip.visible = true
-	for entry in status:
-		var was: String = _power_last.get(entry[0], "")
-		if was == "READY" and entry[1] != "READY" and not String(entry[1]).contains("/"):
-			_power_went_off(SkillTreeView.BRANCHES[entry[0]].color)
-		_power_last[entry[0]] = entry[1]
-	for child in _power_row.get_children():
-		child.queue_free()
-	for entry in status:
-		var root: String = entry[0]
-		var tint: Color = SkillTreeView.BRANCHES[root].color
-		var icon := IconView.new()
-		icon.icon = GameState.UPGRADES[root].icon
-		icon.color = tint
-		icon.custom_minimum_size = Vector2(22, 22)
-		icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		_power_row.add_child(icon)
-		var name_label := _make_label(14, UiTheme.MUTED)
-		name_label.add_theme_font_override("font", UiTheme.bold_font())
-		name_label.text = SkillTreeView.BRANCHES[root].name
-		_power_row.add_child(name_label)
-		var value := _make_label(16, UiTheme.GOLD if entry[1] == "READY" else UiTheme.TEXT)
-		value.add_theme_font_override("font", UiTheme.bold_font())
-		value.text = entry[1]
-		_power_row.add_child(value)
+	if _power_tiles == null:
+		if status.is_empty():
+			return
+		_power_tiles = PowerTiles.new()
+		_power_tiles.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+		_power_tiles.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+		_power_tiles.grow_vertical = Control.GROW_DIRECTION_BEGIN
+		_power_tiles.offset_right = -24.0
+		_power_tiles.offset_bottom = -48.0
+		_power_tiles.went_off.connect(func(color: Color) -> void: flash(color, 0.35))
+		add_child(_power_tiles)
+		move_child(_power_tiles, mini(_pause_panel.get_index(), _summary_panel.get_index()))
+	_power_tiles.set_status(status)
 
 
 func show_class_event(text: String) -> void:
@@ -712,15 +680,6 @@ func say(speaker: String, line: String, color := Color.WHITE, hold := 3.5) -> vo
 	_speech_tween.tween_property(_speech, "modulate:a", 1.0, 0.25)
 	_speech_tween.tween_interval(hold)
 	_speech_tween.tween_property(_speech, "modulate:a", 0.0, 0.6)
-
-
-## A power just went off: the screen edges flash its color, the chip pops.
-func _power_went_off(color: Color) -> void:
-	flash(color, 0.35)
-	_power_chip.pivot_offset = _power_chip.size / 2.0
-	var pop := _power_chip.create_tween()
-	pop.tween_property(_power_chip, "scale", Vector2.ONE * 1.18, 0.07)
-	pop.tween_property(_power_chip, "scale", Vector2.ONE, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 
 func flash_damage() -> void:

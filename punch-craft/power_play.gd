@@ -36,6 +36,9 @@ var _quake_cooldown := 0.0
 var _stomp_cooldown := 0.0
 var _cache := {}
 var _cooldown := {}
+## Iron's plates, floating round you (one block each).
+var _plate_ring: Node3D
+var _plate_spin := 0.0
 
 
 func _ready() -> void:
@@ -55,25 +58,26 @@ func fx(key: String) -> float:
 func tick(delta: float) -> void:
 	for root in _cooldown:
 		_cooldown[root] -= delta
+	_show_plates(delta)
 	_unbreakable -= delta
 	_quake_cooldown -= delta
 	_stomp_cooldown -= delta
 
 
-## For the HUD's power chip: [power root, readout] per running power with
-## something to count.
+## For the HUD's power tiles: [root, readout, ready, [have, max] or []] per
+## selected power. Ready: it can go off right now.
 func status() -> Array:
 	var out := []
 	for root in COOLDOWNS:
 		if fx(COOLDOWN_EFFECTS[root]) > 0.0:
 			var left: float = _cooldown.get(root, 0.0)
-			out.append([root, "READY" if left <= 0.0 else "%ds" % ceili(left)])
+			out.append([root, "READY" if left <= 0.0 else "%ds" % ceili(left), left <= 0.0, []])
 	if fx("quake_power") > 0.0:
-		out.append(["sigil_quake", "READY" if _quake_cooldown <= 0.0 else "%ds" % ceili(_quake_cooldown)])
+		out.append(["sigil_quake", "READY" if _quake_cooldown <= 0.0 else "%ds" % ceili(_quake_cooldown), _quake_cooldown <= 0.0, []])
 	if fx("gale") > 0.0:
-		out.append(["sigil_gale", "%d/%d" % [gale, gale_max()]])
+		out.append(["sigil_gale", "", gale > 0, [gale, gale_max()]])
 	if fx("plate_guard") > 0.0:
-		out.append(["sigil_iron", "%d/%d" % [plates, plates_max()]])
+		out.append(["sigil_iron", "", plates > 0, [plates, plates_max()]])
 	return out
 
 
@@ -199,3 +203,71 @@ func stomp() -> void:
 	var radius := QUAKE_RADIUS + fx("quake_radius") + (1.0 if fx("ground_pound") > 0.0 else 0.0)
 	Powers.ground_pound(player, GameState.get_damage() * (fx("quake_power") + fx("quake_damage")), radius, true)
 	player.shake(0.09)
+
+
+# --- The floating plates --------------------------------------------------------
+
+## One floating iron plate per plate you have, circling you at the waist,
+## bobbing, glinting at the edges.
+func _show_plates(delta: float) -> void:
+	var want := plates if fx("plate_guard") > 0.0 else 0
+	if want == 0 and _plate_ring == null:
+		return
+	if _plate_ring == null:
+		_plate_ring = Node3D.new()
+		_plate_ring.name = "IronPlates"
+		# Low and wide: in first person they ride the bottom of the view.
+		_plate_ring.position = Vector3(0, 0.8, 0)
+		player.add_child(_plate_ring)
+	while _plate_ring.get_child_count() < want:
+		_plate_ring.add_child(_make_plate())
+	while _plate_ring.get_child_count() > want:
+		var gone := _plate_ring.get_child(_plate_ring.get_child_count() - 1) as Node3D
+		_plate_ring.remove_child(gone)
+		HitFx.burst(player.get_parent(), player.global_position + Vector3(0, 1.0, 0), Vector3.UP, Fists.POWER_COLORS.sigil_iron, 12, 3.0, true, 0.05)
+		gone.queue_free()
+	_plate_spin += delta * 1.4
+	var count := _plate_ring.get_child_count()
+	for i in count:
+		var plate := _plate_ring.get_child(i) as Node3D
+		var angle := _plate_spin + TAU * i / maxf(count, 1)
+		plate.position = Vector3(sin(angle) * PLATE_ORBIT, sin(_plate_spin * 2.0 + i) * 0.08, cos(angle) * PLATE_ORBIT)
+		plate.rotation.y = angle
+
+
+const PLATE_ORBIT := 1.05
+
+
+func _make_plate() -> Node3D:
+	var plate := Node3D.new()
+	var face := MeshInstance3D.new()
+	var mesh := BoxMesh.new()
+	mesh.size = Vector3(0.3, 0.38, 0.04)
+	mesh.material = Look.block_material(Color(0.55, 0.58, 0.64), 0.8)
+	face.mesh = mesh
+	face.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	plate.add_child(face)
+	var rim := MeshInstance3D.new()
+	var edge := BoxMesh.new()
+	edge.size = Vector3(0.34, 0.42, 0.02)
+	var shine := StandardMaterial3D.new()
+	shine.albedo_color = Fists.POWER_COLORS.sigil_iron
+	shine.emission_enabled = true
+	shine.emission = Fists.POWER_COLORS.sigil_iron
+	shine.emission_energy_multiplier = 0.6
+	edge.material = shine
+	rim.mesh = edge
+	rim.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	plate.add_child(rim)
+	for x in [-0.1, 0.1]:
+		for y in [-0.14, 0.14]:
+			var rivet := MeshInstance3D.new()
+			var dot := BoxMesh.new()
+			dot.size = Vector3(0.04, 0.04, 0.02)
+			dot.material = Look.block_material(Color(0.3, 0.3, 0.34), 0.9)
+			rivet.mesh = dot
+			rivet.position = Vector3(x, y, 0.025)
+			plate.add_child(rivet)
+	plate.scale = Vector3.ONE * 0.01
+	plate.create_tween().tween_property(plate, "scale", Vector3.ONE, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	return plate
