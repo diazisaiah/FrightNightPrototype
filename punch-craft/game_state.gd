@@ -1696,6 +1696,11 @@ func add_hat(id: String) -> String:
 	if not tony_unlocked and Hats.LEGENDARIES.all(func(legend: String) -> bool: return hats.has(legend)):
 		tony_unlocked = true
 		result = "tony"
+	# All five plumber caps: the Plumber Jump, and Tony's overalls.
+	if id in Hats.PLUMBER_CAPS and Hats.PLUMBER_CAPS.all(func(cap: String) -> bool: return hats.has(cap)) and not skins_owned.has("plumber_overalls"):
+		skins_owned["plumber_overalls"] = true
+		Achievements.earn("plumber_caps")
+		Toast.show_on(get_tree(), "SKIN: PLUMBER OVERALLS", "Tony's. Wear it from Cosmetics.")
 	_commit()
 	return result
 

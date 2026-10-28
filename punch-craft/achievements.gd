@@ -16,11 +16,14 @@ const LIST := {
 	"untouched": {"name": "Untouchable", "desc": "Beat a Dead League contender without getting hit.", "emote": "boo_yah"},
 	"power_9001": {"name": "Over Nine Thousand", "desc": "Reach 9,001 POWER.", "emote": "intense_yelling"},
 	"pushed_too_hard": {"name": "Pushed Too Hard", "desc": "Hold Intense Yelling for a full minute.", "emote": "overexerted"},
+	"plumber_caps": {"name": "Family Business", "desc": "Collect all five plumber caps.", "emote": "plumber_jump"},
+	# The secret ending (SecretEnding). No dance: the princess is the prize.
+	"true_ending": {"name": "True Ending?", "desc": "Beat the Coffin King as the plumber.", "emote": ""},
 }
 ## POWER for Over Nine Thousand.
 const POWER_YELL := 9001
 ## Dances only their achievement gives (the Soul Shop never sells them).
-const EARN_ONLY := ["intense_yelling", "overexerted"]
+const EARN_ONLY := ["intense_yelling", "overexerted", "plumber_jump"]
 ## Knockouts in one endless bout for No End in Sight (every division's third
 ## bout is endless now, so 50 would come with simply winning one).
 const ENDLESS_KOS := 100
@@ -55,8 +58,8 @@ static func earn(id: String, quiet := false) -> void:
 		return
 	GameState.save_game()
 	var info: Dictionary = LIST[id]
-	Toast.show_on(GameState.get_tree(), "ACHIEVEMENT:  %s" % String(info.name).to_upper(),
-			"%s   New emote: %s" % [info.desc, Emotes.name_of(info.emote)])
+	var emote := "" if String(info.emote) == "" else "   New emote: %s" % Emotes.name_of(info.emote)
+	Toast.show_on(GameState.get_tree(), "ACHIEVEMENT:  %s" % String(info.name).to_upper(), String(info.desc) + emote)
 
 
 ## What an older save had already done.
@@ -75,5 +78,8 @@ static func catch_up() -> void:
 		earn("crypt_floor", true)
 	if PowerRating.player() >= POWER_YELL:
 		earn("power_9001", true)
+	if Hats.PLUMBER_CAPS.all(func(hat: String) -> bool: return GameState.hats.has(hat)):
+		earn("plumber_caps", true)
+		GameState.skins_owned["plumber_overalls"] = true
 	if not GameState.drills.is_empty():
 		earn("drill", true)

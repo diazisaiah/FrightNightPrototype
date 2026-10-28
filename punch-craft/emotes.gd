@@ -20,12 +20,12 @@ const REST := {
 	"rs": Vector3(0.05, 0, 0.12), "re": Vector3(0.25, 0, 0),
 }
 ## Wheel order (clockwise from the top).
-const ORDER := ["default", "dab", "nae_nae", "floss", "take_the_l", "griddy", "horse_ride", "running_man", "bros_shuffle", "boo_yah", "intense_yelling", "overexerted"]
+const ORDER := ["default", "dab", "nae_nae", "floss", "take_the_l", "griddy", "horse_ride", "running_man", "bros_shuffle", "boo_yah", "intense_yelling", "overexerted", "plumber_jump"]
 const NAMES := {
 	"default": "The Default", "dab": "Dab", "nae_nae": "Nae Nae", "floss": "Floss",
 	"take_the_l": "Take the L", "griddy": "Griddy", "horse_ride": "Horse Ride",
 	"running_man": "Running Man", "bros_shuffle": "Bros. Shuffle", "boo_yah": "Boo-Yah",
-	"intense_yelling": "Intense Yelling", "overexerted": "Overexerted",
+	"intense_yelling": "Intense Yelling", "overexerted": "Overexerted", "plumber_jump": "Plumber Jump",
 }
 
 
@@ -61,6 +61,18 @@ static func keys(id: String) -> Array:
 	# sway, arms in the frontal plane), crisp timing. Hip drops and sways keep
 	# the feet planted (PlayerBody bends the knees), so poses only move "pos".
 	match id:
+		"_swing":
+			# The secret ending's giant swing: leaning back, both arms out
+			# front holding on.
+			return [[0.3, {"pos": Vector3(0, -0.12, 0.06), "torso": Vector3(0.32, 0, 0), "head": Vector3(-0.1, 0, 0),
+					"ls": Vector3(1.4, 0, 0.12), "le": Vector3(0.1, 0, 0), "rs": Vector3(1.4, 0, -0.12), "re": Vector3(0.1, 0, 0)}]]
+		"_uppercut":
+			# Wound down low, then up through the chin, rising onto the toes.
+			var load_up := {"pos": Vector3(0, -0.16, 0), "torso": Vector3(-0.25, 0.35, 0),
+					"rs": Vector3(-0.3, 0, 0.2), "re": Vector3(1.9, 0, 0), "ls": Vector3(0.9, 0, -0.2), "le": Vector3(2.0, 0, 0)}
+			var rise := {"pos": Vector3(0, 0.05, 0), "torso": Vector3(0.15, -0.3, 0), "head": Vector3(0.2, 0, 0),
+					"rs": Vector3(2.9, 0, 0.1), "re": Vector3(1.0, 0, 0), "ls": Vector3(0.9, 0, -0.2), "le": Vector3(2.0, 0, 0)}
+			return [[0.35, load_up], [0.12, rise], [1.5, rise]]
 		"default":
 			# Bouncing arm pumps, then the swing: both arms across to one side
 			# while the other leg kicks out.
@@ -183,6 +195,18 @@ static func keys(id: String) -> Array:
 			for i in 12:
 				strain.append([0.1, shake_a if i % 2 == 0 else shake_b])
 			return strain + [[0.25, relief], [1.6, with(relief, {"head": Vector3(-0.35, 0.2, 0)})]]
+		"plumber_jump":
+			# The plumber's jump: a crouch, then straight up, one fist punched
+			# at the sky, the other arm down, one knee tucked; hang there, land.
+			var crouch := {"pos": Vector3(0, -0.16, 0), "lh": Vector3(0.6, 0, 0), "lk": Vector3(-1.1, 0, 0),
+					"rh": Vector3(0.6, 0, 0), "rk": Vector3(-1.1, 0, 0), "torso": Vector3(-0.2, 0, 0),
+					"ls": Vector3(-0.4, 0, -0.2), "le": Vector3(0.6, 0, 0), "rs": Vector3(-0.4, 0, 0.2), "re": Vector3(0.6, 0, 0)}
+			var jump := {"pos": Vector3(0, 0.6, 0), "rs": Vector3(3.0, 0, 0.12), "re": Vector3(0.05, 0, 0),
+					"ls": Vector3(-0.25, 0, -0.3), "le": Vector3(0.1, 0, 0),
+					"rh": Vector3(1.3, 0, 0), "rk": Vector3(-1.5, 0, 0), "lh": Vector3(-0.1, 0, 0), "lk": Vector3(-0.2, 0, 0),
+					"torso": Vector3(0.05, 0, 0), "head": Vector3(0.2, 0, 0)}
+			var apex := with(jump, {"pos": Vector3(0, 0.66, 0)})
+			return [[0.25, crouch], [0.18, jump], [0.3, apex], [0.22, crouch], [0.35, {}]]
 		"boo_yah":
 			# The supervillain's "Oh yeah!": whip round into a T, sway; lean
 			# back, hips out, hands wiggling low; claws up by the face; both

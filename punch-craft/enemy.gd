@@ -218,14 +218,22 @@ func _ready() -> void:
 	# Tiered gear for where on the Climb it spawns (EnemyGear). The old
 	# "armored" spawns now mean at least a helmet and chest plate.
 	var style := _gear_style()
-	if style != "none":
+	var on_climb := style != "none" and float(_scaling.get("position", -1.0)) >= 0.0
+	# The plumber quest: with the Fat Plumber Cap, now and then one in
+	# overalls and a plumber cap of its own (no other gear).
+	var plumber: String = _scaling.get("hat", "") if Hats.OVERALLS.has(_scaling.get("hat", "")) else ""
+	if on_climb and plumber == "" and not _scaling.has("hat"):
+		plumber = Hats.plumber_for(self)
+	if style != "none" and plumber == "":
 		gear = _scaling.gear if _scaling.has("gear") else EnemyGear.roll(float(_scaling.get("position", -1.0)), armored, is_boss)
 	if not gear.is_empty():
 		EnemyGear.dress(self, gear, style)
 		armored = gear.pieces.has("chest") or gear.pieces.has("helmet")
 	# Now and then, a hat (Arena and Crypt only).
-	if style != "none" and float(_scaling.get("position", -1.0)) >= 0.0:
-		hat = _scaling.hat if _scaling.has("hat") else Hats.roll(self is Skeleton)
+	if on_climb:
+		hat = plumber if plumber != "" else _scaling.hat if _scaling.has("hat") else Hats.roll(self is Skeleton)
+		if plumber != "":
+			EnemyGear.overalls(self, Hats.OVERALLS[plumber])
 		if hat != "":
 			_wear_hat()
 	if armored and style != "none" and gear.is_empty():
@@ -1225,8 +1233,8 @@ func _die(push: Vector3) -> void:
 		_daze_fx.queue_free()
 		_daze_fx = null
 	_clear_doom()
-	# The hat lesson's monster only goes down to an uppercut.
-	if hat_lesson and hat != "" and finisher.get("type", "") != "uppercut":
+	# The hat lesson's monster, and a plumber, only go down to an uppercut.
+	if (hat_lesson or Hats.OVERALLS.has(hat)) and hat != "" and finisher.get("type", "") != "uppercut":
 		hp = 1.0
 		_update_label()
 		DamagePopup.spawn(get_parent(), "UPPERCUT IT!", Color(1.0, 0.8, 0.3), 42, global_position + Vector3(0, 2.3 * _body.scale.y, 0))

@@ -200,8 +200,14 @@ func _finish_victory() -> void:
 " + adjust
 	if first_clear:
 		note = _seal_broken_text(GameState.dead_league_bout)
+	# Checked before the crowning puts the Coffin Crown on.
+	var secret := last and SecretEnding.qualifies()
 	if first_clear and last:
 		await _crown_the_champion()
+		if not is_inside_tree():
+			return
+	if secret and not Achievements.has("true_ending"):
+		await SecretEnding.open(self).finished
 		if not is_inside_tree():
 			return
 	_hud.show_results({

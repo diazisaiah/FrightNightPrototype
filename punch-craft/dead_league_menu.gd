@@ -85,6 +85,12 @@ func _build_ui() -> void:
 		crowning.custom_minimum_size = Vector2(170, 42)
 		crowning.pressed.connect(func() -> void: Ending.open(self))
 		header.add_child(crowning)
+	if Achievements.has("true_ending"):
+		var secret := Button.new()
+		secret.text = "Watch the true ending?"
+		secret.custom_minimum_size = Vector2(200, 42)
+		secret.pressed.connect(func() -> void: SecretEnding.open(self))
+		header.add_child(secret)
 	var back := Button.new()
 	back.text = "Back to camp"
 	back.custom_minimum_size = Vector2(150, 42)

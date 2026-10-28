@@ -1478,7 +1478,8 @@ func _refresh_skins() -> void:
 		child.queue_free()
 	var fighter := GameState.player_class
 	var owned: Array = Skins.of(fighter).filter(func(id: String) -> bool: return GameState.skins_owned.has(id))
-	_skin_note.text = "Click one to wear it." + ("" if owned.size() == Skins.of(fighter).size() else "  More in the Soul Shop.")
+	var for_sale := Skins.of(fighter).filter(func(id: String) -> bool: return not id in Skins.EARN_ONLY and not GameState.skins_owned.has(id))
+	_skin_note.text = "Click one to wear it." + ("" if for_sale.is_empty() else "  More in the Soul Shop.")
 	var tint := GameState.fighter_color()
 	for id in [""] + owned:
 		var wearing: bool = id == GameState.skin()

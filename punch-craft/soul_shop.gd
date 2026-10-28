@@ -84,7 +84,7 @@ static func restock() -> void:
 static func _skins_for_sale() -> Array:
 	var fighters := GameState.class_ids()
 	return Skins.CATALOG.keys().filter(func(id: String) -> bool:
-		return not GameState.skins_owned.has(id) and Skins.CATALOG[id].fighter in fighters)
+		return not GameState.skins_owned.has(id) and Skins.CATALOG[id].fighter in fighters and not id in Skins.EARN_ONLY)
 
 
 static func _pick_rarity() -> String:

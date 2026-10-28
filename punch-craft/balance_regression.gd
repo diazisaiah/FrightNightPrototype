@@ -821,7 +821,17 @@ func _test_one_power() -> void:
 	var taught := {}
 	for id in Achievements.LIST:
 		var emote: String = Achievements.LIST[id].emote
+		if emote == "":
+			continue  # True Ending? teaches no dance.
 		_check(Emotes.NAMES.has(emote) and not taught.has(emote), "Each achievement teaches its own real dance (%s)" % id)
 		taught[emote] = true
 	_check(taught.size() + Achievements.FREE_EMOTES.size() == Emotes.ORDER.size(), "Every dance can be earned")
+	GameState._reset_fields()
+	# The plumber quest: all five plumber caps give Tony's overalls and the jump.
+	for cap in Hats.PLUMBER_CAPS.slice(0, 4):
+		GameState.add_hat(cap)
+	_check(not GameState.skins_owned.has("plumber_overalls"), "Four plumber caps aren't enough")
+	GameState.add_hat(Hats.PLUMBER_CAPS[4])
+	_check(GameState.skins_owned.has("plumber_overalls") and "plumber_jump" in Achievements.emotes(), "All five plumber caps give the overalls and the Plumber Jump")
+	_check(Hats.PLUMBER_CAPS.all(func(cap: String) -> bool: return cap in Hats.TROPHIES), "Plumber caps never drop at random")
 	GameState._reset_fields()

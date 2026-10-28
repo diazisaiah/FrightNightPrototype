@@ -191,6 +191,22 @@ static func _set_material(part: MeshInstance3D, material: Material) -> void:
 		(part.mesh as PrimitiveMesh).material = material
 
 
+## The plumber quest's overalls (Hats.OVERALLS): a bib and straps over the
+## chest with two gold buttons, and the legs in the same denim.
+static func overalls(enemy: Enemy, denim: Color) -> void:
+	var body := _body_map(enemy)
+	var cloth := Look.block_material(denim)
+	var button := Look.block_material(Color(1.0, 0.82, 0.2), 0.6)
+	if body.has("torso"):
+		_shell(enemy, body.torso, Vector3(1.08, 0.5, 1.12), Vector3(0, -0.26, 0), cloth, Vector3.ZERO, CHEST_FIT)
+		_shell(enemy, body.torso, Vector3(0.62, 0.34, 1.13), Vector3(0, 0.08, 0), cloth, Vector3.ZERO, CHEST_FIT)
+		for side in [-1.0, 1.0]:
+			_shell(enemy, body.torso, Vector3(0.14, 0.62, 1.14), Vector3(0.3 * side, 0.2, 0), cloth, Vector3.ZERO, CHEST_FIT)
+			_shell(enemy, body.torso, Vector3(0.1, 0.08, 0.06), Vector3(0.2 * side, 0.2, -0.58), button, Vector3.ZERO, CHEST_FIT)
+	for leg in body.get("legs", []):
+		_shell(enemy, leg, Vector3(1.18, 0.9, 1.18), Vector3(0, 0.04, 0), cloth, Vector3.ZERO, LEG_FIT)
+
+
 const HEAD_FIT := Vector3(0.28, 0.28, 0.28)
 const CHEST_FIT := Vector3(0.42, 0.48, 0.26)
 const LEG_FIT := Vector3(0.15, 0.0, 0.15)

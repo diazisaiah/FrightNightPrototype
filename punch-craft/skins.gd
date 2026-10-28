@@ -15,7 +15,10 @@ const CATALOG := {
 	"rooftop_ghost": {"fighter": "free_runner", "name": "Rooftop Ghost", "desc": "Seen on the skyline. Never caught."},
 	"sunday_best": {"fighter": "wise_guy", "name": "Sunday Best", "desc": "The good tracksuit."},
 	"verdant_sigil": {"fighter": "elementalist", "name": "Verdant Sigil", "desc": "Old green magic, gold at the hem."},
+	"plumber_overalls": {"fighter": "wise_guy", "name": "Plumber Overalls", "desc": "Fixes pipes. Breaks faces."},
 }
+## Skins only a feat gives (never sold): the overalls for all five plumber caps.
+const EARN_ONLY := ["plumber_overalls"]
 
 ## Each fighter's own colors, part by part. "cracks" with no alpha: none.
 ## "glow": the hands' color when the ultimate is ready (Fists.ACCENT if unset).
@@ -51,6 +54,7 @@ const BASE := {
 		"tee": Color(0.92, 0.92, 0.9), "rib_a": Color(0.13, 0.13, 0.14), "rib_b": Color(0.08, 0.08, 0.09),
 		"beanie_a": Color(0.13, 0.13, 0.14), "beanie_b": Color(0.09, 0.09, 0.1), "brim": Color(0.12, 0.12, 0.13),
 		"tape": Color(0.9, 0.88, 0.84), "shoes": Color(0.09, 0.09, 0.1), "sole": Color(0.9, 0.9, 0.88), "accent": Color(0.9, 0.9, 0.88),
+		"shirt": Color(0.86, 0.1, 0.1, 0.0),
 	},
 	"elementalist": {
 		"robe": Color(0.11, 0.1, 0.12), "trim": Color(0.88, 0.86, 0.8), "sash": Color(0.16, 0.15, 0.18),
@@ -91,6 +95,14 @@ const LOOKS := {
 		"rib_a": Color(0.5, 0.08, 0.12), "rib_b": Color(0.36, 0.05, 0.08), "beanie_a": Color(0.13, 0.33, 0.2),
 		"beanie_b": Color(0.08, 0.25, 0.15), "brim": Color(0.1, 0.29, 0.17), "tape": Color(0.93, 0.88, 0.78),
 		"shoes": Color(0.45, 0.07, 0.1), "sole": Color(0.93, 0.88, 0.78), "accent": Color(0.93, 0.87, 0.75),
+	},
+	# A "shirt" (with alpha): PlayerBody and Fists dress Tony in overalls over it.
+	"plumber_overalls": {
+		"jacket": Color(0.16, 0.3, 0.75), "stripe": Color(0.16, 0.3, 0.75), "zip": Color(1.0, 0.82, 0.2),
+		"shirt": Color(0.86, 0.1, 0.1), "tee": Color(0.86, 0.1, 0.1), "rib_a": Color(0.86, 0.1, 0.1), "rib_b": Color(0.72, 0.08, 0.08),
+		"beanie_a": Color(0.86, 0.1, 0.1), "beanie_b": Color(0.74, 0.08, 0.08), "brim": Color(0.7, 0.07, 0.07),
+		"tape": Color(0.97, 0.97, 0.96), "shoes": Color(0.4, 0.22, 0.1), "sole": Color(0.28, 0.15, 0.07), "accent": Color(0.86, 0.1, 0.1),
+		"glow": Color(1.0, 0.3, 0.2),
 	},
 	"verdant_sigil": {
 		"robe": Color(0.07, 0.2, 0.12), "trim": Color(0.86, 0.66, 0.32), "sash": Color(0.3, 0.2, 0.12),

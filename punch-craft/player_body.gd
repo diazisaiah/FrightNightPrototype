@@ -1158,6 +1158,24 @@ func _dress_torso(hips: Node3D, torso: Node3D) -> void:
 				_ribbon(torso, Vector3(x, 0.0, -r0.y - 0.045), Vector3(x * 1.4, -0.3, -r0.y - 0.06), 0.05, 0.014, func(p: Vector3) -> Color: return _rag(p, white))
 			_seat(hips, gi)
 			_flaps(hips, gi, white, true)
+		"wise_guy" when _p("shirt").a > 0.0:
+			# Plumber Overalls: a red shirt under denim overalls, the bib up
+			# the front on two straps over the shoulders, gold buttons.
+			var denim := _p("jacket")
+			var shirt := _p("shirt")
+			var overalls := func(p: Vector3) -> Color:
+				if p.y < 0.3:
+					return _cloth_at(p, denim, 0.05)
+				if p.z < 0.0 and p.y < 0.46 and absf(p.x) < 0.115:
+					return _cloth_at(p, denim, 0.05)
+				if p.y < 0.62 and absf(absf(p.x) - 0.085) < 0.024:
+					return _cloth_at(p, denim, 0.05)
+				return _cloth_at(p, shirt, 0.05)
+			_torso_cloth(torso, 0.012, overalls, func(_p2: Vector3) -> bool: return true)
+			var front := _torso_radius(0.44).y
+			for side in [-1.0, 1.0]:
+				_box(torso, Vector3(0.034, 0.034, 0.02), _p("zip"), Vector3(0.085 * side, 0.44, -front - 0.022), Vector3.ZERO, true)
+			_seat(hips, denim)
 		"wise_guy":
 			# A track jacket half zipped over a white tee: the zip piped white
 			# down the front, a stand-up collar, pocket flaps, a ribbed hem;
@@ -1261,6 +1279,8 @@ func _dress_leg(hip: Node3D, knee: Node3D, side: float) -> void:
 			if side > 0:
 				_cross(knee, Vector3(-0.02, -0.08, -0.105 * t), 0.025, _p("trim"))
 			_limb(knee, Vector3(0, -0.27, 0), Vector3(0, -0.36, 0), Vector2(0.05, 0.054), Vector2(0.046, 0.05), _bands([_p("band"), _p("band").darkened(0.24)], 0.016, 0.3))
+		"wise_guy" when _p("shirt").a > 0.0:
+			_pants(hip, knee, func(p: Vector3) -> Color: return _cloth_at(p, _p("jacket"), 0.05), 0.95, -0.33)
 		"wise_guy":
 			# Loose track pants, two white stripes down the outside, gathered
 			# at the ankle.
@@ -1320,6 +1340,8 @@ func _dress_arm(shoulder: Node3D, elbow: Node3D, side: float) -> void:
 			# Puffy jacket sleeves, two white stripes down the outside front,
 			# gathered into ribbed cuffs.
 			var sleeve := func(p: Vector3) -> Color:
+				if _p("shirt").a > 0.0:
+					return _cloth_at(p, _p("shirt"), 0.05)
 				var ang := atan2(p.z, p.x * side)
 				if absf(ang + 0.75) < 0.08 or absf(ang + 0.45) < 0.08:
 					return _vary(_p("stripe"), p)

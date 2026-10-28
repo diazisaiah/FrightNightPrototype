@@ -28,7 +28,20 @@ const LEGENDARIES := ["yonker_brim", "yonker_no_brim", "brim_no_yonker", "no_yon
 ## Won, never dropped: the Coffin Crown for beating the Coffin King (Ending),
 ## and the hats check_awards hands out.
 const TROPHIES := ["coffin_crown", "fire_cap", "gale_flattop", "storm_ears", "iron_mask", "frost_tiara",
-	"doom_mask", "blood_hairline", "quake_headband", "golden_quills", "bald_cap", "speed_mask", "wig_white"]
+	"doom_mask", "blood_hairline", "quake_headband", "golden_quills", "bald_cap", "speed_mask", "wig_white",
+	"fat_plumber_cap", "tall_plumber_cap", "very_tall_plumber_cap", "very_fat_plumber_cap"]
+## The plumber quest's caps (the Hot Plumber Hat first): all five for the
+## overalls skin and the jump emote.
+const PLUMBER_CAPS := ["fire_cap", "fat_plumber_cap", "tall_plumber_cap", "very_tall_plumber_cap", "very_fat_plumber_cap"]
+## The caps monsters wear in overalls (with the overalls' color). Only go
+## down to an uppercut.
+const OVERALLS := {
+	"fat_plumber_cap": Color(0.16, 0.3, 0.75), "tall_plumber_cap": Color(0.16, 0.3, 0.75),
+	"very_tall_plumber_cap": Color(0.12, 0.1, 0.24), "very_fat_plumber_cap": Color(0.42, 0.16, 0.55),
+}
+## Share of wraiths, ghoul brawlers and bruisers in a missing plumber cap,
+## once you own the Fat Plumber Cap.
+const PLUMBER_CHANCE := 0.04
 ## Max every node of a power for its hat (each +10% to that power).
 const POWER_HATS := {
 	"sigil_fire": "fire_cap", "sigil_gale": "gale_flattop", "sigil_storm": "storm_ears", "sigil_iron": "iron_mask",
@@ -130,6 +143,15 @@ const CATALOG := {
 		"desc": "Won with a huge base damage or one absurd punch. Ok."},
 	"speed_mask": {"name": "Speedster Cowl", "rarity": "legendary", "effects": {"move_speed": 0.08, "punch_speed": 0.06},
 		"desc": "Won with big move and punch speed. Was here a second ago."},
+	# The plumber quest.
+	"fat_plumber_cap": {"name": "Fat Plumber Cap", "rarity": "epic", "effects": {"defense": 0.5, "damage_percent": 0.03},
+		"desc": "Off the plumber you made clean up after you."},
+	"tall_plumber_cap": {"name": "Tall Plumber Cap", "rarity": "epic", "effects": {"move_speed": 0.04, "punch_speed": 0.03},
+		"desc": "His brother. Jumps higher. Gets less credit."},
+	"very_tall_plumber_cap": {"name": "Very Tall \"Plumber\" Cap", "rarity": "epic", "effects": {"dodge_window": 0.03, "move_speed": 0.02},
+		"desc": "Not a plumber. Never was."},
+	"very_fat_plumber_cap": {"name": "Very Fat \"Plumber\" Cap", "rarity": "epic", "effects": {"damage_percent": 0.03, "knuckles_percent": 0.03},
+		"desc": "Also not a plumber. Smells of garlic."},
 }
 
 
@@ -193,6 +215,24 @@ static func award(tree: SceneTree, id: String, quiet := false) -> void:
 		return
 	_pending[id] = true
 	HatPopup.open(tree, id)
+
+
+## The plumber cap (if any) a freshly spawned monster wears: a wraith the
+## tall one, a ghoul brawler the very tall one, a bruiser the very fat one,
+## while you own the Fat Plumber Cap and not that one.
+static func plumber_for(enemy: Enemy) -> String:
+	if not GameState.hats.has("fat_plumber_cap"):
+		return ""
+	var id := ""
+	if enemy is Wraith:
+		id = "tall_plumber_cap"
+	elif enemy is Brawler:
+		id = "very_tall_plumber_cap"
+	elif enemy is GraveBruiser:
+		id = "very_fat_plumber_cap"
+	if id == "" or GameState.hats.has(id) or randf() >= PLUMBER_CHANCE:
+		return ""
+	return id
 
 
 ## Which hat (if any) a freshly spawned enemy wears. Bumps the bad-luck
@@ -364,7 +404,15 @@ static func build(id: String, u: float) -> Node3D:
 		"wig_white":
 			_strong_wig(hat, u, Color(0.92, 0.94, 1.0), true)
 		"fire_cap":
-			_plumber_cap(hat, u)
+			_plumber_cap(hat, u, Color(0.97, 0.97, 0.96), Color(0.86, 0.1, 0.1), "M")
+		"fat_plumber_cap":
+			_plumber_cap(hat, u, Color(0.86, 0.1, 0.1), Color(0.86, 0.1, 0.1), "M", 1.2)
+		"tall_plumber_cap":
+			_plumber_cap(hat, u, Color(0.1, 0.62, 0.2), Color(0.1, 0.62, 0.2), "L", 1.0, 1.5)
+		"very_tall_plumber_cap":
+			_plumber_cap(hat, u, Color(0.42, 0.16, 0.6), Color(0.42, 0.16, 0.6), "Γ", 1.0, 2.1, Color(1.0, 0.85, 0.2))
+		"very_fat_plumber_cap":
+			_plumber_cap(hat, u, Color(1.0, 0.85, 0.15), Color(0.15, 0.3, 0.85), "W", 1.45, 0.9)
 		"gale_flattop":
 			_flattop(hat, u)
 		"storm_ears":
@@ -653,21 +701,33 @@ static func _fruit_hat(hat: Node3D, u: float) -> void:
 	_b(hat, u, Vector3(0.08, 0.5, 0.06), Vector3(0, 1.08, 0), leaf)
 
 
-## The hot plumber's cap: white, a brim, and a white badge ringed in grey
-## with a red M on the front.
-static func _plumber_cap(hat: Node3D, u: float) -> void:
-	var white := Color(0.97, 0.97, 0.96)
-	var red := Color(0.86, 0.1, 0.1)
-	_b(hat, u, Vector3(1.1, 0.3, 1.1), Vector3(0, 0.12, 0), white)
-	_b(hat, u, Vector3(0.86, 0.14, 0.86), Vector3(0, 0.33, 0), white)
-	_b(hat, u, Vector3(0.12, 0.08, 0.12), Vector3(0, 0.42, 0), white)
-	_b(hat, u, Vector3(0.95, 0.05, 0.6), Vector3(0, 0.0, -0.78), white, Vector3(-0.1, 0, 0))
+## A plumber's cap: a dome (w wide, h tall), a brim, and a badge (white
+## unless given) ringed in grey with a letter on the front (M, L, Γ or W).
+static func _plumber_cap(hat: Node3D, u: float, cap: Color, ink: Color, letter: String, w := 1.0, h := 1.0, badge := Color(0.97, 0.97, 0.96)) -> void:
+	_b(hat, u, Vector3(1.1 * w, 0.3 * h, 1.1 * w), Vector3(0, -0.03 + 0.15 * h, 0), cap)
+	_b(hat, u, Vector3(0.86 * w, 0.14, 0.86 * w), Vector3(0, -0.03 + 0.3 * h + 0.06, 0), cap)
+	_b(hat, u, Vector3(0.12, 0.08, 0.12), Vector3(0, -0.03 + 0.3 * h + 0.15, 0), cap)
+	_b(hat, u, Vector3(0.95 * w, 0.05, 0.6), Vector3(0, 0.0, -0.55 * w - 0.23), cap, Vector3(-0.1, 0, 0))
+	var y := -0.03 + 0.15 * h + 0.05
+	var z := -0.55 * w
 	for turn in [0.0, PI / 4.0]:
-		_b(hat, u, Vector3(0.38, 0.38, 0.03), Vector3(0, 0.17, -0.565), Color(0.72, 0.72, 0.74), Vector3(0, 0, turn))
-		_b(hat, u, Vector3(0.32, 0.32, 0.03), Vector3(0, 0.17, -0.575), white, Vector3(0, 0, turn))
-	for side in [-1.0, 1.0]:
-		_b(hat, u, Vector3(0.05, 0.22, 0.03), Vector3(0.09 * side, 0.16, -0.59), red)
-		_b(hat, u, Vector3(0.05, 0.13, 0.03), Vector3(0.045 * side, 0.2, -0.595), red, Vector3(0, 0, 0.6 * side))
+		_b(hat, u, Vector3(0.38, 0.38, 0.03), Vector3(0, y, z - 0.015), Color(0.72, 0.72, 0.74), Vector3(0, 0, turn))
+		_b(hat, u, Vector3(0.32, 0.32, 0.03), Vector3(0, y, z - 0.025), badge, Vector3(0, 0, turn))
+	var front := z - 0.04
+	match letter:
+		"M", "W":
+			# Two posts and a V hanging between them (a peak rising for W). The
+			# badge faces -Z, so +x reads as the left.
+			var flip := 1.0 if letter == "M" else -1.0
+			for side in [-1.0, 1.0]:
+				_b(hat, u, Vector3(0.05, 0.22, 0.03), Vector3(0.09 * side, y - 0.01, front), ink)
+				_b(hat, u, Vector3(0.05, 0.13, 0.03), Vector3(0.045 * side, y + 0.03 * flip, front - 0.005), ink, Vector3(0, 0, -0.6 * side * flip))
+		"L":
+			_b(hat, u, Vector3(0.05, 0.22, 0.03), Vector3(0.05, y, front), ink)
+			_b(hat, u, Vector3(0.16, 0.05, 0.03), Vector3(0.0, y - 0.085, front), ink)
+		"Γ":
+			_b(hat, u, Vector3(0.05, 0.22, 0.03), Vector3(0.05, y, front), ink)
+			_b(hat, u, Vector3(0.16, 0.05, 0.03), Vector3(0.0, y + 0.085, front), ink)
 
 
 ## The blonde flat top: hair standing straight up off the head and flaring

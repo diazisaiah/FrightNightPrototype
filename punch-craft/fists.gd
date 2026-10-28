@@ -1189,8 +1189,10 @@ func _paint_stray(left: bool) -> void:
 ## Tony: a black tracksuit sleeve with two white stripes, white tape wound
 ## around the wrist and over the knuckles, and a gold pinky ring.
 func _paint_tony(_left: bool) -> void:
-	var black := _p("jacket")
-	var stripe := _p("stripe")
+	# The Plumber Overalls: a plain shirt sleeve.
+	var overalls := _p("shirt").a > 0.0
+	var black := _p("shirt") if overalls else _p("jacket")
+	var stripe := _p("shirt") if overalls else _p("stripe")
 	_fill_taper(-0.22, 0.32, Vector2(0.05, 0.046), Vector2(0.06, 0.055), 0.0, func(p: Vector3) -> Color:
 		# Two white stripes running down the top of the sleeve.
 		if p.y > 0.03 and (absf(p.x - 0.012) < VOXEL * 0.8 or absf(p.x + 0.012) < VOXEL * 0.8):

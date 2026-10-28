@@ -87,6 +87,16 @@ const SIDE_ROOMS := ["chest", "chest", "merchant"]
 const SHRINE_CHANCE := 0.6
 const MERCHANT_ROOM := Vector2(14, 14)
 const SHRINE_ROOM := Vector2(12, 12)
+## The plumber quest: once you have Overexerted, a floor now and then has a
+## room with nothing in it but a toilet. Poop in it TOILET_CLOG times and it
+## clogs, and an angry plumber comes for you (Crown-arena tough, in the Fat
+## Plumber Cap).
+const TOILET_CHANCE := 0.01
+const TOILET_ROOM := Vector2(10, 10)
+const TOILET_CLOG := 3
+const PORCELAIN := Color(0.93, 0.93, 0.9)
+## Tests and captures: every floor gets the toilet room.
+static var force_toilet := false
 ## Mimics: share of chests that bite (never boss, elite or cursed chests).
 const MIMIC_CHANCE_CHEST_ROOM := 0.25
 const MIMIC_CHANCE_DROPPED := 0.15
@@ -370,6 +380,8 @@ func _generate_layout() -> void:
 		var wanted: Array = SIDE_ROOMS.duplicate()
 		if randf() < SHRINE_CHANCE:
 			wanted.append("shrine")
+		if force_toilet or (Achievements.emote_unlocked("overexerted") and randf() < TOILET_CHANCE):
+			wanted.append("toilet")
 		var placed := 0
 		var hosts := _rooms.slice(1, MAIN_ROOMS - 1)
 		for type in wanted:
@@ -428,6 +440,8 @@ func _shape_rooms() -> void:
 				room.size = MERCHANT_ROOM
 			"shrine":
 				room.size = SHRINE_ROOM
+			"toilet":
+				room.size = TOILET_ROOM
 			"boss":
 				room.size = BOSS_ROOM
 				room.layout = "boss"
@@ -665,16 +679,16 @@ func _spawn_point() -> Vector3:
 	return _open_spot(room) + Vector3(0, 0.1, 0)
 
 
-func _spawn_enemy(entry: Dictionary, at: Vector3) -> void:
+func _spawn_enemy(entry: Dictionary, at: Vector3) -> Enemy:
 	var kind: String = entry.kind
 	# Deeper floors send veterans (tougher versions with a big move).
-	var veteran := Veterans.pick(kind, _tier()) if not kind in BOSS_CYCLE and kind != "mimic" else null
+	var veteran := Veterans.pick(kind, _tier()) if not kind in BOSS_CYCLE and kind != "mimic" and not entry.has("scaling") else null
 	var enemy: Enemy = (veteran if veteran else _scene(kind)).instantiate()
 	if veteran:
 		enemy.set_meta("veteran", true)
 	var night_only := Progression.enemy_scaling(_position(), Progression.crypt_difficulty(_floor, _start_floor))
 	var is_boss_kind: bool = kind in BOSS_CYCLE
-	enemy.setup(_player, entry.armored, night_only if is_boss_kind else _scaling(_current_room))
+	enemy.setup(_player, entry.armored, entry.scaling if entry.has("scaling") else night_only if is_boss_kind else _scaling(_current_room))
 	enemy.set_meta("kind", kind)
 	enemy.position = at
 	enemy.arena_center = _current_room.center
@@ -695,6 +709,7 @@ func _spawn_enemy(entry: Dictionary, at: Vector3) -> void:
 	_alive_by_kind[kind] = _alive_by_kind.get(kind, 0) + 1
 	# Rises from the floor in a burst of grave dust.
 	HitFx.burst(_enemies, at + Vector3(0, 0.3, 0), Vector3.UP, Color(0.45, 0.35, 0.6), 18, 3.0, true, 0.06)
+	return enemy
 
 
 ## A Lich raises the dead around itself (capped so rooms don't flood).
@@ -1332,6 +1347,80 @@ func _build_shrine(room: Dictionary) -> void:
 	_interactables.append({"node": altar, "kind": "shrine", "used": false, "light": light, "blessing": Items.roll_blessing(_floor)})
 
 
+## A toilet in the middle of an empty room, under one bare bulb. Poops
+## dropped near it go in (PoopFx); TOILET_CLOG of them and it clogs.
+func _build_toilet(room: Dictionary) -> void:
+	var toilet := StaticBody3D.new()
+	toilet.position = room.center
+	toilet.rotation.y = randi_range(0, 3) * PI / 2.0
+	_level.add_child(toilet)
+	toilet.add_to_group("toilet")
+	var porcelain := _material("porcelain", PORCELAIN, 0.1)
+	var seat := _material("toilet_seat", Color(0.85, 0.85, 0.82))
+	_block(toilet, Vector3(0.42, 0.36, 0.5), Vector3(0, 0.18, 0), porcelain)
+	toilet.add_child(_mesh(Enemy._box(Vector3(0.6, 0.12, 0.72)), porcelain, Vector3(0, 0.42, -0.04)))
+	toilet.add_child(_mesh(Enemy._box(Vector3(0.62, 0.04, 0.74)), seat, Vector3(0, 0.5, -0.04)))
+	# The tank, its lid and the handle.
+	_block(toilet, Vector3(0.66, 0.6, 0.26), Vector3(0, 0.75, 0.38), porcelain)
+	toilet.add_child(_mesh(Enemy._box(Vector3(0.7, 0.06, 0.3)), porcelain, Vector3(0, 1.08, 0.38)))
+	toilet.add_child(_mesh(Enemy._box(Vector3(0.14, 0.03, 0.04)), _material("chrome", Color(0.8, 0.8, 0.85), 0.9), Vector3(-0.22, 0.92, 0.24)))
+	# The water: rises and browns as it clogs.
+	var water := _mesh(Enemy._box(Vector3(0.44, 0.02, 0.5)), Enemy._material(Color(0.5, 0.7, 0.85), 0.0), Vector3(0, 0.46, -0.06))
+	toilet.add_child(water)
+	var bulb := OmniLight3D.new()
+	bulb.light_color = Color(1.0, 0.92, 0.75)
+	bulb.light_energy = 2.2
+	bulb.omni_range = 8.0
+	bulb.position = room.center + Vector3(0, 3.4, 0)
+	_level.add_child(bulb)
+	_level.add_child(_mesh(Enemy._box(Vector3(0.14, 0.18, 0.14)), Enemy._glow_material(Color(1.0, 0.92, 0.7)), bulb.position))
+	toilet.set_meta("bowl", Vector3(0, 0.46, -0.06))
+	toilet.set_meta("on_poop", _on_toilet_poop.bind(toilet, water, room))
+
+
+## A poop went in. TOILET_CLOG of them and it overflows, and the plumber
+## comes to sort you out.
+func _on_toilet_poop(toilet: Node3D, water: MeshInstance3D, room: Dictionary) -> void:
+	if _run_over or room.state != "cleared":
+		return
+	var clog := int(toilet.get_meta("clog", 0)) + 1
+	toilet.set_meta("clog", clog)
+	Sfx.play_at("heavy", toilet.global_position, -8.0, 0.6)
+	var murk := Color(0.5, 0.7, 0.85).lerp(Color(0.4, 0.3, 0.15), float(clog) / TOILET_CLOG)
+	((water.mesh as BoxMesh).material as StandardMaterial3D).albedo_color = murk
+	water.create_tween().tween_property(water, "position:y", 0.46 + 0.02 * clog, 0.4)
+	if clog < TOILET_CLOG:
+		_hud.announce_small("The toilet gurgles..." if clog == 1 else "The toilet groans!", Color(0.7, 0.6, 0.4))
+		return
+	toilet.set_meta("clog", 0)
+	var at := toilet.global_position
+	HitFx.burst(_level, at + Vector3(0, 0.6, 0), Vector3.UP, Color(0.4, 0.3, 0.15), 30, 4.0, false, 0.06)
+	Sfx.play_at("growl", at, 2.0, 0.8)
+	var drain := water.create_tween()
+	drain.tween_interval(1.5)
+	drain.tween_property(water, "position:y", 0.46, 1.5)
+	drain.tween_callback(func() -> void: ((water.mesh as BoxMesh).material as StandardMaterial3D).albedo_color = Color(0.5, 0.7, 0.85))
+	_current_room = room
+	room.state = "fighting"
+	_to_spawn = 0
+	_seal_doors(room)
+	_player.on_room_start()
+	_hud.announce("YOU CLOGGED IT!")
+	var scaling := Progression.enemy_scaling(maxf(_position(), Progression.arena_position(5, 1)),
+			maxf(Progression.crypt_difficulty(_floor, _start_floor), Progression.arena_difficulty(5, 1)))
+	scaling.hat = "fat_plumber_cap"
+	scaling.gear = {}
+	var away := Vector3(at.x - _player.global_position.x, 0, at.z - _player.global_position.z).normalized()
+	var spot := at + away * 2.5
+	if _in_solid(room, spot, 1.0) or not _inside_room(room, spot, 1.5):
+		spot = _open_spot(room)
+	var plumber := _spawn_enemy({"kind": "zombie", "armored": false, "scaling": scaling}, Vector3(spot.x, 0.1, spot.z))
+	plumber.make_champion(["Brutal", "Hulking"])
+	plumber.display_name = "Angry Plumber"
+	plumber._update_label()
+	_hud.announce_small("The plumber is NOT happy.", Color(0.9, 0.2, 0.15))
+
+
 func _offer_blessing(shrine: Dictionary) -> void:
 	var blessing: Dictionary = shrine.blessing
 	_pending_item = blessing
@@ -1447,8 +1536,11 @@ func _build_room(room: Dictionary) -> void:
 		_build_merchant(room)
 	elif room.type == "shrine":
 		_build_shrine(room)
-	_decorate(room)
-	_theme_decor(room)
+	if room.type == "toilet":
+		_build_toilet(room)
+	else:
+		_decorate(room)
+		_theme_decor(room)
 	if _theme.hazard != "" and room.type in ["fight", "boss"]:
 		_place_hazards(room)
 	if room.state == "waiting":
