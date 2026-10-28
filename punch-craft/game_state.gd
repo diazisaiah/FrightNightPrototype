@@ -127,10 +127,11 @@ const PASSIVE_POWER_MAX := 9
 # reach, how often it triggers) that meet at its capstone.
 const UPGRADES := {
 	# Seal rings (2026-10-28): every node sits on the ring of the seal that
-	# opens it (ring + 0.5 cells out). On each ring, eight nodes 45 degrees
-	# apart: the spokes (damage east, defense south, knuckle HP west, coins
-	# north) and one side node halfway between each pair, hanging off its
-	# spoke along the ring. Prices round to two figures (price_at).
+	# opens it (ring + 0.5 cells out), evenly spaced around it: 8 nodes on
+	# rings 1 and 4, 12 on rings 2 and 3, 16 on rings 5 and 6. The spokes run
+	# straight out (damage east, defense south, knuckle HP west, coins north);
+	# side nodes hang off a spoke along their ring. Prices round to two
+	# figures (price_at).
 	"wrapped_knuckles": {
 		"name": "Taped Up", "icon": "wraps", "pos": Vector2(0, 0), "requires": [], "ring": 1,
 		"desc": "Tape and cloth. Every road out of here starts with your hands.",
@@ -257,22 +258,22 @@ const UPGRADES := {
 		"max_level": 3, "cost": 380000, "cost_growth": 1.22, "effects": {"coin_bonus": 0.15},
 	},
 	"heavy_hitter": {
-		"name": "Haymaker", "icon": "hammer", "pos": Vector2(1.77, 1.77), "requires": ["dmg_2"], "ring": 2,
+		"name": "Haymaker", "icon": "hammer", "pos": Vector2(2.17, 1.25), "requires": ["dmg_2"], "ring": 2,
 		"desc": "Set-up hooks and uppercuts hit harder.",
 		"max_level": 5, "cost": 550, "cost_growth": 1.3, "effects": {"heavy_bonus": 0.15},
 	},
 	"counterpuncher": {
-		"name": "Counterpuncher", "icon": "counter_arrow", "pos": Vector2(2.47, -2.47), "requires": ["dmg_3"], "ring": 3,
+		"name": "Counterpuncher", "icon": "counter_arrow", "pos": Vector2(3.03, -1.75), "requires": ["dmg_3"], "ring": 3,
 		"desc": "Counters hit harder.",
 		"max_level": 5, "cost": 2000, "cost_growth": 1.3, "effects": {"counter_bonus": 0.3},
 	},
 	"rhythm": {
-		"name": "Speed Bag", "icon": "note", "pos": Vector2(1.77, -1.77), "requires": ["dmg_2"], "ring": 2,
+		"name": "Speed Bag", "icon": "note", "pos": Vector2(2.17, -1.25), "requires": ["dmg_2"], "ring": 2,
 		"desc": "Combos build faster.",
 		"max_level": 3, "cost": 550, "cost_growth": 1.3, "effects": {"combo_step": 0.05},
 	},
 	"lucky_shot": {
-		"name": "Lucky Shot", "icon": "star", "pos": Vector2(2.47, 2.47), "requires": ["dmg_3"], "ring": 3,
+		"name": "Lucky Shot", "icon": "star", "pos": Vector2(3.03, 1.75), "requires": ["dmg_3"], "ring": 3,
 		"desc": "Punches crit more often.",
 		"max_level": 5, "cost": 2000, "cost_growth": 1.3, "effects": {"crit_chance": 0.05},
 	},
@@ -287,12 +288,12 @@ const UPGRADES := {
 		"max_level": 3, "cost": 9400, "cost_growth": 1.3, "effects": {"armor_pierce": 0.15},
 	},
 	"giant_killer": {
-		"name": "Bigger They Fall", "icon": "crown", "pos": Vector2(3.89, 3.89), "requires": ["dmg_5"], "ring": 5,
+		"name": "Bigger They Fall", "icon": "crown", "pos": Vector2(3.89, 3.89), "requires": ["knuckle_dusters"], "ring": 5,
 		"desc": "Bosses and champions take extra damage.",
 		"max_level": 3, "cost": 36000, "cost_growth": 1.3, "effects": {"boss_damage": 0.15},
 	},
 	"weighted_wraps": {
-		"name": "Lead Tape", "icon": "dumbbell", "pos": Vector2(3.89, -3.89), "requires": ["dmg_5"], "ring": 5,
+		"name": "Lead Tape", "icon": "dumbbell", "pos": Vector2(3.89, -3.89), "requires": ["heavy_hands"], "ring": 5,
 		"desc": "Hooks and uppercuts cost less knuckle HP.",
 		"max_level": 1, "cost": 36000, "cost_growth": 1.3, "effects": {"heavy_cost_cut": 1},
 	},
@@ -302,19 +303,19 @@ const UPGRADES := {
 		"max_level": 2, "cost": 130, "cost_growth": 1.3, "effects": {"dodge_window": 0.05},
 	},
 	"bob_and_weave": {
-		"name": "Bob and Weave", "icon": "slip", "pos": Vector2(-1.77, 1.77), "requires": ["def_2"], "ring": 2,
+		"name": "Bob and Weave", "icon": "slip", "pos": Vector2(1.25, 2.17), "requires": ["def_2"], "ring": 2,
 		"desc": "A little longer to land a counter.",
 		"max_level": 2, "cost": 550, "cost_growth": 1.3, "effects": {"counter_window": 0.1},
 	},
 	"thick_skull": {
-		"name": "Thick Skull", "icon": "helmet", "pos": Vector2(-3.18, 3.18), "requires": ["def_4"], "ring": 4,
+		"name": "Thick Skull", "icon": "helmet", "pos": Vector2(1.75, 3.03), "requires": ["def_3"], "ring": 3,
 		"desc": "Grazes (right timing, wrong dodge) hurt less.",
-		"max_level": 2, "cost": 9400, "cost_growth": 1.3, "effects": {"graze_reduction": 0.15},
+		"max_level": 2, "cost": 2000, "cost_growth": 1.3, "effects": {"graze_reduction": 0.15},
 	},
 	"rope_a_dope": {
-		"name": "Rope-a-Dope", "icon": "anchor", "pos": Vector2(4.6, 4.6), "requires": ["def_6"], "ring": 6,
+		"name": "Rope-a-Dope", "icon": "anchor", "pos": Vector2(-3.18, 3.18), "requires": ["def_4"], "ring": 4,
 		"desc": "Grazes hurt less.",
-		"max_level": 3, "cost": 150000, "cost_growth": 1.3, "effects": {"graze_reduction": 0.1},
+		"max_level": 3, "cost": 9400, "cost_growth": 1.3, "effects": {"graze_reduction": 0.1},
 	},
 	"bellmans_bell": {
 		"name": "The Bellman's Bell", "icon": "belt", "pos": Vector2(0, 0), "requires": ["wrapped_knuckles"], "center": true, "ring": 2,
@@ -347,22 +348,22 @@ const UPGRADES := {
 		"max_level": 3, "cost": 130, "cost_growth": 1.3, "effects": {"wave_heal": 1},
 	},
 	"ice_bath": {
-		"name": "Ice Bath", "icon": "bucket", "pos": Vector2(-3.89, 3.89), "requires": ["hp_5"], "ring": 5,
+		"name": "Ice Bath", "icon": "bucket", "pos": Vector2(-2.17, 1.25), "requires": ["hp_2"], "ring": 2,
 		"desc": "Recover a little every tenth of the bout.",
-		"max_level": 2, "cost": 36000, "cost_growth": 1.3, "effects": {"wave_heal": 1},
+		"max_level": 2, "cost": 550, "cost_growth": 1.3, "effects": {"wave_heal": 1},
 	},
 	"second_wind": {
-		"name": "Second Wind", "icon": "wind", "pos": Vector2(-4.6, 4.6), "requires": ["hp_6"], "ring": 6,
+		"name": "Second Wind", "icon": "wind", "pos": Vector2(-3.03, 1.75), "requires": ["hp_3"], "ring": 3,
 		"desc": "Heal more between waves.",
-		"max_level": 2, "cost": 150000, "cost_growth": 1.3, "effects": {"wave_heal": 1},
+		"max_level": 2, "cost": 2000, "cost_growth": 1.3, "effects": {"wave_heal": 1},
 	},
 	"iron_will": {
-		"name": "Chin Check", "icon": "anchor", "pos": Vector2(-1.77, -1.77), "requires": ["hp_2"], "ring": 2,
+		"name": "Chin Check", "icon": "anchor", "pos": Vector2(-2.17, -1.25), "requires": ["hp_2"], "ring": 2,
 		"desc": "Shake off clean hits faster.",
 		"max_level": 2, "cost": 550, "cost_growth": 1.3, "effects": {"flinch_reduction": 0.15},
 	},
 	"calloused": {
-		"name": "Calloused", "icon": "tape", "pos": Vector2(-2.47, 2.47), "requires": ["hp_3"], "ring": 3,
+		"name": "Calloused", "icon": "tape", "pos": Vector2(-3.03, -1.75), "requires": ["hp_3"], "ring": 3,
 		"desc": "Some punches don't hurt your hands at all.",
 		"max_level": 3, "cost": 2000, "cost_growth": 1.3, "effects": {"free_punch_chance": 0.05},
 	},
@@ -372,17 +373,17 @@ const UPGRADES := {
 		"max_level": 2, "cost": 130, "cost_growth": 1.3, "effects": {"move_speed": 0.05},
 	},
 	"running_shoes": {
-		"name": "Cemetery Sprint", "icon": "wing_boot", "pos": Vector2(-4.6, -4.6), "requires": ["gold_6"], "ring": 6,
+		"name": "Cemetery Sprint", "icon": "wing_boot", "pos": Vector2(-1.25, -2.17), "requires": ["gold_2"], "ring": 2,
 		"desc": "Faster sprinting.",
-		"max_level": 2, "cost": 150000, "cost_growth": 1.3, "effects": {"sprint_bonus": 0.1},
+		"max_level": 2, "cost": 550, "cost_growth": 1.3, "effects": {"sprint_bonus": 0.1},
 	},
 	"quick_wraps": {
-		"name": "Snap Wraps", "icon": "fast_fist", "pos": Vector2(-3.18, -3.18), "requires": ["gold_4"], "ring": 4,
+		"name": "Snap Wraps", "icon": "fast_fist", "pos": Vector2(1.25, -2.17), "requires": ["gold_2"], "ring": 2,
 		"desc": "Lighter wraps for faster hands.",
-		"max_level": 3, "cost": 9400, "cost_growth": 1.3, "effects": {"punch_speed": 0.05},
+		"max_level": 3, "cost": 550, "cost_growth": 1.3, "effects": {"punch_speed": 0.05},
 	},
 	"bounty": {
-		"name": "Crowd Pleaser", "icon": "wanted", "pos": Vector2(-2.47, -2.47), "requires": ["gold_3"], "ring": 3,
+		"name": "Crowd Pleaser", "icon": "wanted", "pos": Vector2(-1.75, -3.03), "requires": ["gold_3"], "ring": 3,
 		"desc": "Bigger milestone bonuses in the Arena.",
 		"max_level": 2, "cost": 2000, "cost_growth": 1.3, "effects": {"wave_bonus": 0.25},
 	},
@@ -392,14 +393,136 @@ const UPGRADES := {
 		"max_level": 3, "cost": 130, "cost_growth": 1.3, "effects": {"xp_bonus": 0.1},
 	},
 	"night_owl": {
-		"name": "Film Study", "icon": "moon", "pos": Vector2(4.6, -4.6), "requires": ["gold_6"], "ring": 6,
+		"name": "Film Study", "icon": "moon", "pos": Vector2(1.75, -3.03), "requires": ["gold_3"], "ring": 3,
 		"desc": "Learn even more from every fight.",
-		"max_level": 3, "cost": 150000, "cost_growth": 1.3, "effects": {"xp_bonus": 0.15},
+		"max_level": 3, "cost": 2000, "cost_growth": 1.3, "effects": {"xp_bonus": 0.15},
 	},
 	"dawn_patrol": {
-		"name": "Prize Fighter", "icon": "sun", "pos": Vector2(-3.89, -3.89), "requires": ["gold_5"], "ring": 5,
+		"name": "Prize Fighter", "icon": "sun", "pos": Vector2(-3.89, -3.89), "requires": ["tip_jar"], "ring": 5,
 		"desc": "Bigger Arena purses.",
 		"max_level": 2, "cost": 36000, "cost_growth": 1.3, "effects": {"dawn_bonus": 0.25},
+	},
+	# Rings 5 and 6: in-between nodes halfway to the diagonals (2026-10-28).
+	"knuckle_dusters": {
+		"name": "Knuckle Dusters", "icon": "brass", "pos": Vector2(5.08, 2.1), "requires": ["dmg_5"], "ring": 5,
+		"desc": "A little more damage.",
+		"max_level": 2, "cost": 30000, "cost_growth": 1.22, "effects": {"damage": 2},
+	},
+	"heavy_hands": {
+		"name": "Heavy Hands", "icon": "fist", "pos": Vector2(5.08, -2.1), "requires": ["dmg_5"], "ring": 5,
+		"desc": "A little more damage.",
+		"max_level": 2, "cost": 30000, "cost_growth": 1.22, "effects": {"damage": 2},
+	},
+	"iron_jaw": {
+		"name": "Iron Jaw", "icon": "tooth", "pos": Vector2(2.1, 5.08), "requires": ["def_5"], "ring": 5,
+		"desc": "A little more defense.",
+		"max_level": 2, "cost": 45000, "cost_growth": 1.22, "effects": {"defense": 1},
+	},
+	"stone_wall": {
+		"name": "Stone Wall", "icon": "shield", "pos": Vector2(-2.1, 5.08), "requires": ["def_5"], "ring": 5,
+		"desc": "A little more defense.",
+		"max_level": 2, "cost": 45000, "cost_growth": 1.22, "effects": {"defense": 1},
+	},
+	"scar_tissue": {
+		"name": "Scar Tissue", "icon": "heart", "pos": Vector2(-5.08, 2.1), "requires": ["hp_5"], "ring": 5,
+		"desc": "A little more knuckle HP.",
+		"max_level": 2, "cost": 30000, "cost_growth": 1.22, "effects": {"max_knuckles": 15},
+	},
+	"old_wounds": {
+		"name": "Old Wounds", "icon": "heart_plus", "pos": Vector2(-5.08, -2.1), "requires": ["hp_5"], "ring": 5,
+		"desc": "A little more knuckle HP.",
+		"max_level": 2, "cost": 30000, "cost_growth": 1.22, "effects": {"max_knuckles": 15},
+	},
+	"tip_jar": {
+		"name": "Tip Jar", "icon": "coin", "pos": Vector2(-2.1, -5.08), "requires": ["gold_5"], "ring": 5,
+		"desc": "A few more coins.",
+		"max_level": 2, "cost": 37000, "cost_growth": 1.22, "effects": {"coin_bonus": 0.05},
+	},
+	"back_pay": {
+		"name": "Back Pay", "icon": "bag", "pos": Vector2(2.1, -5.08), "requires": ["gold_5"], "ring": 5,
+		"desc": "A few more coins.",
+		"max_level": 2, "cost": 37000, "cost_growth": 1.22, "effects": {"coin_bonus": 0.05},
+	},
+	"coffin_nails": {
+		"name": "Coffin Nails", "icon": "double_fist", "pos": Vector2(6.01, 2.49), "requires": ["dmg_6"], "ring": 6,
+		"desc": "A little more damage.",
+		"max_level": 2, "cost": 150000, "cost_growth": 1.22, "effects": {"damage": 3},
+	},
+	"death_grip": {
+		"name": "Death Grip", "icon": "glove", "pos": Vector2(6.01, -2.49), "requires": ["dmg_6"], "ring": 6,
+		"desc": "A little more damage.",
+		"max_level": 2, "cost": 150000, "cost_growth": 1.22, "effects": {"damage": 3},
+	},
+	"crypt_door": {
+		"name": "Crypt Door", "icon": "shield", "pos": Vector2(2.49, 6.01), "requires": ["def_6"], "ring": 6,
+		"desc": "A little more defense.",
+		"max_level": 2, "cost": 230000, "cost_growth": 1.22, "effects": {"defense": 1.5},
+	},
+	"vault_guard": {
+		"name": "Vault Guard", "icon": "helmet", "pos": Vector2(-2.49, 6.01), "requires": ["def_6"], "ring": 6,
+		"desc": "A little more defense.",
+		"max_level": 2, "cost": 230000, "cost_growth": 1.22, "effects": {"defense": 1.5},
+	},
+	"grave_skin": {
+		"name": "Grave Skin", "icon": "heart", "pos": Vector2(-6.01, 2.49), "requires": ["hp_6"], "ring": 6,
+		"desc": "A little more knuckle HP.",
+		"max_level": 2, "cost": 150000, "cost_growth": 1.22, "effects": {"max_knuckles": 20},
+	},
+	"deathless": {
+		"name": "Deathless", "icon": "heart_plus", "pos": Vector2(-6.01, -2.49), "requires": ["hp_6"], "ring": 6,
+		"desc": "A little more knuckle HP.",
+		"max_level": 2, "cost": 150000, "cost_growth": 1.22, "effects": {"max_knuckles": 20},
+	},
+	"gold_teeth": {
+		"name": "Gold Teeth", "icon": "coin", "pos": Vector2(-2.49, -6.01), "requires": ["gold_6"], "ring": 6,
+		"desc": "A few more coins.",
+		"max_level": 2, "cost": 190000, "cost_growth": 1.22, "effects": {"coin_bonus": 0.05},
+	},
+	"royal_treasury": {
+		"name": "Royal Treasury", "icon": "chest", "pos": Vector2(2.49, -6.01), "requires": ["gold_6"], "ring": 6,
+		"desc": "A few more coins.",
+		"max_level": 2, "cost": 190000, "cost_growth": 1.22, "effects": {"coin_bonus": 0.05},
+	},
+	# New side upgrades for the even rings (2026-10-28).
+	"head_movement": {
+		"name": "Head Movement", "icon": "slip", "pos": Vector2(-1.25, 2.17), "requires": ["def_2"], "ring": 2,
+		"desc": "A wider window to dodge.",
+		"max_level": 2, "cost": 550, "cost_growth": 1.3, "effects": {"dodge_window": 0.05},
+	},
+	"rolling_guard": {
+		"name": "Rolling Guard", "icon": "spiral", "pos": Vector2(-1.75, 3.03), "requires": ["def_3"], "ring": 3,
+		"desc": "A longer window to counter.",
+		"max_level": 2, "cost": 2000, "cost_growth": 1.3, "effects": {"counter_window": 0.1},
+	},
+	"iron_lungs": {
+		"name": "Iron Lungs", "icon": "heartbeat", "pos": Vector2(-3.18, -3.18), "requires": ["hp_4"], "ring": 4,
+		"desc": "Heal more between waves.",
+		"max_level": 2, "cost": 9400, "cost_growth": 1.3, "effects": {"wave_heal": 1},
+	},
+	"unflinching": {
+		"name": "Unflinching", "icon": "muscle", "pos": Vector2(-3.89, 3.89), "requires": ["scar_tissue"], "ring": 5,
+		"desc": "Hits knock you off balance less.",
+		"max_level": 2, "cost": 36000, "cost_growth": 1.3, "effects": {"flinch_reduction": 0.15},
+	},
+	"granite_chin": {
+		"name": "Granite Chin", "icon": "helmet", "pos": Vector2(4.6, 4.6), "requires": ["crypt_door"], "ring": 6,
+		"desc": "Grazes hurt less.",
+		"max_level": 2, "cost": 150000, "cost_growth": 1.3, "effects": {"graze_reduction": 0.1},
+	},
+	"grave_wind": {
+		"name": "Grave Wind", "icon": "wind", "pos": Vector2(-4.6, 4.6), "requires": ["grave_skin"], "ring": 6,
+		"desc": "Heal more between waves.",
+		"max_level": 3, "cost": 150000, "cost_growth": 1.3, "effects": {"wave_heal": 1},
+	},
+	"kings_purse": {
+		"name": "King's Purse", "icon": "crown", "pos": Vector2(-4.6, -4.6), "requires": ["gold_teeth"], "ring": 6,
+		"desc": "Bigger wave bonuses.",
+		"max_level": 2, "cost": 150000, "cost_growth": 1.3, "effects": {"wave_bonus": 0.25},
+	},
+	"old_master": {
+		"name": "Old Master", "icon": "medal", "pos": Vector2(4.6, -4.6), "requires": ["royal_treasury"], "ring": 6,
+		"desc": "Learn more from every fight.",
+		"max_level": 3, "cost": 150000, "cost_growth": 1.3, "effects": {"xp_bonus": 0.15},
 	},
 	# The four powers, one in each corner (2026-10-27; out to the same
 	# distance as the Endless powers, 9 cells, 2026-10-28): a Sigil that needs only
@@ -411,47 +534,47 @@ const UPGRADES := {
 		"max_level": 1, "cost": 1356, "cost_growth": 1.0, "effects": {"fire_punch": 0.3, "burn": 0.25},
 	},
 	"hotter_flames": {
-		"name": "Brimstone", "icon": "thermometer", "pos": Vector2(7.36, -6.36), "requires": ["sigil_fire"], "ring": 2,
+		"name": "Brimstone", "icon": "thermometer", "pos": Vector2(5.06, -6.36), "requires": ["sigil_fire"], "ring": 2,
 		"desc": "Bigger fire bursts.",
 		"max_level": 3, "cost": 542, "cost_growth": 1.3, "effects": {"fire_punch": 0.2},
 	},
 	"fire_heart": {
-		"name": "Furnace Heart", "icon": "flame", "pos": Vector2(8.36, -6.36), "requires": ["hotter_flames"], "ring": 3,
+		"name": "Furnace Heart", "icon": "flame", "pos": Vector2(3.76, -7.66), "requires": ["hotter_flames"], "ring": 3,
 		"desc": "Even bigger fire bursts.",
 		"max_level": 3, "cost": 1991, "cost_growth": 1.3, "effects": {"fire_punch": 0.15},
 	},
 	"wildfire": {
-		"name": "Wildfire", "icon": "ripple", "pos": Vector2(9.36, -6.36), "requires": ["fire_heart"], "ring": 4,
+		"name": "Wildfire", "icon": "ripple", "pos": Vector2(5.06, -8.96), "requires": ["fire_heart"], "ring": 4,
 		"desc": "Fire spreads farther.",
 		"max_level": 2, "cost": 9376, "cost_growth": 1.3, "effects": {"fire_radius": 1.0},
 	},
 	"lingering_flames": {
-		"name": "Slow Burn", "icon": "clock", "pos": Vector2(7.36, -7.36), "requires": ["sigil_fire"], "ring": 2,
+		"name": "Slow Burn", "icon": "clock", "pos": Vector2(6.36, -7.66), "requires": ["sigil_fire"], "ring": 2,
 		"desc": "Burns last longer.",
 		"max_level": 3, "cost": 542, "cost_growth": 1.3, "effects": {"burn_time": 1.5},
 	},
 	"searing": {
-		"name": "Scorch", "icon": "burst", "pos": Vector2(8.36, -8.36), "requires": ["lingering_flames"], "ring": 3,
+		"name": "Scorch", "icon": "burst", "pos": Vector2(6.36, -8.96), "requires": ["lingering_flames"], "ring": 3,
 		"desc": "Burns hurt more.",
 		"max_level": 3, "cost": 1991, "cost_growth": 1.3, "effects": {"burn": 0.2},
 	},
 	"kindling": {
-		"name": "Firestarter", "icon": "match", "pos": Vector2(6.36, -7.36), "requires": ["sigil_fire"], "ring": 2,
+		"name": "Firestarter", "icon": "match", "pos": Vector2(7.66, -6.36), "requires": ["sigil_fire"], "ring": 2,
 		"desc": "Any punch can burst into flame.",
 		"max_level": 3, "cost": 542, "cost_growth": 1.3, "effects": {"fire_chance": 0.06},
 	},
 	"tinderbox": {
-		"name": "Tinderbox", "icon": "match", "pos": Vector2(6.36, -8.36), "requires": ["kindling"], "ring": 3,
+		"name": "Tinderbox", "icon": "match", "pos": Vector2(8.96, -7.66), "requires": ["kindling"], "ring": 3,
 		"desc": "More punches burst into flame.",
 		"max_level": 2, "cost": 1991, "cost_growth": 1.3, "effects": {"fire_chance": 0.04},
 	},
 	"ember_rain": {
-		"name": "Ember Rain", "icon": "ripple", "pos": Vector2(6.36, -9.36), "requires": ["tinderbox"], "ring": 4,
+		"name": "Ember Rain", "icon": "ripple", "pos": Vector2(7.66, -8.96), "requires": ["tinderbox"], "ring": 4,
 		"desc": "Fire bursts reach a little farther.",
 		"max_level": 2, "cost": 9376, "cost_growth": 1.3, "effects": {"fire_radius": 0.5},
 	},
 	"pyre": {
-		"name": "Pyre", "icon": "pyre", "pos": Vector2(9.36, -9.36), "requires": ["wildfire", "searing", "ember_rain"], "ring": 6, "medallion": true,
+		"name": "Pyre", "icon": "pyre", "pos": Vector2(6.36, -10.26), "requires": ["wildfire", "searing", "ember_rain"], "ring": 6, "medallion": true,
 		"desc": "Burning enemies explode when they die.",
 		"max_level": 1, "cost": 503100, "cost_growth": 1.0, "effects": {"pyre": 1},
 	},
@@ -461,47 +584,47 @@ const UPGRADES := {
 		"max_level": 1, "cost": 3982, "cost_growth": 1.0, "effects": {"frost_punch": 0.4},
 	},
 	"deep_freeze": {
-		"name": "Deep Freeze", "icon": "shard", "pos": Vector2(-7.36, 6.36), "requires": ["sigil_frost"], "ring": 3,
+		"name": "Deep Freeze", "icon": "shard", "pos": Vector2(-5.06, 6.36), "requires": ["sigil_frost"], "ring": 3,
 		"desc": "Frozen enemies are slower.",
 		"max_level": 3, "cost": 1991, "cost_growth": 1.3, "effects": {"frost_punch": 0.1},
 	},
 	"brittle": {
-		"name": "Brittle Bones", "icon": "broken_shield", "pos": Vector2(-8.36, 6.36), "requires": ["deep_freeze"], "ring": 4,
+		"name": "Brittle Bones", "icon": "broken_shield", "pos": Vector2(-3.76, 7.66), "requires": ["deep_freeze"], "ring": 4,
 		"desc": "Frozen enemies take extra damage from everything.",
 		"max_level": 3, "cost": 9376, "cost_growth": 1.3, "effects": {"brittle": 0.1},
 	},
 	"black_ice": {
-		"name": "Black Ice", "icon": "shard", "pos": Vector2(-9.36, 6.36), "requires": ["brittle"], "ring": 5,
+		"name": "Black Ice", "icon": "shard", "pos": Vector2(-5.06, 8.96), "requires": ["brittle"], "ring": 5,
 		"desc": "Frozen enemies take even more damage.",
 		"max_level": 3, "cost": 36000, "cost_growth": 1.3, "effects": {"brittle": 0.05},
 	},
 	"permafrost": {
-		"name": "Permafrost", "icon": "hourglass", "pos": Vector2(-7.36, 7.36), "requires": ["sigil_frost"], "ring": 3,
+		"name": "Permafrost", "icon": "hourglass", "pos": Vector2(-6.36, 7.66), "requires": ["sigil_frost"], "ring": 3,
 		"desc": "Freezes last longer.",
 		"max_level": 3, "cost": 1991, "cost_growth": 1.3, "effects": {"frost_time": 1.0},
 	},
 	"frost_nova": {
-		"name": "Frost Nova", "icon": "nova", "pos": Vector2(-8.36, 8.36), "requires": ["permafrost"], "ring": 4,
+		"name": "Frost Nova", "icon": "nova", "pos": Vector2(-6.36, 8.96), "requires": ["permafrost"], "ring": 4,
 		"desc": "Freezes reach farther.",
 		"max_level": 2, "cost": 9376, "cost_growth": 1.3, "effects": {"frost_radius": 1.0},
 	},
 	"cold_snap": {
-		"name": "Cold Snap", "icon": "icicle", "pos": Vector2(-6.36, 7.36), "requires": ["sigil_frost"], "ring": 3,
+		"name": "Cold Snap", "icon": "icicle", "pos": Vector2(-7.66, 6.36), "requires": ["sigil_frost"], "ring": 3,
 		"desc": "Any punch can freeze.",
 		"max_level": 3, "cost": 1991, "cost_growth": 1.3, "effects": {"frost_chance": 0.08},
 	},
 	"hoarfrost": {
-		"name": "Hoarfrost", "icon": "snowflake", "pos": Vector2(-6.36, 8.36), "requires": ["cold_snap"], "ring": 4,
+		"name": "Hoarfrost", "icon": "snowflake", "pos": Vector2(-8.96, 7.66), "requires": ["cold_snap"], "ring": 4,
 		"desc": "Freezes last a little longer.",
 		"max_level": 2, "cost": 9376, "cost_growth": 1.3, "effects": {"frost_time": 0.5},
 	},
 	"glacier": {
-		"name": "Glacier", "icon": "icicle", "pos": Vector2(-6.36, 9.36), "requires": ["hoarfrost"], "ring": 5,
+		"name": "Glacier", "icon": "icicle", "pos": Vector2(-7.66, 8.96), "requires": ["hoarfrost"], "ring": 5,
 		"desc": "More punches freeze.",
 		"max_level": 2, "cost": 36000, "cost_growth": 1.3, "effects": {"frost_chance": 0.04},
 	},
 	"frost_shatter": {
-		"name": "Shatter", "icon": "shatter", "pos": Vector2(-9.36, 9.36), "requires": ["black_ice", "frost_nova", "glacier"], "ring": 6, "medallion": true,
+		"name": "Shatter", "icon": "shatter", "pos": Vector2(-6.36, 10.26), "requires": ["black_ice", "frost_nova", "glacier"], "ring": 6, "medallion": true,
 		"desc": "Frozen enemies burst into frost when they die.",
 		"max_level": 1, "cost": 503100, "cost_growth": 1.0, "effects": {"frost_shatter": 1},
 	},
@@ -511,47 +634,47 @@ const UPGRADES := {
 		"max_level": 1, "cost": 18753, "cost_growth": 1.0, "effects": {"chain_lightning": 2},
 	},
 	"forked": {
-		"name": "Forked Lightning", "icon": "fork", "pos": Vector2(7.36, 6.36), "requires": ["sigil_storm"], "ring": 4,
+		"name": "Forked Lightning", "icon": "fork", "pos": Vector2(7.66, 6.36), "requires": ["sigil_storm"], "ring": 4,
 		"desc": "Lightning jumps to one more enemy.",
 		"max_level": 2, "cost": 9376, "cost_growth": 1.3, "effects": {"chain_lightning": 1},
 	},
 	"overcharge": {
-		"name": "Overcharge", "icon": "battery", "pos": Vector2(8.36, 6.36), "requires": ["forked"], "ring": 5,
+		"name": "Overcharge", "icon": "battery", "pos": Vector2(8.96, 7.66), "requires": ["forked"], "ring": 5,
 		"desc": "Lightning hits harder.",
 		"max_level": 3, "cost": 36000, "cost_growth": 1.3, "effects": {"chain_damage": 0.15},
 	},
 	"high_voltage": {
-		"name": "High Voltage", "icon": "battery", "pos": Vector2(9.36, 6.36), "requires": ["overcharge"], "ring": 5,
+		"name": "High Voltage", "icon": "battery", "pos": Vector2(7.66, 8.96), "requires": ["overcharge"], "ring": 5,
 		"desc": "Lightning hits harder still.",
 		"max_level": 3, "cost": 36000, "cost_growth": 1.3, "effects": {"chain_damage": 0.1},
 	},
 	"static_shock": {
-		"name": "Static Shock", "icon": "spark", "pos": Vector2(7.36, 7.36), "requires": ["sigil_storm"], "ring": 4,
+		"name": "Static Shock", "icon": "spark", "pos": Vector2(6.36, 7.66), "requires": ["sigil_storm"], "ring": 4,
 		"desc": "Lightning staggers.",
 		"max_level": 1, "cost": 9376, "cost_growth": 1.3, "effects": {"chain_stun": 1},
 	},
 	"conductor": {
-		"name": "Lightning Rod", "icon": "magnet", "pos": Vector2(8.36, 8.36), "requires": ["static_shock"], "ring": 5,
+		"name": "Lightning Rod", "icon": "magnet", "pos": Vector2(6.36, 8.96), "requires": ["static_shock"], "ring": 5,
 		"desc": "Every counter arcs lightning.",
 		"max_level": 1, "cost": 36000, "cost_growth": 1.3, "effects": {"chain_on_counter": 1},
 	},
 	"ball_lightning": {
-		"name": "Ball Lightning", "icon": "spark", "pos": Vector2(6.36, 7.36), "requires": ["sigil_storm"], "ring": 4,
+		"name": "Ball Lightning", "icon": "spark", "pos": Vector2(5.06, 6.36), "requires": ["sigil_storm"], "ring": 4,
 		"desc": "Lightning jumps to one more enemy.",
 		"max_level": 1, "cost": 9376, "cost_growth": 1.3, "effects": {"chain_lightning": 1},
 	},
 	"storm": {
-		"name": "Perfect Storm", "icon": "storm", "pos": Vector2(6.36, 8.36), "requires": ["ball_lightning"], "ring": 5,
+		"name": "Perfect Storm", "icon": "storm", "pos": Vector2(3.76, 7.66), "requires": ["ball_lightning"], "ring": 5,
 		"desc": "Lightning comes every 4th combo hit.",
 		"max_level": 1, "cost": 36000, "cost_growth": 1.3, "effects": {"chain_every_cut": 1},
 	},
 	"tesla_coil": {
-		"name": "Tesla Coil", "icon": "bolt", "pos": Vector2(6.36, 9.36), "requires": ["storm"], "ring": 5,
+		"name": "Tesla Coil", "icon": "bolt", "pos": Vector2(5.06, 8.96), "requires": ["storm"], "ring": 5,
 		"desc": "Lightning hits harder.",
 		"max_level": 2, "cost": 36000, "cost_growth": 1.3, "effects": {"chain_damage": 0.1},
 	},
 	"thunderhead": {
-		"name": "Thunderhead", "icon": "thunderhead", "pos": Vector2(9.36, 9.36), "requires": ["high_voltage", "conductor", "tesla_coil"], "ring": 6, "medallion": true,
+		"name": "Thunderhead", "icon": "thunderhead", "pos": Vector2(6.36, 10.26), "requires": ["high_voltage", "conductor", "tesla_coil"], "ring": 6, "medallion": true,
 		"desc": "Clean dodges call lightning on the attacker.",
 		"max_level": 1, "cost": 503100, "cost_growth": 1.0, "effects": {"thunderhead": 1},
 	},
@@ -561,47 +684,47 @@ const UPGRADES := {
 		"max_level": 1, "cost": 135240, "cost_growth": 1.0, "effects": {"heal_on_kill": 1},
 	},
 	"vampiric_knuckles": {
-		"name": "Bloodsucker", "icon": "fang", "pos": Vector2(-7.36, -6.36), "requires": ["sigil_blood"], "ring": 5,
+		"name": "Bloodsucker", "icon": "fang", "pos": Vector2(-7.66, -6.36), "requires": ["sigil_blood"], "ring": 5,
 		"desc": "Kills heal more.",
 		"max_level": 3, "cost": 36000, "cost_growth": 1.3, "effects": {"heal_on_kill": 0.5},
 	},
 	"blood_bank": {
-		"name": "Blood Bank", "icon": "drop", "pos": Vector2(-8.36, -6.36), "requires": ["vampiric_knuckles"], "ring": 5,
+		"name": "Blood Bank", "icon": "drop", "pos": Vector2(-8.96, -7.66), "requires": ["vampiric_knuckles"], "ring": 5,
 		"desc": "Kills heal even more.",
 		"max_level": 2, "cost": 36000, "cost_growth": 1.3, "effects": {"heal_on_kill": 0.5},
 	},
 	"transfusion": {
-		"name": "Transfusion", "icon": "heartbeat", "pos": Vector2(-9.36, -6.36), "requires": ["blood_bank"], "ring": 5,
+		"name": "Transfusion", "icon": "heartbeat", "pos": Vector2(-7.66, -8.96), "requires": ["blood_bank"], "ring": 5,
 		"desc": "Counters heal more.",
 		"max_level": 2, "cost": 36000, "cost_growth": 1.3, "effects": {"counter_heal": 0.3},
 	},
 	"bloodletting": {
-		"name": "Bloodletting", "icon": "heartbeat", "pos": Vector2(-7.36, -7.36), "requires": ["sigil_blood"], "ring": 5,
+		"name": "Bloodletting", "icon": "heartbeat", "pos": Vector2(-6.36, -7.66), "requires": ["sigil_blood"], "ring": 5,
 		"desc": "Counters heal you.",
 		"max_level": 3, "cost": 36000, "cost_growth": 1.3, "effects": {"counter_heal": 0.5},
 	},
 	"open_vein": {
-		"name": "Open Vein", "icon": "fang", "pos": Vector2(-8.36, -8.36), "requires": ["bloodletting"], "ring": 5,
+		"name": "Open Vein", "icon": "fang", "pos": Vector2(-6.36, -8.96), "requires": ["bloodletting"], "ring": 5,
 		"desc": "Counters heal more.",
 		"max_level": 2, "cost": 36000, "cost_growth": 1.3, "effects": {"counter_heal": 0.3},
 	},
 	"blood_rage": {
-		"name": "Seeing Red", "icon": "blood_burst", "pos": Vector2(-6.36, -7.36), "requires": ["sigil_blood"], "ring": 5,
+		"name": "Seeing Red", "icon": "blood_burst", "pos": Vector2(-5.06, -6.36), "requires": ["sigil_blood"], "ring": 5,
 		"desc": "The closer you are to dropping, the harder you hit.",
 		"max_level": 3, "cost": 36000, "cost_growth": 1.3, "effects": {"last_stand": 0.15},
 	},
 	"death_wish": {
-		"name": "Death Wish", "icon": "skull", "pos": Vector2(-6.36, -8.36), "requires": ["blood_rage"], "ring": 5,
+		"name": "Death Wish", "icon": "skull", "pos": Vector2(-3.76, -7.66), "requires": ["blood_rage"], "ring": 5,
 		"desc": "Even harder the closer you are to dropping.",
 		"max_level": 2, "cost": 36000, "cost_growth": 1.3, "effects": {"last_stand": 0.1},
 	},
 	"red_tide": {
-		"name": "Red Tide", "icon": "blood_burst", "pos": Vector2(-6.36, -9.36), "requires": ["death_wish"], "ring": 5,
+		"name": "Red Tide", "icon": "blood_burst", "pos": Vector2(-5.06, -8.96), "requires": ["death_wish"], "ring": 5,
 		"desc": "Kills heal more.",
 		"max_level": 2, "cost": 36000, "cost_growth": 1.3, "effects": {"heal_on_kill": 0.3},
 	},
 	"bloodbath": {
-		"name": "Bloodbath", "icon": "bloodbath", "pos": Vector2(-9.36, -9.36), "requires": ["transfusion", "open_vein", "red_tide"], "ring": 6, "medallion": true,
+		"name": "Bloodbath", "icon": "bloodbath", "pos": Vector2(-6.36, -10.26), "requires": ["transfusion", "open_vein", "red_tide"], "ring": 6, "medallion": true,
 		"desc": "Healing doubled under half knuckle HP.",
 		"max_level": 1, "cost": 503100, "cost_growth": 1.0, "effects": {"bloodbath": 1},
 	},
@@ -609,52 +732,52 @@ const UPGRADES := {
 	# endless bout is won (1 to 4), a diamond off one edge of the web: a
 	# Sigil, three branches, and a capstone where they meet.
 	"sigil_quake": {
-		"name": "Earthbreaker", "icon": "quake", "pos": Vector2(0, -9), "requires": [], "ring": 1, "medallion": true, "endless": 1,
+		"name": "Earthbreaker", "icon": "quake", "pos": Vector2(-0, -9), "requires": [], "ring": 1, "medallion": true, "endless": 1,
 		"desc": "Awakens QUAKE: land from a jump in a shockwave.",
 		"max_level": 1, "cost": 600, "cost_growth": 1.0, "effects": {"quake_power": 0.8},
 	},
 	"quake_force": {
-		"name": "Heavy Landing", "icon": "hammer", "pos": Vector2(-1, -9), "requires": ["sigil_quake"], "ring": 1,
+		"name": "Heavy Landing", "icon": "hammer", "pos": Vector2(-1.3, -9), "requires": ["sigil_quake"], "ring": 1,
 		"desc": "Harder shockwaves.",
 		"max_level": 3, "cost": 180, "cost_growth": 1.3, "effects": {"quake_damage": 0.2},
 	},
 	"bedrock": {
-		"name": "Bedrock", "icon": "mountain", "pos": Vector2(-2, -10), "requires": ["quake_force"], "ring": 2,
+		"name": "Bedrock", "icon": "mountain", "pos": Vector2(-2.6, -10.3), "requires": ["quake_force"], "ring": 2,
 		"desc": "Even harder shockwaves.",
 		"max_level": 2, "cost": 542, "cost_growth": 1.3, "effects": {"quake_damage": 0.15},
 	},
 	"seismic": {
-		"name": "Seismic", "icon": "quake", "pos": Vector2(-1, -11), "requires": ["bedrock"], "ring": 3,
+		"name": "Seismic", "icon": "quake", "pos": Vector2(-1.3, -11.6), "requires": ["bedrock"], "ring": 3,
 		"desc": "Shockwaves knock monsters down.",
 		"max_level": 1, "cost": 1991, "cost_growth": 1.3, "effects": {"quake_knockdown": 1},
 	},
 	"wide_stance": {
-		"name": "Wide Stance", "icon": "ripple", "pos": Vector2(0, -10), "requires": ["sigil_quake"], "ring": 1,
+		"name": "Wide Stance", "icon": "ripple", "pos": Vector2(-0, -10.3), "requires": ["sigil_quake"], "ring": 1,
 		"desc": "Shockwaves reach farther.",
 		"max_level": 2, "cost": 180, "cost_growth": 1.3, "effects": {"quake_radius": 0.75},
 	},
 	"fault_line": {
-		"name": "Fault Line", "icon": "chevrons", "pos": Vector2(0, -11), "requires": ["wide_stance"], "ring": 2,
+		"name": "Fault Line", "icon": "chevrons", "pos": Vector2(-0, -11.6), "requires": ["wide_stance"], "ring": 2,
 		"desc": "Shockwaves also crack forward in a line.",
 		"max_level": 1, "cost": 542, "cost_growth": 1.3, "effects": {"fault_line": 1},
 	},
 	"drumbeat": {
-		"name": "Drumbeat", "icon": "note", "pos": Vector2(1, -9), "requires": ["sigil_quake"], "ring": 1,
+		"name": "Drumbeat", "icon": "note", "pos": Vector2(1.3, -9), "requires": ["sigil_quake"], "ring": 1,
 		"desc": "Landed punches can stomp.",
 		"max_level": 3, "cost": 180, "cost_growth": 1.3, "effects": {"quake_chance": 0.04},
 	},
 	"short_fuse": {
-		"name": "Short Fuse", "icon": "stopwatch", "pos": Vector2(2, -10), "requires": ["drumbeat"], "ring": 2,
+		"name": "Short Fuse", "icon": "stopwatch", "pos": Vector2(2.6, -10.3), "requires": ["drumbeat"], "ring": 2,
 		"desc": "Shockwaves come back sooner.",
 		"max_level": 2, "cost": 542, "cost_growth": 1.3, "effects": {"quake_cooldown": 0.75},
 	},
 	"tremor": {
-		"name": "Tremor", "icon": "spiral", "pos": Vector2(1, -11), "requires": ["short_fuse"], "ring": 3,
+		"name": "Tremor", "icon": "spiral", "pos": Vector2(1.3, -11.6), "requires": ["short_fuse"], "ring": 3,
 		"desc": "Shockwaves stun.",
 		"max_level": 1, "cost": 1991, "cost_growth": 1.3, "effects": {"quake_stun": 1},
 	},
 	"aftershock": {
-		"name": "Aftershock", "icon": "quake", "pos": Vector2(0, -12), "requires": ["seismic", "fault_line", "tremor"], "ring": 6, "medallion": true,
+		"name": "Aftershock", "icon": "quake", "pos": Vector2(-0, -12.9), "requires": ["seismic", "fault_line", "tremor"], "ring": 6, "medallion": true,
 		"desc": "The ground stays cracked and slows monsters.",
 		"max_level": 1, "cost": 503100, "cost_growth": 1.0, "effects": {"quake_aftershock": 1},
 	},
@@ -664,47 +787,47 @@ const UPGRADES := {
 		"max_level": 1, "cost": 1356, "cost_growth": 1.0, "effects": {"gale": 0.5},
 	},
 	"gust": {
-		"name": "Gust", "icon": "swoosh", "pos": Vector2(9, -1), "requires": ["sigil_gale"], "ring": 2,
+		"name": "Gust", "icon": "swoosh", "pos": Vector2(9, -1.3), "requires": ["sigil_gale"], "ring": 2,
 		"desc": "Harder air bursts.",
 		"max_level": 3, "cost": 542, "cost_growth": 1.3, "effects": {"gale_damage": 0.15},
 	},
 	"gale_force": {
-		"name": "Gale Force", "icon": "wind", "pos": Vector2(10, -2), "requires": ["gust"], "ring": 3,
+		"name": "Gale Force", "icon": "wind", "pos": Vector2(10.3, -2.6), "requires": ["gust"], "ring": 3,
 		"desc": "Even harder air bursts.",
 		"max_level": 2, "cost": 1991, "cost_growth": 1.3, "effects": {"gale_damage": 0.1},
 	},
 	"buffet": {
-		"name": "Buffet", "icon": "wave", "pos": Vector2(11, -1), "requires": ["gale_force"], "ring": 4,
+		"name": "Buffet", "icon": "wave", "pos": Vector2(11.6, -1.3), "requires": ["gale_force"], "ring": 4,
 		"desc": "Air bursts stagger.",
 		"max_level": 1, "cost": 9376, "cost_growth": 1.3, "effects": {"gale_stagger": 1},
 	},
 	"deep_lungs": {
-		"name": "Deep Lungs", "icon": "feather", "pos": Vector2(10, 0), "requires": ["sigil_gale"], "ring": 2,
+		"name": "Deep Lungs", "icon": "feather", "pos": Vector2(10.3, 0), "requires": ["sigil_gale"], "ring": 2,
 		"desc": "Hold more charges.",
 		"max_level": 2, "cost": 542, "cost_growth": 1.3, "effects": {"gale_charges": 1},
 	},
 	"tailwind": {
-		"name": "Tailwind", "icon": "wing", "pos": Vector2(11, 0), "requires": ["deep_lungs"], "ring": 3,
+		"name": "Tailwind", "icon": "wing", "pos": Vector2(11.6, 0), "requires": ["deep_lungs"], "ring": 3,
 		"desc": "Dodges give one more charge.",
 		"max_level": 1, "cost": 1991, "cost_growth": 1.3, "effects": {"gale_tailwind": 1},
 	},
 	"long_wind": {
-		"name": "Long Wind", "icon": "chevrons", "pos": Vector2(9, 1), "requires": ["sigil_gale"], "ring": 2,
+		"name": "Long Wind", "icon": "chevrons", "pos": Vector2(9, 1.3), "requires": ["sigil_gale"], "ring": 2,
 		"desc": "Air bursts fly farther.",
 		"max_level": 1, "cost": 542, "cost_growth": 1.3, "effects": {"gale_range": 3.0},
 	},
 	"crosswind": {
-		"name": "Crosswind", "icon": "fork", "pos": Vector2(10, 2), "requires": ["long_wind"], "ring": 3,
+		"name": "Crosswind", "icon": "fork", "pos": Vector2(10.3, 2.6), "requires": ["long_wind"], "ring": 3,
 		"desc": "Hooks fire a fan of three.",
 		"max_level": 1, "cost": 1991, "cost_growth": 1.3, "effects": {"crosswind": 1},
 	},
 	"updraft": {
-		"name": "Updraft", "icon": "wing", "pos": Vector2(11, 1), "requires": ["crosswind"], "ring": 4,
+		"name": "Updraft", "icon": "wing", "pos": Vector2(11.6, 1.3), "requires": ["crosswind"], "ring": 4,
 		"desc": "Uppercut bursts knock monsters off their feet.",
 		"max_level": 1, "cost": 9376, "cost_growth": 1.3, "effects": {"updraft": 1},
 	},
 	"cyclone": {
-		"name": "Cyclone", "icon": "spiral", "pos": Vector2(12, 0), "requires": ["buffet", "tailwind", "updraft"], "ring": 6, "medallion": true,
+		"name": "Cyclone", "icon": "spiral", "pos": Vector2(12.9, 0), "requires": ["buffet", "tailwind", "updraft"], "ring": 6, "medallion": true,
 		"desc": "Your last charge blows everything nearby back.",
 		"max_level": 1, "cost": 503100, "cost_growth": 1.0, "effects": {"cyclone": 1},
 	},
@@ -714,47 +837,47 @@ const UPGRADES := {
 		"max_level": 1, "cost": 3982, "cost_growth": 1.0, "effects": {"plate_guard": 0.08},
 	},
 	"plating": {
-		"name": "Plating", "icon": "chestplate", "pos": Vector2(1, 9), "requires": ["sigil_iron"], "ring": 3,
+		"name": "Plating", "icon": "chestplate", "pos": Vector2(1.3, 9), "requires": ["sigil_iron"], "ring": 3,
 		"desc": "One more plate.",
 		"max_level": 1, "cost": 1991, "cost_growth": 1.3, "effects": {"iron_plates": 1},
 	},
 	"tempered": {
-		"name": "Tempered", "icon": "shield", "pos": Vector2(2, 10), "requires": ["plating"], "ring": 4,
+		"name": "Tempered", "icon": "shield", "pos": Vector2(2.6, 10.3), "requires": ["plating"], "ring": 4,
 		"desc": "Each plate cuts more.",
 		"max_level": 2, "cost": 9376, "cost_growth": 1.3, "effects": {"plate_guard": 0.005},
 	},
 	"riveted": {
-		"name": "Riveted", "icon": "anchor", "pos": Vector2(1, 11), "requires": ["tempered"], "ring": 5,
+		"name": "Riveted", "icon": "anchor", "pos": Vector2(1.3, 11.6), "requires": ["tempered"], "ring": 5,
 		"desc": "A boss's hit breaks only one plate.",
 		"max_level": 1, "cost": 36000, "cost_growth": 1.3, "effects": {"riveted": 1},
 	},
 	"forge": {
-		"name": "Forge", "icon": "hammer", "pos": Vector2(0, 10), "requires": ["sigil_iron"], "ring": 3,
+		"name": "Forge", "icon": "hammer", "pos": Vector2(0, 10.3), "requires": ["sigil_iron"], "ring": 3,
 		"desc": "Plates forge sooner.",
 		"max_level": 2, "cost": 1991, "cost_growth": 1.3, "effects": {"iron_forge": 1},
 	},
 	"anvil": {
-		"name": "Anvil", "icon": "anvil", "pos": Vector2(0, 11), "requires": ["forge"], "ring": 4,
+		"name": "Anvil", "icon": "anvil", "pos": Vector2(0, 11.6), "requires": ["forge"], "ring": 4,
 		"desc": "Any dodge forges a plate.",
 		"max_level": 1, "cost": 9376, "cost_growth": 1.3, "effects": {"iron_anvil": 1},
 	},
 	"spikes": {
-		"name": "Spikes", "icon": "broken_shield", "pos": Vector2(-1, 9), "requires": ["sigil_iron"], "ring": 3,
+		"name": "Spikes", "icon": "broken_shield", "pos": Vector2(-1.3, 9), "requires": ["sigil_iron"], "ring": 3,
 		"desc": "A breaking plate staggers the attacker.",
 		"max_level": 1, "cost": 1991, "cost_growth": 1.3, "effects": {"iron_spikes": 1},
 	},
 	"barbs": {
-		"name": "Barbs", "icon": "axe", "pos": Vector2(-2, 10), "requires": ["spikes"], "ring": 4,
+		"name": "Barbs", "icon": "axe", "pos": Vector2(-2.6, 10.3), "requires": ["spikes"], "ring": 4,
 		"desc": "Breaking plates hit back.",
 		"max_level": 2, "cost": 9376, "cost_growth": 1.3, "effects": {"iron_barbs": 0.5},
 	},
 	"shrapnel": {
-		"name": "Shrapnel", "icon": "burst", "pos": Vector2(-1, 11), "requires": ["barbs"], "ring": 5,
+		"name": "Shrapnel", "icon": "burst", "pos": Vector2(-1.3, 11.6), "requires": ["barbs"], "ring": 5,
 		"desc": "Breaking plates hit everything around you.",
 		"max_level": 1, "cost": 36000, "cost_growth": 1.3, "effects": {"shrapnel": 1},
 	},
 	"unbreakable": {
-		"name": "Unbreakable", "icon": "helmet", "pos": Vector2(0, 12), "requires": ["riveted", "anvil", "shrapnel"], "ring": 6, "medallion": true,
+		"name": "Unbreakable", "icon": "helmet", "pos": Vector2(0, 12.9), "requires": ["riveted", "anvil", "shrapnel"], "ring": 6, "medallion": true,
 		"desc": "Full plates: a knockout blow leaves you on 1 knuckle HP.",
 		"max_level": 1, "cost": 503100, "cost_growth": 1.0, "effects": {"unbreakable": 1},
 	},
@@ -764,47 +887,47 @@ const UPGRADES := {
 		"max_level": 1, "cost": 18753, "cost_growth": 1.0, "effects": {"doom": 0.3},
 	},
 	"dread": {
-		"name": "Dread", "icon": "cracked_skull", "pos": Vector2(-9, 1), "requires": ["sigil_doom"], "ring": 4,
+		"name": "Dread", "icon": "cracked_skull", "pos": Vector2(-9, 1.3), "requires": ["sigil_doom"], "ring": 4,
 		"desc": "Marks store more.",
 		"max_level": 3, "cost": 9376, "cost_growth": 1.3, "effects": {"doom": 0.1},
 	},
 	"death_knell": {
-		"name": "Death Knell", "icon": "skull", "pos": Vector2(-10, 2), "requires": ["dread"], "ring": 5,
+		"name": "Death Knell", "icon": "skull", "pos": Vector2(-10.3, 2.6), "requires": ["dread"], "ring": 5,
 		"desc": "Marks store even more.",
 		"max_level": 2, "cost": 36000, "cost_growth": 1.3, "effects": {"doom": 0.05},
 	},
 	"reckoning": {
-		"name": "Reckoning", "icon": "burst", "pos": Vector2(-11, 1), "requires": ["death_knell"], "ring": 5,
+		"name": "Reckoning", "icon": "burst", "pos": Vector2(-11.6, 1.3), "requires": ["death_knell"], "ring": 5,
 		"desc": "The burst staggers, bosses too.",
 		"max_level": 1, "cost": 36000, "cost_growth": 1.3, "effects": {"reckoning": 1},
 	},
 	"long_shadow": {
-		"name": "Long Shadow", "icon": "hourglass", "pos": Vector2(-10, 0), "requires": ["sigil_doom"], "ring": 4,
+		"name": "Long Shadow", "icon": "hourglass", "pos": Vector2(-10.3, 0), "requires": ["sigil_doom"], "ring": 4,
 		"desc": "Marks last longer.",
 		"max_level": 2, "cost": 9376, "cost_growth": 1.3, "effects": {"doom_time": 1.0},
 	},
 	"dead_weight": {
-		"name": "Dead Weight", "icon": "anchor", "pos": Vector2(-11, 0), "requires": ["long_shadow"], "ring": 5,
+		"name": "Dead Weight", "icon": "anchor", "pos": Vector2(-11.6, 0), "requires": ["long_shadow"], "ring": 5,
 		"desc": "Marked monsters are slowed.",
 		"max_level": 1, "cost": 36000, "cost_growth": 1.3, "effects": {"dead_weight": 1},
 	},
 	"hex": {
-		"name": "Hex", "icon": "eye", "pos": Vector2(-9, -1), "requires": ["sigil_doom"], "ring": 4,
+		"name": "Hex", "icon": "eye", "pos": Vector2(-9, -1.3), "requires": ["sigil_doom"], "ring": 4,
 		"desc": "Any punch can mark.",
 		"max_level": 3, "cost": 9376, "cost_growth": 1.3, "effects": {"doom_chance": 0.06},
 	},
 	"evil_eye": {
-		"name": "Evil Eye", "icon": "eye", "pos": Vector2(-10, -2), "requires": ["hex"], "ring": 5,
+		"name": "Evil Eye", "icon": "eye", "pos": Vector2(-10.3, -2.6), "requires": ["hex"], "ring": 5,
 		"desc": "More punches mark.",
 		"max_level": 2, "cost": 36000, "cost_growth": 1.3, "effects": {"doom_chance": 0.04},
 	},
 	"pall": {
-		"name": "Pall", "icon": "ghost", "pos": Vector2(-11, -1), "requires": ["evil_eye"], "ring": 5,
+		"name": "Pall", "icon": "ghost", "pos": Vector2(-11.6, -1.3), "requires": ["evil_eye"], "ring": 5,
 		"desc": "A mark also lands on the nearest other monster.",
 		"max_level": 1, "cost": 36000, "cost_growth": 1.3, "effects": {"pall": 1},
 	},
 	"reaper": {
-		"name": "Reaper", "icon": "skull", "pos": Vector2(-12, 0), "requires": ["reckoning", "dead_weight", "pall"], "ring": 6, "medallion": true,
+		"name": "Reaper", "icon": "skull", "pos": Vector2(-12.9, 0), "requires": ["reckoning", "dead_weight", "pall"], "ring": 6, "medallion": true,
 		"desc": "A Doom burst that knocks out jumps the mark on.",
 		"max_level": 1, "cost": 503100, "cost_growth": 1.0, "effects": {"reaper": 1},
 	},

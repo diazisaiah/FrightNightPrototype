@@ -392,10 +392,10 @@ func _draw_map() -> void:
 		var font := UiTheme.display_font()
 		var label: String = BRANCHES[branch].name
 		var label_size := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 22)
-		# Corner powers: the name sits on the side toward the middle; edge
-		# powers: between the Sigil and the spoke (their branches fill the
-		# other sides).
-		var away := Vector2(-signf(at.x), 0.0) if absf(at.x) > 1.0 and absf(at.y) > 1.0 else (-at.normalized() if at.length() > 1.0 else Vector2.UP)
+		# The name sits between the Sigil and the core: straight in for the
+		# edge powers, up or down for the corner ones (their diamonds point
+		# straight up or down; the branches fill the other sides).
+		var away := Vector2(0.0, -signf(at.y)) if absf(at.x) > 1.0 and absf(at.y) > 1.0 else (-at.normalized() if at.length() > 1.0 else Vector2.UP)
 		var reach: float = _views[branch].extent() / 2.0 + 16.0 + absf(away.x) * label_size.x / 2.0 + absf(away.y) * 12.0
 		var spot: Vector2 = at + away * reach + Vector2(-label_size.x / 2.0, 8.0)
 		var tint: Color = BRANCHES[branch].color

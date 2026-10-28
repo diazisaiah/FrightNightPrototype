@@ -1795,15 +1795,21 @@ Side nodes: Haymaker 10%, Rib Shot 15%, crit 5% a level, Jump Rope 0.05s, Snap W
 
 **Links follow the rings (2026-10-28):** a link between two nodes on the same seal ring curves along that ring; every other link runs straight out from the center, so nothing cuts across on a slant (`SkillTreeView._link_path`). Side branches are small spokes: the first node steps off its spoke along the ring, the rest run straight outward at that angle. Branches that start on a later ring sit nearer their spoke, so no ring arc passes through another node.
 
-**Even rings (2026-10-28):** every seal ring holds eight nodes, 45 degrees apart: the four spokes and one side node halfway between each pair, linked to its own spoke by an arc along the ring. Rings fill evenly from the inside out, and no link runs on a slant. Side nodes by ring:
+**Even rings (2026-10-28):** every seal ring is evenly spaced: 8 nodes on rings 1 and 4 (45 degrees apart), 12 on rings 2 and 3 (30 apart), 16 on rings 5 and 6 (22.5 apart). Every side node sits on the ring it always had (its seal and price unchanged) and hangs off its spoke by an arc along the ring; no link runs on a slant.
 
-| Ring | Damage / defense (SE) | Defense / HP (SW) | HP / coins (NW) | Coins / damage (NE) |
-|---|---|---|---|---|
-| 1 | Jump Rope | Cornerman | Twinkle Toes | Sparring Partner |
-| 2 | Haymaker | Bob and Weave | Chin Check | Speed Bag |
-| 3 | Lucky Shot | Calloused | Crowd Pleaser | Counterpuncher |
-| 4 | Glass Breaker | Thick Skull | Snap Wraps | Can Opener |
-| 5 | Bigger They Fall | Ice Bath | Prize Fighter | Lead Tape |
-| 6 | Rope-a-Dope | Second Wind | Cemetery Sprint | Film Study |
+| Ring | Side nodes (clockwise from damage) |
+|---|---|
+| 1 | Jump Rope, Cornerman, Twinkle Toes, Sparring Partner |
+| 2 | Haymaker, Bob and Weave, **Head Movement**, Ice Bath, Chin Check, Cemetery Sprint, Snap Wraps, Speed Bag |
+| 3 | Lucky Shot, Thick Skull, **Rolling Guard**, Second Wind, Calloused, Crowd Pleaser, Film Study, Counterpuncher |
+| 4 | Glass Breaker, Rope-a-Dope, **Iron Lungs**, Can Opener |
+| 5 | in-between stat nodes, plus Bigger They Fall, **Unflinching**, Prize Fighter, Lead Tape |
+| 6 | in-between stat nodes, plus **Granite Chin**, **Grave Wind**, **King's Purse**, **Old Master** |
 
-Haymaker absorbs Rib Shot (5 levels of +15% set-up heavies) and Counterpuncher absorbs Return Fire (5 levels of +30% counters); saves' levels in the absorbed nodes join them. Each side node needs only its spoke's node on that ring. Lead Tape (the web's only one-level node) is a square like the rest. Ring 6 side nodes cost 150,000. Bouts to reach par: 2.0 / 3.1 / 2.9 / 2.3 / 3.1.
+New upgrades (bold) fill the slots: Head Movement (+0.05s dodge window, 2 levels), Rolling Guard (+0.1s counter window, 2), Iron Lungs (wave heal, 2), Unflinching (-15% flinch, 2), Granite Chin (-10% graze, 2), Grave Wind (wave heal, 3), King's Purse (+25% wave bonus, 2), Old Master (+15% XP, 3).
+
+**In-between nodes on rings 5 and 6:** halfway from each spoke to the diagonals, two per spoke a ring, each half its spoke's stat for 2 levels at half the spoke's price (ring 5: Knuckle Dusters, Heavy Hands +2 damage; Iron Jaw, Stone Wall +1 defense; Scar Tissue, Old Wounds +15 knuckle HP; Tip Jar, Back Pay +5% coins. Ring 6: Coffin Nails, Death Grip +3; Crypt Door, Vault Guard +1.5; Grave Skin, Deathless +20; Gold Teeth, Royal Treasury +5%). The diagonal node on the spoke's side of each ring-5 and ring-6 quadrant chains through it.
+
+Haymaker absorbs Rib Shot (5 levels of +15% set-up heavies) and Counterpuncher absorbs Return Fire (5 levels of +30% counters); saves' levels in the absorbed nodes join them. Lead Tape (the web's only one-level node) is a square like the rest. Bouts to reach par: 2.0 / 3.7 / 3.3 / 2.3 / 3.5 (the ring-5 in-betweens make the Coffin King's par a bit higher).
+
+**Power diamonds:** all eight powers use the same diamond (Sigil, three branches of 3, 2 and 3 nodes, the capstone at the far tip), 1.3 cells a step. The Endless powers point straight out along their axis; the elements sit on the diagonals 9 cells out with their diamonds pointing straight up (top) or down (bottom), so all eight read the same. Each power's name sits between its Sigil and the core.
