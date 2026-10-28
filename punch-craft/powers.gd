@@ -30,7 +30,7 @@ const AFTERSHOCK_TIME := 3.0
 const AFTERSHOCK_SLOW := 0.4
 const GALE_COLOR := Color(0.6, 1.0, 0.8)
 const CYCLONE_RADIUS := 3.5
-const DOOM_COLOR := Color(0.78, 1.0, 0.25)
+const DOOM_COLOR := Color(0.36, 0.1, 0.55)
 const DOOM_TIME := 3.0
 ## Reaper and Pall look this far for the next monster to mark.
 const DOOM_REACH := 6.0

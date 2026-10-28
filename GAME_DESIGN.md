@@ -1762,7 +1762,7 @@ Four more powers, one past each spoke of the upgrade web: **Quake north, Gale ea
 
 - **HUD:** a power chip over the passive chip shows Quake's recharge (READY), Gale charges and Iron plates (`PowerPlay.status`).
 - **Code:** `power_play.gd` (Gale charges, Iron plates, Quake landings and stomps), `air_burst.gd`, `Powers.ground_pound` (with Quake's reach, knockdowns, Fault Line, Aftershock), `Powers.doom_mark` / `doom_burst`, `Enemy.doom`.
-- **Colors:** Quake sandstone, Gale mint, Iron steel, Doom acid green.
+- **Colors:** Quake sandstone, Gale mint, Iron steel, Doom dark purple.
 - **Balance:** par ignores them (they hold no damage, knuckle or defense nodes; they are optional side power). POWER weighs them (`power_rating.gd`), and the Catalyst's amplifying covers their numbers (not Iron's plates).
 - **Tests:** `balance_regression` (seals, Prism's four), `card_runtime_regression` (each power in a real fight).
 

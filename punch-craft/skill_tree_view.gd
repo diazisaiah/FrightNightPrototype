@@ -27,7 +27,7 @@ const BRANCHES := {
 	"sigil_quake": {"name": "QUAKE", "color": Color(0.8, 0.62, 0.46)},
 	"sigil_gale": {"name": "GALE", "color": Color(0.55, 1.0, 0.75)},
 	"sigil_iron": {"name": "IRON", "color": Color(0.78, 0.82, 0.9)},
-	"sigil_doom": {"name": "DOOM", "color": Color(0.8, 1.0, 0.3)},
+	"sigil_doom": {"name": "DOOM", "color": Color(0.36, 0.12, 0.55)},
 }
 
 ## "upgrade" or "skill".

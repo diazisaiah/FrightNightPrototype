@@ -66,7 +66,7 @@ const POWER_COLORS := {
 	"sigil_fire": Color(1.0, 0.45, 0.1), "sigil_frost": Color(0.55, 0.85, 1.0),
 	"sigil_storm": Color(0.65, 0.45, 1.0), "sigil_blood": Color(0.95, 0.1, 0.15),
 	"sigil_quake": Color(0.82, 0.6, 0.42), "sigil_gale": Color(0.5, 1.0, 0.72),
-	"sigil_iron": Color(0.8, 0.85, 0.95), "sigil_doom": Color(0.78, 1.0, 0.25),
+	"sigil_iron": Color(0.8, 0.85, 0.95), "sigil_doom": Color(0.36, 0.1, 0.55),
 }
 
 ## Elbow position and rotation of the right arm at rest. The left arm mirrors it.
