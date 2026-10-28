@@ -352,6 +352,9 @@ var ult: Ult
 var cards: CardPlay
 ## The Endless powers' fight state (Gale charges, Iron plates, Quake).
 var powers: PowerPlay
+## An emote's own effects while it runs: Intense Yelling's aura, rocks and
+## lightning (PowerUpFx), Overexerted's poop (PoopFx).
+var _emote_fx: Node3D
 var _power_status := []
 ## Seconds left in a forward dash (Ghost Step slips attacks in it).
 var dash_time := 0.0
@@ -973,6 +976,15 @@ func start_emote(id: String) -> void:
 	emote = id
 	_last_emote = id
 	_buffered_hand = ""
+	if _emote_fx:
+		_emote_fx.queue_free()
+		_emote_fx = null
+	if id == "intense_yelling":
+		_emote_fx = PowerUpFx.new()
+	elif id == "overexerted":
+		_emote_fx = PoopFx.new()
+	if _emote_fx:
+		add_child(_emote_fx)
 	_pad_sprint = false
 	_body.visible = true
 	_body.play(id)
@@ -987,6 +999,9 @@ func _stop_emote(snap := false) -> void:
 		return
 	emote = ""
 	_body.stop()
+	if _emote_fx:
+		_emote_fx.queue_free()
+		_emote_fx = null
 	if snap:
 		_emote_out = 0.0
 		_finish_emote_cam()
@@ -1567,6 +1582,9 @@ func _land_punch(type: String, hand: String, _dashing := false, airborne := fals
 	var spear_line := _dash_style == "spear" and GameState.has_effect("spear_line")
 	var staggers: bool = set_up or counter or dive_kick or crush or big or _dash_style == "haymaker" or passive.stagger or card.stagger or spear_line
 	var dealt := target.take_hit(raw_damage, hit_point, push, staggers, caption, weak > 1.0, crush)
+	# One absurd punch wins the Bald Hero Cap.
+	if dealt >= Hats.MASSIVE_HIT * GameState.get_damage():
+		Hats.award(get_tree(), "bald_cap")
 	var killed := target.is_dead()
 	if not killed:
 		target.finisher = {}

@@ -84,6 +84,10 @@ func _max_build(fighter: String, ultimate := "") -> void:
 		"sigil_storm": 1, "sigil_blood": 1,
 		"sigil_quake": 1, "sigil_gale": 1, "sigil_iron": 1, "sigil_doom": 1,
 	}
+	# Every won hat already owned: their boosts run, and no award popup
+	# pauses the test mid-fight.
+	for hat in Hats.TROPHIES:
+		GameState.hats[hat] = 1
 	GameState.power_pick = "sigil_fire"
 	GameState.power_pick_2 = "sigil_frost"
 	GameState.power_pick_3 = "sigil_storm"

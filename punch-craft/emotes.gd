@@ -20,11 +20,12 @@ const REST := {
 	"rs": Vector3(0.05, 0, 0.12), "re": Vector3(0.25, 0, 0),
 }
 ## Wheel order (clockwise from the top).
-const ORDER := ["default", "dab", "nae_nae", "floss", "take_the_l", "griddy", "horse_ride", "running_man", "bros_shuffle", "boo_yah"]
+const ORDER := ["default", "dab", "nae_nae", "floss", "take_the_l", "griddy", "horse_ride", "running_man", "bros_shuffle", "boo_yah", "intense_yelling", "overexerted"]
 const NAMES := {
 	"default": "The Default", "dab": "Dab", "nae_nae": "Nae Nae", "floss": "Floss",
 	"take_the_l": "Take the L", "griddy": "Griddy", "horse_ride": "Horse Ride",
 	"running_man": "Running Man", "bros_shuffle": "Bros. Shuffle", "boo_yah": "Boo-Yah",
+	"intense_yelling": "Intense Yelling", "overexerted": "Overexerted",
 }
 
 
@@ -158,6 +159,30 @@ static func keys(id: String) -> Array:
 			var chest := {"pos": Vector3(0, -0.03, 0), "ls": Vector3(0.7, 0, -0.12), "le": Vector3(2.0, 0, 0),
 					"rs": Vector3(0.7, 0, 0.12), "re": Vector3(2.0, 0, 0), "lh": Vector3(0, 0, 0.08), "rh": Vector3(0, 0, -0.08)}
 			return [[0.18, pump], [0.16, chest], [0.18, mirror(pump)], [0.16, chest]]
+		"intense_yelling":
+			# Powering up: a wide squat, fists clenched down at the sides,
+			# chest out, head thrown back yelling, the whole body shaking.
+			# (PowerUpFx grows the aura, the rocks and the lightning.)
+			var yell := {"pos": Vector3(0, -0.14, 0), "lh": Vector3(0.05, 0, -0.32), "rh": Vector3(0.05, 0, 0.32),
+					"ls": Vector3(-0.35, 0, -0.5), "le": Vector3(0.55, 0, 0), "rs": Vector3(-0.35, 0, 0.5), "re": Vector3(0.55, 0, 0),
+					"torso": Vector3(0.16, 0, 0), "head": Vector3(0.42, 0, 0)}
+			var shake_a := with(yell, {"pos": Vector3(0.012, -0.15, 0), "torso": Vector3(0.17, 0.02, 0.03), "head": Vector3(0.44, 0.03, 0.02)})
+			var shake_b := with(yell, {"pos": Vector3(-0.012, -0.13, 0), "torso": Vector3(0.15, -0.02, -0.03), "head": Vector3(0.4, -0.03, -0.02)})
+			return [[0.05, shake_a], [0.05, shake_b], [0.05, shake_a], [0.05, yell], [0.05, shake_b], [0.05, shake_a]]
+		"overexerted":
+			# Intense Yelling with no aura, straight to the end: the strain,
+			# then (PoopFx drops it at 1.2s) the slump of a man relieved.
+			var yell := {"pos": Vector3(0, -0.14, 0), "lh": Vector3(0.05, 0, -0.32), "rh": Vector3(0.05, 0, 0.32),
+					"ls": Vector3(-0.35, 0, -0.5), "le": Vector3(0.55, 0, 0), "rs": Vector3(-0.35, 0, 0.5), "re": Vector3(0.55, 0, 0),
+					"torso": Vector3(0.16, 0, 0), "head": Vector3(0.42, 0, 0)}
+			var shake_a := with(yell, {"pos": Vector3(0.015, -0.16, 0), "torso": Vector3(0.18, 0.03, 0.04), "head": Vector3(0.46, 0.04, 0.03)})
+			var shake_b := with(yell, {"pos": Vector3(-0.015, -0.12, 0), "torso": Vector3(0.14, -0.03, -0.04), "head": Vector3(0.38, -0.04, -0.03)})
+			var relief := {"pos": Vector3(0, -0.06, 0), "torso": Vector3(-0.22, 0, 0), "head": Vector3(-0.3, 0, 0),
+					"ls": Vector3(-0.05, 0, -0.15), "le": Vector3(0.1, 0, 0), "rs": Vector3(-0.05, 0, 0.15), "re": Vector3(0.1, 0, 0)}
+			var strain := []
+			for i in 12:
+				strain.append([0.1, shake_a if i % 2 == 0 else shake_b])
+			return strain + [[0.25, relief], [1.6, with(relief, {"head": Vector3(-0.35, 0.2, 0)})]]
 		"boo_yah":
 			# The supervillain's "Oh yeah!": whip round into a T, sway; lean
 			# back, hips out, hands wiggling low; claws up by the face; both

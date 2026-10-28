@@ -41,6 +41,8 @@ var _hat: Node3D
 ## in the hair instead of floating on top of it.
 const HAT_SEAT := 0.37
 var _hair_top: Node3D
+## The rest of the hair (sides and back), hidden under a bald hat.
+var _hair_low: Node3D
 var _beanie: Node3D
 
 var _keys: Array = []
@@ -176,6 +178,8 @@ func wear_hat(id: String) -> void:
 		_beanie.visible = bare
 	if _hair_top:
 		_hair_top.visible = bare
+	if _hair_low:
+		_hair_low.visible = bare or not Hats.info(id).get("bald", false)
 	if bare:
 		return
 	var u := HEAD * _bulk() * Hats.SIZE * (Hats.FRUIT_SIZE if id == "fruit_hat" else 1.0)
@@ -272,24 +276,33 @@ func _build() -> void:
 		_ops.append(["bake", node, {}])
 
 
-## Moves the hair above HAT_SEAT (painted by the ops from index from on) to
-## its own part, so a hat can hide it.
+## Moves the hair (painted by the ops from index from on) onto two parts of
+## its own: above HAT_SEAT, which any hat hides, and the rest, which a bald
+## hat hides too.
 func _split_hair(head: Node3D, from: int) -> void:
 	_hair_top = Node3D.new()
 	_hair_top.name = "HairTop"
 	head.add_child(_hair_top)
 	_grids[_hair_top] = {}
 	_parts.append(_hair_top)
+	_hair_low = Node3D.new()
+	_hair_low.name = "HairLow"
+	head.add_child(_hair_low)
+	_grids[_hair_low] = {}
+	_parts.append(_hair_low)
 	var ops := _ops.slice(0, from)
 	for op in _ops.slice(from):
-		ops.append(op)
 		if op[0] != "fill" or op[1] != head:
+			ops.append(op)
 			continue
 		var inside: Callable = op[5]
 		var top: Array = op.duplicate()
-		op[5] = func(p: Vector3) -> bool: return p.y < HAT_SEAT and inside.call(p)
+		var low: Array = op.duplicate()
+		low[1] = _hair_low
+		low[5] = func(p: Vector3) -> bool: return p.y < HAT_SEAT and inside.call(p)
 		top[1] = _hair_top
 		top[5] = func(p: Vector3) -> bool: return p.y >= HAT_SEAT and inside.call(p)
+		ops.append(low)
 		ops.append(top)
 	_ops = ops
 

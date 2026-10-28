@@ -14,7 +14,13 @@ const LIST := {
 	"endless_50": {"name": "No End in Sight", "desc": "Reach 100 knockouts in an endless bout.", "emote": "horse_ride"},
 	"legendary_hat": {"name": "Legend", "desc": "Find a legendary hat.", "emote": "bros_shuffle"},
 	"untouched": {"name": "Untouchable", "desc": "Beat a Dead League contender without getting hit.", "emote": "boo_yah"},
+	"power_9001": {"name": "Over Nine Thousand", "desc": "Reach 9,001 POWER.", "emote": "intense_yelling"},
+	"pushed_too_hard": {"name": "Pushed Too Hard", "desc": "Hold Intense Yelling for a full minute.", "emote": "overexerted"},
 }
+## POWER for Over Nine Thousand.
+const POWER_YELL := 9001
+## Dances only their achievement gives (the Soul Shop never sells them).
+const EARN_ONLY := ["intense_yelling", "overexerted"]
 ## Knockouts in one endless bout for No End in Sight (every division's third
 ## bout is endless now, so 50 would come with simply winning one).
 const ENDLESS_KOS := 100
@@ -67,5 +73,7 @@ static func catch_up() -> void:
 		GameState.save_game()
 	if GameState.crypt_floors_cleared > 0:
 		earn("crypt_floor", true)
+	if PowerRating.player() >= POWER_YELL:
+		earn("power_9001", true)
 	if not GameState.drills.is_empty():
 		earn("drill", true)

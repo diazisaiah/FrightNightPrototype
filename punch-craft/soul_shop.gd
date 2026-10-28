@@ -52,7 +52,7 @@ static func _stale() -> bool:
 
 static func restock() -> void:
 	var offers: Array = []
-	var emotes: Array = Emotes.ORDER.filter(func(id: String) -> bool: return not Achievements.emote_unlocked(id))
+	var emotes: Array = Emotes.ORDER.filter(func(id: String) -> bool: return not Achievements.emote_unlocked(id) and not id in Achievements.EARN_ONLY)
 	emotes.shuffle()
 	for id in emotes.slice(0, EMOTE_SLOTS):
 		offers.append({"kind": "emote", "id": id, "price": EMOTE_PRICE, "sold": false})

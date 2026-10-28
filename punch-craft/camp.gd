@@ -960,8 +960,13 @@ func _refresh() -> void:
 	_chips.attribute_points.set_amount(GameState.attribute_points, _shown_once)
 	_shown_once = true
 	# Your POWER: every stat, upgrade, skill and item in one number.
-	_night_label.text = "POWER  %d" % PowerRating.player()
+	var power := PowerRating.player()
+	_night_label.text = "POWER  %d" % power
 	_night_label.add_theme_color_override("font_color", UiTheme.GOLD)
+	# Over 9,000: the Intense Yelling emote. Builds that qualify win hats.
+	if power >= Achievements.POWER_YELL:
+		Achievements.earn("power_9001")
+	Hats.check_awards(get_tree())
 	_refresh_armory()
 	_refresh_hat_rack()
 	_refresh_shop()

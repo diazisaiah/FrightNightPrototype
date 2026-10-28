@@ -1813,3 +1813,17 @@ New upgrades (bold) fill the slots: Head Movement (+0.05s dodge window, 2 levels
 Haymaker absorbs Rib Shot (5 levels of +15% set-up heavies) and Counterpuncher absorbs Return Fire (5 levels of +30% counters); saves' levels in the absorbed nodes join them. Lead Tape (the web's only one-level node) is a square like the rest. Bouts to reach par: 2.0 / 3.7 / 3.3 / 2.3 / 3.5 (the ring-5 in-betweens make the Coffin King's par a bit higher).
 
 **Power diamonds:** all eight powers use the same diamond (Sigil, three branches of 3, 2 and 3 nodes, the capstone at the far tip), 1.3 cells a step. Every diamond points straight out from the core: the Endless powers along their axis, the elements toward their corner (9 cells out on the diagonals). Each power's name sits between its Sigil and the core.
+
+## Won hats and Intense Yelling (2026-10-28)
+
+**Power hats (epic, won by maxing every node of a power; each makes that power 10% stronger):** Hot Plumber Hat (Fire: burst and burn), Air Force Flattop (Gale: air bursts), Electric Mouse Ears (Storm: lightning damage), Armored Faceplate (Iron: each plate cuts 10% more), Snow Queen Tiara (Frost: slow and Brittle), Evil Doctor Mask (Doom: the stored share), Drawn-On Hairline (Blood: heals), Earth Warrior Headband (Quake: shockwave damage). The boost lands on that power's own numbers (`GameState.HAT_BOOSTS`, `_hat_boost`).
+
+**Legendaries (won, never dropped):**
+- **Golden Fast Guy Fleece Cap:** max every power. Every power 10% stronger (stacks with their hats).
+- **Bald Hero Cap:** 250 base damage, or one punch for 15x your base damage. +10% damage, +25% crit damage.
+- **Speedster Cowl:** +30% move speed and +30% punch speed. +8% move speed, +6% punch speed.
+- **Strong Guy Wig (White)** (was a dropped epic): max your dodge window (+25%), counter window (+0.5s) and combo time (+1s, a new cap on gear's combo time). Raises all three caps 5% and stretches all three windows 5%.
+
+All of these are `Hats.TROPHIES` (never on monsters). `Hats.check_awards` hands out what a build qualifies for, with the hat popup: after buying an upgrade and whenever camp refreshes; the big punch is checked as it lands. The Bald Hero Cap, the Drawn-On Hairline (marker-black top and sides, a triangle widow's peak, square sunglasses) and the Air Force Flattop (a short flared flat top, the sides bare) take the fighter's own hair off (`"bald"`: PlayerBody's hair is split into top and low parts; a bald hat hides both).
+
+**Intense Yelling (emote, from the Over Nine Thousand achievement: reach 9,001 POWER):** a wide power-up squat, fists down, head back, shaking. A golden aura grows the longer it's held (`PowerUpFx`, full at 9s); from 3s rocks tear off the ground and float up; from 6s lightning strikes around you. The first time it's held a full minute, it all cuts out and a poop drops: the Pushed Too Hard achievement and the **Overexerted** emote (the strain with no aura, the poop, the slump of relief; `PoopFx`). Both emotes are achievement-only (the Soul Shop never sells them).

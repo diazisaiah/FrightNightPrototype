@@ -2,7 +2,9 @@ class_name Hats
 ## The hat collection. Now and then an enemy spawns wearing a hat; uppercut
 ## it off (or finish the enemy with an uppercut) and it's yours, for a small
 ## permanent boost. Four legendary Yonker caps do nothing on their own; all
-## four unlock Tony. Hats are built from blocks, sized to the wearer's head.
+## four unlock Tony. Some are won, never dropped (TROPHIES): the Coffin Crown,
+## a hat for maxing each power, and four legendaries for big milestones
+## (check_awards). Hats are built from blocks, sized to the wearer's head.
 
 ## Share of enemies that spawn wearing a hat.
 const HAT_CHANCE := 0.02
@@ -23,8 +25,23 @@ const SKELETON_FRUIT := 0.25
 const SIZE := 1.4
 const FRUIT_SIZE := 1.3
 const LEGENDARIES := ["yonker_brim", "yonker_no_brim", "brim_no_yonker", "no_yonker_no_brim"]
-## Won, never dropped: the Coffin Crown for beating the Coffin King (Ending).
-const TROPHIES := ["coffin_crown"]
+## Won, never dropped: the Coffin Crown for beating the Coffin King (Ending),
+## and the hats check_awards hands out.
+const TROPHIES := ["coffin_crown", "fire_cap", "gale_flattop", "storm_ears", "iron_mask", "frost_tiara",
+	"doom_mask", "blood_hairline", "quake_headband", "golden_quills", "bald_cap", "speed_mask", "wig_white"]
+## Max every node of a power for its hat (each +10% to that power).
+const POWER_HATS := {
+	"sigil_fire": "fire_cap", "sigil_gale": "gale_flattop", "sigil_storm": "storm_ears", "sigil_iron": "iron_mask",
+	"sigil_frost": "frost_tiara", "sigil_doom": "doom_mask", "sigil_blood": "blood_hairline", "sigil_quake": "quake_headband",
+}
+## The Bald Hero Cap: this much base damage, or one punch for this many times it.
+const BALD_DAMAGE := 250.0
+const MASSIVE_HIT := 15.0
+## The Speedster Cowl: move and punch speed bonuses this high.
+const SPEEDSTER_MOVE := 0.3
+const SPEEDSTER_PUNCH := 0.3
+## Awarded and waiting on their popup.
+static var _pending := {}
 
 const CATALOG := {
 	"party_hat": {"name": "Party Hat", "rarity": "common", "effects": {"damage_percent": 0.01},
@@ -45,8 +62,8 @@ const CATALOG := {
 		"desc": "Took three episodes of screaming to put on."},
 	"wig_blue": {"name": "Strong Guy Wig (Blue)", "rarity": "rare", "effects": {"damage_percent": 0.035, "ult_gain": 0.03},
 		"desc": "Dyed. Don't tell anyone."},
-	"wig_white": {"name": "Strong Guy Wig (White)", "rarity": "epic", "effects": {"dodge_window": 0.06, "counter_bonus": 0.08},
-		"desc": "It moves on its own. So do you."},
+	"wig_white": {"name": "Strong Guy Wig (White)", "rarity": "legendary", "effects": {"window_cap_up": 0.05, "window_boost": 0.05},
+		"desc": "Won by maxing your dodge, counter and combo windows. It moves on its own. So do you."},
 	"bowler": {"name": "Bowler Hat", "rarity": "uncommon", "effects": {"counter_bonus": 0.05},
 		"desc": "Very proper. Very dead."},
 	"chef_toque": {"name": "Chef's Toque", "rarity": "uncommon", "effects": {"xp_bonus": 0.04},
@@ -89,6 +106,30 @@ const CATALOG := {
 		"desc": "Does nothing. Yet."},
 	"coffin_crown": {"name": "Coffin Crown", "rarity": "legendary", "effects": {"damage_percent": 0.05, "knuckles_percent": 0.05},
 		"desc": "Off the Coffin King's head. Heavy is the head."},
+	# Won by maxing a power.
+	"fire_cap": {"name": "Hot Plumber Hat", "rarity": "epic", "effects": {"boost_fire": 0.1},
+		"desc": "Won by maxing Fire. Throws fireballs. Fixes pipes."},
+	"gale_flattop": {"name": "Air Force Flattop", "rarity": "epic", "effects": {"boost_gale": 0.1}, "bald": true,
+		"desc": "Won by maxing Gale. Takes an hour and a can of spray a morning."},
+	"storm_ears": {"name": "Electric Mouse Ears", "rarity": "epic", "effects": {"boost_storm": 0.1},
+		"desc": "Won by maxing Storm. Squeaks. Shocks."},
+	"iron_mask": {"name": "Armored Faceplate", "rarity": "epic", "effects": {"boost_iron": 0.1},
+		"desc": "Won by maxing Iron. Built in a cave. With a box of scraps."},
+	"frost_tiara": {"name": "Snow Queen Tiara", "rarity": "epic", "effects": {"boost_frost": 0.1},
+		"desc": "Won by maxing Frost. The cold never bothered her anyway."},
+	"doom_mask": {"name": "Evil Doctor Mask", "rarity": "epic", "effects": {"boost_doom": 0.1},
+		"desc": "Won by maxing Doom. Speaks of himself in the third person."},
+	"blood_hairline": {"name": "Drawn-On Hairline", "rarity": "epic", "effects": {"boost_blood": 0.1}, "bald": true,
+		"desc": "Won by maxing Blood. Marker. Two coats. Very convincing."},
+	"quake_headband": {"name": "Earth Warrior Headband", "rarity": "epic", "effects": {"boost_quake": 0.1},
+		"desc": "Won by maxing Quake. She sees with her feet."},
+	# Won for the big milestones.
+	"golden_quills": {"name": "Golden Fast Guy Fleece Cap", "rarity": "legendary", "effects": {"all_power_boost": 0.1},
+		"desc": "Won by maxing every power. Seven shiny rocks not included."},
+	"bald_cap": {"name": "Bald Hero Cap", "rarity": "legendary", "effects": {"damage_percent": 0.1, "crit_damage": 0.25}, "bald": true,
+		"desc": "Won with a huge base damage or one absurd punch. Ok."},
+	"speed_mask": {"name": "Speedster Cowl", "rarity": "legendary", "effects": {"move_speed": 0.08, "punch_speed": 0.06},
+		"desc": "Won with big move and punch speed. Was here a second ago."},
 }
 
 
@@ -106,6 +147,52 @@ static func boost_text(id: String) -> String:
 	if effects.is_empty():
 		return "Collect all four Yonkers..."
 	return GameState.effect_text(effects, 1)
+
+
+## Every node of a power bought to the max.
+static func power_maxed(root: String) -> bool:
+	if GameState.upgrade_levels.get(root, 0) <= 0:
+		return false
+	for id in GameState.UPGRADES:
+		if GameState.power_of(id) == root and GameState.upgrade_levels.get(id, 0) < int(GameState.UPGRADES[id].max_level):
+			return false
+	return true
+
+
+## The won hats the build qualifies for right now.
+static func earned_now() -> Array:
+	var ids := []
+	for root in POWER_HATS:
+		if power_maxed(root):
+			ids.append(POWER_HATS[root])
+	if POWER_HATS.keys().all(power_maxed):
+		ids.append("golden_quills")
+	if GameState.get_effect("dodge_window") >= GameState.MAX_DODGE_WINDOW_BONUS \
+			and GameState.get_effect("counter_window") >= GameState.MAX_COUNTER_WINDOW_BONUS \
+			and GameState.get_effect("combo_window") >= GameState.MAX_COMBO_WINDOW_BONUS:
+		ids.append("wig_white")
+	if GameState.get_effect("move_speed") >= SPEEDSTER_MOVE and GameState.get_effect("punch_speed") >= SPEEDSTER_PUNCH:
+		ids.append("speed_mask")
+	if GameState.get_damage() >= BALD_DAMAGE:
+		ids.append("bald_cap")
+	return ids
+
+
+## Hands out every won hat you qualify for and don't have (each with its
+## popup, or quietly).
+static func check_awards(tree: SceneTree, quiet := false) -> void:
+	for id in earned_now():
+		award(tree, id, quiet)
+
+
+static func award(tree: SceneTree, id: String, quiet := false) -> void:
+	if GameState.hats.has(id) or _pending.has(id):
+		return
+	if quiet or tree == null:
+		GameState.add_hat(id)
+		return
+	_pending[id] = true
+	HatPopup.open(tree, id)
 
 
 ## Which hat (if any) a freshly spawned enemy wears. Bumps the bad-luck
@@ -276,6 +363,30 @@ static func build(id: String, u: float) -> Node3D:
 			_strong_wig(hat, u, Color(0.25, 0.6, 1.0), true)
 		"wig_white":
 			_strong_wig(hat, u, Color(0.92, 0.94, 1.0), true)
+		"fire_cap":
+			_plumber_cap(hat, u)
+		"gale_flattop":
+			_flattop(hat, u)
+		"storm_ears":
+			_mouse_ears(hat, u)
+		"iron_mask":
+			_faceplate(hat, u)
+		"frost_tiara":
+			_tiara(hat, u)
+		"doom_mask":
+			_doctor_mask(hat, u)
+		"blood_hairline":
+			_drawn_hairline(hat, u)
+		"quake_headband":
+			_earth_headband(hat, u)
+		"golden_quills":
+			_quills(hat, u, Color(1.0, 0.82, 0.18))
+		"bald_cap":
+			# The head's own bald dome (its hair comes off), and a shine.
+			_b(hat, u, Vector3(0.2, 0.025, 0.07), Vector3(0.16, -0.02, -0.22), Color(1, 1, 1), Vector3(0, 0.5, 0), true)
+			_b(hat, u, Vector3(0.08, 0.025, 0.05), Vector3(0.05, -0.02, -0.3), Color(1, 1, 1), Vector3(0, 0.5, 0), true)
+		"speed_mask":
+			_speed_cowl(hat, u)
 		"yonker_brim", "yonker_no_brim":
 			_yonker_cap(hat, u, id == "yonker_brim")
 		"brim_no_yonker":
@@ -337,8 +448,7 @@ static func _strong_wig(hat: Node3D, u: float, tint: Color, powered: bool) -> vo
 
 ## The fast guy's fleece cap: a blue hood with a rolled edge round the face,
 ## pointed ears with tan insides, and quills swept back, the top one biggest.
-static func _quills(hat: Node3D, u: float) -> void:
-	var fleece := Color(0.08, 0.5, 0.9)
+static func _quills(hat: Node3D, u: float, fleece := Color(0.08, 0.5, 0.9)) -> void:
 	var shade := fleece.darkened(0.18)
 	var edge := fleece.lightened(0.1)
 	# The hood: over the top, down the sides and the back of the head.
@@ -541,6 +651,173 @@ static func _fruit_hat(hat: Node3D, u: float) -> void:
 		var a := i * TAU / 6.0
 		_b(hat, u, Vector3(0.08, 0.42, 0.06), Vector3(sin(a) * 0.12, 1.0, cos(a) * 0.12), leaf, Vector3(cos(a) * 0.55, 0, -sin(a) * 0.55))
 	_b(hat, u, Vector3(0.08, 0.5, 0.06), Vector3(0, 1.08, 0), leaf)
+
+
+## The hot plumber's cap: white, a brim, and a white badge ringed in grey
+## with a red M on the front.
+static func _plumber_cap(hat: Node3D, u: float) -> void:
+	var white := Color(0.97, 0.97, 0.96)
+	var red := Color(0.86, 0.1, 0.1)
+	_b(hat, u, Vector3(1.1, 0.3, 1.1), Vector3(0, 0.12, 0), white)
+	_b(hat, u, Vector3(0.86, 0.14, 0.86), Vector3(0, 0.33, 0), white)
+	_b(hat, u, Vector3(0.12, 0.08, 0.12), Vector3(0, 0.42, 0), white)
+	_b(hat, u, Vector3(0.95, 0.05, 0.6), Vector3(0, 0.0, -0.78), white, Vector3(-0.1, 0, 0))
+	for turn in [0.0, PI / 4.0]:
+		_b(hat, u, Vector3(0.38, 0.38, 0.03), Vector3(0, 0.17, -0.565), Color(0.72, 0.72, 0.74), Vector3(0, 0, turn))
+		_b(hat, u, Vector3(0.32, 0.32, 0.03), Vector3(0, 0.17, -0.575), white, Vector3(0, 0, turn))
+	for side in [-1.0, 1.0]:
+		_b(hat, u, Vector3(0.05, 0.22, 0.03), Vector3(0.09 * side, 0.16, -0.59), red)
+		_b(hat, u, Vector3(0.05, 0.13, 0.03), Vector3(0.045 * side, 0.2, -0.595), red, Vector3(0, 0, 0.6 * side))
+
+
+## The blonde flat top: hair standing straight up off the head and flaring
+## wider as it goes (a short cone upside down), dead flat on top with a rim,
+## and a point dipping down to the forehead.
+static func _flattop(hat: Node3D, u: float) -> void:
+	var blonde := Color(0.92, 0.72, 0.38)
+	var shade := blonde.darkened(0.25)
+	var layers := 4
+	for i in layers:
+		var w := 0.9 + i * 0.12
+		_b(hat, u, Vector3(w, 0.13, w * 0.92), Vector3(0, 0.0 + i * 0.12, 0.02), blonde if i % 2 == 0 else blonde.darkened(0.08))
+	var top_y := (layers - 1) * 0.12 + 0.07
+	var top_w := 0.9 + (layers - 1) * 0.12
+	_b(hat, u, Vector3(top_w + 0.04, 0.04, (top_w + 0.04) * 0.92), Vector3(0, top_y, 0.02), blonde.lightened(0.15))
+	_b(hat, u, Vector3(top_w - 0.16, 0.045, (top_w - 0.16) * 0.92), Vector3(0, top_y + 0.005, 0.02), blonde.darkened(0.05))
+	# Strands running up the front.
+	for i in 5:
+		_b(hat, u, Vector3(0.03, 0.4, 0.03), Vector3(-0.3 + i * 0.15, 0.2, -0.5), shade, Vector3(-0.14, 0, (i - 2) * -0.12))
+	# The point down to the forehead.
+	for i in 3:
+		_b(hat, u, Vector3(0.22 - i * 0.07, 0.07, 0.06), Vector3(0, -0.08 - i * 0.07, -0.47), blonde)
+
+
+## Electric mouse ears: a yellow band and two tall ears, black at the tips.
+static func _mouse_ears(hat: Node3D, u: float) -> void:
+	var yellow := Color(1.0, 0.85, 0.15)
+	_b(hat, u, Vector3(1.1, 0.08, 1.1), Vector3(0, 0.0, 0), yellow)
+	for side: float in [-1.0, 1.0]:
+		var tilt := -0.42 * side
+		var up := Vector3(-sin(tilt), cos(tilt), 0)
+		var base := Vector3(0.34 * side, 0.02, 0)
+		_b(hat, u, Vector3(0.26, 0.5, 0.12), base + up * 0.28, yellow, Vector3(0, 0, tilt))
+		_b(hat, u, Vector3(0.2, 0.22, 0.13), base + up * 0.62, Color(0.08, 0.07, 0.07), Vector3(0, 0, tilt))
+		_b(hat, u, Vector3(0.12, 0.1, 0.14), base + up * 0.78, Color(0.08, 0.07, 0.07), Vector3(0, 0, tilt))
+
+
+## The armored faceplate: a red helmet over the whole head, a gold face with
+## glowing eye slits and a mouth line.
+static func _faceplate(hat: Node3D, u: float) -> void:
+	var red := Color(0.72, 0.08, 0.08)
+	var gold := Color(0.9, 0.72, 0.28)
+	_b(hat, u, Vector3(1.1, 1.0, 1.06), Vector3(0, -0.3, 0.03), red, Vector3.ZERO, false, 0.6)
+	_b(hat, u, Vector3(0.3, 0.12, 0.9), Vector3(0, 0.22, 0.05), red.lightened(0.1), Vector3.ZERO, false, 0.6)
+	_b(hat, u, Vector3(0.8, 0.74, 0.08), Vector3(0, -0.4, -0.52), gold, Vector3.ZERO, false, 0.7)
+	for side in [-1.0, 1.0]:
+		_b(hat, u, Vector3(0.22, 0.06, 0.03), Vector3(0.17 * side, -0.25, -0.57), Color(0.75, 0.95, 1.0), Vector3(0, 0, -0.12 * side), true)
+		_b(hat, u, Vector3(0.12, 0.34, 0.06), Vector3(0.36 * side, -0.52, -0.5), gold.darkened(0.15), Vector3(0, 0, 0.12 * side), false, 0.7)
+	_b(hat, u, Vector3(0.3, 0.03, 0.03), Vector3(0, -0.62, -0.57), Color(0.2, 0.12, 0.05))
+
+
+## The snow queen's tiara: platinum hair swept up under a silver band of ice
+## crystals, a snowflake up front, and a braid over one shoulder.
+static func _tiara(hat: Node3D, u: float) -> void:
+	var hair := Color(0.96, 0.9, 0.7)
+	var silver := Color(0.82, 0.88, 0.95)
+	var ice := Color(0.55, 0.88, 1.0)
+	# Platinum hair swept back off the face, a little volume on top.
+	_b(hat, u, Vector3(1.08, 0.22, 1.06), Vector3(0, 0.05, 0.06), hair)
+	_b(hat, u, Vector3(0.86, 0.14, 0.7), Vector3(0, 0.2, 0.14), hair.darkened(0.06))
+	for i in 5:
+		_b(hat, u, Vector3(0.03, 0.04, 0.9), Vector3(-0.3 + i * 0.15, 0.17, 0.08), hair.darkened(0.14))
+	for i in 8:
+		var a := i * TAU / 8.0
+		_b(hat, u, Vector3(0.36, 0.05, 0.04), Vector3(sin(a) * 0.52, 0.12, cos(a) * 0.52), silver, Vector3(0, a, 0), false, 0.6)
+	for x: float in [-0.32, -0.16, 0.16, 0.32]:
+		_b(hat, u, Vector3(0.07, 0.2 - absf(x) * 0.25, 0.04), Vector3(x, 0.24, -0.5 + absf(x) * 0.15), ice, Vector3.ZERO, true)
+	for turn in [0.0, PI / 3.0, -PI / 3.0]:
+		_b(hat, u, Vector3(0.06, 0.36, 0.04), Vector3(0, 0.34, -0.54), ice, Vector3(0, 0, turn), true)
+	_b(hat, u, Vector3(0.1, 0.1, 0.05), Vector3(0, 0.34, -0.55), Color(0.92, 0.98, 1.0), Vector3(0, 0, PI / 4.0), true)
+	# The braid: down the left side, over the shoulder.
+	for i in 6:
+		_b(hat, u, Vector3(0.18 - i * 0.015, 0.16, 0.18 - i * 0.015), Vector3(-0.5 - i * 0.02, -0.15 - i * 0.17, 0.05 - i * 0.07), hair if i % 2 == 0 else hair.darkened(0.1), Vector3(0.3, 0, 0.2))
+
+
+## The evil doctor's mask: a riveted iron face with dark eye holes and a
+## mouth grille, inside a green hood.
+static func _doctor_mask(hat: Node3D, u: float) -> void:
+	var green := Color(0.12, 0.42, 0.2)
+	var iron := Color(0.62, 0.64, 0.68)
+	_b(hat, u, Vector3(1.24, 0.3, 1.2), Vector3(0, 0.08, 0.04), green)
+	for side in [-1.0, 1.0]:
+		_b(hat, u, Vector3(0.14, 1.0, 1.2), Vector3(0.62 * side, -0.38, 0.04), green)
+	_b(hat, u, Vector3(1.24, 1.0, 0.16), Vector3(0, -0.38, 0.6), green)
+	_b(hat, u, Vector3(0.88, 0.84, 0.1), Vector3(0, -0.36, -0.52), iron, Vector3.ZERO, false, 0.8)
+	_b(hat, u, Vector3(0.9, 0.1, 0.12), Vector3(0, -0.1, -0.55), iron.darkened(0.15), Vector3.ZERO, false, 0.8)
+	for side in [-1.0, 1.0]:
+		_b(hat, u, Vector3(0.16, 0.07, 0.03), Vector3(0.17 * side, -0.24, -0.58), Color(0.04, 0.04, 0.05))
+		for k in 3:
+			_b(hat, u, Vector3(0.04, 0.04, 0.02), Vector3(0.36 * side, -0.1 - k * 0.25, -0.58), iron.lightened(0.15), Vector3.ZERO, false, 0.8)
+	for k in 4:
+		_b(hat, u, Vector3(0.04, 0.12, 0.03), Vector3(-0.12 + k * 0.08, -0.6, -0.58), Color(0.08, 0.08, 0.09))
+
+
+## A drawn-on hairline: the head bare (its hair comes off), marker-black
+## painted over the top and down the sides, bald temples either side of a
+## sharp triangle widow's peak, and square black sunglasses.
+static func _drawn_hairline(hat: Node3D, u: float) -> void:
+	var ink := Color(0.04, 0.035, 0.04)
+	# Hugging the scalp, a touch under the hat seat.
+	_b(hat, u, Vector3(0.8, 0.06, 0.72), Vector3(0, -0.035, 0.1), ink)
+	_b(hat, u, Vector3(0.32, 0.06, 0.28), Vector3(0, -0.035, -0.34), ink)
+	# The peak: a triangle pointing down the forehead.
+	for i in 4:
+		_b(hat, u, Vector3(0.28 - i * 0.075, 0.06, 0.03), Vector3(0, -0.1 - i * 0.06, -0.48), ink)
+	# Painted down the sides of the head to above the ears, and the back.
+	for side in [-1.0, 1.0]:
+		_b(hat, u, Vector3(0.03, 0.34, 0.66), Vector3(0.46 * side, -0.22, 0.1), ink)
+		_b(hat, u, Vector3(0.1, 0.06, 0.66), Vector3(0.42 * side, -0.05, 0.1), ink)
+	_b(hat, u, Vector3(0.86, 0.4, 0.03), Vector3(0, -0.24, 0.45), ink)
+	var lens := Color(0.03, 0.03, 0.04)
+	var frame := Color(0.5, 0.5, 0.52)
+	for side in [-1.0, 1.0]:
+		_b(hat, u, Vector3(0.2, 0.15, 0.03), Vector3(0.17 * side, -0.32, -0.56), lens, Vector3.ZERO, false, 0.9)
+		_b(hat, u, Vector3(0.03, 0.03, 0.5), Vector3(0.44 * side, -0.29, -0.32), frame, Vector3.ZERO, false, 0.8)
+	_b(hat, u, Vector3(0.14, 0.03, 0.03), Vector3(0, -0.28, -0.57), frame, Vector3.ZERO, false, 0.8)
+
+
+## The earth warrior's hair and headband: black hair with bangs over the
+## brow, a bun up top, a green band trimmed yellow, its ends tied behind.
+static func _earth_headband(hat: Node3D, u: float) -> void:
+	var hair := Color(0.06, 0.05, 0.06)
+	var green := Color(0.28, 0.55, 0.22)
+	var yellow := Color(0.95, 0.82, 0.3)
+	_b(hat, u, Vector3(1.08, 0.26, 1.06), Vector3(0, 0.06, 0.04), hair)
+	_b(hat, u, Vector3(0.36, 0.26, 0.36), Vector3(0, 0.3, 0.18), hair)
+	_b(hat, u, Vector3(0.4, 0.06, 0.4), Vector3(0, 0.2, 0.18), green)
+	_b(hat, u, Vector3(1.12, 0.1, 1.1), Vector3(0, -0.07, 0), green)
+	_b(hat, u, Vector3(1.13, 0.025, 1.11), Vector3(0, -0.02, 0), yellow)
+	for i in 4:
+		_b(hat, u, Vector3(0.2, 0.26, 0.06), Vector3(-0.3 + i * 0.2, -0.2, -0.53), hair, Vector3(0.15, 0, (i - 1.5) * 0.15))
+	for side in [-1.0, 1.0]:
+		_b(hat, u, Vector3(0.06, 0.34, 0.03), Vector3(0.1 * side, -0.25, 0.58), green, Vector3(0.3, 0, 0.3 * side))
+
+
+## The speedster's cowl: red over the head and upper face, white eye lenses,
+## gold lightning bolts for ears.
+static func _speed_cowl(hat: Node3D, u: float) -> void:
+	var red := Color(0.8, 0.08, 0.08)
+	var gold := Color(1.0, 0.8, 0.2)
+	_b(hat, u, Vector3(1.12, 0.3, 1.1), Vector3(0, 0.08, 0.02), red)
+	for side in [-1.0, 1.0]:
+		_b(hat, u, Vector3(0.14, 0.8, 1.0), Vector3(0.56 * side, -0.3, 0.04), red)
+	_b(hat, u, Vector3(1.12, 0.85, 0.16), Vector3(0, -0.3, 0.52), red)
+	_b(hat, u, Vector3(0.86, 0.36, 0.08), Vector3(0, -0.24, -0.52), red)
+	for side in [-1.0, 1.0]:
+		_b(hat, u, Vector3(0.17, 0.07, 0.03), Vector3(0.16 * side, -0.24, -0.57), Color(0.97, 0.97, 0.97), Vector3(0, 0, -0.15 * side))
+		_b(hat, u, Vector3(0.05, 0.2, 0.05), Vector3(0.64 * side, -0.08, 0.02), gold, Vector3(0, 0, 0.6 * side))
+		_b(hat, u, Vector3(0.05, 0.2, 0.05), Vector3(0.66 * side, -0.22, 0.02), gold, Vector3(0, 0, -0.6 * side))
+		_b(hat, u, Vector3(0.05, 0.2, 0.05), Vector3(0.68 * side, -0.36, 0.02), gold, Vector3(0, 0, 0.6 * side))
 
 
 ## One block of a hat: size and position in head widths.

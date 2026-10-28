@@ -16,6 +16,16 @@ const SAVE_VERSION := 2
 ## counter windows grew too forgiving).
 const MAX_DODGE_WINDOW_BONUS := 0.25
 const MAX_COUNTER_WINDOW_BONUS := 0.5
+## Combo time gear can add (2026-10-28, for the White Strong Guy Wig).
+const MAX_COMBO_WINDOW_BONUS := 1.0
+## The power hats (Hats.POWER_HATS): each one's boost and the power numbers
+## it raises, by 10% (the Golden Fleece Cap's all_power_boost, every power).
+const HAT_BOOSTS := {
+	"sigil_fire": ["boost_fire", ["fire_punch", "burn"]], "sigil_storm": ["boost_storm", ["chain_damage"]],
+	"sigil_frost": ["boost_frost", ["frost_punch", "brittle"]], "sigil_blood": ["boost_blood", ["heal_on_kill", "counter_heal"]],
+	"sigil_quake": ["boost_quake", ["quake_power", "quake_damage"]], "sigil_gale": ["boost_gale", ["gale", "gale_damage"]],
+	"sigil_iron": ["boost_iron", ["plate_guard"]], "sigil_doom": ["boost_doom", ["doom"]],
+}
 const MAX_ARMOR_PIERCE := 0.75
 
 # Each class changes how you fight. mods multiply (or add, for defense and
@@ -1019,6 +1029,17 @@ const EFFECT_FORMATS := {
 	"bloodbath": "Healing doubled under half knuckle HP",
 	"ult_gain": "+%s%% ultimate meter gain",
 	"ult_power": "Empowered ultimate",
+	"boost_fire": "Fire +%s%% stronger",
+	"boost_storm": "Storm +%s%% stronger",
+	"boost_frost": "Frost +%s%% stronger",
+	"boost_blood": "Blood heals +%s%% more",
+	"boost_quake": "Quake +%s%% stronger",
+	"boost_gale": "Gale +%s%% stronger",
+	"boost_iron": "Iron plates +%s%% stronger",
+	"boost_doom": "Doom +%s%% stronger",
+	"all_power_boost": "Every power +%s%% stronger",
+	"window_cap_up": "Dodge, counter and combo caps +%s%%",
+	"window_boost": "Dodge, counter and combo windows +%s%%",
 	"quake_power": "Jump landings send a shockwave: %sx your base damage",
 	"quake_damage": "+%sx shockwave damage",
 	"quake_radius": "+%sm shockwave reach",
@@ -1063,6 +1084,8 @@ const PERCENT_EFFECTS := [
 	"shatter", "lunging_jab", "thorns", "grit", "frost_slip", "executioner", "glass_jaw", "damage_taken",
 	"last_stand", "blood_price", "ult_gain",
 	"quake_chance", "gale", "gale_damage", "plate_guard", "doom", "doom_chance",
+	"boost_fire", "boost_storm", "boost_frost", "boost_blood", "boost_quake", "boost_gale", "boost_iron", "boost_doom",
+	"all_power_boost", "window_cap_up", "window_boost",
 ]
 ## Effects that are on/off: their text has no number.
 const FLAG_EFFECTS := [
@@ -1313,6 +1336,8 @@ func get_effect(effect: String) -> float:
 		var amount: float = UPGRADES[id].effects.get(effect, 0) * upgrade_levels[id]
 		if amplify and amount != 0.0 and power_of(id) != "":
 			amount *= _power_scale(power_of(id))
+		if amount != 0.0 and power_of(id) != "":
+			amount *= _hat_boost(power_of(id), effect)
 		total += amount
 	var progress := _current()
 	var deck := Cards.deck(player_class)
@@ -1332,6 +1357,23 @@ func get_effect(effect: String) -> float:
 	# Tony's The Take: his cut of every coin.
 	if effect == "coin_bonus" and has_passive("the_take"):
 		total += 0.25 + 0.03 * passive_power()
+	return total
+
+
+## A power hat's lift on one of its power's numbers (HAT_BOOSTS), 1 if none.
+func _hat_boost(root: String, effect: String) -> float:
+	var entry: Array = HAT_BOOSTS.get(root, [])
+	if entry.is_empty() or not effect in entry[1]:
+		return 1.0
+	return 1.0 + _hats_total(entry[0]) + _hats_total("all_power_boost")
+
+
+## One effect summed over the hats owned (straight from the catalog).
+func _hats_total(effect: String) -> float:
+	var total := 0.0
+	for id in hats:
+		if Hats.CATALOG.has(id):
+			total += float(Hats.CATALOG[id].effects.get(effect, 0.0))
 	return total
 
 
@@ -1920,8 +1962,11 @@ func get_combo_step() -> float:
 	return (0.25 + get_effect("combo_step")) * get_class_mod("combo_step")
 
 
+## Combo time: gear adds up to a cap; the White Strong Guy Wig raises the
+## caps on combo, dodge and counter windows and stretches all three.
 func get_combo_window() -> float:
-	return 1.5 + get_effect("combo_window") + get_class_mod("combo_window", 0.0)
+	var bonus := minf(get_effect("combo_window"), MAX_COMBO_WINDOW_BONUS * (1.0 + get_effect("window_cap_up")))
+	return (1.5 + bonus + get_class_mod("combo_window", 0.0)) * (1.0 + get_effect("window_boost"))
 
 
 func get_punch_speed() -> float:
@@ -1930,12 +1975,15 @@ func get_punch_speed() -> float:
 
 ## Dodge windows grow only so far: past that, dodging stops being a skill.
 func get_dodge_window_multiplier() -> float:
-	return get_class_mod("dodge_window") * (1.0 + minf(get_effect("dodge_window"), MAX_DODGE_WINDOW_BONUS))
+	var cap := MAX_DODGE_WINDOW_BONUS * (1.0 + get_effect("window_cap_up"))
+	return get_class_mod("dodge_window") * (1.0 + minf(get_effect("dodge_window"), cap)) * (1.0 + get_effect("window_boost"))
 
 
 ## Extra seconds to land a counter after a dodge (capped like dodge windows).
 func get_counter_window_bonus() -> float:
-	return minf(get_effect("counter_window"), MAX_COUNTER_WINDOW_BONUS)
+	var bonus := minf(get_effect("counter_window"), MAX_COUNTER_WINDOW_BONUS * (1.0 + get_effect("window_cap_up")))
+	# The Wig stretches the whole window, base and bonus.
+	return bonus + (Player.COUNTER_WINDOW + bonus) * get_effect("window_boost")
 
 
 func get_counter_multiplier(base: float) -> float:
@@ -2313,6 +2361,9 @@ func buy_node(kind: String, id: String) -> bool:
 	resources["coins"] -= node_cost(kind, id)
 	_levels(kind)[id] = node_level(kind, id) + 1
 	_commit()
+	# Maxing a power (or all of them) wins its hat.
+	if kind == "upgrade":
+		Hats.check_awards(get_tree())
 	return true
 
 
