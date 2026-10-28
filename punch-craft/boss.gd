@@ -337,11 +337,14 @@ func _fist(arm: String, size: Vector3, laces: Material = null) -> void:
 		_at(hand, _box(Vector3(size.x * 0.12, size.y * 0.35, 0.012)), laces, Vector3(0, -size.y * 0.15, size.z * 0.46))
 
 
+## The Champion fights bare-chested: armored or geared, he gets the stats
+## but wears nothing over his hide.
 func _build_armor() -> void:
-	var iron := _material(Color(0.22, 0.2, 0.25), 0.85)
-	_on("chest", _box(Vector3(0.74, 0.36, 0.42)), iron, Vector3(0, 1.45, 0))
-	for side: float in [-1.0, 1.0]:
-		_on("clavicle_l" if side < 0.0 else "clavicle_r", _box(Vector3(0.3, 0.14, 0.34)), iron, Vector3(0.42 * side, 1.56, 0))
+	pass
+
+
+func _gear_style() -> String:
+	return "bare"
 
 
 # --- Building blocks ---------------------------------------------------------------

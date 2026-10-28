@@ -99,6 +99,8 @@ static func dress(enemy: Enemy, gear: Dictionary, style: String) -> void:
 	var body := _body_map(enemy)
 	var pieces: Array = gear.pieces
 	match style:
+		"bare":
+			return
 		"suit":
 			_reskin_suit(enemy, info, metal, trim)
 			return

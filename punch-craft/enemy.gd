@@ -974,7 +974,8 @@ func _lose_hat() -> void:
 	_hat_node = null
 
 
-## How EnemyGear dresses this enemy: "plate", "robe", "suit" or "none".
+## How EnemyGear dresses this enemy: "plate", "robe", "suit", "bare" (its
+## stats, nothing worn) or "none".
 func _gear_style() -> String:
 	return "plate"
 

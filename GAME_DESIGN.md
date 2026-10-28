@@ -1743,3 +1743,4 @@ The five Dead League contenders and the three Crypt floor bosses (Grave Champion
 - **Boss clips:** slam, sweep (the Colossus), slips, flinches away from the hit, staggers and dazes, crouch / airborne / land for leaps, brace for charges, cast, the Headless's skull toss, the Plague Doctor's needle, and the Lich King raising his staff for each cast. They go limp when knocked out.
 - **AI:** unchanged (timing, tells, hitboxes, specials). The AI keeps bare arm pivots for its timing. Its "forearms" are the rig's hands, so tell lights, glove glow and Crypt gear ride on the fists, and hats sit on the head bone.
 - **Title screen:** the contender preview drives the same rig.
+- **The Grave Champion wears no armor:** he fights bare-chested. Armored spawns and Crypt gear still give him their armor and HP, but nothing shows on him (gear style "bare"). The Colossus still wears its gear.
