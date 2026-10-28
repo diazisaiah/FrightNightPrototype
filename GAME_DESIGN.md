@@ -1723,3 +1723,23 @@ The old fist models and scenes (`fist.tscn`, `sketchfab_scene.tscn`, the `.glb` 
 - **Crypt gear gives no elemental powers** except the Quaking boots' landing shockwave and Venomous gloves. Burning gloves became +damage% gloves, Storm charms +ultimate gain charms, frost-slip boots are gone; old ones in a save turn into those on load (`Items.retire_powers`). The landing shockwave has a 4s cooldown.
 - **Contenders:** Sister Southpaw's pivot takes 0.55s (was 0.24s) and gives 0.35s to turn. The Plague Doctor hops back 3.5m before his Adrenaline Shot. The Headless specials come every 6.5s (was 8.5s) and only 35% are charges; from round 2 it catches its skull and throws it straight back (once in round 2, twice in round 3).
 - **Power web:** the four powers moved to the corners of the upgrade web with their own branches (see the Sigil nodes section).
+
+## Rigged bosses (2026-10-28)
+
+The five Dead League contenders and the three Crypt floor bosses (Grave Champion, Bone Colossus, Lich King) stand on a real skeleton: the playground Character Lab's 29-joint rig and its procedural clips, ported into the game as `BossRig` (`boss_rig.gd`).
+
+- **Look:** still the game's simple blocks, just more of them and modeled after each portrait. They sit on the bones, not on a fighter's PlayerBody sculpt.
+  - **Bellman:** stone ball joints with molten rings and a gold bell.
+  - **Headless:** an open ribcage, blue ghost-fire, the floating skull and a ragged navy skirt.
+  - **Sister Southpaw:** habit, veil, white band, gold chain and wrapped fists.
+  - **Plague Doctor:** a long hooded coat, beak mask and a belt of vials.
+  - **Coffin King:** a crowned skull, ermine collar, ribcage under gold chains, gold gloves and greaves.
+  - **Grave Champion:** stitched grey hide, horns, a champion's belt and purple gloves.
+  - **Bone Colossus:** mismatched bones, the core in an open ribcage, skulls on the shoulders, shackles and a tombstone loincloth.
+  - **Lich King:** a robe and cape, crown, amulet and a tall orb staff.
+- **Movement:** real hips, knees, shoulders and elbows. Footwork drives the walk, strafe and run cycles from velocity. Skirts and coat tails ride the thighs, and capes and sashes sway.
+- **Style:** each body has its own guard and idle: the Bellman and the Champion stand heavy, Southpaw is tight with a southpaw stance, the Headless floats, the Plague Doctor hunches, the King stands proud and the Colossus lumbers.
+- **Punches:** each windup holds a load pose, then the lab's punch clip starts so it lands on the strike (`Boss.PUNCH_LEAD` / `PUNCH_PEAK`).
+- **Boss clips:** slam, sweep (the Colossus), slips, flinches away from the hit, staggers and dazes, crouch / airborne / land for leaps, brace for charges, cast, the Headless's skull toss, the Plague Doctor's needle, and the Lich King raising his staff for each cast. They go limp when knocked out.
+- **AI:** unchanged (timing, tells, hitboxes, specials). The AI keeps bare arm pivots for its timing. Its "forearms" are the rig's hands, so tell lights, glove glow and Crypt gear ride on the fists, and hats sit on the head bone.
+- **Title screen:** the contender preview drives the same rig.
