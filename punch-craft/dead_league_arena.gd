@@ -13,6 +13,29 @@ const TORCH_COUNT := 8
 const TORCH_RADIUS := 7.0
 const ROUND_BREAK := 2.2
 const CORNER_RECOVERY := 0.18
+## The True Coffin King (the secret bout, GameState.true_king_bout): five
+## rounds. In each of the first four, at TAG_AT of his HP he hops out of the
+## ring and tags in the next contender (empowered to his level); when they
+## fall he hops back in. Round 5 he goes Insano and the ring burns
+## (InsanoFloor).
+const TRUE_ROUNDS := 5
+const TAG_AT := 0.5
+## How far outside the ropes he waits.
+const APRON := 1.6
+const HOP_TIME := 0.7
+const TRUE_TAUNTS := [
+	"You threw me out of the building, plumber. I walked back in.",
+	"The whole League answers to its King. You'll meet all of it.",
+	"Still standing? My friends are getting bored.",
+	"One more friend, then it's just you and me.",
+	"No more tags. No more mercy. INSANO STYLE.",
+]
+const TAG_LINES := [
+	"Bellman! Ring his bell!",
+	"Headless! Lend him a hand. Not a head.",
+	"Sister! Hear his last confession.",
+	"Doctor! He needs a checkup.",
+]
 
 var _boss: DeadLeagueBoss
 var _round := 1
@@ -25,6 +48,10 @@ var _punch_types := {}
 var _bout_finished := false
 var _torches: Array[OmniLight3D] = []
 var _torch_time := 0.0
+var _true := false
+var _partner: DeadLeagueBoss
+var _tagged := false
+var _floor: InsanoFloor
 
 @onready var _player: Player = $Player
 @onready var _hud: Hud = $HUD
@@ -37,6 +64,7 @@ func _enter_tree() -> void:
 
 
 func _ready() -> void:
+	_true = GameState.true_king_bout
 	# Each contender has a theme of their own.
 	Sfx.play_music("boss_" + DeadLeagueRules.boss(GameState.dead_league_bout).id)
 	Enemy.max_attackers = 1
@@ -64,9 +92,21 @@ func _ready() -> void:
 		return
 	_player.active = true
 	_hud.announce("ROUND 1")
-	var profile := DeadLeagueRules.boss(GameState.dead_league_bout)
-	_hud.say(profile.name, DeadLeagueRules.taunt(GameState.dead_league_bout), profile.accent.lightened(0.3))
+	_taunt()
 	_spawn_boss()
+
+
+## A line before each round.
+func _taunt() -> void:
+	var profile := DeadLeagueRules.boss(GameState.dead_league_bout)
+	if _true:
+		_hud.say("THE TRUE COFFIN KING", TRUE_TAUNTS[_round - 1], profile.accent.lightened(0.3))
+	else:
+		_hud.say(profile.name, DeadLeagueRules.taunt(GameState.dead_league_bout), profile.accent.lightened(0.3))
+
+
+func _rounds() -> int:
+	return TRUE_ROUNDS if _true else DeadLeagueRules.ROUND_COUNT
 
 
 func _connect_hud() -> void:
@@ -94,13 +134,15 @@ func _process(delta: float) -> void:
 		return  # Not during the VS card.
 	_elapsed += delta
 	var profile := DeadLeagueRules.boss(GameState.dead_league_bout)
-	_hud.set_info("ROUND %d" % _round)
+	_hud.set_info("ROUND %d / %d" % [_round, TRUE_ROUNDS] if _true else "ROUND %d" % _round)
 
 
 func _spawn_boss() -> void:
 	var profile := DeadLeagueRules.boss(GameState.dead_league_bout)
 	_boss = BOSS_SCENE.instantiate() as DeadLeagueBoss
 	_boss.configure(GameState.dead_league_bout, _round)
+	if _true:
+		_boss.empower(_round)
 	_boss.setup(_player, false)
 	_boss.position = BOSS_POSITION
 	_boss.arena_center = RING_CENTER
@@ -108,13 +150,108 @@ func _spawn_boss() -> void:
 	$Enemies.add_child(_boss)
 	_boss.died.connect(_on_boss_died)
 	_boss.health_changed.connect(_hud.set_boss_health)
-	_hud.show_boss(profile.name, _boss.hp, _boss.max_hp)
+	_hud.show_boss(_boss.display_name, _boss.hp, _boss.max_hp)
+	_tagged = false
+	if _true:
+		_boss.health_changed.connect(_on_king_health)
+		if _round == TRUE_ROUNDS:
+			_boss.go_insano()
+			_hud.announce_small("INSANO STYLE!", DeadLeagueBoss.INSANO_COLOR)
+			_floor = InsanoFloor.new()
+			_floor.center = RING_CENTER
+			_floor.half = RING_HALF_SIZE - 0.3
+			_floor.player = _player
+			_floor.king = _boss
+			add_child(_floor)
+
+
+## The True Coffin King at half HP: out over the ropes, and the next
+## contender in.
+func _on_king_health(current: float, maximum: float) -> void:
+	if _tagged or _bout_finished or _round >= TRUE_ROUNDS or current <= 0.0 or current > maximum * TAG_AT:
+		return
+	_tagged = true
+	var king := _boss
+	king.end_turn()
+	king.set_physics_process(false)
+	king.remove_from_group("enemies")
+	king.set_meta("layer", king.collision_layer)
+	king.collision_layer = 0
+	var out := Vector3(king.global_position.x - RING_CENTER.x, 0, king.global_position.z - RING_CENTER.z)
+	out = out.normalized() if out.length() > 0.3 else Vector3(0, 0, -1)
+	king.set_meta("out", out)
+	var accent: Color = DeadLeagueRules.boss(GameState.dead_league_bout).accent
+	_hud.hide_boss()
+	_hud.announce_small("TAG!", accent)
+	_hud.say("THE TRUE COFFIN KING", TAG_LINES[_round - 1], accent.lightened(0.3))
+	await _hop(king, RING_CENTER + out * (RING_HALF_SIZE + APRON))
+	if not is_inside_tree() or _bout_finished:
+		return
+	king.look_at(Vector3(RING_CENTER.x, king.global_position.y, RING_CENTER.z))
+	var index := _round - 1
+	_partner = BOSS_SCENE.instantiate() as DeadLeagueBoss
+	_partner.configure(index, DeadLeagueRules.ROUND_COUNT)
+	_partner.empower(_round, true)
+	_partner.setup(_player, false)
+	_partner.position = RING_CENTER - out * (RING_HALF_SIZE + APRON)
+	_partner.arena_center = RING_CENTER
+	_partner.arena_limit = RING_HALF_SIZE - 0.6
+	$Enemies.add_child(_partner)
+	_partner.set_physics_process(false)
+	_partner.died.connect(_on_partner_died)
+	_partner.health_changed.connect(_hud.set_boss_health)
+	var profile := DeadLeagueRules.boss(index)
+	_hud.say(profile.name, DeadLeagueRules.taunt(index), profile.accent.lightened(0.3))
+	await _hop(_partner, RING_CENTER - out * (RING_HALF_SIZE - 1.4))
+	if not is_inside_tree() or _bout_finished or not is_instance_valid(_partner):
+		return
+	_partner.set_physics_process(true)
+	_hud.show_boss(_partner.display_name, _partner.hp, _partner.max_hp)
+
+
+## The tagged-in contender is down: the King hops back in.
+func _on_partner_died(_enemy: Enemy) -> void:
+	if _bout_finished:
+		return
+	_hud.hide_boss()
+	var king := _boss
+	if not is_instance_valid(king):
+		return
+	await get_tree().create_timer(0.8).timeout
+	if not is_inside_tree() or _bout_finished:
+		return
+	var out: Vector3 = king.get_meta("out", Vector3(0, 0, -1))
+	await _hop(king, RING_CENTER + out * (RING_HALF_SIZE - 1.4))
+	if not is_inside_tree() or _bout_finished:
+		return
+	king.collision_layer = king.get_meta("layer", 1)
+	king.add_to_group("enemies")
+	king.set_physics_process(true)
+	_hud.show_boss(king.display_name, king.hp, king.max_hp)
+	_hud.say("THE TRUE COFFIN KING", "Fine. I'll do it myself.", DeadLeagueRules.boss(GameState.dead_league_bout).accent.lightened(0.3))
+
+
+## A big hop over the ropes to a spot.
+func _hop(fighter: Node3D, to: Vector3) -> void:
+	var from := fighter.global_position
+	to.y = from.y
+	Sfx.play_at("whoosh", from, 0.0, 0.7)
+	var hop := fighter.create_tween()
+	hop.tween_method(func(t: float) -> void:
+		if is_instance_valid(fighter):
+			fighter.global_position = from.lerp(to, t) + Vector3.UP * sin(t * PI) * 2.2, 0.0, 1.0, HOP_TIME)
+	await hop.finished
+	if is_instance_valid(fighter):
+		Sfx.play_at("quake", to, -6.0, 1.2)
+		HitFx.burst(fighter.get_parent(), to + Vector3(0, 0.2, 0), Vector3.UP, Color(0.6, 0.55, 0.5), 14, 3.0, false, 0.05)
 
 
 func _on_boss_died(_enemy: Enemy) -> void:
 	if _bout_finished:
 		return
-	if _round >= DeadLeagueRules.ROUND_COUNT:
+	if _floor:
+		_floor.stop()
+	if _round >= _rounds():
 		# The last round: the bell, their last words, and a few seconds to
 		# soak it in before the results.
 		_bout_finished = true
@@ -144,8 +281,7 @@ func _on_boss_died(_enemy: Enemy) -> void:
 	_player.global_position = Vector3(0, 0.1, 0)
 	_player.rotation = Vector3.ZERO
 	_hud.announce("ROUND %d" % _round)
-	_hud.say(DeadLeagueRules.boss(GameState.dead_league_bout).name, DeadLeagueRules.taunt(GameState.dead_league_bout),
-			DeadLeagueRules.boss(GameState.dead_league_bout).accent.lightened(0.3))
+	_taunt()
 	_spawn_boss()
 
 
@@ -153,6 +289,8 @@ func _on_knuckles_broken() -> void:
 	if _bout_finished:
 		return
 	_bout_finished = true
+	if _floor:
+		_floor.stop()
 	_hud.knockout_fade()
 	_player.knock_out()
 	await get_tree().create_timer(Player.KNOCKOUT_TIME).timeout
@@ -160,11 +298,13 @@ func _on_knuckles_broken() -> void:
 		return
 	if is_instance_valid(_boss):
 		_boss.set_physics_process(false)
+	if is_instance_valid(_partner):
+		_partner.set_physics_process(false)
 	var profile := DeadLeagueRules.boss(GameState.dead_league_bout)
 	_hud.show_results({
 		"title": "KNOCKED OUT",
 		"title_color": UiTheme.BAD,
-		"subtitle": "%s   ·   ROUND %d" % [profile.name, _round],
+		"subtitle": "%s   ·   ROUND %d" % ["THE TRUE COFFIN KING" if _true else profile.name, _round],
 	}, "Rematch", false, "League menu")
 
 
@@ -185,6 +325,9 @@ func _finish_victory() -> void:
 	var points := DeadLeagueRules.score(stats)
 	var grade := DeadLeagueRules.grade(points)
 	var profile := DeadLeagueRules.boss(GameState.dead_league_bout)
+	if _true:
+		_finish_true_victory(grade)
+		return
 	var first_clear := GameState.record_dead_league_result(profile.id, grade, points)
 	Bounties.event("league_win")
 	if _damage_taken <= 0.0:
@@ -221,6 +364,24 @@ func _finish_victory() -> void:
 			["UNTOUCHED", _damage_taken <= 0.0],
 		],
 		"note": note,
+	}, "Rematch", false, "League menu")
+
+
+## The True Coffin King is down: Princess Plum is free.
+func _finish_true_victory(grade: String) -> void:
+	var first := not Achievements.has("true_king")
+	Achievements.earn("true_king")
+	_hud.show_results({
+		"title": "THE TRUE KING FALLS",
+		"subtitle": "PRINCESS PLUM IS FREE   ·   %s" % _format_time(_elapsed),
+		"grade": grade,
+		"medals": [
+			["CLEAN  x%d" % _perfect_dodges, _perfect_dodges >= 3],
+			["COUNTERS  x%d" % _counters, _counters >= 3],
+			["FULL ARSENAL", _punch_types.size() >= 4],
+			["UNTOUCHED", _damage_taken <= 0.0],
+		],
+		"note": "THANK YOU, TONY!" if first else "",
 	}, "Rematch", false, "League menu")
 
 

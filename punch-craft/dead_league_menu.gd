@@ -91,6 +91,17 @@ func _build_ui() -> void:
 		secret.custom_minimum_size = Vector2(200, 42)
 		secret.pressed.connect(func() -> void: SecretEnding.open(self))
 		header.add_child(secret)
+		# The secret boss: five rounds, every contender tagged in.
+		var true_king := Button.new()
+		true_king.text = "TRUE COFFIN KING"
+		true_king.theme_type_variation = "PrimaryButton"
+		true_king.custom_minimum_size = Vector2(200, 42)
+		true_king.tooltip_text = "Five rounds. He tags in the whole League. Bring a maxed build."
+		true_king.pressed.connect(func() -> void:
+			GameState.dead_league_bout = DeadLeagueRules.BOSS_COUNT - 1
+			GameState.true_king_bout = true
+			Loading.go("res://dead_league_arena.tscn"))
+		header.add_child(true_king)
 	var back := Button.new()
 	back.text = "Back to camp"
 	back.custom_minimum_size = Vector2(150, 42)
@@ -205,6 +216,7 @@ func _draw_power_bar() -> void:
 
 func _start_bout() -> void:
 	GameState.dead_league_bout = _selected
+	GameState.true_king_bout = false
 	Loading.go("res://dead_league_arena.tscn")
 
 

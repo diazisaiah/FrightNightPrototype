@@ -19,6 +19,7 @@ const LIST := {
 	"plumber_caps": {"name": "Family Business", "desc": "Collect all five plumber caps.", "emote": "plumber_jump"},
 	# The secret ending (SecretEnding). No dance: the princess is the prize.
 	"true_ending": {"name": "True Ending?", "desc": "Beat the Coffin King as the plumber.", "emote": ""},
+	"true_king": {"name": "Thank You, Tony!", "desc": "Beat the True Coffin King.", "emote": ""},
 }
 ## POWER for Over Nine Thousand.
 const POWER_YELL := 9001

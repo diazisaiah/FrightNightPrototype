@@ -2003,6 +2003,11 @@ func get_coin_multiplier() -> float:
 	return 1.0 + get_effect("coin_bonus")
 
 
+## The next Dead League bout is the True Coffin King's (the secret boss; set
+## by the League menu, never saved).
+var true_king_bout := false
+
+
 func begin_dead_league() -> void:
 	dead_league_active = true
 

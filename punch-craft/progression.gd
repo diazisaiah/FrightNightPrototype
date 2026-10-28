@@ -125,6 +125,17 @@ static func par(tier: int) -> Dictionary:
 	return _par_cache[tier]
 
 
+## The True Coffin King's mark (the secret boss): a near-maxed build, with
+## TRUE_SHARE of every power level in all six rings at the top par level.
+const TRUE_SHARE := 0.9
+
+
+static func true_par() -> Dictionary:
+	if not _par_cache.has("true"):
+		_par_cache["true"] = par_build(TIER_COUNT + 1, TRUE_SHARE)
+	return _par_cache["true"]
+
+
 ## Par with a share (0-1) of the open rings' power upgrades.
 static func par_build(tier: int, share: float) -> Dictionary:
 	var effects := {}
@@ -143,7 +154,7 @@ static func par_build(tier: int, share: float) -> Dictionary:
 			var node_effects: Dictionary = GameState.UPGRADES[levels[i][1]].effects
 			for effect in node_effects:
 				effects[effect] = effects.get(effect, 0.0) + float(node_effects[effect])
-	var level: int = PAR_LEVEL[tier]
+	var level: int = PAR_LEVEL[mini(tier, PAR_LEVEL.size() - 1)]
 	# Power and Grit go straight into damage and knuckle HP.
 	var per := par_points(level)
 	for effect in ["damage_percent", "knuckles_percent"]:
@@ -186,7 +197,7 @@ static func _attribute_effect(effect: String) -> float:
 ## How much POWER a level's Speed and Technique points, perks, passive power
 ## and typical hand add to a build (1 = nothing).
 static func level_factor(tier: int, damage: float, knuckles: float, defense: float, effects: Dictionary) -> float:
-	var level: int = PAR_LEVEL[tier]
+	var level: int = PAR_LEVEL[mini(tier, PAR_LEVEL.size() - 1)]
 	var base := {"damage": damage, "knuckles": knuckles, "defense": defense,
 		"punch_speed": 1.0 + effects.get("punch_speed", 0.0), "combo_step": 0.25 + effects.get("combo_step", 0.0), "effects": effects}
 	var fx := effects.duplicate()

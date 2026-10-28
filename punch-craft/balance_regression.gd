@@ -834,4 +834,8 @@ func _test_one_power() -> void:
 	GameState.add_hat(Hats.PLUMBER_CAPS[4])
 	_check(GameState.skins_owned.has("plumber_overalls") and "plumber_jump" in Achievements.emotes(), "All five plumber caps give the overalls and the Plumber Jump")
 	_check(Hats.PLUMBER_CAPS.all(func(cap: String) -> bool: return cap in Hats.TROPHIES), "Plumber caps never drop at random")
+	var top := Progression.par(Progression.TIER_COUNT)
+	var true_mark := Progression.true_par()
+	print("True Coffin King mark: damage %.1f ehp %.0f (Coffin King par: %.1f, %.0f)" % [true_mark.damage, true_mark.ehp, top.damage, top.ehp])
+	_check(true_mark.damage > top.damage * 1.2 and true_mark.ehp > top.ehp * 1.2, "The True Coffin King wants far more than the Coffin King's par")
 	GameState._reset_fields()

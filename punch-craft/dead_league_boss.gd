@@ -63,6 +63,20 @@ const BLIND_TIME := 5.0
 ## shorter (KING_HASTE) and pauses between combos this much shorter.
 const KING_HASTE := 0.4
 const KING_REST := 0.6
+## The True Coffin King (the secret boss) and the contenders he tags in:
+## scaled to a near-maxed build (Progression.true_par). Partners fight at his
+## level with this share of his HP. Round 5 he goes Insano: combos of six to
+## eight punches, super armor through every punch of them, quicker tells.
+const TRUE_PARTNER_HP := 0.6
+const INSANO_COLOR := Color(0.9, 0.12, 0.4)
+const INSANO_WINDUP := 0.85
+const INSANO_COMBOS := [
+	["jab", "cross", "left_hook", "right_hook", "jab", "cross", "uppercut"],
+	["left_hook", "right_hook", "left_hook", "right_hook", "cross", "slam"],
+	["jab", "jab", "cross", "left_hook", "cross", "right_hook", "left_hook", "uppercut"],
+	["cross", "left_hook", "uppercut", "cross", "left_hook", "slam"],
+	["jab", "cross", "jab", "cross", "left_hook", "right_hook", "slam"],
+]
 const OWN_SPECIAL_NAMES := {"skull_toss": "SKULL TOSS", "adrenaline": "ADRENALINE SHOT"}
 const WILD_COMBOS := [
 	["left_hook", "right_hook", "left_hook"], ["right_hook", "left_hook", "uppercut"],
@@ -75,6 +89,7 @@ const RAMPAGE_COMBOS := [
 
 var profile_index := 0
 var round_number := 1
+var insano := false
 var _pivoted := false
 var _rampage_time := 0.0
 var _adrenaline_wait := 0.0
@@ -129,6 +144,55 @@ func _ready() -> void:
 	_finish_look.call_deferred()
 
 
+## The True Coffin King's bout: call after configure, before adding to the
+## tree. A partner keeps its own moves and tells (quicker ones from the King
+## where his are quicker) but hits as hard as he does.
+func empower(bout_round: int, partner := false) -> void:
+	var king := DeadLeagueRules.boss(DeadLeagueRules.BOSS_COUNT - 1)
+	var build := Progression.true_par()
+	var step := clampi(bout_round, 1, ROUND_HP.size()) - 1
+	max_hp = king.hp * ROUND_HP[step] * build.damage / Progression.BASE_DAMAGE * (TRUE_PARTNER_HP if partner else 1.0)
+	attack_damage = king.damage * ROUND_DAMAGE[step] * build.ehp / Progression.BASE_KNUCKLES
+	windup_scale = minf(windup_scale, king.windup * (1.0 - 0.045 * step))
+	move_speed = maxf(move_speed, 2.5 * king.speed)
+	_base_windup = windup_scale
+	_base_speed = move_speed
+	if not partner:
+		display_name = "THE TRUE COFFIN KING"
+
+
+## Insano style (the True Coffin King's last round).
+func go_insano() -> void:
+	insano = true
+	windup_scale *= INSANO_WINDUP
+	_base_windup = windup_scale
+	var aura := CPUParticles3D.new()
+	aura.amount = 36
+	aura.lifetime = 0.6
+	aura.position = Vector3(0, 1.2, 0)
+	aura.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	aura.emission_box_extents = Vector3(0.5, 0.8, 0.35) * BODY_SCALE[profile_index]
+	aura.direction = Vector3.UP
+	aura.spread = 20.0
+	aura.gravity = Vector3(0, 2.5, 0)
+	aura.initial_velocity_min = 1.2
+	aura.initial_velocity_max = 2.6
+	var mote := BoxMesh.new()
+	mote.size = Vector3.ONE * 0.08
+	mote.material = _glow_material(INSANO_COLOR)
+	aura.mesh = mote
+	add_child(aura)
+	DamagePopup.spawn(get_parent(), "INSANO STYLE!", INSANO_COLOR, 70, global_position + Vector3(0, 3.4, 0))
+	Sfx.play_at("growl", global_position + Vector3.UP * 2.0, 6.0, 0.6)
+
+
+## Insano: armored through the last punch of a combo too.
+func _combo_armored() -> bool:
+	if insano:
+		return _state in [State.WINDUP, State.STRIKE]
+	return super()
+
+
 func _pick_combo() -> Array:
 	var pools := [
 		[["jab", "cross"], ["cross", "left_hook"], ["jab", "cross", "slam"], ["left_hook", "right_hook"], ["slam"]],
@@ -138,6 +202,8 @@ func _pick_combo() -> Array:
 			["jab", "cross", "jab", "cross"], ["left_hook", "uppercut", "cross"], ["jab", "cross", "slam"]],
 		[["jab", "cross", "left_hook", "right_hook"], ["cross", "left_hook", "uppercut"], ["left_hook", "right_hook", "slam"], ["slam", "jab", "cross"]],
 	]
+	if insano:
+		return INSANO_COMBOS.pick_random()
 	if _rampage_time > 0.0:
 		return RAMPAGE_COMBOS.pick_random()
 	var pool: Array = pools[profile_index]
