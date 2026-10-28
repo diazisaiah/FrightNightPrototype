@@ -311,6 +311,7 @@ func _build_armor() -> void:
 	pass
 
 
-## Casters wear their gear as tier-colored robes with trim.
+## Casters wear their gear as tier-colored robes with trim; the King wears
+## none (its stats only).
 func _gear_style() -> String:
-	return "robe"
+	return "bare" if is_king else "robe"

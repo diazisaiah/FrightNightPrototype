@@ -337,8 +337,8 @@ func _fist(arm: String, size: Vector3, laces: Material = null) -> void:
 		_at(hand, _box(Vector3(size.x * 0.12, size.y * 0.35, 0.012)), laces, Vector3(0, -size.y * 0.15, size.z * 0.46))
 
 
-## The Champion fights bare-chested: armored or geared, he gets the stats
-## but wears nothing over his hide.
+## Bosses wear no armor: armored or geared, they get the stats but nothing
+## shows over their bodies (the Colossus and contenders too).
 func _build_armor() -> void:
 	pass
 

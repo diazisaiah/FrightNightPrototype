@@ -140,14 +140,3 @@ func _build_body() -> void:
 		for k in 4:
 			_at("hand" + s, _box(Vector3(0.04, 0.1, 0.05)), glove, Vector3((k - 1.5) * 0.045, -0.17, -0.03))
 		_at("hand" + s, _box(Vector3(0.05, 0.09, 0.05)), glove, Vector3(-side * 0.1, -0.08, -0.05))
-
-
-func _build_armor() -> void:
-	var iron := _material(Color(0.3, 0.28, 0.3), 0.7)
-	for side: float in [-1.0, 1.0]:
-		_on("clavicle_l" if side < 0.0 else "clavicle_r", _box(Vector3(0.28, 0.12, 0.34)), iron, Vector3(0.42 * side, 1.72, 0))
-
-
-## The Colossus still wears its gear (the Champion, a Boss too, doesn't).
-func _gear_style() -> String:
-	return "plate"
