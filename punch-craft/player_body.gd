@@ -246,6 +246,13 @@ func _p(key: String) -> Color:
 	return _pal.get(key, Color.MAGENTA)
 
 
+## Red-and-black flannel check (the Plumber Overalls' shirt).
+func _flannel(p: Vector3, base: Color) -> Color:
+	var across := fposmod(p.y * 14.0, 1.0) < 0.3
+	var down := fposmod((p.x + p.z) * 14.0, 1.0) < 0.3
+	return _vary(base.darkened(0.55 if across and down else 0.3 if across or down else 0.0), p)
+
+
 func _cache_key() -> String:
 	return fighter + "/" + skin_id
 
@@ -1159,8 +1166,8 @@ func _dress_torso(hips: Node3D, torso: Node3D) -> void:
 			_seat(hips, gi)
 			_flaps(hips, gi, white, true)
 		"wise_guy" when _p("shirt").a > 0.0:
-			# Plumber Overalls: a red shirt under denim overalls, the bib up
-			# the front on two straps over the shoulders, gold buttons.
+			# Plumber Overalls: a red flannel shirt under denim work overalls,
+			# the bib up the front on two straps, brass rivets.
 			var denim := _p("jacket")
 			var shirt := _p("shirt")
 			var overalls := func(p: Vector3) -> Color:
@@ -1170,7 +1177,7 @@ func _dress_torso(hips: Node3D, torso: Node3D) -> void:
 					return _cloth_at(p, denim, 0.05)
 				if p.y < 0.62 and absf(absf(p.x) - 0.085) < 0.024:
 					return _cloth_at(p, denim, 0.05)
-				return _cloth_at(p, shirt, 0.05)
+				return _flannel(p, shirt)
 			_torso_cloth(torso, 0.012, overalls, func(_p2: Vector3) -> bool: return true)
 			var front := _torso_radius(0.44).y
 			for side in [-1.0, 1.0]:
@@ -1341,7 +1348,7 @@ func _dress_arm(shoulder: Node3D, elbow: Node3D, side: float) -> void:
 			# gathered into ribbed cuffs.
 			var sleeve := func(p: Vector3) -> Color:
 				if _p("shirt").a > 0.0:
-					return _cloth_at(p, _p("shirt"), 0.05)
+					return _flannel(p, _p("shirt"))
 				var ang := atan2(p.z, p.x * side)
 				if absf(ang + 0.75) < 0.08 or absf(ang + 0.45) < 0.08:
 					return _vary(_p("stripe"), p)

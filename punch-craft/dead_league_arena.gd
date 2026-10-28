@@ -370,6 +370,10 @@ func _finish_victory() -> void:
 ## The True Coffin King is down: Princess Plum is free.
 func _finish_true_victory(grade: String) -> void:
 	var first := not Achievements.has("true_king")
+	if first:
+		await PrincessRescue.open(self).finished
+		if not is_inside_tree():
+			return
 	Achievements.earn("true_king")
 	_hud.show_results({
 		"title": "THE TRUE KING FALLS",

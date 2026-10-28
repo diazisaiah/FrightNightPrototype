@@ -15,7 +15,7 @@ const CATALOG := {
 	"rooftop_ghost": {"fighter": "free_runner", "name": "Rooftop Ghost", "desc": "Seen on the skyline. Never caught."},
 	"sunday_best": {"fighter": "wise_guy", "name": "Sunday Best", "desc": "The good tracksuit."},
 	"verdant_sigil": {"fighter": "elementalist", "name": "Verdant Sigil", "desc": "Old green magic, gold at the hem."},
-	"plumber_overalls": {"fighter": "wise_guy", "name": "Plumber Overalls", "desc": "Fixes pipes. Breaks faces."},
+	"plumber_overalls": {"fighter": "wise_guy", "name": "Plumber Overalls", "desc": "Flannel, denim, work boots. Fixes pipes. Breaks faces."},
 }
 ## Skins only a feat gives (never sold): the overalls for all five plumber caps.
 const EARN_ONLY := ["plumber_overalls"]
@@ -98,10 +98,10 @@ const LOOKS := {
 	},
 	# A "shirt" (with alpha): PlayerBody and Fists dress Tony in overalls over it.
 	"plumber_overalls": {
-		"jacket": Color(0.16, 0.3, 0.75), "stripe": Color(0.16, 0.3, 0.75), "zip": Color(1.0, 0.82, 0.2),
-		"shirt": Color(0.86, 0.1, 0.1), "tee": Color(0.86, 0.1, 0.1), "rib_a": Color(0.86, 0.1, 0.1), "rib_b": Color(0.72, 0.08, 0.08),
-		"beanie_a": Color(0.86, 0.1, 0.1), "beanie_b": Color(0.74, 0.08, 0.08), "brim": Color(0.7, 0.07, 0.07),
-		"tape": Color(0.97, 0.97, 0.96), "shoes": Color(0.4, 0.22, 0.1), "sole": Color(0.28, 0.15, 0.07), "accent": Color(0.86, 0.1, 0.1),
+		"jacket": Color(0.2, 0.3, 0.55), "stripe": Color(0.2, 0.3, 0.55), "zip": Color(0.62, 0.5, 0.3),
+		"shirt": Color(0.72, 0.12, 0.1), "tee": Color(0.72, 0.12, 0.1), "rib_a": Color(0.72, 0.12, 0.1), "rib_b": Color(0.5, 0.08, 0.07),
+		"beanie_a": Color(0.72, 0.12, 0.1), "beanie_b": Color(0.5, 0.08, 0.07), "brim": Color(0.45, 0.07, 0.06),
+		"tape": Color(0.9, 0.88, 0.84), "shoes": Color(0.2, 0.13, 0.08), "sole": Color(0.1, 0.08, 0.06), "accent": Color(0.72, 0.12, 0.1),
 		"glow": Color(1.0, 0.3, 0.2),
 	},
 	"verdant_sigil": {

@@ -102,6 +102,12 @@ func _build_ui() -> void:
 			GameState.true_king_bout = true
 			Loading.go("res://dead_league_arena.tscn"))
 		header.add_child(true_king)
+	if Achievements.has("true_king"):
+		var rescue := Button.new()
+		rescue.text = "Watch the rescue"
+		rescue.custom_minimum_size = Vector2(170, 42)
+		rescue.pressed.connect(func() -> void: PrincessRescue.open(self))
+		header.add_child(rescue)
 	var back := Button.new()
 	back.text = "Back to camp"
 	back.custom_minimum_size = Vector2(150, 42)

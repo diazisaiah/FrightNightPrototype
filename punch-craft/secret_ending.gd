@@ -4,7 +4,8 @@ extends CanvasLayer
 ## Plumber Overalls and the Fat Plumber Cap. Tony jumps and shuffles, swings
 ## the Coffin King round by the ankles and throws him out of the building, a
 ## little mushroom man brings bad news about the princess and gets
-## uppercut into orbit. True Ending? (Princess Plum is a secret boss for
+## uppercut into orbit. A nod, not a copy: no emblems, costumes or lines
+## lifted from anyone (GAME_DESIGN.md, "Parody, not copies"). True Ending? (Princess Plum is a secret boss for
 ## later.) Press anything to skip to the end.
 
 signal finished
@@ -12,8 +13,9 @@ signal finished
 ## Clicks this soon after it opens are still punches from the fight.
 const GRACE_MS := 1500
 const SPOTLIGHT := Color(1.0, 0.92, 0.75)
-const MUSHROOM_CAP := Color(0.96, 0.95, 0.92)
-const MUSHROOM_SPOTS := Color(0.85, 0.12, 0.12)
+## A brown bolete of a man, not anyone's red-and-white one.
+const MUSHROOM_CAP := Color(0.5, 0.3, 0.15)
+const MUSHROOM_GILLS := Color(0.86, 0.78, 0.6)
 
 var _viewport: SubViewport
 var _camera: Camera3D
@@ -108,6 +110,11 @@ func _build_stage() -> void:
 	_camera.position = Vector3(0.3, 1.9, -6.8)
 	_viewport.add_child(_camera)
 	_camera.look_at(Vector3(0.3, 1.0, 0.5))
+	_build_cast()
+
+
+## Who's on stage (PrincessRescue has its own).
+func _build_cast() -> void:
 	_tony = PlayerBody.new("wise_guy", "plumber_overalls")
 	_tony.build_budget_ms = 12
 	_tony.position = Vector3(-1.2, 0, 0)
@@ -143,37 +150,36 @@ func _rig_play(action: String, duration: float) -> void:
 		rig.play(action, duration)
 
 
-## A little mushroom man: a big white cap with red spots, a blue vest, white
-## trousers, brown shoes, two dot eyes.
+## A little mushroom man: a squat brown bolete cap with pale gills under
+## it, a big grey moustache, a green waistcoat, brown trousers and boots.
 func _build_mushroom() -> Node3D:
 	var man := Node3D.new()
-	var skin := Color(0.98, 0.84, 0.7)
+	var skin := Color(0.9, 0.78, 0.62)
 	for side in [-1.0, 1.0]:
-		_box(man, Vector3(0.14, 0.08, 0.2), Vector3(0.09 * side, 0.04, -0.02), Color(0.45, 0.25, 0.1))
-		_box(man, Vector3(0.12, 0.2, 0.12), Vector3(0.09 * side, 0.18, 0), Color(0.95, 0.95, 0.92))
+		_box(man, Vector3(0.14, 0.08, 0.2), Vector3(0.09 * side, 0.04, -0.02), Color(0.2, 0.12, 0.06))
+		_box(man, Vector3(0.12, 0.2, 0.12), Vector3(0.09 * side, 0.18, 0), Color(0.42, 0.3, 0.18))
 		_box(man, Vector3(0.09, 0.22, 0.09), Vector3(0.21 * side, 0.4, 0), skin)
-	_box(man, Vector3(0.32, 0.28, 0.22), Vector3(0, 0.42, 0), Color(0.2, 0.35, 0.85))
-	_box(man, Vector3(0.12, 0.16, 0.03), Vector3(0, 0.42, -0.115), Color(0.95, 0.85, 0.3))
+	_box(man, Vector3(0.32, 0.28, 0.22), Vector3(0, 0.42, 0), Color(0.22, 0.45, 0.25))
+	_box(man, Vector3(0.04, 0.2, 0.03), Vector3(0, 0.42, -0.115), Color(0.86, 0.8, 0.65))
 	_box(man, Vector3(0.3, 0.28, 0.28), Vector3(0, 0.7, 0), skin)
 	for side in [-1.0, 1.0]:
-		_box(man, Vector3(0.04, 0.09, 0.02), Vector3(0.06 * side, 0.72, -0.145), Color(0.05, 0.05, 0.08))
-	# The cap: wide and domed, spots all round.
-	_box(man, Vector3(0.8, 0.26, 0.8), Vector3(0, 0.95, 0), MUSHROOM_CAP)
-	_box(man, Vector3(0.62, 0.16, 0.62), Vector3(0, 1.14, 0), MUSHROOM_CAP)
-	_box(man, Vector3(0.3, 0.08, 0.3), Vector3(0, 1.25, 0), MUSHROOM_CAP)
-	for spot in [Vector3(0, 0.98, -0.41), Vector3(0.41, 0.98, 0), Vector3(-0.41, 0.98, 0), Vector3(0, 0.98, 0.41), Vector3(0, 1.23, 0)]:
-		var size := Vector3(0.22, 0.18, 0.02) if absf(spot.z) > 0.3 else Vector3(0.02, 0.18, 0.22) if absf(spot.x) > 0.3 else Vector3(0.18, 0.04, 0.18)
-		_box(man, size, spot, MUSHROOM_SPOTS)
+		_box(man, Vector3(0.05, 0.04, 0.02), Vector3(0.06 * side, 0.76, -0.145), Color(0.05, 0.05, 0.08))
+		_box(man, Vector3(0.14, 0.06, 0.04), Vector3(0.07 * side, 0.64, -0.15), Color(0.7, 0.7, 0.72), Vector3(0, 0, -0.25 * side))
+	# The cap: a low, broad bun-brown dome over pale gills.
+	_box(man, Vector3(0.74, 0.06, 0.74), Vector3(0, 0.86, 0), MUSHROOM_GILLS)
+	_box(man, Vector3(0.78, 0.18, 0.78), Vector3(0, 0.96, 0), MUSHROOM_CAP)
+	_box(man, Vector3(0.58, 0.1, 0.58), Vector3(0, 1.08, 0), MUSHROOM_CAP.darkened(0.1))
 	return man
 
 
-func _box(parent: Node, size: Vector3, pos: Vector3, tint: Color) -> MeshInstance3D:
+func _box(parent: Node, size: Vector3, pos: Vector3, tint: Color, rot := Vector3.ZERO) -> MeshInstance3D:
 	var mesh := BoxMesh.new()
 	mesh.size = size
 	mesh.material = Look.block_material(tint, 0.0)
 	var part := MeshInstance3D.new()
 	part.mesh = mesh
 	part.position = pos
+	part.rotation = rot
 	parent.add_child(part)
 	return part
 
@@ -279,7 +285,7 @@ func _mushroom_man() -> void:
 			return
 	_mushroom.rotation.y = PI * 0.15
 	_tony.rotation.y = -PI * 0.3
-	_say(_mushroom, "Ayo, your princess is in anotha castle!", Color(0.95, 0.95, 1.0), 2.8, 1.65)
+	_say(_mushroom, "Ayo! Ya princess? Wrong castle, pal.", Color(0.95, 0.95, 1.0), 2.8, 1.65)
 	await _wait(3.0)
 	if _skipped:
 		return
@@ -355,8 +361,7 @@ func _wait(seconds: float) -> void:
 func _show_end() -> void:
 	if _card.visible:
 		return
-	Achievements.earn("true_ending")
-	_tony.play("plumber_jump")
+	_earn()
 	_card.visible = true
 	var dim := ColorRect.new()
 	dim.color = Color(0, 0, 0, 0.55)
@@ -364,13 +369,23 @@ func _show_end() -> void:
 	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(dim)
 	move_child(dim, _card.get_index())
-	for line in [["TRUE ENDING?", 64, UiTheme.GOLD], ["Princess Plum is still out there.", 24, UiTheme.TEXT]]:
+	for line in _end_lines():
 		var label := UiTheme.title_label(line[0], line[1], line[2])
 		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		_card.add_child(label)
 	_card.add_child(_continue)
 	_continue.grab_focus.call_deferred()
 	Sfx.play("unlock")
+
+
+func _earn() -> void:
+	Achievements.earn("true_ending")
+	_tony.play("plumber_jump")
+
+
+## The end card: [text, size, color] lines.
+func _end_lines() -> Array:
+	return [["TRUE ENDING?", 64, UiTheme.GOLD], ["Princess Plum is still out there.", 24, UiTheme.TEXT]]
 
 
 func _input(event: InputEvent) -> void:

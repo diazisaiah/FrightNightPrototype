@@ -101,8 +101,8 @@ const CATALOG := {
 		"desc": "Five servings a day. Too late for this guy."},
 	"fast_quills": {"name": "Fast Guy Fleece Cap", "rarity": "epic", "effects": {"move_speed": 0.05, "punch_speed": 0.04},
 		"desc": "Blue, spiky, and already gone."},
-	"pocket_trainer_cap": {"name": "Pocket Trainer Cap", "rarity": "rare", "effects": {"xp_bonus": 0.04, "coin_bonus": 0.03},
-		"desc": "Gotta punch 'em all."},
+	"pocket_trainer_cap": {"name": "Bootleg Trainer Cap", "rarity": "rare", "effects": {"xp_bonus": 0.04, "coin_bonus": 0.03},
+		"desc": "Catch 'em? Punch 'em."},
 	"straw_hat": {"name": "Straw Hat", "rarity": "epic", "effects": {"knuckles_percent": 0.04, "damage_percent": 0.03},
 		"desc": "Stretchy guy's. He'll want it back."},
 	"rebel_cap": {"name": "Rebellious Guy Hat", "rarity": "epic", "effects": {"punch_speed": 0.04, "damage_percent": 0.03},
@@ -121,11 +121,11 @@ const CATALOG := {
 		"desc": "Off the Coffin King's head. Heavy is the head."},
 	# Won by maxing a power.
 	"fire_cap": {"name": "Hot Plumber Hat", "rarity": "epic", "effects": {"boost_fire": 0.1},
-		"desc": "Won by maxing Fire. Throws fireballs. Fixes pipes."},
+		"desc": "Won by maxing Fire. Fixes pipes. Sets them on fire."},
 	"gale_flattop": {"name": "Air Force Flattop", "rarity": "epic", "effects": {"boost_gale": 0.1}, "bald": true,
 		"desc": "Won by maxing Gale. Takes an hour and a can of spray a morning."},
-	"storm_ears": {"name": "Electric Mouse Ears", "rarity": "epic", "effects": {"boost_storm": 0.1},
-		"desc": "Won by maxing Storm. Squeaks. Shocks."},
+	"storm_ears": {"name": "Bootleg Mouse Ears", "rarity": "epic", "effects": {"boost_storm": 0.1},
+		"desc": "Won by maxing Storm. Not from the official store."},
 	"iron_mask": {"name": "Armored Faceplate", "rarity": "epic", "effects": {"boost_iron": 0.1},
 		"desc": "Won by maxing Iron. Built in a cave. With a box of scraps."},
 	"frost_tiara": {"name": "Snow Queen Tiara", "rarity": "epic", "effects": {"boost_frost": 0.1},
@@ -147,11 +147,11 @@ const CATALOG := {
 	"fat_plumber_cap": {"name": "Fat Plumber Cap", "rarity": "epic", "effects": {"defense": 0.5, "damage_percent": 0.03},
 		"desc": "Off the plumber you made clean up after you."},
 	"tall_plumber_cap": {"name": "Tall Plumber Cap", "rarity": "epic", "effects": {"move_speed": 0.04, "punch_speed": 0.03},
-		"desc": "His brother. Jumps higher. Gets less credit."},
+		"desc": "The other brother. Gets less credit."},
 	"very_tall_plumber_cap": {"name": "Very Tall \"Plumber\" Cap", "rarity": "epic", "effects": {"dodge_window": 0.03, "move_speed": 0.02},
 		"desc": "Not a plumber. Never was."},
 	"very_fat_plumber_cap": {"name": "Very Fat \"Plumber\" Cap", "rarity": "epic", "effects": {"damage_percent": 0.03, "knuckles_percent": 0.03},
-		"desc": "Also not a plumber. Smells of garlic."},
+		"desc": "Also not a plumber. Wants your coins."},
 }
 
 
@@ -404,15 +404,15 @@ static func build(id: String, u: float) -> Node3D:
 		"wig_white":
 			_strong_wig(hat, u, Color(0.92, 0.94, 1.0), true)
 		"fire_cap":
-			_plumber_cap(hat, u, Color(0.97, 0.97, 0.96), Color(0.86, 0.1, 0.1), "M")
+			_plumber_cap(hat, u, Color(0.97, 0.97, 0.96), "flame")
 		"fat_plumber_cap":
-			_plumber_cap(hat, u, Color(0.86, 0.1, 0.1), Color(0.86, 0.1, 0.1), "M", 1.2)
+			_plumber_cap(hat, u, Color(0.86, 0.1, 0.1), "wrench", 1.2)
 		"tall_plumber_cap":
-			_plumber_cap(hat, u, Color(0.1, 0.62, 0.2), Color(0.1, 0.62, 0.2), "L", 1.0, 1.5)
+			_plumber_cap(hat, u, Color(0.1, 0.62, 0.2), "plunger", 1.0, 1.5)
 		"very_tall_plumber_cap":
-			_plumber_cap(hat, u, Color(0.42, 0.16, 0.6), Color(0.42, 0.16, 0.6), "Γ", 1.0, 2.1, Color(1.0, 0.85, 0.2))
+			_plumber_cap(hat, u, Color(0.42, 0.16, 0.6), "drop", 1.0, 2.1)
 		"very_fat_plumber_cap":
-			_plumber_cap(hat, u, Color(1.0, 0.85, 0.15), Color(0.15, 0.3, 0.85), "W", 1.45, 0.9)
+			_plumber_cap(hat, u, Color(1.0, 0.85, 0.15), "coin", 1.45, 0.9)
 		"gale_flattop":
 			_flattop(hat, u)
 		"storm_ears":
@@ -523,8 +523,8 @@ static func _quills(hat: Node3D, u: float, fleece := Color(0.08, 0.5, 0.9)) -> v
 		_spike(hat, u, quill[0], quill[1], quill[2], quill[3], fleece if i % 2 == 0 else shade)
 
 
-## The pocket trainer's cap: white front panels, red back, a red brim and
-## button, and a green swoosh on the front.
+## The bootleg trainer's cap: white front panels, red back, a red brim and
+## button, and a green leaf patch on the front where a logo would go.
 static func _trainer_cap(hat: Node3D, u: float) -> void:
 	var white := Color(0.97, 0.97, 0.97)
 	var red := Color(0.86, 0.14, 0.12)
@@ -534,12 +534,9 @@ static func _trainer_cap(hat: Node3D, u: float) -> void:
 	_b(hat, u, Vector3(0.82, 0.12, 0.42), Vector3(0, 0.32, 0.2), red)
 	_b(hat, u, Vector3(0.12, 0.08, 0.12), Vector3(0, 0.41, 0), red)
 	_b(hat, u, Vector3(0.94, 0.05, 0.66), Vector3(0, 0.0, -0.8), red, Vector3(-0.12, 0, 0))
-	var green := Color(0.1, 0.48, 0.34)
-	# Seen from the front, +x is on the left: a bar running right, a stroke
-	# rising from its left end, a hook at the top.
-	_b(hat, u, Vector3(0.38, 0.06, 0.03), Vector3(-0.02, 0.08, -0.56), green)
-	_b(hat, u, Vector3(0.32, 0.06, 0.03), Vector3(0.05, 0.17, -0.56), green, Vector3(0, 0, -0.7))
-	_b(hat, u, Vector3(0.12, 0.05, 0.03), Vector3(-0.08, 0.25, -0.56), green, Vector3(0, 0, 0.5))
+	var green := Color(0.15, 0.55, 0.25)
+	_b(hat, u, Vector3(0.2, 0.12, 0.03), Vector3(0, 0.15, -0.56), green, Vector3(0, 0, 0.6))
+	_b(hat, u, Vector3(0.03, 0.12, 0.03), Vector3(-0.08, 0.06, -0.565), green, Vector3(0, 0, 0.6))
 
 
 ## The stretchy guy's straw hat: a wide round brim, a red band round the
@@ -701,33 +698,43 @@ static func _fruit_hat(hat: Node3D, u: float) -> void:
 	_b(hat, u, Vector3(0.08, 0.5, 0.06), Vector3(0, 1.08, 0), leaf)
 
 
-## A plumber's cap: a dome (w wide, h tall), a brim, and a badge (white
-## unless given) ringed in grey with a letter on the front (M, L, Γ or W).
-static func _plumber_cap(hat: Node3D, u: float, cap: Color, ink: Color, letter: String, w := 1.0, h := 1.0, badge := Color(0.97, 0.97, 0.96)) -> void:
+## A plumber's cap: a dome (w wide, h tall), a brim, and a square stitched
+## patch on the front with a tool of the trade on it (flame, wrench,
+## plunger, drop or coin). Deliberately no letters or round emblems.
+static func _plumber_cap(hat: Node3D, u: float, cap: Color, icon: String, w := 1.0, h := 1.0) -> void:
 	_b(hat, u, Vector3(1.1 * w, 0.3 * h, 1.1 * w), Vector3(0, -0.03 + 0.15 * h, 0), cap)
 	_b(hat, u, Vector3(0.86 * w, 0.14, 0.86 * w), Vector3(0, -0.03 + 0.3 * h + 0.06, 0), cap)
 	_b(hat, u, Vector3(0.12, 0.08, 0.12), Vector3(0, -0.03 + 0.3 * h + 0.15, 0), cap)
 	_b(hat, u, Vector3(0.95 * w, 0.05, 0.6), Vector3(0, 0.0, -0.55 * w - 0.23), cap, Vector3(-0.1, 0, 0))
 	var y := -0.03 + 0.15 * h + 0.05
 	var z := -0.55 * w
-	for turn in [0.0, PI / 4.0]:
-		_b(hat, u, Vector3(0.38, 0.38, 0.03), Vector3(0, y, z - 0.015), Color(0.72, 0.72, 0.74), Vector3(0, 0, turn))
-		_b(hat, u, Vector3(0.32, 0.32, 0.03), Vector3(0, y, z - 0.025), badge, Vector3(0, 0, turn))
+	_b(hat, u, Vector3(0.36, 0.3, 0.03), Vector3(0, y, z - 0.015), cap.darkened(0.35))
+	_b(hat, u, Vector3(0.31, 0.25, 0.03), Vector3(0, y, z - 0.025), Color(0.94, 0.92, 0.86))
 	var front := z - 0.04
-	match letter:
-		"M", "W":
-			# Two posts and a V hanging between them (a peak rising for W). The
-			# badge faces -Z, so +x reads as the left.
-			var flip := 1.0 if letter == "M" else -1.0
+	match icon:
+		"flame":
+			var red := Color(0.95, 0.3, 0.08)
+			_b(hat, u, Vector3(0.14, 0.07, 0.03), Vector3(0, y - 0.07, front), red)
+			_b(hat, u, Vector3(0.1, 0.08, 0.03), Vector3(0.01, y - 0.0, front), red)
+			_b(hat, u, Vector3(0.06, 0.08, 0.03), Vector3(0.03, y + 0.06, front), Color(1.0, 0.7, 0.15), Vector3(0, 0, 0.4))
+			_b(hat, u, Vector3(0.05, 0.05, 0.03), Vector3(0, y - 0.05, front - 0.005), Color(1.0, 0.85, 0.3))
+		"wrench":
+			var steel := Color(0.35, 0.36, 0.4)
+			_b(hat, u, Vector3(0.04, 0.2, 0.03), Vector3(0, y - 0.01, front), steel, Vector3(0, 0, 0.75))
 			for side in [-1.0, 1.0]:
-				_b(hat, u, Vector3(0.05, 0.22, 0.03), Vector3(0.09 * side, y - 0.01, front), ink)
-				_b(hat, u, Vector3(0.05, 0.13, 0.03), Vector3(0.045 * side, y + 0.03 * flip, front - 0.005), ink, Vector3(0, 0, -0.6 * side * flip))
-		"L":
-			_b(hat, u, Vector3(0.05, 0.22, 0.03), Vector3(0.05, y, front), ink)
-			_b(hat, u, Vector3(0.16, 0.05, 0.03), Vector3(0.0, y - 0.085, front), ink)
-		"Γ":
-			_b(hat, u, Vector3(0.05, 0.22, 0.03), Vector3(0.05, y, front), ink)
-			_b(hat, u, Vector3(0.16, 0.05, 0.03), Vector3(0.0, y + 0.085, front), ink)
+				_b(hat, u, Vector3(0.03, 0.06, 0.03), Vector3(-0.06 + 0.025 * side, y + 0.085 + 0.02 * side, front), steel, Vector3(0, 0, 0.75))
+		"plunger":
+			_b(hat, u, Vector3(0.03, 0.16, 0.03), Vector3(0, y + 0.03, front), Color(0.5, 0.32, 0.16))
+			_b(hat, u, Vector3(0.14, 0.06, 0.03), Vector3(0, y - 0.07, front), Color(0.75, 0.12, 0.1))
+		"drop":
+			var blue := Color(0.2, 0.5, 0.95)
+			_b(hat, u, Vector3(0.1, 0.1, 0.03), Vector3(0, y - 0.04, front), blue, Vector3(0, 0, PI / 4.0))
+			_b(hat, u, Vector3(0.04, 0.08, 0.03), Vector3(0, y + 0.04, front), blue)
+		"coin":
+			var gold := Color(0.85, 0.62, 0.12)
+			_b(hat, u, Vector3(0.14, 0.1, 0.03), Vector3(0, y, front), gold)
+			_b(hat, u, Vector3(0.1, 0.14, 0.03), Vector3(0, y, front), gold)
+			_b(hat, u, Vector3(0.02, 0.08, 0.03), Vector3(0, y, front - 0.005), gold.darkened(0.35))
 
 
 ## The blonde flat top: hair standing straight up off the head and flaring
@@ -752,17 +759,23 @@ static func _flattop(hat: Node3D, u: float) -> void:
 		_b(hat, u, Vector3(0.22 - i * 0.07, 0.07, 0.06), Vector3(0, -0.08 - i * 0.07, -0.47), blonde)
 
 
-## Electric mouse ears: a yellow band and two tall ears, black at the tips.
+## Bootleg electric mouse ears: a cheap black plastic headband, two tall
+## yellow ears with brown tips (a knock-off, so not quite right), and a
+## little yellow bolt sticking up between them.
 static func _mouse_ears(hat: Node3D, u: float) -> void:
 	var yellow := Color(1.0, 0.85, 0.15)
-	_b(hat, u, Vector3(1.1, 0.08, 1.1), Vector3(0, 0.0, 0), yellow)
+	var tip := Color(0.32, 0.2, 0.1)
+	_b(hat, u, Vector3(1.12, 0.06, 0.16), Vector3(0, 0.0, 0), Color(0.08, 0.08, 0.09))
 	for side: float in [-1.0, 1.0]:
 		var tilt := -0.42 * side
 		var up := Vector3(-sin(tilt), cos(tilt), 0)
 		var base := Vector3(0.34 * side, 0.02, 0)
-		_b(hat, u, Vector3(0.26, 0.5, 0.12), base + up * 0.28, yellow, Vector3(0, 0, tilt))
-		_b(hat, u, Vector3(0.2, 0.22, 0.13), base + up * 0.62, Color(0.08, 0.07, 0.07), Vector3(0, 0, tilt))
-		_b(hat, u, Vector3(0.12, 0.1, 0.14), base + up * 0.78, Color(0.08, 0.07, 0.07), Vector3(0, 0, tilt))
+		_b(hat, u, Vector3(0.24, 0.5, 0.1), base + up * 0.28, yellow, Vector3(0, 0, tilt))
+		_b(hat, u, Vector3(0.18, 0.2, 0.11), base + up * 0.62, tip, Vector3(0, 0, tilt))
+	# The bolt: three blocks zigzagging up.
+	_b(hat, u, Vector3(0.06, 0.12, 0.05), Vector3(0.02, 0.1, 0), yellow, Vector3(0, 0, 0.5))
+	_b(hat, u, Vector3(0.12, 0.05, 0.05), Vector3(0, 0.17, 0), yellow)
+	_b(hat, u, Vector3(0.06, 0.12, 0.05), Vector3(-0.02, 0.24, 0), yellow, Vector3(0, 0, 0.5))
 
 
 ## The armored faceplate: a red helmet over the whole head, a gold face with
