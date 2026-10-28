@@ -86,9 +86,15 @@ const SHOP_CLASSES := ["elementalist"]
 const AMPLIFIED := [
 	"fire_punch", "burn", "burn_time", "fire_chance", "fire_radius", "frost_punch", "frost_time", "frost_radius",
 	"brittle", "frost_chance", "chain_damage", "heal_on_kill", "counter_heal", "last_stand",
+	"quake_power", "quake_damage", "quake_radius", "quake_chance", "gale", "gale_damage", "doom", "doom_time", "doom_chance",
 ]
 ## Attunement: how much stronger the one power is (plus passive power).
 const ATTUNE := 1.5
+## Prism: how many powers at once (their base nodes).
+const PRISM_SLOTS := 4
+## Every power's Sigil, in climb order: the four elements (Dead League
+## seals), then the four Endless powers (each division's endless bout).
+const POWER_ROOTS := ["sigil_fire", "sigil_frost", "sigil_storm", "sigil_blood", "sigil_quake", "sigil_gale", "sigil_iron", "sigil_doom"]
 const DEFAULT_CLASS := "berserker"
 
 const RESOURCE_NAMES := {
@@ -608,6 +614,209 @@ const UPGRADES := {
 		"desc": "Healing doubled under half knuckle HP.",
 		"max_level": 1, "cost": 503100, "cost_growth": 1.0, "effects": {"bloodbath": 1},
 	},
+	# The four Endless powers (2026-10-28): each opens when that division's
+	# endless bout is won (1 to 4), a diamond off one edge of the web: a
+	# Sigil, three branches, and a capstone where they meet.
+	"sigil_quake": {
+		"name": "Earthbreaker", "icon": "quake", "pos": Vector2(0, -8), "requires": [], "ring": 1, "medallion": true, "endless": 1,
+		"desc": "Awakens QUAKE: land from a jump in a shockwave.",
+		"max_level": 1, "cost": 600, "cost_growth": 1.0, "effects": {"quake_power": 0.8},
+	},
+	"quake_force": {
+		"name": "Heavy Landing", "icon": "hammer", "pos": Vector2(-1, -8), "requires": ["sigil_quake"], "ring": 1,
+		"desc": "Harder shockwaves.",
+		"max_level": 3, "cost": 180, "cost_growth": 1.3, "effects": {"quake_damage": 0.2},
+	},
+	"bedrock": {
+		"name": "Bedrock", "icon": "mountain", "pos": Vector2(-2, -9), "requires": ["quake_force"], "ring": 2,
+		"desc": "Even harder shockwaves.",
+		"max_level": 2, "cost": 542, "cost_growth": 1.3, "effects": {"quake_damage": 0.15},
+	},
+	"seismic": {
+		"name": "Seismic", "icon": "quake", "pos": Vector2(-1, -10), "requires": ["bedrock"], "ring": 3,
+		"desc": "Shockwaves knock monsters down.",
+		"max_level": 1, "cost": 1991, "cost_growth": 1.3, "effects": {"quake_knockdown": 1},
+	},
+	"wide_stance": {
+		"name": "Wide Stance", "icon": "ripple", "pos": Vector2(0, -9), "requires": ["sigil_quake"], "ring": 1,
+		"desc": "Shockwaves reach farther.",
+		"max_level": 2, "cost": 180, "cost_growth": 1.3, "effects": {"quake_radius": 0.75},
+	},
+	"fault_line": {
+		"name": "Fault Line", "icon": "chevrons", "pos": Vector2(0, -10), "requires": ["wide_stance"], "ring": 2,
+		"desc": "Shockwaves also crack forward in a line.",
+		"max_level": 1, "cost": 542, "cost_growth": 1.3, "effects": {"fault_line": 1},
+	},
+	"drumbeat": {
+		"name": "Drumbeat", "icon": "note", "pos": Vector2(1, -8), "requires": ["sigil_quake"], "ring": 1,
+		"desc": "Landed punches can stomp.",
+		"max_level": 3, "cost": 180, "cost_growth": 1.3, "effects": {"quake_chance": 0.04},
+	},
+	"short_fuse": {
+		"name": "Short Fuse", "icon": "stopwatch", "pos": Vector2(2, -9), "requires": ["drumbeat"], "ring": 2,
+		"desc": "Shockwaves come back sooner.",
+		"max_level": 2, "cost": 542, "cost_growth": 1.3, "effects": {"quake_cooldown": 0.75},
+	},
+	"tremor": {
+		"name": "Tremor", "icon": "spiral", "pos": Vector2(1, -10), "requires": ["short_fuse"], "ring": 3,
+		"desc": "Shockwaves stun.",
+		"max_level": 1, "cost": 1991, "cost_growth": 1.3, "effects": {"quake_stun": 1},
+	},
+	"aftershock": {
+		"name": "Aftershock", "icon": "quake", "pos": Vector2(0, -11), "requires": ["seismic", "fault_line", "tremor"], "ring": 6, "medallion": true,
+		"desc": "The ground stays cracked and slows monsters.",
+		"max_level": 1, "cost": 503100, "cost_growth": 1.0, "effects": {"quake_aftershock": 1},
+	},
+	"sigil_gale": {
+		"name": "Windcaller", "icon": "wind", "pos": Vector2(8, 0), "requires": [], "ring": 2, "medallion": true, "endless": 2,
+		"desc": "Awakens GALE: dodges charge punches with air bursts.",
+		"max_level": 1, "cost": 1356, "cost_growth": 1.0, "effects": {"gale": 0.5},
+	},
+	"gust": {
+		"name": "Gust", "icon": "swoosh", "pos": Vector2(8, -1), "requires": ["sigil_gale"], "ring": 2,
+		"desc": "Harder air bursts.",
+		"max_level": 3, "cost": 542, "cost_growth": 1.3, "effects": {"gale_damage": 0.15},
+	},
+	"gale_force": {
+		"name": "Gale Force", "icon": "wind", "pos": Vector2(9, -2), "requires": ["gust"], "ring": 3,
+		"desc": "Even harder air bursts.",
+		"max_level": 2, "cost": 1991, "cost_growth": 1.3, "effects": {"gale_damage": 0.1},
+	},
+	"buffet": {
+		"name": "Buffet", "icon": "wave", "pos": Vector2(10, -1), "requires": ["gale_force"], "ring": 4,
+		"desc": "Air bursts stagger.",
+		"max_level": 1, "cost": 9376, "cost_growth": 1.3, "effects": {"gale_stagger": 1},
+	},
+	"deep_lungs": {
+		"name": "Deep Lungs", "icon": "feather", "pos": Vector2(9, 0), "requires": ["sigil_gale"], "ring": 2,
+		"desc": "Hold more charges.",
+		"max_level": 2, "cost": 542, "cost_growth": 1.3, "effects": {"gale_charges": 1},
+	},
+	"tailwind": {
+		"name": "Tailwind", "icon": "wing", "pos": Vector2(10, 0), "requires": ["deep_lungs"], "ring": 3,
+		"desc": "Dodges give one more charge.",
+		"max_level": 1, "cost": 1991, "cost_growth": 1.3, "effects": {"gale_tailwind": 1},
+	},
+	"long_wind": {
+		"name": "Long Wind", "icon": "chevrons", "pos": Vector2(8, 1), "requires": ["sigil_gale"], "ring": 2,
+		"desc": "Air bursts fly farther.",
+		"max_level": 1, "cost": 542, "cost_growth": 1.3, "effects": {"gale_range": 3.0},
+	},
+	"crosswind": {
+		"name": "Crosswind", "icon": "fork", "pos": Vector2(9, 2), "requires": ["long_wind"], "ring": 3,
+		"desc": "Hooks fire a fan of three.",
+		"max_level": 1, "cost": 1991, "cost_growth": 1.3, "effects": {"crosswind": 1},
+	},
+	"updraft": {
+		"name": "Updraft", "icon": "wing", "pos": Vector2(10, 1), "requires": ["crosswind"], "ring": 4,
+		"desc": "Uppercut bursts knock monsters off their feet.",
+		"max_level": 1, "cost": 9376, "cost_growth": 1.3, "effects": {"updraft": 1},
+	},
+	"cyclone": {
+		"name": "Cyclone", "icon": "spiral", "pos": Vector2(11, 0), "requires": ["buffet", "tailwind", "updraft"], "ring": 6, "medallion": true,
+		"desc": "Your last charge blows everything nearby back.",
+		"max_level": 1, "cost": 503100, "cost_growth": 1.0, "effects": {"cyclone": 1},
+	},
+	"sigil_iron": {
+		"name": "Forgeborn", "icon": "anvil", "pos": Vector2(0, 8), "requires": [], "ring": 3, "medallion": true, "endless": 3,
+		"desc": "Awakens IRON: punches and clean dodges forge plates that cut damage.",
+		"max_level": 1, "cost": 3982, "cost_growth": 1.0, "effects": {"plate_guard": 0.08},
+	},
+	"plating": {
+		"name": "Plating", "icon": "chestplate", "pos": Vector2(1, 8), "requires": ["sigil_iron"], "ring": 3,
+		"desc": "One more plate.",
+		"max_level": 1, "cost": 1991, "cost_growth": 1.3, "effects": {"iron_plates": 1},
+	},
+	"tempered": {
+		"name": "Tempered", "icon": "shield", "pos": Vector2(2, 9), "requires": ["plating"], "ring": 4,
+		"desc": "Each plate cuts more.",
+		"max_level": 2, "cost": 9376, "cost_growth": 1.3, "effects": {"plate_guard": 0.005},
+	},
+	"riveted": {
+		"name": "Riveted", "icon": "anchor", "pos": Vector2(1, 10), "requires": ["tempered"], "ring": 5,
+		"desc": "A boss's hit breaks only one plate.",
+		"max_level": 1, "cost": 36000, "cost_growth": 1.3, "effects": {"riveted": 1},
+	},
+	"forge": {
+		"name": "Forge", "icon": "hammer", "pos": Vector2(0, 9), "requires": ["sigil_iron"], "ring": 3,
+		"desc": "Plates forge sooner.",
+		"max_level": 2, "cost": 1991, "cost_growth": 1.3, "effects": {"iron_forge": 1},
+	},
+	"anvil": {
+		"name": "Anvil", "icon": "anvil", "pos": Vector2(0, 10), "requires": ["forge"], "ring": 4,
+		"desc": "Any dodge forges a plate.",
+		"max_level": 1, "cost": 9376, "cost_growth": 1.3, "effects": {"iron_anvil": 1},
+	},
+	"spikes": {
+		"name": "Spikes", "icon": "broken_shield", "pos": Vector2(-1, 8), "requires": ["sigil_iron"], "ring": 3,
+		"desc": "A breaking plate staggers the attacker.",
+		"max_level": 1, "cost": 1991, "cost_growth": 1.3, "effects": {"iron_spikes": 1},
+	},
+	"barbs": {
+		"name": "Barbs", "icon": "axe", "pos": Vector2(-2, 9), "requires": ["spikes"], "ring": 4,
+		"desc": "Breaking plates hit back.",
+		"max_level": 2, "cost": 9376, "cost_growth": 1.3, "effects": {"iron_barbs": 0.5},
+	},
+	"shrapnel": {
+		"name": "Shrapnel", "icon": "burst", "pos": Vector2(-1, 10), "requires": ["barbs"], "ring": 5,
+		"desc": "Breaking plates hit everything around you.",
+		"max_level": 1, "cost": 36000, "cost_growth": 1.3, "effects": {"shrapnel": 1},
+	},
+	"unbreakable": {
+		"name": "Unbreakable", "icon": "helmet", "pos": Vector2(0, 11), "requires": ["riveted", "anvil", "shrapnel"], "ring": 6, "medallion": true,
+		"desc": "Full plates: a knockout blow leaves you on 1 knuckle HP.",
+		"max_level": 1, "cost": 503100, "cost_growth": 1.0, "effects": {"unbreakable": 1},
+	},
+	"sigil_doom": {
+		"name": "Death Mark", "icon": "skull", "pos": Vector2(-8, 0), "requires": [], "ring": 4, "medallion": true, "endless": 4,
+		"desc": "Awakens DOOM: heavies and counters mark a monster to take a share of it again.",
+		"max_level": 1, "cost": 18753, "cost_growth": 1.0, "effects": {"doom": 0.3},
+	},
+	"dread": {
+		"name": "Dread", "icon": "cracked_skull", "pos": Vector2(-8, 1), "requires": ["sigil_doom"], "ring": 4,
+		"desc": "Marks store more.",
+		"max_level": 3, "cost": 9376, "cost_growth": 1.3, "effects": {"doom": 0.1},
+	},
+	"death_knell": {
+		"name": "Death Knell", "icon": "skull", "pos": Vector2(-9, 2), "requires": ["dread"], "ring": 5,
+		"desc": "Marks store even more.",
+		"max_level": 2, "cost": 36000, "cost_growth": 1.3, "effects": {"doom": 0.05},
+	},
+	"reckoning": {
+		"name": "Reckoning", "icon": "burst", "pos": Vector2(-10, 1), "requires": ["death_knell"], "ring": 5,
+		"desc": "The burst staggers, bosses too.",
+		"max_level": 1, "cost": 36000, "cost_growth": 1.3, "effects": {"reckoning": 1},
+	},
+	"long_shadow": {
+		"name": "Long Shadow", "icon": "hourglass", "pos": Vector2(-9, 0), "requires": ["sigil_doom"], "ring": 4,
+		"desc": "Marks last longer.",
+		"max_level": 2, "cost": 9376, "cost_growth": 1.3, "effects": {"doom_time": 1.0},
+	},
+	"dead_weight": {
+		"name": "Dead Weight", "icon": "anchor", "pos": Vector2(-10, 0), "requires": ["long_shadow"], "ring": 5,
+		"desc": "Marked monsters are slowed.",
+		"max_level": 1, "cost": 36000, "cost_growth": 1.3, "effects": {"dead_weight": 1},
+	},
+	"hex": {
+		"name": "Hex", "icon": "eye", "pos": Vector2(-8, -1), "requires": ["sigil_doom"], "ring": 4,
+		"desc": "Any punch can mark.",
+		"max_level": 3, "cost": 9376, "cost_growth": 1.3, "effects": {"doom_chance": 0.06},
+	},
+	"evil_eye": {
+		"name": "Evil Eye", "icon": "eye", "pos": Vector2(-9, -2), "requires": ["hex"], "ring": 5,
+		"desc": "More punches mark.",
+		"max_level": 2, "cost": 36000, "cost_growth": 1.3, "effects": {"doom_chance": 0.04},
+	},
+	"pall": {
+		"name": "Pall", "icon": "ghost", "pos": Vector2(-10, -1), "requires": ["evil_eye"], "ring": 5,
+		"desc": "A mark also lands on the nearest other monster.",
+		"max_level": 1, "cost": 36000, "cost_growth": 1.3, "effects": {"pall": 1},
+	},
+	"reaper": {
+		"name": "Reaper", "icon": "skull", "pos": Vector2(-11, 0), "requires": ["reckoning", "dead_weight", "pall"], "ring": 6, "medallion": true,
+		"desc": "A Doom burst that knocks out jumps the mark on.",
+		"max_level": 1, "cost": 503100, "cost_growth": 1.0, "effects": {"reaper": 1},
+	},
 }
 
 # How each effect reads in the UI. Percent effects are stored as fractions.
@@ -696,6 +905,40 @@ const EFFECT_FORMATS := {
 	"bloodbath": "Healing doubled under half knuckle HP",
 	"ult_gain": "+%s%% ultimate meter gain",
 	"ult_power": "Empowered ultimate",
+	"quake_power": "Jump landings send a shockwave: %sx your base damage",
+	"quake_damage": "+%sx shockwave damage",
+	"quake_radius": "+%sm shockwave reach",
+	"quake_knockdown": "Shockwaves knock monsters down",
+	"fault_line": "Shockwaves also crack forward in a line",
+	"quake_chance": "%s%% chance a landed punch stomps",
+	"quake_cooldown": "Shockwaves come back %ss sooner",
+	"quake_stun": "Shockwaves stun for 1s",
+	"quake_aftershock": "The ground stays cracked 3s and slows monsters",
+	"gale": "Air bursts deal %s%% of the punch",
+	"gale_damage": "+%s%% air burst damage",
+	"gale_stagger": "Air bursts stagger",
+	"gale_charges": "+%s max charges",
+	"gale_tailwind": "Dodges give one more charge",
+	"gale_range": "Air bursts fly %sm farther",
+	"crosswind": "Hooks fire a fan of three",
+	"updraft": "Uppercut bursts knock monsters off their feet",
+	"cyclone": "Your last charge blows everything nearby back",
+	"plate_guard": "Each plate cuts damage taken by %s%%",
+	"iron_plates": "+%s max plates",
+	"riveted": "A boss's hit breaks only one plate",
+	"iron_forge": "Plates forge %s punches sooner",
+	"iron_anvil": "Any dodge forges a plate",
+	"iron_spikes": "A breaking plate staggers the attacker",
+	"iron_barbs": "Breaking plates hit back for %sx your base damage",
+	"shrapnel": "Breaking plates hit everything around you",
+	"unbreakable": "Full plates: a knockout blow leaves you on 1 knuckle HP (once a minute)",
+	"doom": "Marked monsters take %s%% of what you dealt them again",
+	"doom_time": "Marks last %ss longer",
+	"reckoning": "The Doom burst staggers, bosses too",
+	"dead_weight": "Marked monsters are slowed",
+	"doom_chance": "%s%% chance any punch marks",
+	"pall": "Marks also land on the nearest other monster",
+	"reaper": "A Doom burst that knocks out jumps the mark on",
 }
 const PERCENT_EFFECTS := [
 	"armor_pierce", "crit_chance", "crit_damage", "move_speed", "coin_bonus", "heavy_bonus", "wave_bonus", "boss_damage", "dawn_bonus", "punch_speed",
@@ -705,12 +948,16 @@ const PERCENT_EFFECTS := [
 	"damage_percent", "knuckles_percent", "jump_bonus",
 	"shatter", "lunging_jab", "thorns", "grit", "frost_slip", "executioner", "glass_jaw", "damage_taken",
 	"last_stand", "blood_price", "ult_gain",
+	"quake_chance", "gale", "gale_damage", "plate_guard", "doom", "doom_chance",
 ]
 ## Effects that are on/off: their text has no number.
 const FLAG_EFFECTS := [
 	"chain_stun", "seal", "chain_on_counter", "perfect_any_punch", "dive_kick",
 	"iron_will", "spear_jab", "bone_breaker", "long_count", "champions_hands", "gravewalker", "lantern",
 	"pyre", "thunderhead", "frost_shatter", "bloodbath", "ult_power",
+	"quake_knockdown", "fault_line", "quake_stun", "quake_aftershock", "gale_stagger", "gale_tailwind", "crosswind",
+	"updraft", "cyclone", "riveted", "iron_anvil", "iron_spikes", "shrapnel", "unbreakable", "reckoning",
+	"dead_weight", "pall", "reaper",
 ]
 
 ## The upgrade web's layout version. Saves from an older one get everything
@@ -811,6 +1058,8 @@ var power_pick := ""
 var power_pick_2 := ""
 ## Living Conduit's extra pick.
 var power_pick_3 := ""
+## Prism's fourth pick.
+var power_pick_4 := ""
 ## Daily drills: {drill: {"best": score, "day": "YYYY-MM-DD" of the last paid run}}.
 var drills := {}
 ## The drill picked in camp for the drills scene (not saved).
@@ -1003,7 +1252,7 @@ func power_active(id: String) -> bool:
 			"dual_sigil":
 				return root == power_pick or root == power_pick_2 or root == power_pick_3
 			"prism":
-				return id == root and upgrade_levels.get(root, 0) > 0
+				return id == root and root in prism_picks()
 			"attunement":
 				return root == power_pick or root == power_pick_2
 	return root == power_pick
@@ -1016,10 +1265,24 @@ func power_selected(root: String) -> bool:
 			"dual_sigil":
 				return root == power_pick or root == power_pick_2 or root == power_pick_3
 			"prism":
-				return upgrade_levels.get(root, 0) > 0
+				return root in prism_picks()
 			"attunement":
 				return root == power_pick or root == power_pick_2
 	return root == power_pick
+
+
+## Prism's four: the picks, topped up with owned powers in climb order.
+func prism_picks() -> Array:
+	var picks := []
+	for root in [power_pick, power_pick_2, power_pick_3, power_pick_4]:
+		if root != "" and upgrade_levels.get(root, 0) > 0 and not root in picks:
+			picks.append(root)
+	for root in owned_powers():
+		if picks.size() >= PRISM_SLOTS:
+			break
+		if not root in picks:
+			picks.append(root)
+	return picks.slice(0, PRISM_SLOTS)
 
 
 ## How many powers can be selected at once: two under Dual Sigil, and Living
@@ -1029,6 +1292,8 @@ func power_slots() -> int:
 		return 1
 	var extra := 1 if has_effect("living_conduit") else 0
 	match passive():
+		"prism":
+			return PRISM_SLOTS
 		"dual_sigil":
 			return 2 + extra
 		"attunement":
@@ -1043,12 +1308,15 @@ func select_power(root: String) -> bool:
 		return false
 	var slots := power_slots()
 	var picks := [root]
-	for pick in [power_pick, power_pick_2, power_pick_3]:
+	var older: Array = prism_picks() if is_player_class("elementalist") and passive() == "prism" \
+			else [power_pick, power_pick_2, power_pick_3, power_pick_4]
+	for pick in older:
 		if pick != "" and not pick in picks:
 			picks.append(pick)
 	power_pick = root
 	power_pick_2 = picks[1] if slots > 1 and picks.size() > 1 else ""
 	power_pick_3 = picks[2] if slots > 2 and picks.size() > 2 else ""
+	power_pick_4 = picks[3] if slots > 3 and picks.size() > 3 else ""
 	_commit()
 	return true
 
@@ -1060,7 +1328,7 @@ func selected_powers() -> Array:
 		if root != "" and power_selected(root) and not root in picks:
 			picks.append(root)
 	if is_player_class("elementalist") and passive() == "prism":
-		return owned_powers()
+		return prism_picks()
 	return picks
 
 
@@ -1085,7 +1353,7 @@ func _power_scale(root: String) -> float:
 
 ## Owned powers, in climb order.
 func owned_powers() -> Array:
-	return ["sigil_fire", "sigil_frost", "sigil_storm", "sigil_blood"].filter(func(root: String) -> bool: return upgrade_levels.get(root, 0) > 0)
+	return POWER_ROOTS.filter(func(root: String) -> bool: return upgrade_levels.get(root, 0) > 0)
 
 
 # --- Loadouts: passives and ultimates ------------------------------------------------
@@ -1828,9 +2096,18 @@ func node_ring(kind: String, id: String) -> int:
 	return int(tree(kind)[id].get("ring", 1))
 
 
-## True once the node's ring has been unsealed by Dead League wins.
+## True once the node's ring has been unsealed by Dead League wins (and an
+## Endless power's Sigil, once its division's endless bout is won).
 func node_open(kind: String, id: String) -> bool:
+	var endless := int(tree(kind)[id].get("endless", 0))
+	if endless > 0 and not endless_won(endless):
+		return false
 	return node_ring(kind, id) <= Progression.open_ring()
+
+
+## A division's endless bout (its third) has been won.
+func endless_won(division: int) -> bool:
+	return int(arena_bouts.get(str(division), 0)) >= Progression.BOUTS_PER_DIVISION
 
 
 ## Price of the next level (coins for upgrades, skill points for skills).
@@ -1843,9 +2120,23 @@ func node_currency(_kind := "upgrade") -> int:
 	return resources.get("coins", 0)
 
 
-## The contender whose seal still blocks this node ("" when it's open).
+## The contender whose seal still blocks this node ("" when it's open), or
+## the endless bout for an Endless power.
 func node_sealed_by(kind: String, id: String) -> String:
-	return "" if node_open(kind, id) else Progression.seal_holder(node_ring(kind, id))
+	if node_open(kind, id):
+		return ""
+	var endless := int(tree(kind)[id].get("endless", 0))
+	if endless > 0 and not endless_won(endless):
+		return "%s ENDLESS" % String(Progression.TIERS[endless - 1].division).to_upper()
+	return Progression.seal_holder(node_ring(kind, id))
+
+
+## What breaks the seal: "beat THE BELLMAN", "win the GRAVEDIGGER ENDLESS".
+func node_seal_text(kind: String, id: String) -> String:
+	var holder := node_sealed_by(kind, id)
+	if holder == "":
+		return ""
+	return ("win the " if holder.ends_with(" ENDLESS") else "beat ") + holder
 
 
 func can_buy_node(kind: String, id: String) -> bool:
@@ -1948,6 +2239,7 @@ func save_game() -> void:
 		"power_pick": power_pick,
 		"power_pick_2": power_pick_2,
 		"power_pick_3": power_pick_3,
+		"power_pick_4": power_pick_4,
 		"drills": drills,
 		"hat_pity": hat_pity,
 		"tony_unlocked": tony_unlocked,
@@ -2030,6 +2322,7 @@ func load_game() -> void:
 	power_pick = String(data.get("power_pick", ""))
 	power_pick_2 = String(data.get("power_pick_2", ""))
 	power_pick_3 = String(data.get("power_pick_3", ""))
+	power_pick_4 = String(data.get("power_pick_4", ""))
 	shop_stock = data.get("shop_stock", []).duplicate(true) if data.get("shop_stock", []) is Array else []
 	for offer in shop_stock:
 		if offer is Dictionary and offer.get("item") is Dictionary:
@@ -2086,6 +2379,8 @@ func load_game() -> void:
 		power_pick_2 = ""
 	if not power_pick_3 in owned_powers() or power_pick_3 == power_pick or power_pick_3 == power_pick_2:
 		power_pick_3 = ""
+	if not power_pick_4 in owned_powers() or power_pick_4 in [power_pick, power_pick_2, power_pick_3]:
+		power_pick_4 = ""
 
 	var saved_classes: Dictionary = data.get("classes", {})
 	if saved_classes.is_empty():
@@ -2375,6 +2670,7 @@ func _reset_fields() -> void:
 	power_pick = ""
 	power_pick_2 = ""
 	power_pick_3 = ""
+	power_pick_4 = ""
 	drills = {}
 	hat_pity = 0
 	tony_unlocked = false

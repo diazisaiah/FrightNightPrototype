@@ -165,6 +165,11 @@ var _poison_tick := 0.0
 var _bleed_stacks := 0
 var _bleed_per_stack := 0.0
 var _bleed_time := 0.0
+## Doom (Death Mark): seconds left on the mark, what it took meanwhile, and
+## the skull floating over it.
+var _doom_time := 0.0
+var _doom_store := 0.0
+var _doom_fx: Node3D
 var _stuck_time := 0.0
 ## Which way an enemy steps around an obstacle; it keeps going the same way
 ## round until that's blocked too.
@@ -356,6 +361,8 @@ func take_hit(raw_damage: float, hit_point: Vector3, push: Vector3, stagger: boo
 		if not was_winded and _body_damage >= WINDED_THRESHOLD:
 			DamagePopup.spawn(get_parent(), "WINDED", BODY_COLOR, 44, global_position + Vector3(0, 1.2, 0))
 	hp -= damage
+	if _doom_time > 0.0 and caption != "DOOM":
+		_doom_store += damage
 	_knockback = push
 	_recoil = RECOIL_DISTANCE * (2.0 if stagger else 1.0)
 	_set_flash(true)
@@ -400,6 +407,13 @@ func take_hit(raw_damage: float, hit_point: Vector3, push: Vector3, stagger: boo
 		if hat != "" and finisher.get("type", "") == "uppercut" and randf() < Hats.POP_CHANCE[Hats.info(hat).rarity]:
 			_pop_hat()
 	return damage
+
+
+func _clear_doom() -> void:
+	_doom_time = 0.0
+	if _doom_fx:
+		_doom_fx.queue_free()
+		_doom_fx = null
 
 
 func is_dead() -> bool:
@@ -504,13 +518,36 @@ func chill_length(duration: float) -> float:
 	return minf(duration, BOSS_CHILL_TIME) if is_boss else duration
 
 
-func chill(duration: float, amount: float) -> void:
+func chill(duration: float, amount: float, quiet := false) -> void:
 	if _dead:
 		return
 	_chill_time = maxf(_chill_time, chill_length(duration))
 	_chill_amount = maxf(_chill_amount, amount)
+	if quiet:
+		return
 	DamagePopup.spawn(get_parent(), "CHILLED", FROST_COLOR, 36, global_position + Vector3(0, 2.0, 0))
 	HitFx.burst(get_parent(), global_position + Vector3(0, 1.2, 0), Vector3.UP, FROST_COLOR, 10, 2.0, true, 0.05)
+
+
+## Doom marks it: when the mark runs out, a share of what it took meanwhile
+## hits it again (Powers.doom_burst). Dead Weight slows it while marked.
+func doom(seconds: float) -> void:
+	if _dead:
+		return
+	if _doom_time <= 0.0:
+		_doom_store = 0.0
+		DamagePopup.spawn(get_parent(), "MARKED", Powers.DOOM_COLOR, 38, global_position + Vector3(0, top_height() + 0.3, 0))
+	_doom_time = maxf(_doom_time, seconds)
+	if GameState.has_effect("dead_weight"):
+		chill(seconds, 0.3, true)
+	if _doom_fx == null:
+		_doom_fx = MoveFx.skull(Powers.DOOM_COLOR)
+		_doom_fx.position.y = top_height() + 0.45
+		_topple.add_child(_doom_fx)
+
+
+func is_doomed() -> bool:
+	return _doom_time > 0.0
 
 
 ## Adds a stack of poison (Venom): damage per second per stack, ignoring armor.
@@ -539,6 +576,13 @@ func _on_attacking() -> void:
 
 
 func _update_statuses(delta: float) -> void:
+	if _doom_time > 0.0:
+		_doom_time -= delta
+		if _doom_fx:
+			_doom_fx.rotation.y += delta * 3.0
+		if _doom_time <= 0.0:
+			_clear_doom()
+			Powers.doom_burst(self, _doom_store)
 	if _bleed_stacks > 0:
 		_bleed_time -= delta
 		if _bleed_time <= 0.0:
@@ -1180,6 +1224,7 @@ func _die(push: Vector3) -> void:
 	if _daze_fx:
 		_daze_fx.queue_free()
 		_daze_fx = null
+	_clear_doom()
 	# The hat lesson's monster only goes down to an uppercut.
 	if hat_lesson and hat != "" and finisher.get("type", "") != "uppercut":
 		hp = 1.0

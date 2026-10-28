@@ -25,6 +25,8 @@ signal punch_connected(type: String, kind: String)
 signal counter_ready_changed(ready: bool, side: String)
 ## One-line status of the class special, for the HUD.
 signal class_status_changed(text: String)
+## The Endless powers' readouts for the HUD's power chip: [[root, text], ...].
+signal power_status_changed(status: Array)
 ## A class special just fired (e.g. "SHOCKWAVE!").
 signal class_event(text: String)
 
@@ -348,6 +350,9 @@ var _fov_tween: Tween
 var ult: Ult
 ## The fighter's cards and attribute perks in play.
 var cards: CardPlay
+## The Endless powers' fight state (Gale charges, Iron plates, Quake).
+var powers: PowerPlay
+var _power_status := []
 ## Seconds left in a forward dash (Ghost Step slips attacks in it).
 var dash_time := 0.0
 
@@ -399,6 +404,9 @@ func _ready() -> void:
 	cards = CardPlay.new()
 	cards.player = self
 	add_child(cards)
+	powers = PowerPlay.new()
+	powers.player = self
+	add_child(powers)
 	# Speed lines: the Blur's long combos, the Stray's momentum and Hype Train.
 	if GameState.player_class in ["combo_master", "free_runner"]:
 		_speed_lines = MoveFx.speed_lines(_camera, GameState.fighter_color().lightened(0.3))
@@ -502,6 +510,11 @@ func _process(delta: float) -> void:
 	_flinch_timer -= delta
 	dash_time -= delta
 	cards.tick(delta)
+	powers.tick(delta)
+	var power_status := powers.status()
+	if power_status != _power_status:
+		_power_status = power_status
+		power_status_changed.emit(power_status)
 	_dash_jab_time -= delta
 	_ghost_time -= delta
 	_defense_cooldown -= delta
@@ -749,6 +762,7 @@ func receive_attack(amount: float, from: Vector3, attack: String, attacker: Node
 
 ## Knuckle damage from an attack; Thorns hits the attacker back for what it cost.
 func _take_damage(amount: float, attacker: Node3D) -> void:
+	amount = powers.hit_amount(amount, attacker as Enemy)
 	amount = cards.hit_amount(amount, attacker as Enemy)
 	var before := knuckles
 	hurt_knuckles(amount)
@@ -1209,6 +1223,7 @@ func _on_dodge(move: String, clean := false) -> void:
 		TimeFx.slowmo(0.7, 0.15)
 		dodged.emit(move)
 	_on_dodge_specials(move)
+	powers.on_dodge(clean)
 	cards.on_dodge(clean, _dodged_attack, _last_attacker)
 
 
@@ -1320,6 +1335,7 @@ func _punch(type: String, hand: String) -> void:
 		_dash_jab_time = 0.0
 	await get_tree().create_timer(impact, false).timeout
 	if active:
+		powers.on_punch_thrown(type, hand, GameState.get_damage() * float(punch.mult))
 		_dash_style = style
 		_land_punch(type, hand, style != "", airborne)
 		_dash_style = ""
@@ -1728,9 +1744,10 @@ func _follow_up(hand: String) -> void:
 
 # --- Sigil powers -----------------------------------------------------------------
 
-## Sigil powers: heavies and counters (big hits) set off Fire and Frost, as
-## does any hit by chance (Kindling, Cold Snap); every Nth combo hit (and with
-## Conductor, every counter) sets off Chain Lightning; Blood heals on counters.
+## Sigil powers: heavies and counters (big hits) set off Fire, Frost and
+## Doom's mark, as does any hit by chance (Kindling, Cold Snap, Hex); every
+## Nth combo hit (and with Conductor, every counter) sets off Chain
+## Lightning; Blood heals on counters; Iron forges and Quake stomps (PowerPlay).
 func _trigger_powers(target: Enemy, damage: float, big_hit: bool, counter := false) -> void:
 	var fire := GameState.get_effect("fire_punch")
 	if fire > 0.0 and (big_hit or randf() < GameState.get_effect("fire_chance")):
@@ -1746,6 +1763,10 @@ func _trigger_powers(target: Enemy, damage: float, big_hit: bool, counter := fal
 	if counter and GameState.get_effect("counter_heal") > 0.0:
 		heal(GameState.heal_amount("counter_heal", max_knuckles))
 		Powers.went_off("sigil_blood", target)
+	if GameState.get_effect("doom") > 0.0 and not target.is_dead() \
+			and (big_hit or randf() < GameState.get_effect("doom_chance")):
+		Powers.doom_mark(target)
+	powers.on_landed()
 
 
 ## Thunderhead (Storm capstone): a clean dodge strikes the attacker, then arcs.
@@ -1761,6 +1782,9 @@ func _check_ground_pound(was_airborne: bool, delta: float) -> void:
 	_pound_cooldown -= delta
 	if not is_on_floor():
 		_air_time += delta
+		return
+	if was_airborne and active and powers.on_land(_air_time):
+		_air_time = 0.0
 		return
 	var pound := GameState.get_effect("ground_pound")
 	if was_airborne and active and pound > 0.0 and _air_time >= GROUND_POUND_MIN_AIR_TIME and _pound_cooldown <= 0.0:

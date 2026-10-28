@@ -1158,7 +1158,7 @@ A buff old wizard with a white beard and long white hair who put his spells into
 |---|---|---|
 | Dual Sigil (default) | 1 | Two owned powers at once, with all their upgrades. Select one and it joins the last pick; the older drops out (`power_pick` + `power_pick_2`). |
 | Attunement | 5 | One power at x1.5 (+5% a point of passive power): damage, burn, freeze, radius, chances, heals. Counts and switches (lightning jumps, Pyre...) aren't scaled (`GameState.AMPLIFIED`). |
-| Prism | 15 | Every owned power at once, base node only: no upgrades (+4% a point of passive power). The Select button reads "Active (base)". |
+| Prism | 15 | Four owned powers at once (any of the eight), base node only: no upgrades (+4% a point of passive power). Select swaps one in; until four are picked, owned powers fill the rest in climb order (`GameState.prism_picks`). |
 
 **Ultimates:**
 
@@ -1744,3 +1744,24 @@ The five Dead League contenders and the three Crypt floor bosses (Grave Champion
 - **AI:** unchanged (timing, tells, hitboxes, specials). The AI keeps bare arm pivots for its timing. Its "forearms" are the rig's hands, so tell lights, glove glow and Crypt gear ride on the fists, and hats sit on the head bone.
 - **Title screen:** the contender preview drives the same rig.
 - **Bosses wear no armor:** the Grave Champion, Bone Colossus and Lich King show only their own bodies, and the contenders never had any. Armored spawns and Crypt gear still give them their armor and HP, but nothing is drawn on them (gear style "bare"), so the Colossus core still pierces its armor.
+
+## The Endless powers (2026-10-28)
+
+Four more powers, one past each spoke of the upgrade web: **Quake north, Gale east, Iron south, Doom west**. Each is a diamond: a Sigil, three branches, and a capstone where they meet. The four elements keep the corners.
+
+**Unlocks:** each Sigil opens when you **win that division's endless bout** (bout 3, 50 knockouts) for the first time: Gravedigger opens Quake, Bone opens Gale, Ghost opens Iron, Plague opens Doom (`"endless"` on the node, `GameState.endless_won`). Saves that already won them have them open. The win's feed says "X UNSEALED". Sealed Sigils read "SEALED - win the GRAVEDIGGER ENDLESS". Their branch steps follow the seal rings like the elements' (each step one ring later, the capstone in the Crown ring).
+
+**One power at a time:** any fighter selects one of the eight. The Catalyst's Dual Sigil can pick any of them, and Prism now runs **four** at base level (not all eight). Elemental Fists still rolls only the four elements.
+
+| Power | Base | Branches | Capstone |
+|---|---|---|---|
+| **Quake** (Earthbreaker) | Landing from a jump (0.3s+ in the air) sends a shockwave around you: 0.8x base damage, staggers, knockback, 3m. 4s recharge. Quaking boots then add 1m of reach instead of their own pound. | **Force:** Heavy Landing, Bedrock (more damage), Seismic (knocks monsters down). **Reach:** Wide Stance (+0.75m), Fault Line (also cracks 6m forward in a line). **Rhythm:** Drumbeat (4% a level a landed punch stomps, 1s apart), Short Fuse (-0.75s recharge), Tremor (stuns 1s). | **Aftershock:** the ground stays cracked 3s and slows monsters in it 40%. |
+| **Gale** (Windcaller) | A clean dodge gives 2 charges, any other dodge 1 (hold 3). Every punch thrown with a charge spends one and fires an air burst straight ahead from that fist: 50% of the punch, 8m, through everything in its line. | **Force:** Gust, Gale Force (more damage), Buffet (bursts stagger). **Reservoir:** Deep Lungs (+1 charge, to 5), Tailwind (dodges give one more). **Shape:** Long Wind (+3m), Crosswind (hooks fire a fan of three), Updraft (uppercut bursts knock monsters off their feet). | **Cyclone:** spending your last charge blows everything within 3.5m back. |
+| **Iron** (Forgeborn) | Plates, up to 3: every 5 landed punches and every clean dodge forges one. Each plate cuts damage taken 8%; a hit breaks one (a boss's hit two). | **Plating:** Plating (+1 plate), Tempered (+0.5% a plate a level), Riveted (boss hits break one). **Forge:** Forge (one punch sooner a level), Anvil (any dodge forges). **Spikes:** Spikes (a breaking plate staggers the attacker), Barbs (and hits it for 0.5x base a level), Shrapnel (and everything within 2.5m). | **Unbreakable:** with every plate up, a knockout blow leaves 1 knuckle HP (once a minute). Max cut: 4 plates x 9% = 36%. |
+| **Doom** (Death Mark) | Set-up heavies and counters mark the monster for 3s (a glowing skull over it). When the mark runs out, 30% of everything it took meanwhile hits it again, through armor. | **Dread:** Dread, Death Knell (a bigger share), Reckoning (the burst staggers, bosses too). **Long Shadow:** Long Shadow (+1s a level), Dead Weight (marked monsters are slowed 30%). **Hex:** Hex, Evil Eye (any punch can mark), Pall (a mark also lands on the nearest other monster). | **Reaper:** a Doom burst that knocks a monster out passes the mark to the nearest one. |
+
+- **HUD:** a power chip over the passive chip shows Quake's recharge (READY), Gale charges and Iron plates (`PowerPlay.status`).
+- **Code:** `power_play.gd` (Gale charges, Iron plates, Quake landings and stomps), `air_burst.gd`, `Powers.ground_pound` (with Quake's reach, knockdowns, Fault Line, Aftershock), `Powers.doom_mark` / `doom_burst`, `Enemy.doom`.
+- **Colors:** Quake sandstone, Gale mint, Iron steel, Doom acid green.
+- **Balance:** par ignores them (they hold no damage, knuckle or defense nodes; they are optional side power). POWER weighs them (`power_rating.gd`), and the Catalyst's amplifying covers their numbers (not Iron's plates).
+- **Tests:** `balance_regression` (seals, Prism's four), `card_runtime_regression` (each power in a real fight).

@@ -17,12 +17,17 @@ const SPACING := 84.0
 const MIN_ZOOM := 0.5
 const MAX_ZOOM := 1.6
 const GRID_SPACING := 28.0
-## The four powers' colors and names, keyed by their Sigil node.
+## The powers' colors and names, keyed by their Sigil node: the four
+## elements in the corners, the four Endless powers north, east, south, west.
 const BRANCHES := {
 	"sigil_fire": {"name": "FIRE", "color": Color(1.0, 0.5, 0.16)},
 	"sigil_storm": {"name": "STORM", "color": Color(0.6, 0.62, 1.0)},
 	"sigil_frost": {"name": "FROST", "color": Color(0.5, 0.92, 1.0)},
 	"sigil_blood": {"name": "BLOOD", "color": Color(0.95, 0.24, 0.3)},
+	"sigil_quake": {"name": "QUAKE", "color": Color(0.8, 0.62, 0.46)},
+	"sigil_gale": {"name": "GALE", "color": Color(0.55, 1.0, 0.75)},
+	"sigil_iron": {"name": "IRON", "color": Color(0.78, 0.82, 0.9)},
+	"sigil_doom": {"name": "DOOM", "color": Color(0.8, 1.0, 0.3)},
 }
 
 ## "upgrade" or "skill".
@@ -357,9 +362,10 @@ func _draw_map() -> void:
 		var font := UiTheme.display_font()
 		var label: String = BRANCHES[branch].name
 		var label_size := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 22)
-		# Corner powers: the name sits on the side toward the middle (its
-		# branches fill the other sides).
-		var away := Vector2(-signf(at.x), 0.0) if absf(at.x) > 1.0 and absf(at.y) > 1.0 else (at.normalized() if at.length() > 1.0 else Vector2.UP)
+		# Corner powers: the name sits on the side toward the middle; edge
+		# powers: between the Sigil and the spoke (their branches fill the
+		# other sides).
+		var away := Vector2(-signf(at.x), 0.0) if absf(at.x) > 1.0 and absf(at.y) > 1.0 else (-at.normalized() if at.length() > 1.0 else Vector2.UP)
 		var reach: float = _views[branch].extent() / 2.0 + 16.0 + absf(away.x) * label_size.x / 2.0 + absf(away.y) * 12.0
 		var spot: Vector2 = at + away * reach + Vector2(-label_size.x / 2.0, 8.0)
 		var tint: Color = BRANCHES[branch].color
@@ -541,7 +547,7 @@ func _fill_hover_card(id: String) -> void:
 	var holder := GameState.node_sealed_by(kind, id)
 	if holder != "":
 		_hover_cost.color = UiTheme.SIGIL.lightened(0.2)
-		_hover_cost.text = "SEALED  -  beat %s" % holder
+		_hover_cost.text = "SEALED  -  %s" % GameState.node_seal_text(kind, id)
 		return
 	var cost := GameState.node_cost(kind, id)
 	var currency := "coins" if kind == "upgrade" else "skill_points"

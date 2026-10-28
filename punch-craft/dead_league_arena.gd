@@ -79,6 +79,7 @@ func _connect_hud() -> void:
 	_player.punch_landed.connect(_hud.hit_marker)
 	_player.counter_ready_changed.connect(_hud.set_counter_ready)
 	_player.class_status_changed.connect(_hud.set_class_status)
+	_player.power_status_changed.connect(_hud.set_power_status)
 	_player.class_event.connect(_hud.show_class_event)
 	_hud.end_run_requested.connect(_go_to_league)
 	_hud.back_to_camp_requested.connect(_go_to_league)

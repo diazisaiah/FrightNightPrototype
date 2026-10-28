@@ -54,7 +54,7 @@ const PASSIVES := {
 		{"id": "attunement", "name": "Attunement", "icon": "target", "level": 5,
 			"desc": "One power, 50% stronger: more damage, more reach, better odds."},
 		{"id": "prism", "name": "Prism", "icon": "star", "level": 15,
-			"desc": "All your powers at once, but only their base effect: no upgrades."},
+			"desc": "Four of your powers at once, but only their base effect: no upgrades."},
 	],
 }
 
@@ -116,7 +116,7 @@ const POWER_TEXT := {
 	"the_muscle": [0.8, "-%ss between Vinnie's grabs"],
 	"the_take": [3.0, "+%s%% coins"],
 	"attunement": [5.0, "+%s%% attuned power"],
-	"prism": [4.0, "+%s%% power (every power)"],
+	"prism": [4.0, "+%s%% power (all four)"],
 }
 
 static func passives(class_id: String) -> Array:

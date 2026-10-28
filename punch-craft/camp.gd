@@ -765,15 +765,15 @@ func _refresh_detail(kind: String) -> void:
 		# Owned powers: pick the one that works.
 		var picked := GameState.power_selected(id)
 		var prism := GameState.is_player_class("elementalist") and GameState.passive() == "prism"
-		buy.text = "Active (base)" if prism else "Selected" if picked else "Select"
-		buy.disabled = picked or prism
+		buy.text = ("Selected (base)" if prism else "Selected") if picked else "Select"
+		buy.disabled = picked
 		detail.cost_row.visible = false
 		return
 	if maxed:
 		buy.text = "Maxed"
 		buy.disabled = true
 	elif holder != "":
-		buy.text = "Sealed - beat %s" % holder.capitalize()
+		buy.text = "Sealed - " + GameState.node_seal_text(kind, id).replace(holder, holder.capitalize())
 		buy.disabled = true
 	elif have < cost:
 		buy.text = "Need %d more" % (cost - have)

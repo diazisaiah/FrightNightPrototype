@@ -647,6 +647,16 @@ func _set_off(root: String, target: Enemy, damage := 0.0) -> void:
 			player.heal(maxf(GameState.heal_amount("counter_heal", player.max_knuckles), player.max_knuckles * 0.02))
 			HitFx.burst(player.get_parent(), target.global_position + Vector3(0, 1.2, 0), Vector3.UP, Color(0.85, 0.05, 0.08), 16, 4.0, true, 0.05)
 			Powers.went_off(root, target)
+		"sigil_quake":
+			Powers.ground_pound(player, GameState.get_damage() * maxf(_power_value(root, "quake_power"), 0.8), PowerPlay.QUAKE_RADIUS, true)
+		"sigil_gale":
+			var toward := target.global_position - player.global_position
+			toward.y = 0.0
+			Powers.air_burst(player, player.global_position + Vector3(0, 1.3, 0), toward, damage * 0.5 * _power_value(root, "gale"), "jab")
+		"sigil_iron":
+			player.powers.forge_plate()
+		"sigil_doom":
+			Powers.doom_mark(target)
 
 
 ## A power's number, or its sigil's own when it isn't selected (Grand

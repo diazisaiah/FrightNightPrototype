@@ -33,6 +33,7 @@ func _run() -> void:
 	_test_pad_work_combos()
 	_test_gentler_ramp()
 	_test_one_power()
+	_test_endless_powers()
 	_test_skins()
 	if _failures.is_empty():
 		print("BALANCE REGRESSION: PASS")
@@ -731,6 +732,31 @@ func _test_gentler_ramp() -> void:
 	boss.is_boss = false
 	_check(boss.chill_length(5.0) == 5.0, "Other monsters stay frozen as long as Frost says")
 	boss.free()
+
+
+## The Endless powers (2026-10-28): each Sigil opens with its division's
+## endless bout, not a Dead League seal; Prism runs four of the eight.
+func _test_endless_powers() -> void:
+	GameState._reset_fields()
+	GameState.dead_league_clears = {"bellman": true, "headless": true, "southpaw": true, "plague_doctor": true, "coffin_king": true}
+	for n in 4:
+		var root: String = GameState.POWER_ROOTS[4 + n]
+		_check(SkillTreeView.BRANCHES.has(root) and GameState.power_of(root) == root, "%s is a power" % root)
+		_check(not GameState.node_open("upgrade", root), "%s stays sealed until the endless bout" % root)
+		_check(GameState.node_seal_text("upgrade", root).contains("ENDLESS"), "%s says which endless bout" % root)
+		GameState.arena_bouts[str(n + 1)] = 3
+		_check(GameState.node_open("upgrade", root), "%s opens with division %d's endless bout" % [root, n + 1])
+	GameState.player_class = "elementalist"
+	GameState.fighters_bought.elementalist = true
+	GameState.loadouts["elementalist"] = {"passive": "prism", "ultimate": "elemental_fists"}
+	GameState._classes["elementalist"].level = 20
+	for root in GameState.POWER_ROOTS:
+		GameState.upgrade_levels[root] = 1
+	_check(GameState.prism_picks().size() == 4, "Prism runs four powers")
+	GameState.select_power("sigil_doom")
+	_check("sigil_doom" in GameState.prism_picks() and GameState.prism_picks().size() == 4, "Prism picks a power in, one drops out")
+	_check(GameState.power_active("sigil_doom") and not GameState.power_active("dread"), "Prism: base node only")
+	GameState._reset_fields()
 
 
 ## Powers work one at a time (2026-10-23): only the selected power's line

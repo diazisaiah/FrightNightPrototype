@@ -65,6 +65,8 @@ const ACCENT := {
 const POWER_COLORS := {
 	"sigil_fire": Color(1.0, 0.45, 0.1), "sigil_frost": Color(0.55, 0.85, 1.0),
 	"sigil_storm": Color(0.65, 0.45, 1.0), "sigil_blood": Color(0.95, 0.1, 0.15),
+	"sigil_quake": Color(0.82, 0.6, 0.42), "sigil_gale": Color(0.5, 1.0, 0.72),
+	"sigil_iron": Color(0.8, 0.85, 0.95), "sigil_doom": Color(0.78, 1.0, 0.25),
 }
 
 ## Elbow position and rotation of the right arm at rest. The left arm mirrors it.
@@ -1439,12 +1441,13 @@ func _update_effects(delta: float) -> void:
 
 
 ## [left, right] rune colors: his picks (Dual Sigil), the one (Attunement),
-## or every owned power taking turns (Prism).
+## or Prism's four taking turns.
 func _rune_colors() -> Array:
 	var owned: Array = GameState.owned_powers()
 	if owned.is_empty():
 		return [_accent, _accent]
 	if GameState.passive() == "prism":
+		owned = GameState.prism_picks()
 		var step := int(_time * 1.5)
 		return [POWER_COLORS[owned[step % owned.size()]], POWER_COLORS[owned[(step + 1) % owned.size()]]]
 	var first: Color = POWER_COLORS.get(GameState.power_pick, _accent)

@@ -1,7 +1,8 @@
 class_name Powers
 ## Sigil powers bought in the upgrade web (Fire Fists, Chain Lightning, Frost
-## Fists; Blood is just healing) plus Ground Pound from Crypt boots, and the
-## upgrades that change them.
+## Fists; Blood is just healing; the Endless powers' Quake shockwave, Gale air
+## bursts and Doom marks; Iron lives in PowerPlay) plus Ground Pound from
+## Crypt boots, and the upgrades that change them.
 ## The player decides when they trigger; this does the damage and the effects.
 ## Power damage costs no knuckle HP.
 
@@ -20,6 +21,19 @@ const BURN_TIME := 3.0
 const FROST_RADIUS := 2.5
 const FROST_TIME := 2.0
 const MAX_FROST_SLOW := 0.85
+const QUAKE_COLOR := Color(0.82, 0.6, 0.42)
+## Fault Line: the crack runs this far ahead, this wide.
+const FAULT_REACH := 6.0
+const FAULT_WIDTH := 1.3
+## Aftershock: cracked ground slows what stands in it.
+const AFTERSHOCK_TIME := 3.0
+const AFTERSHOCK_SLOW := 0.4
+const GALE_COLOR := Color(0.6, 1.0, 0.8)
+const CYCLONE_RADIUS := 3.5
+const DOOM_COLOR := Color(0.78, 1.0, 0.25)
+const DOOM_TIME := 3.0
+## Reaper and Pall look this far for the next monster to mark.
+const DOOM_REACH := 6.0
 
 ## Hears every power go off: (root, target) (CardPlay, for the Catalyst's cards).
 static var listener: Callable
@@ -94,22 +108,129 @@ static func chain_lightning(target: Enemy, damage: float, jumps: int) -> void:
 
 
 ## Landing shockwave around the player: damages, staggers and knocks back.
-static func ground_pound(player: Node3D, damage: float) -> void:
+## With the Quake power (quake): its reach, knockdowns, stuns, Fault Line and
+## Aftershock.
+static func ground_pound(player: Node3D, damage: float, radius := POUND_RADIUS, quake := false) -> void:
 	var world := player.get_parent()
 	var center := player.global_position
+	var color := QUAKE_COLOR if quake else POUND_COLOR
 	for i in 8:
 		var direction := Vector3.FORWARD.rotated(Vector3.UP, TAU * i / 8.0)
-		HitFx.burst(world, center + direction * 0.6 + Vector3(0, 0.1, 0), direction + Vector3.UP * 0.4, POUND_COLOR, 6, 6.0, false, 0.08)
+		HitFx.burst(world, center + direction * 0.6 + Vector3(0, 0.1, 0), direction + Vector3.UP * 0.4, color, 6, 6.0, false, 0.08)
+	if quake:
+		HitFx.ring(world, center + Vector3(0, 0.1, 0), color, radius)
 	Sfx.play_at("quake", center)
+	var forward := Vector3.ZERO
+	if quake and GameState.has_effect("fault_line") and player.has_method("_flat_forward"):
+		forward = player._flat_forward()
+		for i in 6:
+			var at := center + forward * (1.0 + i * FAULT_REACH / 6.0) + Vector3(0, 0.1, 0)
+			HitFx.burst(world, at, Vector3.UP, color, 6, 4.0, false, 0.07)
 	for node in player.get_tree().get_nodes_in_group("enemies"):
 		var enemy := node as Enemy
 		if enemy == null or enemy.is_dead():
 			continue
 		var offset := enemy.global_position - center
 		offset.y = 0.0
-		if offset.length() > POUND_RADIUS:
+		var along := offset.dot(forward)
+		var in_fault := forward != Vector3.ZERO and along > 0.0 and along <= FAULT_REACH + 1.0 \
+				and (offset - forward * along).length() <= FAULT_WIDTH
+		if offset.length() > radius and not in_fault:
 			continue
-		enemy.take_hit(damage, enemy.global_position + Vector3(0, 1.0, 0), offset.normalized() * POUND_KNOCKBACK, true, "QUAKE")
+		var push := offset.normalized() * POUND_KNOCKBACK
+		enemy.take_hit(damage, enemy.global_position + Vector3(0, 1.0, 0), push, true, "QUAKE")
+		if quake and not enemy.is_dead():
+			if GameState.has_effect("quake_knockdown") and not enemy.is_boss:
+				enemy.knock_down(1.0, push)
+			elif GameState.has_effect("quake_stun"):
+				enemy.stun(1.0)
+	if quake:
+		if GameState.has_effect("quake_aftershock"):
+			_aftershock(world, center, radius)
+		went_off("sigil_quake", null)
+
+
+## Aftershock (Quake capstone): the ground stays cracked; anything in it is slowed.
+static func _aftershock(world: Node, center: Vector3, radius: float) -> void:
+	var zone := Node3D.new()
+	world.add_child(zone)
+	zone.global_position = center
+	var tween := zone.create_tween()
+	for i in roundi(AFTERSHOCK_TIME / 0.25):
+		tween.tween_callback(func() -> void:
+			var spot := Vector3(randf_range(-0.6, 0.6), 0.0, randf_range(-0.6, 0.6)) * radius
+			HitFx.burst(world, center + spot + Vector3(0, 0.1, 0), Vector3.UP, QUAKE_COLOR, 3, 1.5, false, 0.06)
+			for node in zone.get_tree().get_nodes_in_group("enemies"):
+				var enemy := node as Enemy
+				if enemy and not enemy.is_dead() and enemy.global_position.distance_to(center) <= radius:
+					enemy.chill(0.4, AFTERSHOCK_SLOW, true))
+		tween.tween_interval(0.25)
+	tween.tween_callback(zone.queue_free)
+
+
+## Gale: an air burst from the fist, straight ahead (a fan of three for a
+## Crosswind hook).
+static func air_burst(player: Node3D, from: Vector3, forward: Vector3, damage: float, type: String) -> void:
+	var angles := [0.0]
+	if type == "hook" and GameState.has_effect("crosswind"):
+		angles = [-0.3, 0.0, 0.3]
+	for angle: float in angles:
+		AirBurst.fling(player.get_parent(), from, forward.rotated(Vector3.UP, angle), damage, type == "uppercut")
+	went_off("sigil_gale", null)
+
+
+## Cyclone (Gale capstone): the last charge blows everything nearby back.
+static func cyclone(player: Node3D) -> void:
+	var world := player.get_parent()
+	var center := player.global_position
+	HitFx.ring(world, center + Vector3(0, 0.6, 0), GALE_COLOR, CYCLONE_RADIUS)
+	HitFx.burst(world, center + Vector3(0, 1.0, 0), Vector3.UP, GALE_COLOR, 30, 6.0, true, 0.06)
+	Sfx.play_at("whoosh", center, 2.0, 0.7)
+	for node in player.get_tree().get_nodes_in_group("enemies"):
+		var enemy := node as Enemy
+		if enemy == null or enemy.is_dead():
+			continue
+		var offset := enemy.global_position - center
+		offset.y = 0.0
+		if offset.length() <= CYCLONE_RADIUS:
+			enemy.take_hit(GameState.get_damage() * 0.5, enemy.global_position + Vector3(0, 1.0, 0), offset.normalized() * 9.0, true, "CYCLONE")
+
+
+## Doom: marks a monster (Enemy.doom); Pall marks the nearest other too.
+static func doom_mark(target: Enemy, spread := true) -> void:
+	if target == null or target.is_dead():
+		return
+	var seconds := DOOM_TIME + GameState.get_effect("doom_time")
+	target.doom(seconds)
+	if spread and GameState.has_effect("pall"):
+		var next := _nearest(target, target.global_position, DOOM_REACH, [target] as Array[Enemy])
+		if next:
+			next.doom(seconds)
+	went_off("sigil_doom", target)
+
+
+## The mark runs out: a share of what the monster took while marked
+## (stored) hits it again. Reckoning staggers it (bosses too); Reaper passes
+## the mark on if this knocks it out.
+static func doom_burst(target: Enemy, stored: float) -> void:
+	var damage := stored * GameState.get_effect("doom")
+	if damage <= 0.0 or target.is_dead():
+		return
+	var world := target.get_parent()
+	var center := target.global_position + Vector3(0, 1.3, 0)
+	HitFx.burst(world, center, Vector3.UP, DOOM_COLOR, 34, 5.0, true, 0.08)
+	HitFx.ring(world, center, DOOM_COLOR, 1.4)
+	_flash(world, center, DOOM_COLOR, 5.0)
+	Sfx.play_at("heavy", center, 0.0, 0.6)
+	var reckoning := GameState.has_effect("reckoning")
+	if reckoning and target.is_boss:
+		target._poise_time = 0.0
+	target.take_hit(damage, center, Vector3.ZERO, reckoning, "DOOM", true)
+	if target.is_dead() and GameState.has_effect("reaper"):
+		var next := _nearest(target, target.global_position, DOOM_REACH, [target] as Array[Enemy])
+		if next:
+			_bolt(world, center, next.global_position + Vector3(0, 1.3, 0))
+			doom_mark(next, false)
 
 
 ## A power's hit. Overflow (the Catalyst's card): what's left over after a

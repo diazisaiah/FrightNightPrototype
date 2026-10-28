@@ -39,6 +39,7 @@ func _run() -> void:
 	await _test_teleport_walls()
 	await _test_head_stomp()
 	await _test_boss_poise()
+	await _test_endless_powers()
 	TimeFx.clear()
 	GameState._reset_fields()
 	# Let the last delayed echo/FX coroutine and status-clear callback release
@@ -81,6 +82,7 @@ func _max_build(fighter: String, ultimate := "") -> void:
 	GameState.upgrade_levels = {
 		"sigil_fire": 1, "sigil_frost": 1,
 		"sigil_storm": 1, "sigil_blood": 1,
+		"sigil_quake": 1, "sigil_gale": 1, "sigil_iron": 1, "sigil_doom": 1,
 	}
 	GameState.power_pick = "sigil_fire"
 	GameState.power_pick_2 = "sigil_frost"
@@ -89,6 +91,66 @@ func _max_build(fighter: String, ultimate := "") -> void:
 		"passive": Abilities.default_passive(fighter),
 		"ultimate": ultimate if ultimate != "" else Abilities.default_ultimate(fighter),
 	}
+
+
+## The Endless powers in a real fight, each maxed and selected in turn:
+## Quake landings, Gale charges and bursts, Iron plates (and Unbreakable),
+## Doom marks running out into a burst.
+func _test_endless_powers() -> void:
+	var rig := await _make_rig("berserker")
+	var holder: Node3D = rig[0]
+	var player: Player = rig[1]
+	var dummies: Array[Enemy] = rig[2]
+	var target := dummies[0]
+	for id in GameState.UPGRADES:
+		var root := GameState.power_of(id)
+		if root in ["sigil_quake", "sigil_gale", "sigil_iron", "sigil_doom"]:
+			GameState.upgrade_levels[id] = int(GameState.UPGRADES[id].max_level)
+	for root in ["sigil_quake", "sigil_gale", "sigil_iron", "sigil_doom"]:
+		GameState.select_power(root)
+		player.powers._forget()
+		player.cards._forget()
+		player._last_attacker = target
+		match root:
+			"sigil_quake":
+				target._last_damage = 0.0
+				_check(player.powers.on_land(1.0), "Quake takes over the landing")
+				_check(target._last_damage > 0.0, "Quake's landing shockwave hits")
+				player.powers.on_landed()
+			"sigil_gale":
+				player.powers.gale = 0
+				player._on_dodge("slip_left", true)
+				_check(player.powers.gale == 3, "A clean dodge with Tailwind gives 3 Gale charges (got %d)" % player.powers.gale)
+				player._on_dodge("slip_right", false)
+				_check(player.powers.gale == 5, "Deep Lungs holds 5 (got %d)" % player.powers.gale)
+				for i in 5:
+					player.powers.on_punch_thrown("hook" if i % 2 == 0 else "uppercut", "left", 2.0)
+				_check(player.powers.gale == 0, "Every punch spends a charge")
+				_check(not holder.find_children("*", "AirBurst", true, false).is_empty() or holder.get_children().any(func(n: Node) -> bool: return n is AirBurst),
+						"Punches fire air bursts")
+			"sigil_iron":
+				player.powers.plates = 0
+				for i in 3:
+					player._land_punch("jab", "left", false, false, target)
+				player._on_dodge("slip_left", true)
+				_check(player.powers.plates >= 2, "Punches and a clean dodge forge plates (got %d)" % player.powers.plates)
+				player.powers.plates = player.powers.plates_max()
+				var cut := player.powers.hit_amount(10.0, target)
+				_check(cut < 10.0 and player.powers.plates == player.powers.plates_max() - 1, "Plates cut a hit and one breaks")
+				player.powers.plates = player.powers.plates_max()
+				player.knuckles = 5.0
+				var saved := player.powers.hit_amount(1000.0, target)
+				_check(saved <= 4.0, "Unbreakable leaves 1 knuckle HP (got %.1f)" % saved)
+			"sigil_doom":
+				Powers.doom_mark(target)
+				_check(target.is_doomed(), "Doom marks")
+				target.take_hit(5.0, target.global_position + Vector3(0, 1.2, 0), Vector3.ZERO, false)
+				target._last_damage = 0.0
+				target._update_statuses(10.0)
+				_check(not target.is_doomed() and target._last_damage > 0.0, "The mark runs out in a burst")
+	await get_tree().create_timer(0.6, false, false, true).timeout
+	await _free_rig(holder)
+	print("Card runtime: Endless powers OK")
 
 
 ## Returns [holder, player, dummies]. Dummies are passive and physics is

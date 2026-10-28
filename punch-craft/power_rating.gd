@@ -35,6 +35,9 @@ const OFFENSE := {
 }
 const POWERS := {
 	"fire_punch": 0.5, "burn": 0.4, "chain_lightning": 0.08, "frost_punch": 0.3,
+	# The Endless powers: Quake's shockwaves, Gale's bursts (after dodges),
+	# Doom's stored share.
+	"quake_power": 0.12, "quake_damage": 0.12, "gale": 0.3, "gale_damage": 0.3, "doom": 0.5,
 	"ult_power": 0.25, "ult_gain": 0.3,
 	# The Catalyst's Elemental Fists.
 	"spell_time": 0.02,
@@ -44,6 +47,8 @@ const DEFENSE := {
 	"dodge_window": 0.6, "counter_window": 0.3, "graze_reduction": 0.3, "move_speed": 0.15,
 	"flinch_reduction": 0.1, "free_punch_chance": 0.6, "heal_on_kill": 0.12, "wave_heal": 0.04,
 	"counter_heal": 0.06,
+	# Iron: about two plates up on average.
+	"plate_guard": 2.0,
 	"passive_power": 0.025,
 }
 ## Level-up cards (Cards): [offense, defense] for each unit of the effect. How

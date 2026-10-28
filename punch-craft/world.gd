@@ -201,6 +201,7 @@ func _ready() -> void:
 	_player.punch_landed.connect(_hud.hit_marker)
 	_player.counter_ready_changed.connect(_hud.set_counter_ready)
 	_player.class_status_changed.connect(_hud.set_class_status)
+	_player.power_status_changed.connect(_hud.set_power_status)
 	_player.class_event.connect(_hud.show_class_event)
 	_player.knuckles_broken.connect(_on_knocked_out)
 	GameState.leveled_up.connect(_on_leveled_up)
@@ -578,6 +579,11 @@ func _win_endless() -> void:
 	_hud.announce_small(("+%d {coins}   ·   " % bonus if bonus > 0 else "") + "+%d {souls}   ·   Keep going for the high score" % souls, UiTheme.GOLD)
 	if not bool(GameState.dead_league_clears.get(Progression.TIERS[_division - 1].contender, false)):
 		_hud.add_feed("%s AWAITS IN THE DEAD LEAGUE" % DeadLeagueRules.boss(_division - 1).name, UiTheme.GOLD)
+	# Divisions 1-4: the first endless win breaks an Endless power's seal.
+	var power_index := 3 + _division
+	if first_time and power_index < GameState.POWER_ROOTS.size():
+		var root: String = GameState.POWER_ROOTS[power_index]
+		_hud.add_feed("%s UNSEALED  -  find it in the upgrade web" % SkillTreeView.BRANCHES[root].name, SkillTreeView.BRANCHES[root].color)
 
 
 ## An elite of a monster this bout has already brought (its veteran from the
