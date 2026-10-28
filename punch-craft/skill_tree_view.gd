@@ -413,37 +413,103 @@ func _draw_map() -> void:
 			var from_view: TreeNodeView = _views[required]
 			if not from_view.visible:
 				continue
-			var a := _cell_center(tree[required].pos)
-			var b := _cell_center(tree[id].pos)
-			var direction := (b - a).normalized()
-			var start := a + direction * (_inset(from_view, direction) + 4.0)
-			var tip := b - direction * (_inset(view, direction) + 4.0)
+			# Along the ring when both sit on it, else straight (the seal rings
+			# never cut a link across on a slant).
+			var path := _link_path(_cell_center(tree[required].pos), _cell_center(tree[id].pos))
+			var out_dir := (path[1] - path[0]).normalized()
+			var in_dir := (path[path.size() - 1] - path[path.size() - 2]).normalized()
 			if not view.visible:
 				# Not revealed yet: a faint dashed line to a "?".
-				_links.draw_dashed_line(start, b - direction * 18.0, Color(0.6, 0.6, 0.7, 0.18), 1.5, 4.0)
-				_draw_unknown(b)
+				var faint := _trim_path(path, _inset(from_view, out_dir) + 4.0, 18.0)
+				_dashed_path(faint, Color(0.6, 0.6, 0.7, 0.18), 1.5, 4.0)
+				_draw_unknown(path[path.size() - 1])
 				continue
+			var trimmed := _trim_path(path, _inset(from_view, out_dir) + 4.0, _inset(view, in_dir) + 4.0)
+			var tip: Vector2 = trimmed[trimmed.size() - 1]
+			var shaft := _trim_path(trimmed, 0.0, 6.0)
 			if owned:
 				# A soft glow under owned links, with sparks flowing along them.
-				_links.draw_line(start, tip - direction * 6.0, Color(tint, 0.2), 9.0, true)
-				var length := start.distance_to(tip)
+				_links.draw_polyline(shaft, Color(tint, 0.2), 9.0, true)
+				var length := _path_length(trimmed)
 				for k in 2:
 					var t := fposmod(_flow * 60.0 / maxf(length, 1.0) + k * 0.5, 1.0)
-					_links.draw_circle(start.lerp(tip, t), 2.6, Color(1, 0.95, 0.8, 0.9 * sin(t * PI)))
-				_links.draw_line(start, tip - direction * 6.0, tint.lightened(0.2), 2.5, true)
+					_links.draw_circle(_point_along(trimmed, t), 2.6, Color(1, 0.95, 0.8, 0.9 * sin(t * PI)))
+				_links.draw_polyline(shaft, tint.lightened(0.2), 2.5, true)
 			else:
 				var ready := GameState.can_buy_node(kind, id)
 				var line_color := Color(UiTheme.READY, 0.55) if ready else Color(0.6, 0.6, 0.7, 0.4)
-				_links.draw_dashed_line(start, tip - direction * 6.0, line_color, 2.0, 7.0)
+				_dashed_path(shaft, line_color, 2.0, 7.0)
 			# A bright pulse running into a node that was just bought.
 			if _charges.has(id):
 				var t: float = _charges[id]
-				var p := start.lerp(tip, t)
+				var p := _point_along(trimmed, t)
 				_links.draw_circle(p, 9.0 * (1.0 - t * 0.5), Color(tint.lightened(0.5), 0.35))
 				_links.draw_circle(p, 4.0, Color(1, 1, 1, 0.95))
 			var link_color := tint.lightened(0.2) if owned else Color(0.6, 0.6, 0.7, 0.45)
+			var direction := (tip - trimmed[trimmed.size() - 2]).normalized()
 			var side := Vector2(-direction.y, direction.x) * 5.0
 			_links.draw_colored_polygon(PackedVector2Array([tip, tip - direction * 9.0 + side, tip - direction * 9.0 - side]), link_color)
+
+
+## A link's points: an arc when both ends sit on the same seal ring of the
+## upgrade web, otherwise a straight line.
+func _link_path(a: Vector2, b: Vector2) -> PackedVector2Array:
+	var ra := a.length()
+	var rb := b.length()
+	if kind != "upgrade" or ra < SPACING * 0.5 or absf(ra - rb) > SPACING * 0.1:
+		return PackedVector2Array([a, b])
+	var from := a.angle()
+	var sweep := wrapf(b.angle() - from, -PI, PI)
+	var steps := maxi(2, ceili(absf(sweep) * ra / 8.0))
+	var points := PackedVector2Array()
+	for i in steps + 1:
+		points.append(Vector2.from_angle(from + sweep * i / steps) * ra)
+	return points
+
+
+func _path_length(points: PackedVector2Array) -> float:
+	var total := 0.0
+	for i in points.size() - 1:
+		total += points[i].distance_to(points[i + 1])
+	return total
+
+
+## The point a share t (0-1) of the way along a path.
+func _point_along(points: PackedVector2Array, t: float) -> Vector2:
+	var goal := _path_length(points) * clampf(t, 0.0, 1.0)
+	for i in points.size() - 1:
+		var step := points[i].distance_to(points[i + 1])
+		if goal <= step:
+			return points[i].lerp(points[i + 1], goal / maxf(step, 0.001))
+		goal -= step
+	return points[points.size() - 1]
+
+
+## A path with head pixels cut off its start and tail off its end.
+func _trim_path(points: PackedVector2Array, head: float, tail: float) -> PackedVector2Array:
+	var length := _path_length(points)
+	if length <= head + tail + 1.0:
+		var mid := _point_along(points, 0.5)
+		return PackedVector2Array([mid, mid + (points[points.size() - 1] - points[0]).normalized()])
+	var out := PackedVector2Array([_point_along(points, head / length)])
+	var walked := 0.0
+	for i in points.size() - 1:
+		walked += points[i].distance_to(points[i + 1])
+		if walked > head and walked < length - tail:
+			out.append(points[i + 1])
+	out.append(_point_along(points, (length - tail) / length))
+	return out
+
+
+## Dashes along a path, the pattern running on through its bends.
+func _dashed_path(points: PackedVector2Array, color: Color, width: float, dash: float) -> void:
+	var length := _path_length(points)
+	var at := 0.0
+	while at < length:
+		var a := _point_along(points, at / length)
+		var b := _point_along(points, minf(at + dash, length) / length)
+		_links.draw_line(a, b, color, width, true)
+		at += dash * 2.0
 
 
 ## How far from a node's center its edge is, along direction.
