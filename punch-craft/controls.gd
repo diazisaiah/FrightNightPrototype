@@ -554,28 +554,6 @@ static func fill(hint: String) -> String:
 	return hint
 
 
-## The Temporal Break prompts. With hook/uppercut buttons the hand isn't
-## chosen, so those prompts accept either hand ("any").
-static func qte_prompts() -> Array:
-	var jab := key_name("punch_left").to_upper()
-	var cross := key_name("punch_right").to_upper()
-	var prompts := [
-		{"type": "jab", "hand": "left", "keys": jab, "name": "JAB"},
-		{"type": "cross", "hand": "right", "keys": cross, "name": "CROSS"},
-	]
-	if direct_punches() or pad():
-		prompts.append({"type": "hook", "hand": "any", "keys": text("hook").to_upper(), "name": "HOOK"})
-		prompts.append({"type": "uppercut", "hand": "any", "keys": text("uppercut").to_upper(), "name": "UPPERCUT"})
-	else:
-		var hook := key_name("sprint").to_upper()
-		var upper := key_name("uppercut_modifier").to_upper()
-		prompts.append({"type": "hook", "hand": "left", "keys": "%s + %s" % [hook, jab], "name": "LEFT HOOK"})
-		prompts.append({"type": "hook", "hand": "right", "keys": "%s + %s" % [hook, cross], "name": "RIGHT HOOK"})
-		prompts.append({"type": "uppercut", "hand": "left", "keys": "%s + %s" % [upper, jab], "name": "LEFT UPPERCUT"})
-		prompts.append({"type": "uppercut", "hand": "right", "keys": "%s + %s" % [upper, cross], "name": "RIGHT UPPERCUT"})
-	return prompts
-
-
 ## The bottom-of-screen controls line.
 static func summary() -> String:
 	var parts: Array[String] = ["%s sprint" % key_name("sprint"), "%s/%s jab/cross" % [key_name("punch_left"), key_name("punch_right")]]

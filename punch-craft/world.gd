@@ -188,6 +188,7 @@ func _ready() -> void:
 	Themes.apply_environment($WorldEnvironment.environment, _theme, $Moon)
 	Look.tune_environment($WorldEnvironment.environment, "night")
 	Voxel.prewarm(self, SCENES.values() + (Veterans.SCENES.values() if _division > 1 else []))
+	FxWarmup.run(self, _player)
 	_build_decorations()
 	Look.batch_meshes(_decorations, true)
 

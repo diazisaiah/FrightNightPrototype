@@ -79,6 +79,7 @@ var _time_keys: Label
 var _time_name: Label
 var _time_hits: Label
 var _time_fraction := 1.0
+var _time_tint: ColorRect
 var _item_panel: PanelContainer
 ## Coins (and silver in the Crypt) as icon pills in the top-right corner.
 var _resource_chips := {}
@@ -1401,11 +1402,16 @@ func _build_time_stop() -> void:
 	_time_stop.visible = false
 	add_child(_time_stop)
 	move_child(_time_stop, 0)
-	var tint := ColorRect.new()
-	tint.set_anchors_preset(Control.PRESET_FULL_RECT)
-	tint.color = Color(0.35, 0.45, 0.75, 0.22)
-	tint.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_time_stop.add_child(tint)
+	# The world drains to a cold grey, darkest at the edges.
+	_time_tint = ColorRect.new()
+	_time_tint.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_time_tint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var shader := Shader.new()
+	shader.code = TIME_STOP_SHADER
+	var tint_material := ShaderMaterial.new()
+	tint_material.shader = shader
+	_time_tint.material = tint_material
+	_time_stop.add_child(_time_tint)
 	_time_clock = Control.new()
 	_time_clock.set_anchors_preset(Control.PRESET_CENTER)
 	_time_clock.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1426,7 +1432,40 @@ func _build_time_stop() -> void:
 		_time_stop.add_child(label)
 
 
+const TIME_STOP_SHADER := """
+shader_type canvas_item;
+uniform sampler2D screen : hint_screen_texture, filter_linear;
+uniform float amount = 1.0;
+void fragment() {
+	vec3 color = texture(screen, SCREEN_UV).rgb;
+	float grey = dot(color, vec3(0.299, 0.587, 0.114));
+	vec3 cold = vec3(grey * 0.82, grey * 0.94, grey * 1.18);
+	float edge = smoothstep(0.3, 0.75, length(UV - 0.5));
+	// Glows keep their color (the hand to punch next, the frozen sparks).
+	float glow = smoothstep(0.7, 0.95, max(color.r, max(color.g, color.b))) * smoothstep(0.15, 0.4, max(color.r, max(color.g, color.b)) - min(color.r, min(color.g, color.b)));
+	color = mix(color, cold, amount * 0.9 * (1.0 - glow));
+	color = mix(color, vec3(0.03, 0.06, 0.18), edge * 0.55 * amount);
+	COLOR = vec4(color, 1.0);
+}
+"""
+
+
 func _show_time_stop(running: bool, fraction: float, keys: String, punch_name: String, hits: int) -> void:
+	var tint := _time_tint.material as ShaderMaterial
+	if running and not _time_stop.visible:
+		# The color drains out over a moment.
+		tint.set_shader_parameter("amount", 0.0)
+		create_tween().tween_method(func(v: float) -> void: tint.set_shader_parameter("amount", v), 0.0, 1.0, 0.3)
+	elif not running and _time_stop.visible:
+		# Time snaps back: a white flash.
+		var flash := ColorRect.new()
+		flash.set_anchors_preset(Control.PRESET_FULL_RECT)
+		flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		flash.color = Color(0.9, 0.95, 1.0, 0.6)
+		add_child(flash)
+		var fade := flash.create_tween()
+		fade.tween_property(flash, "color:a", 0.0, 0.35)
+		fade.tween_callback(flash.queue_free)
 	_time_stop.visible = running
 	if not running:
 		return

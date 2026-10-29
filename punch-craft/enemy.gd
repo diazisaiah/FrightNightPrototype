@@ -12,17 +12,17 @@ const STAGGER_TIME := 0.5
 ## staggers, stuns, knockdowns, delays and scares) counts as control. A
 ## monster is held at most CONTROL_MAX at a stretch (punch staggers alone at
 ## most STAGGER_CHAIN_MAX), and once it's free it shrugs off all control for
-## as long as it was just held (at least CONTROL_GRACE_MIN): so it's never
-## held more than half the time, whatever the fighter, power or card. Hits
-## still land. Ultimates force through (they're rare). Bosses have their
-## poise instead.
+## CONTROL_GRACE (2026-10-29: a fixed grace; one as long as the hold let tiny
+## stuns chain). Hits still land. Ultimates force through (they're rare).
+## Bosses have their poise instead.
 const CONTROL_MAX := 2.0
 const STAGGER_CHAIN_MAX := 1.0
-const CONTROL_GRACE_MIN := 1.0
+const CONTROL_GRACE := 2.0
 ## Boss poise: after a stagger or stun ends, a boss shrugs off the next ones
 ## for this long (hits still land). Without it the Mauler's hooks, which need
-## no set-up and all stagger, kept a boss from ever attacking.
-const BOSS_POISE := 3.0
+## no set-up and all stagger, kept a boss from ever attacking. Longer than a
+## monster's grace (2026-10-29: 3.0 before).
+const BOSS_POISE := 4.5
 const KNOCKBACK_DECAY := 12.0
 const TURN_SPEED := 8.0
 const RECOIL_DISTANCE := 0.18
@@ -756,14 +756,14 @@ func knock_down(seconds: float, push: Vector3, force := false) -> void:
 
 
 ## Control (CONTROL_MAX): time held this stretch while staggered or held;
-## once free, the grace is as long as the hold was.
+## once free, CONTROL_GRACE.
 func _track_control(delta: float) -> void:
 	if is_boss:
 		return
 	if _stagger_timer > 0.0 or _hold_time > 0.0:
 		_control_run += delta
 	elif _control_run > 0.0:
-		_control_grace = maxf(CONTROL_GRACE_MIN, _control_run)
+		_control_grace = CONTROL_GRACE
 		_control_run = 0.0
 	else:
 		_control_grace -= delta

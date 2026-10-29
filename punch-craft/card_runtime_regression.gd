@@ -298,8 +298,36 @@ func _exercise_ultimate(fighter: String, ultimate: String) -> void:
 		var before: float = player.ult.meter
 		player.ult.add(50.0)
 		_check(is_equal_approx(player.ult.meter, before), "%s's %s doesn't charge while it's up" % [fighter, ultimate])
+	if ultimate == "temporal_break":
+		_check_time_stop(player)
 	await _free_rig(holder)
 	print("Card runtime: %s / %s OK" % [fighter, ultimate])
+
+
+## Temporal Break holds every punch's damage until time resumes, then lands
+## it all at once (a monster that died mid-stop died frozen, and a Dead
+## League boss lingered into the next round); the other hand buys time back,
+## the same hand doesn't.
+func _check_time_stop(player: Player) -> void:
+	var ult := player.ult
+	var target := ult._stop_target()
+	_check(target != null, "Temporal Break: a punch finds a frozen monster in reach")
+	if target == null:
+		return
+	# Dummies refill; what they last took shows whether a hit landed.
+	target.set("_last_damage", 0.0)
+	ult._stop_punch("left", "jab")
+	var left := ult._time_left
+	ult._punch_wait = 0.0
+	ult._stop_punch("left", "jab")
+	_check(is_equal_approx(ult._time_left, left), "Temporal Break: the same hand twice buys no time")
+	ult._punch_wait = 0.0
+	ult._stop_punch("right", "cross")
+	_check(ult._time_left > left, "Temporal Break: the other hand buys time back")
+	_check(float(target.get("_last_damage")) == 0.0, "Temporal Break: no damage lands while time is stopped")
+	ult._time_left = 0.0
+	ult._update_time_stop(0.0)
+	_check(ult.mode == "" and float(target.get("_last_damage")) > 0.0, "Temporal Break: the held damage lands when time resumes")
 
 
 ## Phantom Step and Vault jump behind a monster: never through a wall (the

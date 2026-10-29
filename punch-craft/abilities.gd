@@ -73,7 +73,7 @@ const ULTIMATES := {
 	],
 	"combo_master": [
 		{"id": "temporal_break", "name": "Temporal Break", "icon": "clock", "level": 1,
-			"desc": "Time stops. Move freely and hit the prompts: each lands a hit and buys back time."},
+			"desc": "Time stops. Your punches land when it resumes, all at once. Alternate hands to buy back time."},
 		{"id": "unbroken", "name": "Unbroken", "icon": "chain", "level": 10,
 			"desc": "For 10s every hit grows your combo multiplier, and your combo can't drop."},
 	],

@@ -148,6 +148,9 @@ var _ult_ready := false
 var _rune_flash := {}
 const RUNE_FLASH := 0.45
 var _hot_hand := ""
+## Temporal Break: the hand that buys back time next glows ("left", "right",
+## "any" or "").
+var _next_hand := ""
 var _time := 0.0
 var _bolt_timer := 0.0
 
@@ -241,6 +244,10 @@ func set_power_state(ability: bool, ult: bool, hot_hand := "") -> void:
 	_ability_ready = ability
 	_ult_ready = ult
 	_hot_hand = hot_hand
+
+
+func set_next_hand(hand: String) -> void:
+	_next_hand = hand
 
 
 func play_punch(type: String, hand: String, impact_time: float, total_time: float) -> void:
@@ -1427,8 +1434,12 @@ func _update_effects(delta: float) -> void:
 		particles.emitting = _ult_ready
 		match fighter:
 			"combo_master":
-				(fx.ring as MeshInstance3D).visible = _ult_ready
+				var next: bool = _next_hand == hand or _next_hand == "any"
+				(fx.ring as MeshInstance3D).visible = _ult_ready or next
 				(fx.ring as MeshInstance3D).rotation.y = _time * 3.0
+				particles.emitting = _ult_ready or next
+				if next:
+					(fx.light as OmniLight3D).light_energy = 0.5 + pulse * 0.4
 			"counter_master":
 				# Lightning on the ultimate; just sparks on a hand that's ready to counter.
 				particles.emitting = _ult_ready or _hot_hand == hand or _hot_hand == "any"

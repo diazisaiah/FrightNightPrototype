@@ -177,6 +177,7 @@ func _ready() -> void:
 	GameState.begin_crypt_run()
 	Look.tune_environment($WorldEnvironment.environment, "crypt")
 	Voxel.prewarm(self, WORLD.SCENES.values() + CRYPT_SCENES.values() + Veterans.SCENES.values())
+	FxWarmup.run(self, _player)
 	_player.knuckles_changed.connect(_hud.set_knuckles)
 	_player.combo_changed.connect(_hud.set_combo)
 	_hud.bind_ult(_player.ult)

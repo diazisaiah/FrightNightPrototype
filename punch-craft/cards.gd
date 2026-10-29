@@ -145,7 +145,7 @@ const DECKS := {
 		"spear_hands": {"name": "Spear Hands", "rarity": "epic", "icon": "fist", "tags": ["Power"], "upgrades": "long_reach",
 			"text": ["Long Reach: punches at the edge of your reach hit 30% harder and push the monster back out of its range"], "effects": {"spear_hands": [1]}},
 		"temporal_break_ii": {"name": "Temporal Break II", "rarity": "epic", "icon": "clock", "tags": ["Ultimate"], "upgrades": "temporal_break",
-			"text": ["Temporal Break: every prompt you hit grows your combo by 3, and the break lasts 30% longer"], "effects": {"temporal_break_ii": [1]}},
+			"text": ["Temporal Break: every punch grows your combo by 3, and the break lasts 30% longer"], "effects": {"temporal_break_ii": [1]}},
 		"unbroken_ii": {"name": "Unbroken II", "rarity": "epic", "icon": "infinity", "tags": ["Ultimate"], "upgrades": "unbroken",
 			"text": ["Unbroken: lasts 50% longer, and your combo timer runs twice as long for 5s after it ends"], "effects": {"unbroken_ii": [1]}},
 		"flurry": {"name": "Flurry", "rarity": "legendary", "icon": "burst", "tags": ["Combo"], "seal": "bellman",

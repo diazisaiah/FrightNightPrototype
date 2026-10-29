@@ -75,23 +75,22 @@ const INFERNO_STUN := 1.6
 const INFERNO_BURN_TIME := 4.0
 # Combo Master
 ## 2026-10-24: twice as long, and the Blur can move during it.
+## 2026-10-29: no prompts. Punches land on what you aim at, but the damage
+## is held until time resumes, then lands all at once (a monster killed
+## mid-stop used to die frozen, and a Dead League boss could linger into the
+## next round). The other hand from your last punch (it glows) buys back
+## time, half what a prompt did.
 const TIME_STOP_START := 6.0
-const TIME_STOP_REFUND := 0.5
+const TIME_STOP_REFUND := 0.25
 const TIME_STOP_REFUND_DECAY := 0.9
 ## Each hit makes the clock run this much faster.
 const TIME_STOP_SPEEDUP := 0.12
-const TIME_STOP_MISS := 0.5
 const TIME_STOP_RANGE := 12.0
 const TIME_STOP_COMBO_GAIN := 2
 const TIME_STOP_STUN := 1.0
-const PROMPTS := [
-	{"type": "jab", "hand": "left", "keys": "LMB", "name": "JAB"},
-	{"type": "cross", "hand": "right", "keys": "RMB", "name": "CROSS"},
-	{"type": "hook", "hand": "left", "keys": "SHIFT + LMB", "name": "LEFT HOOK"},
-	{"type": "hook", "hand": "right", "keys": "SHIFT + RMB", "name": "RIGHT HOOK"},
-	{"type": "uppercut", "hand": "left", "keys": "CTRL + LMB", "name": "LEFT UPPERCUT"},
-	{"type": "uppercut", "hand": "right", "keys": "CTRL + RMB", "name": "RIGHT UPPERCUT"},
-]
+const TIME_COLOR := Color(0.65, 0.85, 1.0)
+## Impact sparks left hanging in stopped time, at most.
+const TIME_SPARKS := 60
 # Counter Master
 const RIPOSTE_TIME := 4.0
 # Alternate ultimates (Abilities, 2026-10-24).
@@ -166,7 +165,11 @@ var _status := ""
 var _time_left := 0.0
 var _refund := 0.0
 var _hits := 0
-var _prompt: Dictionary = {}
+## Damage waiting on each monster: {enemy: [damage, sparks]}.
+var _held := {}
+var _stop_hand := ""
+var _punch_wait := 0.0
+var _spark_count := 0
 var _frozen: Array[Node] = []
 var _struck: Array[Enemy] = []
 var _target_index := 0
@@ -531,8 +534,15 @@ func _start_time_stop() -> void:
 	_time_left = (TIME_STOP_START + 1.5 * _power()) * (1.3 if _card("temporal_break_ii") else 1.0)
 	_refund = TIME_STOP_REFUND
 	_hits = 0
-	_next_prompt()
+	_held.clear()
+	_stop_hand = ""
+	_punch_wait = 0.0
+	_spark_count = 0
+	_time_wave(true)
 	Sfx.play("tell", 0.0, 0.5)
+	Sfx.play("counter", -2.0, 0.45)
+	player._kick_fov(-10.0)
+	player.shake(0.08)
 	player.class_event.emit("TEMPORAL BREAK!")
 
 
@@ -557,82 +567,189 @@ func _freeze(on: bool) -> void:
 		_frozen.clear()
 
 
-func _next_prompt() -> void:
-	# Prompt keys follow the control scheme (Controls); PROMPTS is the classic set.
-	var options := Controls.qte_prompts().filter(func(p: Dictionary) -> bool: return p.name != _prompt.get("name", ""))
-	_prompt = options.pick_random()
-
-
 ## A hook or uppercut button pressed during Temporal Break (direct-punch schemes).
 func answer_direct(type: String) -> void:
 	if mode != "time_stop":
 		return
-	_answer_prompt("left" if player._last_punch_hand == "right" else "right", type)
+	_stop_punch(_next_hand(), type)
+
+
+## The hand that buys back time next (either, to start).
+func _next_hand() -> String:
+	return "left" if _stop_hand == "right" else "right"
 
 
 func _update_time_stop(real_delta: float) -> void:
 	_time_left -= real_delta * (1.0 + TIME_STOP_SPEEDUP * _hits)
+	_punch_wait -= real_delta
 	if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED or Pad.active:
 		if Input.is_action_just_pressed("punch_left"):
-			_answer_prompt("left")
+			_stop_punch("left")
 		elif Input.is_action_just_pressed("punch_right"):
-			_answer_prompt("right")
+			_stop_punch("right")
 	if _time_left <= 0.0:
 		_end_time_stop()
 		return
-	time_stop_changed.emit(true, clampf(_time_left / TIME_STOP_START, 0.0, 1.0), _prompt.keys, _prompt.name, _hits)
+	player._fists.set_next_hand("any" if _stop_hand == "" else _next_hand())
+	time_stop_changed.emit(true, clampf(_time_left / TIME_STOP_START, 0.0, 1.0), "", "ALTERNATE HANDS" if _hits < 4 else "", _hits)
 
 
-func _answer_prompt(hand: String, type := "") -> void:
+## A punch in stopped time: it lands on what you aim at (or the nearest
+## frozen monster in reach), and its damage waits in _held, with a spark
+## frozen where it hit. The other hand from last time buys back time.
+func _stop_punch(hand: String, type := "") -> void:
+	if _punch_wait > 0.0:
+		return
 	if type == "":
 		type = player._punch_type_for(hand)
-	if type != _prompt.type or (hand != _prompt.hand and _prompt.hand != "any"):
-		_time_left -= TIME_STOP_MISS
-		Sfx.play("block", -2.0, 0.7)
-		player._shake = maxf(player._shake, 0.04)
-		return
-	var target := _next_target()
+	var punch: Dictionary = Player.PUNCHES[type]
+	_punch_wait = punch.cooldown / GameState.get_punch_speed() * 0.6
 	player._fists.play_punch(type, hand, 0.05, 0.14)
 	player._animate_head(type, hand, 0.05, 0.14)
+	var target := _stop_target()
+	if target == null:
+		Sfx.play("whoosh", -8.0, 1.3)
+		return
+	if hand != _stop_hand:
+		_time_left += _refund
+		_refund *= TIME_STOP_REFUND_DECAY
+	_stop_hand = hand
 	_hits += 1
-	player._last_hand = ""  # Every prompt counts toward the combo, whatever the hand.
+	player._last_hand = ""  # Every punch counts toward the combo, whatever the hand.
 	player._last_punch_hand = hand
 	player._combo_timer = GameState.get_combo_window()
 	player._set_combo(player.combo + TIME_STOP_COMBO_GAIN + (1 if _card("temporal_break_ii") else 0))
-	_time_left += _refund
-	_refund *= TIME_STOP_REFUND_DECAY
-	Sfx.play("hit", 0.0, minf(1.0 + _hits * 0.04, 2.2))
-	if target:
-		var punch: Dictionary = Player.PUNCHES[type]
-		var damage: float = GameState.get_damage() * player.get_combo_multiplier() * punch.mult
-		var at := target.global_position + Vector3(0, 1.3, 0) + Vector3(randf_range(-0.2, 0.2), randf_range(-0.2, 0.2), 0)
-		target.take_hit(damage, at, Vector3.ZERO, false)
-		HitFx.burst(player.get_parent(), at, Vector3.UP, Color(1, 0.8, 0.3), 12, 4.0, true, 0.05)
-	_next_prompt()
+	var damage: float = GameState.get_damage() * player.get_combo_multiplier() * punch.mult
+	var at := target.global_position + Vector3(randf_range(-0.3, 0.3), 1.3 + randf_range(-0.35, 0.35), randf_range(-0.3, 0.3))
+	var entry: Array = _held.get(target, [0.0, []])
+	# Armor counts per punch, as it would have.
+	entry[0] += maxf(0.0, damage - target.armor * (1.0 - GameState.get_armor_pierce()))
+	if _spark_count < TIME_SPARKS:
+		_spark_count += 1
+		entry[1].append(_frozen_spark(at))
+	_held[target] = entry
+	DamagePopup.spawn(player.get_parent(), "%.1f" % damage, TIME_COLOR, 36, at)
+	Sfx.play("hit", -2.0, minf(1.0 + _hits * 0.04, 2.2))
+	player._shake = maxf(player._shake, 0.03)
 
 
-## Punches go round the frozen enemies, nearest first.
-func _next_target() -> Enemy:
-	for i in _struck.size():
-		var enemy := _struck[(_target_index + i) % _struck.size()]
-		if is_instance_valid(enemy) and not enemy.is_dead():
-			_target_index = (_target_index + i + 1) % _struck.size()
-			return enemy
-	return null
+## What a stopped-time punch lands on: the monster in the crosshair, or the
+## nearest frozen one in reach and roughly ahead.
+func _stop_target() -> Enemy:
+	player._punch_ray.force_raycast_update()
+	var aimed := player._punch_ray.get_collider() as Enemy
+	if aimed and not aimed.is_dead():
+		return aimed
+	var forward := -player._camera.global_basis.z
+	forward.y = 0.0
+	var best: Enemy
+	var best_distance := Player.PUNCH_REACH + 1.2
+	for enemy in _struck:
+		if not is_instance_valid(enemy) or enemy.is_dead():
+			continue
+		var to := enemy.global_position - player.global_position
+		to.y = 0.0
+		if to.length() <= best_distance and forward.normalized().dot(to.normalized()) > 0.3:
+			best = enemy
+			best_distance = to.length()
+	return best
+
+
+static var _spark_mesh: QuadMesh
+
+
+## A punch's flash, stopped mid-burst: it hangs there until time resumes.
+func _frozen_spark(at: Vector3) -> MeshInstance3D:
+	if _spark_mesh == null:
+		_spark_mesh = QuadMesh.new()
+		_spark_mesh.size = Vector2.ONE * 0.55
+		var material := StandardMaterial3D.new()
+		material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		material.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+		material.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+		material.albedo_texture = HitFx._radial([[0.0, Color(1, 1, 1, 1)], [0.2, Color(1, 1, 1, 0.9)], [0.45, Color(1, 1, 1, 0.25)], [1.0, Color(1, 1, 1, 0)]])
+		material.albedo_color = Color(1.0, 0.9, 0.6)
+		_spark_mesh.material = material
+	var spark := MeshInstance3D.new()
+	spark.mesh = _spark_mesh
+	spark.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	player.get_parent().add_child(spark)
+	spark.global_position = at
+	spark.scale = Vector3.ONE * randf_range(0.7, 1.3)
+	return spark
 
 
 func _end_time_stop() -> void:
 	mode = ""
 	_freeze(false)
 	time_stop_changed.emit(false, 0.0, "", "", _hits)
+	player._fists.set_next_hand("")
+	_time_wave(false)
+	# Time snaps back: every held punch lands at once.
+	var world := player.get_parent()
+	for enemy in _held:
+		var entry: Array = _held[enemy]
+		for spark: Node3D in entry[1]:
+			if is_instance_valid(spark):
+				HitFx.burst(world, spark.global_position, Vector3.UP, Color(1.0, 0.85, 0.5), 6, 4.0, true, 0.05)
+				spark.queue_free()
+		if not is_instance_valid(enemy) or (enemy as Enemy).is_dead():
+			continue
+		var target := enemy as Enemy
+		var at := target.global_position + Vector3(0, 1.3, 0)
+		var away := target.global_position - player.global_position
+		away.y = 0.0
+		HitFx.burst(world, at, Vector3.UP, TIME_COLOR, 26, 6.0, true, 0.07)
+		HitFx.ring(world, at, TIME_COLOR, 2.4)
+		target.take_hit(entry[0], at, away.normalized() * 6.0, false, "TIME BREAK", true)
+	_held.clear()
 	for enemy in _struck:
 		if is_instance_valid(enemy) and not enemy.is_dead():
 			enemy.stun(TIME_STOP_STUN, true)
 	_struck.clear()
 	player._combo_timer = GameState.get_combo_window()
 	Sfx.play("counter", 0.0, 0.6)
-	player._kick_fov(6.0)
+	Sfx.play("heavy", 0.0, 0.7)
+	player._kick_fov(8.0)
+	player.shake(0.14)
 	player.class_event.emit("%d HITS!" % _hits)
+
+
+static func time_shell_material() -> StandardMaterial3D:
+	var material := StandardMaterial3D.new()
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	material.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	material.albedo_color = Color(TIME_COLOR, 0.35)
+	return material
+
+
+## The wave that stops time (start) or lets it go (end): a pale shell
+## sweeping out from you, or rushing back in.
+func _time_wave(stopping: bool) -> void:
+	var world := player.get_parent()
+	var shell := MeshInstance3D.new()
+	var sphere := SphereMesh.new()
+	sphere.radius = 1.0
+	sphere.height = 2.0
+	sphere.radial_segments = 24
+	sphere.rings = 12
+	shell.mesh = sphere
+	var material := time_shell_material()
+	shell.material_override = material
+	shell.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	world.add_child(shell)
+	shell.global_position = player.global_position + Vector3(0, 1.0, 0)
+	var far := Vector3.ONE * TIME_STOP_RANGE * 1.6
+	shell.scale = Vector3.ONE * 0.3 if stopping else far
+	var tween := shell.create_tween().set_parallel()
+	tween.tween_property(shell, "scale", far if stopping else Vector3.ONE * 0.3, 0.45 if stopping else 0.25) \
+			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT if stopping else Tween.EASE_IN)
+	tween.tween_property(material, "albedo_color:a", 0.0, 0.5 if stopping else 0.3).set_ease(Tween.EASE_IN)
+	tween.chain().tween_callback(shell.queue_free)
+	HitFx.flash(world, player.global_position + Vector3(0, 1.4, 0) - player.global_basis.z, Color(TIME_COLOR, 0.9), 3.0)
 
 
 # --- Counter Master: Riposte Stance -------------------------------------------------

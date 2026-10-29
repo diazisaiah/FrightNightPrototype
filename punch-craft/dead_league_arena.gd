@@ -93,6 +93,7 @@ func _ready() -> void:
 	_boss.set_physics_process(false)
 	if _true:
 		_prewarm_partners()
+	FxWarmup.run(self, _player)
 	var intro := VsIntro.play(self, GameState.dead_league_bout)
 	await intro.finished
 	if not is_inside_tree():
