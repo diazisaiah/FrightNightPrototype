@@ -5,6 +5,7 @@
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 godot="${GODOT:-/c/Users/IsaiahandLaura/Desktop/Godot_v4.5.1-stable_win64.exe/Godot_v4.5.1-stable_win64_console.exe}"
-python "$here/sync.py"
+playground_python="${PLAYGROUND_PYTHON:-python}"
+"$playground_python" "$here/sync.py"
 "$godot" --headless --path "$here/project" --import > /dev/null 2>&1 || true
 "$godot" --path "$here/project" "$@"

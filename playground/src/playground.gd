@@ -15,7 +15,10 @@ const BASE := {
 	"grave champion (boss)": "res://boss.tscn", "bone colossus (boss)": "res://colossus.tscn", "lich king (boss)": "res://lich_king.tscn",
 }
 const SPECIALS := ["leap_slam", "ground_slam", "charge", "dash", "zones", "miasma", "scream"]
-const POWERS := ["", "sigil_fire", "sigil_frost", "sigil_storm", "sigil_blood"]
+const POWERS := ["", "sigil_fire", "sigil_frost", "sigil_storm", "sigil_blood", "sigil_quake", "sigil_gale", "sigil_iron", "sigil_doom"]
+const CharacterLabScript = preload("res://playground/character_lab/character_lab_controller.gd")
+
+static var _resume_lab_mode := ""
 
 var _panel: Control
 var _enemy_pick: OptionButton
@@ -30,6 +33,8 @@ var _idle_loop := false
 ## whether it's up. Off, you roam free like the enemies do.
 var _ring: Node3D
 var _ring_on := true
+var _lab: PlaygroundCharacterLab
+var _lab_status: Label
 
 
 func _ready() -> void:
@@ -41,6 +46,8 @@ func _ready() -> void:
 		GameState.tips_seen[tip] = true
 	for id in IdleAnims.SHOP:
 		GameState.idles_bought[id] = true
+	for id in Skins.CATALOG:
+		GameState.skins_owned[id] = true
 	Enemy.max_attackers = 2
 	$Moon.shadow_enabled = Settings.get_value("shadows")
 	Look.tune_environment($WorldEnvironment.environment, "ring")
@@ -56,13 +63,21 @@ func _ready() -> void:
 	_player.punch_landed.connect(_hud.hit_marker)
 	_player.counter_ready_changed.connect(_hud.set_counter_ready)
 	_player.class_status_changed.connect(_hud.set_class_status)
+	_player.power_status_changed.connect(_hud.set_power_status)
 	_player.class_event.connect(_hud.show_class_event)
 	_player.knuckles_broken.connect(_player.restore)
 	_hud.end_run_requested.connect(func() -> void: get_tree().quit())
 	_hud.set_leave_text("Quit the playground")
 	_hud.set_info("PLAYGROUND  ·  F1 panel")
 	_set_god(true)
+	_lab = CharacterLabScript.new()
+	_lab.name = "CharacterLab"
+	add_child(_lab)
+	_lab.initialize(_player, _hud)
 	_build_panel()
+	if _resume_lab_mode != "":
+		_lab.set_mode(_resume_lab_mode)
+		_resume_lab_mode = ""
 	Sfx.play_music("camp")
 
 
@@ -74,12 +89,27 @@ func _process(delta: float) -> void:
 		_player.knuckles = _player.max_knuckles
 	if _idle_loop and _idle_pick != "" and not _player._fists.idle_playing:
 		_player._fists.play_idle(_idle_pick)
+	if _lab_status and _lab:
+		_lab_status.text = _lab.status_text()
 
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_F1:
 		_panel.visible = not _panel.visible
+		if not _panel.visible and _lab:
+			_lab.finish_hand_preview()
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if _panel.visible else Input.MOUSE_MODE_CAPTURED
+		get_viewport().set_input_as_handled()
+	elif event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_V:
+		_lab.toggle_third_person()
+		get_viewport().set_input_as_handled()
+	elif event is InputEventJoypadButton and event.pressed and event.button_index in [JOY_BUTTON_TOUCHPAD, JOY_BUTTON_MISC1]:
+		# These buttons are intentionally absent from the production control map.
+		# Controllers that do not expose either can use the panel's mode selector.
+		_lab.toggle_third_person()
+		get_viewport().set_input_as_handled()
+	elif _lab and _lab.handle_input(event):
+		get_viewport().set_input_as_handled()
 
 
 # --- The panel ---------------------------------------------------------------------
@@ -105,10 +135,7 @@ func _build_panel() -> void:
 	box.add_child(_note("F1 hides this. Click the ring to fight."))
 
 	_section(box, "FIGHTER")
-	var fighters := _options(GameState.CLASSES.keys(), GameState.player_class, func(id: String) -> void:
-		GameState.player_class = id
-		GameState.save_game()
-		get_tree().reload_current_scene())
+	var fighters := _options(GameState.CLASSES.keys(), GameState.player_class, _switch_fighter)
 	box.add_child(fighters)
 
 	_section(box, "HAT")
@@ -139,6 +166,8 @@ func _build_panel() -> void:
 			_idle_pick = id
 			GameState.equip_idle(id)
 			_player._fists.play_idle(id)))
+
+	_build_character_lab_panel(box)
 
 	_section(box, "SPAWN")
 	var kinds: Array = BASE.keys() + Veterans.SCENES.keys()
@@ -228,6 +257,165 @@ func _options(items: Array, current: String, chosen: Callable) -> OptionButton:
 	options.item_selected.connect(func(index: int) -> void: chosen.call(options.get_item_metadata(index)))
 	options.focus_mode = Control.FOCUS_NONE
 	return options
+
+
+func _slider(minimum: float, maximum: float, step: float, value: float, changed: Callable) -> HSlider:
+	var slider := HSlider.new()
+	slider.min_value = minimum
+	slider.max_value = maximum
+	slider.step = step
+	slider.value = value
+	slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	slider.value_changed.connect(changed)
+	slider.focus_mode = Control.FOCUS_NONE
+	return slider
+
+
+func _build_character_lab_panel(box: VBoxContainer) -> void:
+	_section(box, "CHARACTER LAB  ·  V CAMERA TOGGLE")
+	box.add_child(_note("V or controller Share/Touchpad toggles. PgUp/PgDn zoom; inspect with right-drag/right stick."))
+	_lab_status = _note("Character Lab is starting…")
+	_lab_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_lab_status.add_theme_color_override("font_color", UiTheme.GOLD)
+	box.add_child(_lab_status)
+
+	box.add_child(_options(PlaygroundCharacterLab.MODES, "first_person", func(id: String) -> void:
+		_lab.set_mode(id)))
+	var skins: Array = [""] + Skins.of(GameState.player_class)
+	box.add_child(_options(skins, GameState.skin(), _switch_skin))
+
+	var camera_row := HBoxContainer.new()
+	camera_row.add_child(_note("Distance"))
+	camera_row.add_child(_slider(1.8, 6.5, 0.1, _lab.camera_distance, func(value: float) -> void:
+		_lab.set_camera_distance(value)))
+	box.add_child(camera_row)
+	var shoulder_row := HBoxContainer.new()
+	shoulder_row.add_child(_note("Shoulder"))
+	shoulder_row.add_child(_slider(-0.8, 0.8, 0.05, _lab.camera_shoulder, func(value: float) -> void:
+		_lab.camera_shoulder = value))
+	box.add_child(shoulder_row)
+	var smooth_row := HBoxContainer.new()
+	smooth_row.add_child(_note("Smoothing"))
+	smooth_row.add_child(_slider(2.0, 24.0, 1.0, _lab.camera_smoothing, func(value: float) -> void:
+		_lab.camera_smoothing = value))
+	box.add_child(smooth_row)
+	box.add_child(_check("Camera-relative movement", true, func(on: bool) -> void:
+		_lab.camera_relative = on))
+	var facing_row := HBoxContainer.new()
+	facing_row.add_child(_note("Body facing"))
+	facing_row.add_child(_options(["camera_aim", "movement_direction", "locked_target"], _lab.facing_mode, func(id: String) -> void:
+		_lab.facing_mode = id))
+	box.add_child(facing_row)
+	box.add_child(_check("Hide gameplay HUD", false, _lab.set_hud_hidden))
+
+	var views := HBoxContainer.new()
+	box.add_child(views)
+	for view in ["front", "three_quarter", "side", "back"]:
+		views.add_child(_button(view.replace("three_quarter", "3/4").capitalize(), func() -> void:
+			_lab.set_mode("inspect")
+			_lab.set_view_preset(view)))
+
+	box.add_child(_check("Turntable", false, func(on: bool) -> void: _lab.turntable = on))
+	box.add_child(_check("Neutral review lighting", false, _lab.set_neutral_lighting))
+	box.add_child(_check("Silhouette-only geometry check", false, func(on: bool) -> void:
+		_lab.avatar.set_silhouette(on)))
+	box.add_child(_check("Skeleton / joint debug", false, func(on: bool) -> void:
+		_lab.avatar.set_skeleton_debug(on)))
+
+	box.add_child(_note("ANIMATION PREVIEW"))
+	var speed_row := HBoxContainer.new()
+	speed_row.add_child(_note("Speed"))
+	speed_row.add_child(_options(["0.25x", "0.5x", "1x", "1.5x"], "1x", func(id: String) -> void:
+		_lab.avatar.playback_speed = float(id.trim_suffix("x"))))
+	box.add_child(speed_row)
+	var playback := HBoxContainer.new()
+	playback.add_child(_check("Loop", false, func(on: bool) -> void: _lab.avatar.loop_action = on))
+	playback.add_child(_check("Pause", false, func(on: bool) -> void: _lab.avatar.paused = on))
+	playback.add_child(_button("Restart", _lab.avatar.restart_action))
+	playback.add_child(_button("Next", _lab.next_preview))
+	box.add_child(playback)
+	box.add_child(_options(PlaygroundFighterAvatar.ACTIONS, "guard", _lab.play_preview))
+
+	var attack_grid := GridContainer.new()
+	attack_grid.columns = 3
+	box.add_child(attack_grid)
+	for action in ["jab_left", "cross_right", "hook_left", "hook_right", "uppercut_left", "uppercut_right"]:
+		attack_grid.add_child(_button(action.replace("_", " ").capitalize(), func() -> void:
+			_lab.play_preview(action)))
+
+	var defense_grid := GridContainer.new()
+	defense_grid.columns = 3
+	box.add_child(defense_grid)
+	for action in ["block", "slip_left", "slip_right", "roll_left", "roll_right", "back_step", "guard_break", "taunt", "get_up"]:
+		defense_grid.add_child(_button(action.replace("_", " ").capitalize(), func() -> void:
+			_lab.play_preview(action)))
+
+	box.add_child(_note("REAL GAMEPLAY PUNCHES (uses production timing / hit checks)"))
+	var real_attack_grid := GridContainer.new()
+	real_attack_grid.columns = 3
+	box.add_child(real_attack_grid)
+	for spec in [["jab", "left"], ["cross", "right"], ["hook", "left"], ["hook", "right"], ["uppercut", "left"], ["uppercut", "right"]]:
+		real_attack_grid.add_child(_button((String(spec[0]) + " " + String(spec[1])).capitalize(), func() -> void:
+			_lab.trigger_gameplay_punch(String(spec[0]), String(spec[1]))))
+
+	box.add_child(_note("DAMAGE / KNOCKDOWN PREVIEW"))
+	var damage_direction_row := HBoxContainer.new()
+	damage_direction_row.add_child(_note("Direction"))
+	damage_direction_row.add_child(_options(["front", "left", "right", "back"], "front", func(id: String) -> void:
+		_lab.hit_direction = id))
+	box.add_child(damage_direction_row)
+	var hit_grid := GridContainer.new()
+	hit_grid.columns = 3
+	box.add_child(hit_grid)
+	hit_grid.add_child(_button("Light hit", func() -> void: _lab.trigger_hit(_lab.hit_direction, false)))
+	hit_grid.add_child(_button("Heavy hit", func() -> void: _lab.trigger_hit(_lab.hit_direction, true)))
+	hit_grid.add_child(_button("Guard break", func() -> void: _lab.play_preview("guard_break")))
+	hit_grid.add_child(_button("Knockdown", func() -> void: _lab.trigger_knockdown(_lab.hit_direction)))
+	hit_grid.add_child(_button("Get up face-up", func() -> void: _lab.trigger_get_up(false)))
+	hit_grid.add_child(_button("Get up face-down", func() -> void: _lab.trigger_get_up(true)))
+
+	var ult_row := HBoxContainer.new()
+	box.add_child(ult_row)
+	ult_row.add_child(_button("Ultimate 1", func() -> void: _lab.preview_ultimate(1)))
+	ult_row.add_child(_button("Ultimate 2", func() -> void: _lab.preview_ultimate(2)))
+
+	box.add_child(_note("REFERENCE / CAPTURE"))
+	box.add_child(_options(["off", "default_voxel", "default_art", "alternate_voxel", "alternate_art", "first_person_hands"], "off", func(id: String) -> void:
+		_lab.set_reference(id)))
+	var opacity_row := HBoxContainer.new()
+	opacity_row.add_child(_note("Reference opacity"))
+	opacity_row.add_child(_slider(0.15, 1.0, 0.05, 1.0, _lab.set_reference_opacity))
+	box.add_child(opacity_row)
+	box.add_child(_note("FIRST-PERSON HAND / GLOVE REVIEW"))
+	var hand_grid := GridContainer.new()
+	hand_grid.columns = 3
+	box.add_child(hand_grid)
+	for pose in ["relaxed", "guard", "left_punch", "right_punch", "open", "ultimate_ready"]:
+		hand_grid.add_child(_button(pose.replace("_", " ").capitalize(), func() -> void:
+			_lab.preview_hands(pose)))
+	var capture_row := HBoxContainer.new()
+	box.add_child(capture_row)
+	capture_row.add_child(_button("Capture 4 views", _lab.capture_views))
+	capture_row.add_child(_button("Default / Alt", _lab.toggle_skin_comparison))
+	capture_row.add_child(_button("+ Remote", func() -> void: _lab.spawn_remote()))
+	capture_row.add_child(_button("Clear remotes", _lab.clear_remotes))
+
+
+func _switch_fighter(id: String) -> void:
+	if id == GameState.player_class:
+		return
+	_resume_lab_mode = "inspect" if _lab and _lab.mode == "inspect" else "third_person" if _lab and _lab.mode == "third_person" else ""
+	GameState.set_player_class(id)
+	get_tree().reload_current_scene()
+
+
+func _switch_skin(id: String) -> void:
+	if id == GameState.skin():
+		return
+	if id != "":
+		GameState.skins_owned[id] = true
+	GameState.equip_skin(GameState.player_class, id)
+	_lab.set_skin(id)
 
 
 # --- Doing things ---
