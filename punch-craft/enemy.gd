@@ -703,8 +703,10 @@ func hit_zone(hit_point: Vector3) -> String:
 
 ## Knocked silly (e.g. by a Combo Master shockwave): can't act for a while.
 ## force: an ultimate's (past the control grace, still within CONTROL_MAX).
-func stun(duration: float, force := false) -> void:
-	if _dead or not _can_stagger() or not _controllable(force):
+## through_poise: a boss's poise doesn't refuse it (Flame Burst's blinding
+## flash).
+func stun(duration: float, force := false, through_poise := false) -> void:
+	if _dead or (not through_poise and not _can_stagger()) or not _controllable(force):
 		return
 	duration = _control_for(duration)
 	_stagger_timer = maxf(_stagger_timer, duration)

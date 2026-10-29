@@ -1957,6 +1957,10 @@ A planning list, not a work order: nothing here gets built until the user picks 
   - It used to slow marked monsters with a chill, which also gave them the frozen look, so bosses under Doom stayed pale white.
   - Reaper now needs it at level 3.
   - Checked in `card_runtime_regression`.
+- **Flame Burst, harder:**
+  - **Damage:** each blast does 10x your damage (was 5x; Flame Burst II goes off twice).
+  - **Stun:** everything in it is stunned while the flash blinds you. Bosses are stunned for 1s even through their poise (`Enemy.stun` `through_poise`); everything else is still blasted up and knocked down 1.6s.
+  - Checked in `card_runtime_regression`.
 - **Feints:** a contender winds up a punch dark and silent (no lit glove, no blink), then, where its tell would flash, throws another instead. It's the other hand or another punch (`Boxer.FEINTS`: a jab feints into a cross or right hook, a hook into the other side or an uppercut). The real punch winds up for 0.3s, then lights up and blinks as usual.
   - **Who feints:** the Headless 12%, Sister Southpaw 18%, the Plague Doctor 15% and the Coffin King 20%, each +3% a round. The True Coffin King feints 25%, and 32% in Insano. The Bellman never does.
   - **Never:** while blind (the Plague Doctor's flash) or answering a slip.

@@ -302,6 +302,18 @@ func _exercise_ultimate(fighter: String, ultimate: String) -> void:
 		_check(is_equal_approx(player.ult.meter, before), "%s's %s doesn't charge while it's up" % [fighter, ultimate])
 	if ultimate == "temporal_break":
 		_check_time_stop(player)
+	if ultimate == "flame_burst":
+		# A boss in the blast is stunned, even holding its poise.
+		var boss: Enemy = load("res://dead_league_boss.tscn").instantiate()
+		boss.configure(4, 1)
+		boss.setup(player, false)
+		boss.position = player.global_position + Vector3(0, 0, -3)
+		holder.add_child(boss)
+		await get_tree().process_frame
+		boss._set_poise()
+		player.ult._burst_ring()
+		_check(boss.is_staggered(), "Flame Burst stuns a boss through its poise")
+		boss.queue_free()
 	if ultimate == "unbroken":
 		# Nothing drops the combo while it lasts: not a real hit, not a
 		# slipped punch or a shield (their _set_combo(0)).

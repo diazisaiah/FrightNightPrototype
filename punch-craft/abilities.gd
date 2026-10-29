@@ -93,7 +93,7 @@ const ULTIMATES := {
 		{"id": "elemental_fists", "name": "Elemental Fists", "icon": "bolt", "level": 1,
 			"desc": "For 10s every punch can throw a fireball, an icicle, lightning or a blood heal (20% each)."},
 		{"id": "flame_burst", "name": "Flame Burst", "icon": "burst", "level": 10,
-			"desc": "A ring of fire bursts out around you: big damage, and everything in it burns."},
+			"desc": "A ring of fire bursts out around you: huge damage, and everything in it burns and is stunned."},
 	],
 }
 

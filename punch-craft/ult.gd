@@ -130,7 +130,10 @@ const SPELL_HEAL := 0.3
 const BURST_RADIUS := 9.0
 const BURST_LAUNCH := 16.0
 const BURST_LIFT := 10.0
-const BURST_DAMAGE := 5.0
+## (2026-10-29: was 5x, too little for a blast that whites out the screen.)
+const BURST_DAMAGE := 10.0
+## Everything in the blast, bosses too, is stunned while the flash blinds you.
+const BURST_STUN := 1.0
 const BURST_BURN := 0.8
 const BURST_BURN_TIME := 5.0
 const BURST_COLOR := Color(1.0, 0.4, 0.06)
@@ -997,7 +1000,8 @@ func _blood_stream(from: Vector3, to: Vector3) -> void:
 		tween.tween_callback(drop.queue_free)
 
 
-## Flame Burst: fire bursts out in a ring; everything in it is hit and burns.
+## Flame Burst: fire bursts out in a ring; everything in it is hit, burns and
+## is stunned (bosses for BURST_STUN, the rest knocked down).
 ## Flame Burst II: it goes off again a moment later.
 func _flame_burst() -> void:
 	_spend()
@@ -1039,7 +1043,9 @@ func _burst_ring() -> void:
 			continue
 		enemy.finisher = {}
 		enemy.ignite(burn, BURST_BURN_TIME)
-		if not enemy.is_boss:
+		if enemy.is_boss:
+			enemy.stun(BURST_STUN, true, true)
+		else:
 			# Blasted up and away, and down when it lands.
 			enemy.velocity.y = BURST_LIFT * force
 			enemy.knock_down(1.6, away, true)
