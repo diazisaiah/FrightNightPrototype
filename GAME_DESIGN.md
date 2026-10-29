@@ -1875,3 +1875,16 @@ The rigged bosses' punches were small and snapped (a slight load pose through th
 - **The Headless's skull** sank into its chest in a real fight: its bob used a resting height filled in a deferred step that hadn't run yet (0, the neck joint). The height is set when the skull is built now; it floats just over the neck flame.
 - **Playground:** PASSIVE and ULTIMATE pickers for the fighter (any of them, whatever the level; the ring reloads to start it fresh), and the HUD's power tiles are wired up there too.
 - **Later contenders read slower:** with the big swings, the Plague Doctor and the Coffin King were almost impossible to react to. Every windup of theirs gets a flat +0.06s (Plague Doctor) / +0.075s (Coffin King; first tried at double, too slow) on top of their scaling (`DeadLeagueBoss.WINDUP_PAD`, `Boxer.windup_pad`), spent in the coil and hold; the flash-to-hit time is unchanged. The True Coffin King and his tag-in Plague Doctor get it too.
+
+## Roadmap: the user's to-do list (2026-10-28)
+
+1. **The Catalyst's runes [Planned]:** runes around him by passive: one big rune for the single power, two medium for two powers, four for Prism's four. Each glows its power's color.
+2. **Flame Burst ultimate [Planned]:** a very dramatic, big AoE explosion that sends regular enemies flying.
+3. **Tony's family [Planned]:** better fighting rigs and skull-cracking hits. Fix Tony's bald spot.
+4. **Emotes [Planned]:** redo every emote to look good; add new ones.
+5. **No stun-locks, anywhere [Planned]:** audit that no fighter, power or card can stun-lock bosses or monsters (stuns, staggers, freezes, knockdowns, card effects), with tests.
+6. **Balance check per fighter [Planned].**
+7. **Playground [Planned]:** easier controls, a skin picker, and set upgrade tiers to test at different power levels.
+8. **The Tower [Idea]:** a post-Coffin King mode to escape the underworld: climb an obstacle course and fight through rooms (the Crypt, going up). New enemies try to stop you leaving; the floor crumbles under you as you climb, and falling loses the level. New bosses, new upgrades; where decks and webs get maxed.
+   - **Prestige ("Elite"):** a maxed fighter can go elite: stats, cards and levels reset, but you gild cards (pick from 5; each prestige is 4 draws of 5). After prestige you start with the gilded cards and levels and stat points equal to 4x your gilded card count. Every card gilded and the fighter maxed: **Legend** status.
+9. **Multiplayer [In progress]:** start with the Versus prototype (Phase 1 of the plan above).
