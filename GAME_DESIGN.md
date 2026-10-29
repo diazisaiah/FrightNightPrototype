@@ -1987,6 +1987,13 @@ A planning list, not a work order: nothing here gets built until the user picks 
   - The Ossuary's giant ribcages are solid now (you could stand inside one).
   - The emote camera, the jumps past a monster and Highlight Reel's line of sight still see buildings.
   - Checked in `balance_regression`.
+- **No perching:** standing on a prop (a Crypt chest, altar or table, or any scenery) for 1s shoves you off, away from its middle (`Player.PERCH_TIME` / `PERCH_SHOVE`).
+  - Props are tagged `prop`: `Scenery.solid`, and the Crypt's prop bodies (`_add_solid` without a wall or floor body).
+  - The check looks straight down, since standing still leaves no slide collision.
+- **Blood only heals from your own knockouts:** kill heals (Blood Moon and its line, Bloodsoaked gear, the Fruit Hat) count only monsters your punch put down (`Player.kill_heal`, meta `punched_out`). Fire bursts, burns, chains and other blasts heal nothing; a Fire burst used to heal you once per monster in it.
+- **Fire and Blood proc less often:** Fire's cooldown is 3s (was 1.5s) and Blood's 4s (was 2s). The Catalyst's cards respect Blood's cooldown for healing too.
+- **Fighter picker hover:** hovering moved a card's pivot to its middle, which on shrunk cards (two rows) shifted the card down for good. The pivot stays put now; the card grows 3% and slides up-left by half of it, then back.
+- All checked in `card_runtime_regression`.
 - **Feints:** a contender winds up a punch dark and silent (no lit glove, no blink), then, where its tell would flash, throws another instead. It's the other hand or another punch (`Boxer.FEINTS`: a jab feints into a cross or right hook, a hook into the other side or an uppercut). The real punch winds up for 0.3s, then lights up and blinks as usual.
   - **Who feints:** the Headless 12%, Sister Southpaw 18%, the Plague Doctor 15% and the Coffin King 20%, each +3% a round. The True Coffin King feints 25%, and 32% in Insano. The Bellman never does.
   - **Never:** while blind (the Plague Doctor's flash) or answering a slip.

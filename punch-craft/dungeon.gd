@@ -773,7 +773,7 @@ func _on_enemy_died(enemy: Enemy) -> void:
 		silver = SILVER_ELITE
 	_silver += silver
 	GameState.add_xp(xp)
-	_player.heal(GameState.heal_amount("heal_on_kill", _player.max_knuckles))
+	_player.heal(_player.kill_heal(enemy))
 	_update_info()
 	if kind == "mimic":
 		# Beaten, it coughs up the real thing.
@@ -1999,7 +1999,10 @@ func _block(body: StaticBody3D, size: Vector3, pos: Vector3, material: Material)
 func _add_solid(parent: Node3D, size: Vector3, pos: Vector3) -> void:
 	var body: Node3D = parent
 	if not (parent is StaticBody3D):
+		# A prop's own body (chests, altars, tables): nobody camps on top of it
+		# (Player.PERCH_TIME). Walls and floors come in as a StaticBody3D.
 		body = StaticBody3D.new()
+		body.set_meta("prop", true)
 		parent.add_child(body)
 	var shape := CollisionShape3D.new()
 	var box := BoxShape3D.new()

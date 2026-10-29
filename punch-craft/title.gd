@@ -877,13 +877,21 @@ func _fighter_card(id: String) -> Control:
 	card.gui_input.connect(func(event: InputEvent) -> void:
 		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 			_pick_fighter(id))
+	# Hover: grows 3% about its middle. The pivot stays at the corner (moving
+	# it on a shrunk card shifted the card for good: two rows, 2026-10-29), so
+	# it slides up-left by half the growth instead.
 	card.mouse_entered.connect(func() -> void:
 		if _picked == "":
-			card.pivot_offset = card.size / 2.0
-			card.create_tween().tween_property(card, "scale", Vector2.ONE * 1.03 * _card_scale, 0.1)
+			var home: Vector2 = _cards[id].home
+			var hover := card.create_tween().set_parallel()
+			hover.tween_property(card, "scale", Vector2.ONE * 1.03 * _card_scale, 0.1)
+			hover.tween_property(card, "position", home - card.size * _card_scale * 0.015, 0.1)
 			Sfx.play("whoosh", -18.0, 1.6))
 	card.mouse_exited.connect(func() -> void:
-		card.create_tween().tween_property(card, "scale", Vector2.ONE * _card_scale, 0.1))
+		if _picked == "":
+			var back := card.create_tween().set_parallel()
+			back.tween_property(card, "scale", Vector2.ONE * _card_scale, 0.1)
+			back.tween_property(card, "position", _cards[id].home, 0.1))
 	_cards[id] = {"panel": card, "level": level, "badge": badge_box}
 	return card
 

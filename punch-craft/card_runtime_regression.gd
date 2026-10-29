@@ -41,6 +41,8 @@ func _run() -> void:
 	await _test_dash_punch_cooldowns()
 	await _test_dead_weight()
 	await _test_tutorial_fights()
+	await _test_perch_and_blood()
+	await _test_fighter_card_hover()
 	await _test_boss_poise()
 	await _test_endless_powers()
 	TimeFx.clear()
@@ -567,6 +569,80 @@ func _test_tutorial_fights() -> void:
 	training.queue_free()
 	await get_tree().process_frame
 	print("Card runtime: tutorial fights OK")
+
+
+## 2026-10-29: standing on a prop gets you shoved off after Player.PERCH_TIME;
+## kill heals only come from monsters your punch put down; Fire and Blood
+## proc at most every 3s / 4s.
+func _test_perch_and_blood() -> void:
+	var rig := await _make_rig("berserker")
+	var holder: Node3D = rig[0]
+	var player: Player = rig[1]
+	var target: Enemy = rig[2][0]
+	# A crate with the player standing on it (real physics for once).
+	var ground := StaticBody3D.new()
+	var ground_shape := CollisionShape3D.new()
+	ground_shape.shape = WorldBoundaryShape3D.new()
+	ground.add_child(ground_shape)
+	holder.add_child(ground)
+	var crate := StaticBody3D.new()
+	crate.set_meta("prop", true)
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(1.2, 0.9, 1.2)
+	shape.shape = box
+	shape.position = Vector3(0, 0.45, 0)
+	crate.add_child(shape)
+	crate.position = Vector3(6, 0, 6)
+	holder.add_child(crate)
+	player.global_position = Vector3(6, 1.0, 6)
+	player.velocity = Vector3.ZERO
+	player.active = true
+	player.set_physics_process(true)
+	var on_top := false
+	for i in 30:
+		await get_tree().physics_frame
+		on_top = on_top or (player.is_on_floor() and player.global_position.y > 0.8)
+	_check(on_top, "The test stands the player on the crate (y %.2f)" % player.global_position.y)
+	for i in roundi((Player.PERCH_TIME + 1.0) * 60.0):
+		await get_tree().physics_frame
+	var off := Vector2(player.global_position.x - 6.0, player.global_position.z - 6.0).length() > 0.6 or player.global_position.y < 0.5
+	_check(off, "A player perched on a prop is shoved off (at %s)" % str(player.global_position))
+	player.set_physics_process(false)
+	# Kill heals: only for your own punch's knockouts.
+	GameState.upgrade_levels.sigil_blood = 1
+	GameState.select_power("sigil_blood")
+	_check(is_zero_approx(player.kill_heal(target)), "A monster a power put down heals nothing")
+	target.set_meta("punched_out", true)
+	_check(player.kill_heal(target) > 0.0, "One your punch put down heals")
+	_check(PowerPlay.COOLDOWNS.sigil_fire >= 3.0 and PowerPlay.COOLDOWNS.sigil_blood >= 4.0, "Fire and Blood proc at most every 3s / 4s")
+	await _free_rig(holder)
+	print("Card runtime: perch and blood OK")
+
+
+## The fighter picker (2026-10-29): hovering a card and leaving puts it back
+## where it was, two rows or one (the pivot moving on a shrunk card shifted it).
+func _test_fighter_card_hover() -> void:
+	GameState._reset_fields()
+	GameState.tony_unlocked = true
+	GameState.fighters_bought.elementalist = true
+	var title: Node = load("res://title.tscn").instantiate()
+	add_child(title)
+	await get_tree().process_frame
+	title._open_classes()
+	await get_tree().process_frame
+	for id in title._cards:
+		var card: Control = title._cards[id].panel
+		var home: Vector2 = title._cards[id].home
+		card.mouse_entered.emit()
+		await get_tree().create_timer(0.2).timeout
+		card.mouse_exited.emit()
+		await get_tree().create_timer(0.2).timeout
+		_check(card.pivot_offset == Vector2.ZERO and card.position.is_equal_approx(home) and card.scale.is_equal_approx(Vector2.ONE * title._card_scale),
+				"Hovering %s's card leaves it in place" % id)
+	title.queue_free()
+	await get_tree().process_frame
+	print("Card runtime: fighter cards OK")
 
 
 ## Boss poise: a staggered boss can't be staggered or stunned again (or have

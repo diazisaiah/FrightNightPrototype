@@ -644,9 +644,12 @@ func _set_off(root: String, target: Enemy, damage := 0.0) -> void:
 		"sigil_storm":
 			Powers.chain_lightning(target, damage, maxi(2, int(_power_value(root, "chain_lightning"))))
 		"sigil_blood":
-			player.heal(maxf(GameState.heal_amount("counter_heal", player.max_knuckles), player.max_knuckles * 0.02))
-			Powers.blood_drain(target, player)
-			Powers.went_off(root, target)
+			# Healing keeps Blood's cooldown, even from a card.
+			if player.powers.ready("sigil_blood"):
+				player.powers.spend("sigil_blood")
+				player.heal(maxf(GameState.heal_amount("counter_heal", player.max_knuckles), player.max_knuckles * 0.02))
+				Powers.blood_drain(target, player)
+				Powers.went_off(root, target)
 		"sigil_quake":
 			Powers.ground_pound(player, GameState.get_damage() * maxf(_power_value(root, "quake_power"), 0.8), PowerPlay.QUAKE_RADIUS, true)
 		"sigil_gale":

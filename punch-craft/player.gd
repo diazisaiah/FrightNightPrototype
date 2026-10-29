@@ -339,6 +339,14 @@ var _dash_jab_time := 0.0
 ## The tutorial's fights: every attack hits for this (before a graze), so six
 ## take you down. 0: off.
 var fixed_hit := 0.0
+## Standing on a prop (a chest, an altar, a table, a building): after
+## PERCH_TIME you're shoved off (2026-10-29: perched up there, you could hit
+## monsters with reach or spells while they couldn't reach you).
+const PERCH_TIME := 1.0
+const PERCH_SHOVE := 6.0
+var _perch_time := 0.0
+## The shove off a perch, easing out (walking would cancel a plain velocity).
+var _shove := Vector3.ZERO
 var _spear_cooldown := 0.0
 var _haymaker_cooldown := 0.0
 var _ghost_time := 0.0
@@ -651,8 +659,13 @@ func _physics_process(delta: float) -> void:
 		velocity.x = move_toward(velocity.x, 0, speed)
 		velocity.z = move_toward(velocity.z, 0, speed)
 
+	if _shove.length() > 0.1:
+		velocity.x = _shove.x
+		velocity.z = _shove.z
+		_shove = _shove.move_toward(Vector3.ZERO, PERCH_SHOVE * 3.0 * delta)
 	var was_airborne := not is_on_floor()
 	move_and_slide()
+	_check_perch(delta)
 	if dash_time > 0.0:
 		for i in get_slide_collision_count():
 			var bumped := get_slide_collision(i).get_collider() as Enemy
@@ -783,6 +796,13 @@ func receive_attack(amount: float, from: Vector3, attack: String, attacker: Node
 
 
 ## Knuckle damage from an attack; Thorns hits the attacker back for what it cost.
+## What a knockout heals (Blood, Bloodsoaked gear, the Fruit Hat): only a
+## monster your own punch put down. Powers' blasts, burns and chains heal
+## nothing (2026-10-29: Fire and Blood healed you once per monster in a burst).
+func kill_heal(enemy: Enemy) -> float:
+	return GameState.heal_amount("heal_on_kill", max_knuckles) if enemy and enemy.has_meta("punched_out") else 0.0
+
+
 func _take_damage(amount: float, attacker: Node3D) -> void:
 	amount = powers.hit_amount(amount, attacker as Enemy)
 	amount = cards.hit_amount(amount, attacker as Enemy)
@@ -1620,6 +1640,9 @@ func _land_punch(type: String, hand: String, _dashing := false, airborne := fals
 	if dealt >= Hats.MASSIVE_HIT * GameState.get_damage():
 		Hats.award(get_tree(), "bald_cap")
 	var killed := target.is_dead()
+	if killed:
+		# Your punch put it down (kill heals count only these: kill_heal).
+		target.set_meta("punched_out", true)
 	if not killed:
 		target.finisher = {}
 	if _dash_style == "haymaker" and not killed:
@@ -1828,6 +1851,32 @@ func _trigger_powers(target: Enemy, damage: float, big_hit: bool, counter := fal
 		powers.spend("sigil_doom")
 		Powers.doom_mark(target)
 	powers.on_landed()
+
+
+## On a prop for PERCH_TIME: shoved off it, away from its middle.
+func _check_perch(delta: float) -> void:
+	var prop: Node3D = null
+	if is_on_floor():
+		# What's underfoot (standing still, there's no slide collision to read).
+		var query := PhysicsRayQueryParameters3D.create(global_position + Vector3.UP * 0.2, global_position + Vector3.DOWN * 0.3, 1 | Scenery.LAYER)
+		query.exclude = [get_rid()]
+		var hit := get_world_3d().direct_space_state.intersect_ray(query)
+		var body := hit.get("collider") as Node3D
+		if body and body.has_meta("prop"):
+			prop = body
+	if prop == null:
+		_perch_time = 0.0
+		return
+	_perch_time += delta
+	if _perch_time < PERCH_TIME:
+		return
+	_perch_time = 0.0
+	var away := global_position - prop.global_position
+	away.y = 0.0
+	away = away.normalized() if away.length() > 0.05 else -_flat_forward()
+	_shove = away * PERCH_SHOVE
+	velocity.y = 3.0
+	Sfx.play("whoosh", -6.0, 0.8)
 
 
 ## Thunderhead (Storm capstone): a clean dodge strikes the attacker, then arcs.

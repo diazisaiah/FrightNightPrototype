@@ -38,6 +38,7 @@ const WALL_HEIGHT := 8.0
 ## crates) stay walk-through so nobody snags on clutter.
 static func solid(parent: Node3D, size: Vector3, pos: Vector3, rot := Vector3.ZERO, radius := 0.0) -> StaticBody3D:
 	var body := StaticBody3D.new()
+	body.set_meta("prop", true)
 	body.collision_layer = LAYER
 	body.collision_mask = 0
 	var height := maxf(size.y, WALL_HEIGHT)

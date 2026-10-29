@@ -22,7 +22,8 @@ const QUAKE_MIN_AIR := 0.3
 ## Seconds before a punch can set a power off again, on top of its chance (so
 ## they land as moments, not a constant fizz). The Catalyst's cards set them
 ## off regardless.
-const COOLDOWNS := {"sigil_fire": 1.5, "sigil_frost": 3.0, "sigil_storm": 1.5, "sigil_blood": 2.0, "sigil_doom": 4.0}
+## (2026-10-29: Fire 1.5s and Blood 2s were too often.)
+const COOLDOWNS := {"sigil_fire": 3.0, "sigil_frost": 3.0, "sigil_storm": 1.5, "sigil_blood": 4.0, "sigil_doom": 4.0}
 ## The power each one's effect switches on.
 const COOLDOWN_EFFECTS := {"sigil_fire": "fire_punch", "sigil_frost": "frost_punch", "sigil_storm": "chain_lightning",
 	"sigil_blood": "counter_heal", "sigil_doom": "doom"}

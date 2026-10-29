@@ -525,7 +525,7 @@ func _on_enemy_died(enemy: Enemy) -> void:
 	var xp := roundi(enemy.xp_reward * (1.0 + GameState.get_effect("xp_bonus")))
 	_run_xp += xp
 	GameState.add_xp(xp)
-	_player.heal(GameState.heal_amount("heal_on_kill", _player.max_knuckles) + (FIRST_NIGHT.kill_heal if _first_night() else 0.0))
+	_player.heal(_player.kill_heal(enemy) + (FIRST_NIGHT.kill_heal if _first_night() else 0.0))
 	if _run_over or _night_won:
 		return
 	if _endless:
