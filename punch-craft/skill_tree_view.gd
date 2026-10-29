@@ -41,6 +41,14 @@ var _views := {}
 var _branch := {}
 var _map: Control
 var _links: Control
+## What moves: link sparks, the turning "?" dashes and purchase pulses, drawn
+## every frame over _links, which only redraws when the web changes
+## (2026-10-28: redrawing the whole web every frame held camp to a few fps in
+## browsers). Paths cached by the last _links draw.
+var _fx: Control
+var _spark_paths: Array = []
+var _charge_paths := {}
+var _unknown_spots: Array = []
 var _pan := Vector2.ZERO
 var _zoom := 1.0
 var _dragging := false
@@ -77,11 +85,12 @@ func _process(delta: float) -> void:
 		_charges[id] += delta / 0.45
 		if _charges[id] >= 1.0:
 			_charges.erase(id)
-	# Link sparks redraw every frame, or every other frame in the browser
-	# (always while a purchase pulse is running).
+	# Sparks and pulses redraw every frame, or every other frame in the browser
+	# (always while a purchase pulse is running). The links themselves only
+	# when the web changes (refresh).
 	var throttle := Settings.use_web_profile() and _charges.is_empty() and Engine.get_process_frames() % 2 == 1
-	if _links and is_visible_in_tree() and not throttle:
-		_links.queue_redraw()
+	if _fx and is_visible_in_tree() and not throttle:
+		_fx.queue_redraw()
 	if _hover_id != "":
 		_place_hover_card()
 
@@ -118,6 +127,10 @@ func setup(tree_kind: String) -> void:
 	_links.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_links.draw.connect(_draw_map)
 	_map.add_child(_links)
+	_fx = Control.new()
+	_fx.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_fx.draw.connect(_draw_fx)
+	_map.add_child(_fx)
 	_build_nodes()
 
 	_build_progress()
@@ -416,8 +429,11 @@ func _draw_map() -> void:
 		_links.draw_string(font, spot, label, HORIZONTAL_ALIGNMENT_LEFT, -1, 22, Color(tint, 0.55 if lit else 0.25))
 
 	# Links. Owned ones are batched by color (a polyline each cost two draws
-	# per link).
+	# per link). Their paths are kept for _draw_fx.
 	var batches := {}
+	_spark_paths.clear()
+	_charge_paths.clear()
+	_unknown_spots.clear()
 	for id in tree:
 		if not _views.has(id):
 			continue
@@ -446,20 +462,13 @@ func _draw_map() -> void:
 				# A soft glow under owned links, with sparks flowing along them.
 				_batch(batches, [Color(tint, 0.2), 9.0], shaft)
 				_batch(batches, [tint.lightened(0.2), 2.5], shaft)
-				var length := _path_length(trimmed)
-				for k in 2:
-					var t := fposmod(_flow * 60.0 / maxf(length, 1.0) + k * 0.5, 1.0)
-					_links.draw_circle(_point_along(trimmed, t), 2.6, Color(1, 0.95, 0.8, 0.9 * sin(t * PI)))
+				_spark_paths.append([trimmed, _path_length(trimmed)])
 			else:
 				var ready := GameState.can_buy_node(kind, id)
 				var line_color := Color(UiTheme.READY, 0.55) if ready else Color(0.6, 0.6, 0.7, 0.4)
 				_dashed_path(shaft, line_color, 2.0, 7.0)
-			# A bright pulse running into a node that was just bought.
-			if _charges.has(id):
-				var t: float = _charges[id]
-				var p := _point_along(trimmed, t)
-				_links.draw_circle(p, 9.0 * (1.0 - t * 0.5), Color(tint.lightened(0.5), 0.35))
-				_links.draw_circle(p, 4.0, Color(1, 1, 1, 0.95))
+			# For the bright pulse running into a node that was just bought.
+			_charge_paths[id] = [trimmed, tint]
 			var link_color := tint.lightened(0.2) if owned else Color(0.6, 0.6, 0.7, 0.45)
 			var direction := (tip - trimmed[trimmed.size() - 2]).normalized()
 			var side := Vector2(-direction.y, direction.x) * 5.0
@@ -556,18 +565,43 @@ func _inset(view: TreeNodeView, direction: Vector2) -> float:
 
 ## An unrevealed node: a faint dashed circle with a question mark.
 func _draw_unknown(at: Vector2) -> void:
-	var pulse := 0.5 + 0.5 * sin(_flow * 2.0 + at.x * 0.02)
-	# Ten turning dashes, in one draw.
-	var dashes := PackedVector2Array()
-	for i in 10:
-		var a := TAU * i / 10.0 + _flow * 0.3
-		for k in 3:
-			dashes.append(at + Vector2.from_angle(a + TAU / 20.0 * k / 3.0) * 16.0)
-			dashes.append(at + Vector2.from_angle(a + TAU / 20.0 * (k + 1) / 3.0) * 16.0)
-	_links.draw_multiline(dashes, Color(0.7, 0.7, 0.8, 0.25 + pulse * 0.1), 1.5, true)
+	_unknown_spots.append(at)
 	var font := UiTheme.display_font()
 	var mark_size := font.get_string_size("?", HORIZONTAL_ALIGNMENT_LEFT, -1, 18)
-	_links.draw_string(font, at + Vector2(-mark_size.x / 2.0, 7.0), "?", HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color(0.75, 0.75, 0.85, 0.35 + pulse * 0.15))
+	_links.draw_string(font, at + Vector2(-mark_size.x / 2.0, 7.0), "?", HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color(0.75, 0.75, 0.85, 0.45))
+
+
+## What moves, every frame: two sparks along each owned link, the "?"
+## markers' turning dashes, and the pulse into a node just bought. A few
+## draws in all.
+func _draw_fx() -> void:
+	var sparks := PackedVector2Array()
+	for entry in _spark_paths:
+		var points: PackedVector2Array = entry[0]
+		var length: float = entry[1]
+		for k in 2:
+			var t := fposmod(_flow * 60.0 / maxf(length, 1.0) + k * 0.5, 1.0)
+			var reach := 2.2 * sin(t * PI) / maxf(length, 1.0)
+			sparks.append(_point_along(points, clampf(t - reach, 0.0, 1.0)))
+			sparks.append(_point_along(points, clampf(t + reach, 0.0, 1.0)))
+	if not sparks.is_empty():
+		_fx.draw_multiline(sparks, Color(1, 0.95, 0.8, 0.85), 4.5, true)
+	var dashes := PackedVector2Array()
+	for at: Vector2 in _unknown_spots:
+		for i in 10:
+			var a := TAU * i / 10.0 + _flow * 0.3
+			for k in 3:
+				dashes.append(at + Vector2.from_angle(a + TAU / 20.0 * k / 3.0) * 16.0)
+				dashes.append(at + Vector2.from_angle(a + TAU / 20.0 * (k + 1) / 3.0) * 16.0)
+	if not dashes.is_empty():
+		_fx.draw_multiline(dashes, Color(0.7, 0.7, 0.8, 0.25 + 0.1 * (0.5 + 0.5 * sin(_flow * 2.0))), 1.5, true)
+	for id in _charges:
+		if not _charge_paths.has(id):
+			continue
+		var t: float = _charges[id]
+		var p := _point_along(_charge_paths[id][0], t)
+		_fx.draw_circle(p, 9.0 * (1.0 - t * 0.5), Color((_charge_paths[id][1] as Color).lightened(0.5), 0.35))
+		_fx.draw_circle(p, 4.0, Color(1, 1, 1, 0.95))
 
 
 # --- Overlay: progress, legend, hover card ---------------------------------------

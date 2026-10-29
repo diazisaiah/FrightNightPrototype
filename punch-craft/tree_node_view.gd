@@ -85,12 +85,27 @@ func _process(delta: float) -> void:
 	_flash = maxf(0.0, _flash - delta * 2.5)
 	_deny = maxf(0.0, _deny - delta * 2.2)
 	_shake = sin(_time * 70.0) * 6.0 * _deny
-	# Idle shimmer (pulses, turning runes) is slow: in the browser, redraw idle
-	# nodes every third frame, staggered; anything being interacted with or
-	# bursting redraws every frame.
+	# Only nodes that move redraw on their own (refresh() redraws the rest):
+	# anything being interacted with or bursting every frame; idle shimmer
+	# (pulses, turning runes, the maxed shine) every frame, or every third,
+	# staggered, in the browser.
 	var busy := _hover or _burst >= 0.0 or _flash > 0.0 or _deny > 0.0
-	if busy or not Settings.use_web_profile() or (Engine.get_process_frames() + get_instance_id()) % 3 == 0:
+	if busy or _was_busy:
 		queue_redraw()
+	elif _animated() and (not Settings.use_web_profile() or (Engine.get_process_frames() + get_instance_id()) % 3 == 0):
+		queue_redraw()
+	_was_busy = busy
+
+
+var _was_busy := false
+
+
+## Something on it moves while idle.
+func _animated() -> bool:
+	var owned := state == "maxed" or state == "owned"
+	if owned:
+		return shape in ["root", "sigil"] or state == "maxed" or is_selected or fresh
+	return affordable or sealed_by != "" or is_selected or fresh
 
 
 func refresh() -> void:
