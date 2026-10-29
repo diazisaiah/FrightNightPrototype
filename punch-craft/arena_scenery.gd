@@ -1,7 +1,8 @@
 class_name ArenaScenery
 ## The Underworld Arena's deeper divisions (Themes.ARENA): each a 45 m field
-## like the graveyard, dressed its own way. No collision (scenery never traps
-## anyone); everything beyond the walls is backdrop. build() returns the
+## like the graveyard, dressed its own way. Buildings, pillars and fences are
+## solid (Scenery.solid, 2026-10-28); the small props stay walk-through;
+## everything beyond the walls is backdrop. build() returns the
 ## flame lights so the world can flicker them.
 
 const RADIUS := 45.0
@@ -94,6 +95,7 @@ static func _ossuary(theme: Dictionary, parent: Node3D, rng: RandomNumberGenerat
 			_skull(node, Vector3(0, 0.3 + k * 0.62, 0), 0.7, bone if k % 2 == 0 else bone_dark, dark, k * 0.7)
 		Scenery.box(node, Vector3(0.9, 0.2, 0.9), Vector3(0, 4.05, 0), bone_dark)
 		_fire(node, Vector3(0, 4.3, 0), theme, lights, 2.2, 2.6)
+		Scenery.solid(node, Vector3(0.9, 4.2, 0.9), Vector3(0, 2.1, 0))
 	# Giant ribcages, half sunk in the ash.
 	for i in 3:
 		var spot := Vector2.from_angle(TAU * i / 3.0 + 1.0) * rng.randf_range(30.0, 40.0)
@@ -210,6 +212,7 @@ static func _carnival(theme: Dictionary, parent: Node3D, rng: RandomNumberGenera
 			Scenery.box(node, Vector3(w, 0.7, w), Vector3(0, 0.35 + k * 0.7, 0), green if k % 2 == 0 else purple)
 		Scenery.box(node, Vector3(0.08, 1.2, 0.08), Vector3(0, 4.7, 0), wood)
 		Scenery.box(node, Vector3(0.6, 0.35, 0.03), Vector3(0.3, 5.1, 0), purple)
+		Scenery.solid(node, Vector3(size, 4.2, size), Vector3(0, 2.1, 0))
 	# The broken carousel.
 	var carousel := _at(parent, Vector2(-24, 14), 0.3)
 	var base := CylinderMesh.new()
@@ -223,6 +226,7 @@ static func _carnival(theme: Dictionary, parent: Node3D, rng: RandomNumberGenera
 	base_node.position.y = 0.25
 	carousel.add_child(base_node)
 	Scenery.box(carousel, Vector3(0.5, 5.0, 0.5), Vector3(0, 2.7, 0), iron)
+	Scenery.solid(carousel, Vector3(0, 5.0, 0), Vector3(0, 2.5, 0), Vector3.ZERO, 5.2)
 	for k in 3:
 		var canopy := CylinderMesh.new()
 		canopy.top_radius = 5.2 - k * 1.7

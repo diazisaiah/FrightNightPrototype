@@ -382,9 +382,11 @@ func _test_web_optimization_structure() -> void:
 	var holder := Node3D.new()
 	add_child(holder)
 	var run := Scenery.fence(holder, 10.0)
-	_check(run.get_child_count() == 2, "A fence run should be two batched MultiMeshes")
+	var visuals := run.get_children().filter(func(child: Node) -> bool: return not child is StaticBody3D)
+	_check(visuals.size() == 2, "A fence run should be two batched MultiMeshes")
+	_check(run.get_children().any(func(child: Node) -> bool: return child is StaticBody3D), "Fences are solid")
 	var instances := 0
-	for child in run.get_children():
+	for child in visuals:
 		_check(child is MultiMeshInstance3D, "Fence children must be MultiMesh batches, not individual meshes")
 		if child is MultiMeshInstance3D:
 			instances += child.multimesh.instance_count

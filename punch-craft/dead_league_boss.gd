@@ -522,6 +522,9 @@ func _build_headless() -> void:
 	_flame_stack(_rig.bone("neck"), Vector3(0, 0.02, 0), 0.13, flame)
 	# Floating just over the neck stump's flame (it used to sit down in the chest).
 	_float_head = _skull(_rig.bone("neck"), Vector3(0, 0.44, -0.02), 0.3, bone, dark, eyes)
+	# Its resting height, for the bob (set here: _animate runs before the
+	# deferred _finish_look, and a base of 0 sank it into the chest).
+	_float_base = _float_head.position.y
 	_flame_stack(_float_head, Vector3(0, 0.18, 0.05), 0.12, flame)
 	for arm in ["left", "right"]:
 		var s := "_l" if arm == "left" else "_r"
@@ -795,8 +798,6 @@ func _flame_stack(parent: Node3D, base: Vector3, size: float, material: Material
 ## After voxelizing: the accent rim glow on every part, wisps rising off the
 ## body, and a light of the boss's color.
 func _finish_look() -> void:
-	if _float_head:
-		_float_base = _float_head.position.y  # On the neck bone.
 	var accent: Color = DeadLeagueRules.boss(profile_index).accent
 	var rim := ShaderMaterial.new()
 	var shader := Shader.new()

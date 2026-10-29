@@ -23,6 +23,29 @@ static func box(parent: Node3D, size: Vector3, pos: Vector3, material: Material,
 	return instance
 
 
+## Something you can't walk through: a box (or, with radius, an upright
+## cylinder) of collision under parent, on the world layer. Buildings and
+## fences get one; small props (graves, rocks, crates) stay walk-through so
+## nobody snags on clutter.
+static func solid(parent: Node3D, size: Vector3, pos: Vector3, rot := Vector3.ZERO, radius := 0.0) -> StaticBody3D:
+	var body := StaticBody3D.new()
+	body.position = pos
+	body.rotation = rot
+	var shape := CollisionShape3D.new()
+	if radius > 0.0:
+		var cylinder := CylinderShape3D.new()
+		cylinder.radius = radius
+		cylinder.height = size.y
+		shape.shape = cylinder
+	else:
+		var box_shape := BoxShape3D.new()
+		box_shape.size = size
+		shape.shape = box_shape
+	body.add_child(shape)
+	parent.add_child(body)
+	return body
+
+
 ## A gravestone with its dirt mound; kind 0-5 picks the shape.
 static func gravestone(parent: Node3D, kind: int, rng: RandomNumberGenerator) -> Node3D:
 	var grave := Node3D.new()
@@ -126,6 +149,7 @@ static func fence(parent: Node3D, length: float) -> Node3D:
 	# the exact same silhouette and layout.
 	_box_batch(run, iron, iron_boxes)
 	_box_batch(run, stone, stone_boxes)
+	solid(run, Vector3(length + 0.44, 1.95, 0.4), Vector3(length / 2.0, 0.975, 0))
 	return run
 
 
@@ -151,7 +175,8 @@ static func _box_batch(parent: Node3D, material: Material, transforms: Array[Tra
 	return instance
 
 
-## A small family crypt: walls, a peaked roof, a dark door and a cross.
+## A small family crypt: walls, a peaked roof, a dark door and a stone urn
+## on the gable (no crosses, by the house rule). Solid.
 static func crypt(parent: Node3D, rng: RandomNumberGenerator) -> Node3D:
 	var root := Node3D.new()
 	parent.add_child(root)
@@ -169,8 +194,10 @@ static func crypt(parent: Node3D, rng: RandomNumberGenerator) -> Node3D:
 	roof_node.position = Vector3(0, 3.25, 0)
 	root.add_child(roof_node)
 	box(root, Vector3(1.0, 1.7, 0.06), Vector3(0, 1.15, 1.61), Look.block_material(Color(0.04, 0.035, 0.04)))
-	box(root, Vector3(0.12, 0.7, 0.12), Vector3(0, 4.1, 1.4), stone)
-	box(root, Vector3(0.4, 0.12, 0.12), Vector3(0, 4.25, 1.4), stone)
+	box(root, Vector3(0.3, 0.12, 0.3), Vector3(0, 3.86, 1.4), stone)
+	box(root, Vector3(0.22, 0.3, 0.22), Vector3(0, 4.07, 1.4), stone)
+	box(root, Vector3(0.12, 0.1, 0.12), Vector3(0, 4.27, 1.4), stone)
+	solid(root, Vector3(3.3, 3.8, 3.9), Vector3(0, 1.9, 0.05))
 	return root
 
 
