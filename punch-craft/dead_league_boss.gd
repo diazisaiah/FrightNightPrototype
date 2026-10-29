@@ -9,6 +9,9 @@ extends Boss
 ## and carries its own light.
 
 const ROUND_HP := [1.0, 1.16, 1.34]
+## Extra windup per contender (2026-10-28: with the big readable swings the
+## Plague Doctor and the Coffin King were almost impossible to react to).
+const WINDUP_PAD := [0.0, 0.0, 0.0, 0.12, 0.15]
 const ROUND_DAMAGE := [1.0, 1.08, 1.17]
 ## Slipping your punches between combos, then countering (dodge it and counter
 ## back). Chance per contender (its profile's "evade"), +5% a round, +10% at
@@ -124,6 +127,7 @@ func configure(index: int, bout_round: int) -> void:
 	attack_damage = profile.damage * ROUND_DAMAGE[round_number - 1] * par.ehp / Progression.BASE_KNUCKLES
 	move_speed = 2.5 * profile.speed * (1.0 + 0.04 * (round_number - 1))
 	windup_scale = profile.windup * (1.0 - 0.045 * (round_number - 1))
+	windup_pad = WINDUP_PAD[profile_index]
 	open_scale = profile.open
 	coin_reward = 0
 	xp_reward = 0

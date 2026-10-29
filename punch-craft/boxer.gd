@@ -129,6 +129,9 @@ var _last_result := ""
 ## Bosses: while more punches are queued in a combo, hits still land but
 ## can't stagger or interrupt it. Dodge the whole combo, then punish the end.
 var combo_armor := false
+## Seconds added to every windup (after windup_scale): the later Dead League
+## contenders get a little extra to read their bigger swings.
+var windup_pad := 0.0
 var _armor_shown := false
 
 
@@ -253,7 +256,7 @@ func _begin_attack(attack: String, windup: float) -> void:
 	_attack = attack
 	_flashed = false
 	_previewed = false
-	_windup_total = maxf(windup * windup_scale, tell_time() + 0.15)
+	_windup_total = maxf(windup * windup_scale, tell_time() + 0.15) + windup_pad
 	var left := _attack_uses_arm(attack, "left")
 	var right := _attack_uses_arm(attack, "right")
 	if left != right:
