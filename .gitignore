@@ -28,3 +28,6 @@ Thumbs.db
 desktop.ini
 .claude/settings.local.json
 playground/project/
+
+# Local tools (the Blender install and its art): never committed.
+tools/
