@@ -71,6 +71,12 @@ const KING_REST := 0.6
 ## level with this share of his HP. Round 5 he goes Insano: combos of six to
 ## eight punches, super armor through every punch of them, quicker tells.
 const TRUE_PARTNER_HP := 0.6
+## Feint chance by contender (Bellman, Headless, Southpaw, Plague Doctor,
+## Coffin King), +FEINT_PER_ROUND a round; the True Coffin King and Insano.
+const FEINT_CHANCE := [0.0, 0.12, 0.18, 0.15, 0.2]
+const FEINT_PER_ROUND := 0.03
+const TRUE_FEINT := 0.25
+const INSANO_FEINT := 0.32
 ## A maxed fighter (level 51, every card at full rank, every attribute, the
 ## whole web) over Progression.true_par, by class: (offense, defense) from
 ## PowerRating.maxed_over_true_par. The True Coffin King and his tag-ins take
@@ -149,6 +155,8 @@ func configure(index: int, bout_round: int) -> void:
 	move_speed = 2.5 * profile.speed * (1.0 + 0.04 * (round_number - 1))
 	windup_scale = profile.windup * (1.0 - 0.045 * (round_number - 1))
 	windup_pad = WINDUP_PAD[profile_index]
+	if FEINT_CHANCE[profile_index] > 0.0:
+		feint_chance = FEINT_CHANCE[profile_index] + FEINT_PER_ROUND * (round_number - 1)
 	open_scale = profile.open
 	coin_reward = 0
 	xp_reward = 0
@@ -188,11 +196,13 @@ func empower(bout_round: int, partner := false) -> void:
 	_base_speed = move_speed
 	if not partner:
 		display_name = "THE TRUE COFFIN KING"
+		feint_chance = TRUE_FEINT
 
 
 ## Insano style (the True Coffin King's last round).
 func go_insano() -> void:
 	insano = true
+	feint_chance = INSANO_FEINT
 	windup_scale *= INSANO_WINDUP
 	_base_windup = windup_scale
 	var aura := CPUParticles3D.new()
@@ -996,6 +1006,11 @@ func _think(delta: float) -> Vector3:
 	if _blind_time > 0.0:
 		return _think_blind(delta)
 	return super(delta)
+
+
+## No feints while blind (it's swinging at nothing) or answering a slip.
+func _can_feint() -> bool:
+	return _blind_time <= 0.0 and _state != State.EVADE
 
 
 ## Sister Southpaw, mid-combo: around your side and behind you in a blink.

@@ -55,6 +55,16 @@ const CUES := {
 ## Weapon attacks are always thrown with the weapon arm.
 const WEAPON_ATTACKS := ["staff", "thrust", "slash"]
 const COUNTER_ATTACKS := ["jab", "cross", "left_hook", "right_hook", "uppercut"]
+## Feints (2026-10-29): a punch wound up dark and silent (no glove light, no
+## tell) that never comes; where its tell would flash, the real one (the
+## other hand, or another punch) winds up for FEINT_WINDUP and is thrown.
+## What each punch can feint into.
+const FEINTS := {
+	"jab": ["cross", "right_hook"], "cross": ["jab", "left_hook"],
+	"left_hook": ["cross", "right_hook", "uppercut"], "right_hook": ["jab", "left_hook", "uppercut"],
+	"uppercut": ["jab", "cross", "left_hook", "right_hook"],
+}
+const FEINT_WINDUP := 0.3
 const UPPER_ARM_LENGTH := 0.24
 ## Body parts above this height ride on the torso pivot (it twists at the hips).
 const TORSO_PIVOT := 0.95
@@ -91,6 +101,8 @@ var show_hints := false
 var glow_tells := true
 ## Multiplies windup times (lower = less warning).
 var windup_scale := 1.0
+## Chance a punch is a feint (FEINTS).
+var feint_chance := 0.0
 ## Scales how long it's left open after you dodge a whole combo.
 var open_scale := 1.0
 
@@ -98,6 +110,8 @@ var _state := State.IDLE
 var _state_timer := 1.0
 var _queue: Array[String] = []
 var _attack := ""
+## The real punch behind a feint ("" when this one's real).
+var _feint := ""
 ## Arm used by one-armed attacks that can come from either side (uppercut, haymaker).
 var _power_arm := "right"
 ## Arm the combo's next uppercut/haymaker will use: the one opposite the
@@ -184,9 +198,12 @@ func _think(delta: float) -> Vector3:
 				_start_combo()
 		State.WINDUP:
 			if not _flashed and _state_timer <= tell_time():
-				_flashed = true
-				if glow_tells:
-					_flash_tell(CUES[_attack].color)
+				if _feint != "":
+					_drop_feint()
+				else:
+					_flashed = true
+					if glow_tells:
+						_flash_tell(CUES[_attack].color)
 			if _state_timer <= 0.0:
 				_strike(distance)
 		State.STRIKE:
@@ -265,6 +282,9 @@ func _begin_attack(attack: String, windup: float) -> void:
 		_next_power_arm = ["left", "right"].pick_random()
 	# Always long enough to wind up and then flash.
 	_enter(State.WINDUP, _windup_total)
+	_feint = ""
+	if feint_chance > 0.0 and FEINTS.has(attack) and _can_feint() and randf() < feint_chance:
+		_feint = FEINTS[attack].pick_random()
 	_cue_label.text = Controls.cue_hint(attack)
 	_cue_label.modulate = CUES[attack].color
 	_cue_label.visible = show_hints
@@ -273,6 +293,22 @@ func _begin_attack(attack: String, windup: float) -> void:
 		Sfx.play_at("growl", mouth, -6.0, 1.2 / _body.scale.y)
 	else:
 		Sfx.play_at("draw", mouth, -4.0, 1.6 / _body.scale.y)
+
+
+## The feint's done: the real punch winds up (from the other hand, if the
+## feint's hand could throw it too) and lights up as usual.
+func _drop_feint() -> void:
+	var real := _feint
+	_power_arm = "right" if _attack_uses_arm(_attack, "left") else "left"
+	var chance := feint_chance
+	feint_chance = 0.0
+	_begin_attack(real, FEINT_WINDUP)
+	feint_chance = chance
+
+
+## Whether a feint can be thrown now (subclasses rule some moments out).
+func _can_feint() -> bool:
+	return true
 
 
 func _die(push: Vector3) -> void:
@@ -516,7 +552,7 @@ func _arm_glow(arm: String) -> Dictionary:
 		var ramp := 1.0 if _step == "dash" else clampf(_step_time / CHARGE_WINDUP, 0.0, 1.0)
 		return {"color": Telegraphs.DANGER, "energy": lerpf(0.5, FLASH_GLOW, ramp)}
 	var winding := _state == State.WINDUP
-	if winding and _uses_arm(arm) and (_flashed or _previewed):
+	if winding and _uses_arm(arm) and (_flashed or _previewed) and _feint == "":
 		return {"color": CUES[_attack].color, "energy": FLASH_GLOW if _flashed else PREVIEW_GLOW}
 	var next_shown := (winding and _flashed) or _state == State.STRIKE
 	if next_shown and not _queue.is_empty() and _attack_uses_arm(_queue[0], arm, _next_power_arm):

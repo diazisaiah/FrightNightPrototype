@@ -1944,6 +1944,10 @@ A planning list, not a work order: nothing here gets built until the user picks 
   - Insano tells 25% quicker (was 15%), and pauses between combos 60% shorter.
   - At half HP, "NO MORE GAMES!": tells 15% quicker again and 15% faster footwork, and the burning floor comes 40% sooner with 25% less warning.
   - The floor burns every 2.2-3.4s (was 3-4.5), warns 1.2s, and each tick is half his punch (was a third).
+- **Feints:** a contender winds up a punch dark and silent (no lit glove, no blink), then, where its tell would flash, throws another instead. It's the other hand or another punch (`Boxer.FEINTS`: a jab feints into a cross or right hook, a hook into the other side or an uppercut). The real punch winds up for 0.3s, then lights up and blinks as usual.
+  - **Who feints:** the Headless 12%, Sister Southpaw 18%, the Plague Doctor 15% and the Coffin King 20%, each +3% a round. The True Coffin King feints 25%, and 32% in Insano. The Bellman never does.
+  - **Never:** while blind (the Plague Doctor's flash) or answering a slip.
+  - Checked in `dead_league_regression`.
 - **The Catalyst's floating runes are gone:** the arc of runes over his hands (`CatalystRunes`, on the camera) read as aiming reticles. The runes on his gloves still glow and flash his powers' colors.
 - **Playground:**
   - Spawns can be elites or champions.

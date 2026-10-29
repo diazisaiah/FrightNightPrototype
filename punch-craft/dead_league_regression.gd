@@ -121,6 +121,26 @@ func _test_runtime_bosses() -> void:
 		await get_tree().process_frame
 		_check(opponent._body != null and opponent._meshes.size() >= 10,
 				"Boss %s must build a complete runtime model" % DeadLeagueRules.boss(index).id)
+		_check((opponent.feint_chance > 0.0) == (index > 0), "Every contender but the Bellman feints (%s)" % DeadLeagueRules.boss(index).id)
+		if index > 0:
+			# A sure feint: wound up dark and silent, then the other punch
+			# lights up and is what gets thrown.
+			opponent.feint_chance = 1.0
+			opponent._begin_attack("jab", 0.6)
+			var real: String = opponent._feint
+			_check(real in Boxer.FEINTS.jab and opponent._arm_glow("left").is_empty() and opponent._arm_glow("right").is_empty(),
+					"A feint winds up with no glove lit")
+			opponent._previewed = true
+			_check(opponent._arm_glow("left").is_empty(), "A feint's glove stays dark even as a combo follow-up")
+			opponent._state_timer = Enemy.tell_time()
+			opponent._think(0.0)
+			_check(opponent._attack == real and opponent._feint == "" and not opponent._flashed, "Where its tell would flash, the feint drops for %s" % real)
+			_check(opponent._state_timer > Enemy.tell_time(), "The real punch winds up before it lights")
+			for i in 60:
+				opponent._think(1.0 / 60.0)
+				if opponent._flashed:
+					break
+			_check(opponent._flashed and opponent._attack == real, "Then the real punch lights up")
 		remove_child(opponent)
 		opponent.free()
 	remove_child(player)
