@@ -195,8 +195,9 @@ func _draw() -> void:
 	elif sealed_by != "":
 		halo = Color(UiTheme.SIGIL, 0.1 + 0.1 * (0.5 + 0.5 * sin(_time * 2.0)))
 	if halo.a > 0.0:
-		for i in 4:
-			draw_circle(center, side * (0.5 + i * 0.1), Color(halo, halo.a * (0.32 - i * 0.07)))
+		# One soft glow (four stacked circles cost a draw each, per node).
+		var reach := side * 0.82
+		draw_texture_rect(_halo_texture(), Rect2(center - Vector2.ONE * reach, Vector2.ONE * reach * 2.0), false, Color(halo, halo.a * 0.85))
 
 	# The purchase burst behind the node: two expanding rings.
 	if _burst >= 0.0:
@@ -209,8 +210,6 @@ func _draw() -> void:
 	# Drop shadow, then the face in this node's shape.
 	_draw_shape(center + Vector2(0, 3), side, Color(0, 0, 0, 0.45), Color.TRANSPARENT, 0.0)
 	_draw_shape(center, side, face, rim, 2.5 if owned or affordable or sealed_by != "" else 1.5)
-	# A lit top and an inner ring for depth.
-	_draw_shape(center + Vector2(0, -side * 0.06), side * 0.8, Color(1, 1, 1, 0.035), Color.TRANSPARENT, 0.0)
 	if shape in ["root", "sigil"]:
 		_rune_ring(center, side, rim, owned)
 	if state == "maxed":
@@ -255,6 +254,26 @@ func _draw() -> void:
 			var alpha := clampf((1.0 - t) * 2.0, 0.0, 1.0)
 			draw_string_outline(font, at, _burst_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 18, 5, Color(0, 0, 0, alpha))
 			draw_string(font, at, _burst_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color(color.lightened(0.5), alpha))
+
+
+## The halo's soft round glow, shared by every node.
+static var _halo: GradientTexture2D
+
+
+static func _halo_texture() -> GradientTexture2D:
+	if _halo == null:
+		var gradient := Gradient.new()
+		gradient.set_color(0, Color(1, 1, 1, 0.55))
+		gradient.set_color(1, Color(1, 1, 1, 0.0))
+		gradient.add_point(0.6, Color(1, 1, 1, 0.3))
+		_halo = GradientTexture2D.new()
+		_halo.gradient = gradient
+		_halo.fill = GradientTexture2D.FILL_RADIAL
+		_halo.fill_from = Vector2(0.5, 0.5)
+		_halo.fill_to = Vector2(1.0, 0.5)
+		_halo.width = 64
+		_halo.height = 64
+	return _halo
 
 
 func _draw_shape(center: Vector2, side: float, fill: Color, border: Color, width: float) -> void:

@@ -85,7 +85,14 @@ func _ready() -> void:
 	_hud.get_node("%LevelPanel").visible = false
 	_hud.set_leave_text("Forfeit bout")
 	# The VS card first; the contender steps into the ring when it's done.
+	# They're built behind the card, frozen, so building them (and compiling
+	# their glow) doesn't hitch the start of the bout (2026-10-28: over a
+	# second in browsers).
 	_player.active = false
+	_spawn_boss()
+	_boss.set_physics_process(false)
+	if _true:
+		_prewarm_partners()
 	var intro := VsIntro.play(self, GameState.dead_league_bout)
 	await intro.finished
 	if not is_inside_tree():
@@ -93,7 +100,26 @@ func _ready() -> void:
 	_player.active = true
 	_hud.announce("ROUND 1")
 	_taunt()
-	_spawn_boss()
+	if is_instance_valid(_boss):
+		_boss.set_physics_process(true)
+
+
+## The True Coffin King's tag-in contenders, built out of sight up front (the
+## voxel cache keeps their parts), so they don't hitch when they jump in.
+func _prewarm_partners() -> void:
+	var holder := Node3D.new()
+	holder.position = Vector3(0, -500, 0)
+	holder.visible = false
+	add_child(holder)
+	for index in DeadLeagueRules.BOSS_COUNT - 1:
+		var partner := BOSS_SCENE.instantiate() as DeadLeagueBoss
+		partner.configure(index, DeadLeagueRules.ROUND_COUNT)
+		partner.setup(null, false)
+		partner.process_mode = Node.PROCESS_MODE_DISABLED
+		holder.add_child(partner)
+		partner.remove_from_group("enemies")
+		partner._voxelize_parts()
+	holder.queue_free()
 
 
 ## A line before each round.

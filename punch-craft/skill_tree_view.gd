@@ -64,6 +64,11 @@ var _hover_id := ""
 var _progress_label: Label
 var _progress_bar: ProgressBar
 var _background: GradientTexture2D
+## One grid cell with its dot, tiled across the map in one draw (the web
+## used to draw every dot on its own: thousands of draw calls, and the camp
+## crawled at 1 fps in browsers).
+var _grid_cell: ImageTexture
+const GRID_CELL := 32
 
 
 func _process(delta: float) -> void:
@@ -91,6 +96,14 @@ func setup(tree_kind: String) -> void:
 	var gradient := Gradient.new()
 	gradient.set_color(0, Color(accent(), 0.1))
 	gradient.set_color(1, Color(0, 0, 0, 0))
+	var cell := Image.create(GRID_CELL, GRID_CELL, false, Image.FORMAT_RGBA8)
+	cell.fill(Color(0, 0, 0, 0))
+	for x in range(-1, 2):
+		for y in range(-1, 2):
+			if absi(x) + absi(y) < 2:
+				cell.set_pixel(GRID_CELL / 2 + x, GRID_CELL / 2 + y, Color(1, 1, 1, 0.035))
+	_grid_cell = ImageTexture.create_from_image(cell)
+	texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED
 	_background = GradientTexture2D.new()
 	_background.gradient = gradient
 	_background.fill = GradientTexture2D.FILL_RADIAL
@@ -336,17 +349,13 @@ func _draw() -> void:
 	# A soft glow of the web's color around the center node.
 	var glow_radius := 520.0 * _zoom
 	draw_texture_rect(_background, Rect2(_pan - Vector2.ONE * glow_radius, Vector2.ONE * glow_radius * 2.0), false)
-	# Dot grid that moves with the map.
-	var dot := Color(1, 1, 1, 0.035)
+	# Dot grid that moves with the map: one tiled draw.
 	var step := GRID_SPACING * _zoom
-	var offset := Vector2(fposmod(_pan.x, step), fposmod(_pan.y, step))
-	var x := offset.x
-	while x < size.x:
-		var y := offset.y
-		while y < size.y:
-			draw_circle(Vector2(x, y), 1.1, dot)
-			y += step
-		x += step
+	var scale := step / GRID_CELL
+	var offset := Vector2(fposmod(_pan.x, step), fposmod(_pan.y, step)) - Vector2.ONE * step * 1.5
+	draw_set_transform(offset, 0.0, Vector2.ONE * scale)
+	draw_texture_rect(_grid_cell, Rect2(Vector2.ZERO, (size + Vector2.ONE * step * 3.0) / scale), true)
+	draw_set_transform(Vector2.ZERO)
 
 
 ## Everything under the nodes, in map coordinates: rings, branch glows and
@@ -361,10 +370,14 @@ func _draw_map() -> void:
 			var open := ring <= Progression.open_ring()
 			var radius := (ring + 0.5) * SPACING
 			var segments := 72
+			# Every other segment, as one batch of lines.
+			var dashes := PackedVector2Array()
 			for i in segments:
 				if i % 2 == 0:
-					_links.draw_arc(Vector2.ZERO, radius, TAU * i / segments, TAU * (i + 1) / segments, 4,
-							Color(color, 0.16 if open else 0.06), 1.5, true)
+					for k in 4:
+						dashes.append(Vector2.from_angle(TAU * (i + k / 4.0) / segments) * radius)
+						dashes.append(Vector2.from_angle(TAU * (i + (k + 1) / 4.0) / segments) * radius)
+			_links.draw_multiline(dashes, Color(color, 0.16 if open else 0.06), 1.5, true)
 	# Constellation rings and spokes around the center (fighter skill webs).
 	for ring in ([] if kind == "upgrade" else [1.5, 3.0, 4.5]):
 		var radius: float = ring * SPACING
@@ -385,8 +398,7 @@ func _draw_map() -> void:
 		var tint: Color = BRANCHES[branch].color
 		var owned_node := GameState.node_level(kind, id) > 0
 		var at := _cell_center(tree[id].pos)
-		for k in 3:
-			_links.draw_circle(at, 64.0 - k * 16.0, Color(tint, (0.03 if owned_node else 0.015) * (k + 1)))
+		_links.draw_circle(at, 48.0, Color(tint, 0.06 if owned_node else 0.03))
 	for branch in BRANCHES:
 		if not tree.has(branch) or not _views[branch].visible:
 			continue
@@ -403,7 +415,9 @@ func _draw_map() -> void:
 		var lit := GameState.node_level(kind, branch) > 0
 		_links.draw_string(font, spot, label, HORIZONTAL_ALIGNMENT_LEFT, -1, 22, Color(tint, 0.55 if lit else 0.25))
 
-	# Links.
+	# Links. Owned ones are batched by color (a polyline each cost two draws
+	# per link).
+	var batches := {}
 	for id in tree:
 		if not _views.has(id):
 			continue
@@ -430,12 +444,12 @@ func _draw_map() -> void:
 			var shaft := _trim_path(trimmed, 0.0, 6.0)
 			if owned:
 				# A soft glow under owned links, with sparks flowing along them.
-				_links.draw_polyline(shaft, Color(tint, 0.2), 9.0, true)
+				_batch(batches, [Color(tint, 0.2), 9.0], shaft)
+				_batch(batches, [tint.lightened(0.2), 2.5], shaft)
 				var length := _path_length(trimmed)
 				for k in 2:
 					var t := fposmod(_flow * 60.0 / maxf(length, 1.0) + k * 0.5, 1.0)
 					_links.draw_circle(_point_along(trimmed, t), 2.6, Color(1, 0.95, 0.8, 0.9 * sin(t * PI)))
-				_links.draw_polyline(shaft, tint.lightened(0.2), 2.5, true)
 			else:
 				var ready := GameState.can_buy_node(kind, id)
 				var line_color := Color(UiTheme.READY, 0.55) if ready else Color(0.6, 0.6, 0.7, 0.4)
@@ -450,6 +464,22 @@ func _draw_map() -> void:
 			var direction := (tip - trimmed[trimmed.size() - 2]).normalized()
 			var side := Vector2(-direction.y, direction.x) * 5.0
 			_links.draw_colored_polygon(PackedVector2Array([tip, tip - direction * 9.0 + side, tip - direction * 9.0 - side]), link_color)
+	# The owned links' glows, then their cores on top.
+	for glow in [true, false]:
+		for key in batches:
+			if (float(key[1]) > 5.0) == glow:
+				_links.draw_multiline(batches[key], key[0], key[1], true)
+
+
+## Adds a path's segments to a batch keyed by [color, width].
+func _batch(batches: Dictionary, key: Array, points: PackedVector2Array) -> void:
+	if not batches.has(key):
+		batches[key] = PackedVector2Array()
+	var segments: PackedVector2Array = batches[key]
+	for i in points.size() - 1:
+		segments.append(points[i])
+		segments.append(points[i + 1])
+	batches[key] = segments
 
 
 ## A link's points: an arc when both ends sit on the same seal ring of the
@@ -502,15 +532,17 @@ func _trim_path(points: PackedVector2Array, head: float, tail: float) -> PackedV
 	return out
 
 
-## Dashes along a path, the pattern running on through its bends.
+## Dashes along a path, the pattern running on through its bends (one draw).
 func _dashed_path(points: PackedVector2Array, color: Color, width: float, dash: float) -> void:
 	var length := _path_length(points)
+	var dashes := PackedVector2Array()
 	var at := 0.0
 	while at < length:
-		var a := _point_along(points, at / length)
-		var b := _point_along(points, minf(at + dash, length) / length)
-		_links.draw_line(a, b, color, width, true)
+		dashes.append(_point_along(points, at / length))
+		dashes.append(_point_along(points, minf(at + dash, length) / length))
 		at += dash * 2.0
+	if not dashes.is_empty():
+		_links.draw_multiline(dashes, color, width, true)
 
 
 ## How far from a node's center its edge is, along direction.
@@ -525,9 +557,14 @@ func _inset(view: TreeNodeView, direction: Vector2) -> float:
 ## An unrevealed node: a faint dashed circle with a question mark.
 func _draw_unknown(at: Vector2) -> void:
 	var pulse := 0.5 + 0.5 * sin(_flow * 2.0 + at.x * 0.02)
+	# Ten turning dashes, in one draw.
+	var dashes := PackedVector2Array()
 	for i in 10:
 		var a := TAU * i / 10.0 + _flow * 0.3
-		_links.draw_arc(at, 16.0, a, a + TAU / 20.0, 4, Color(0.7, 0.7, 0.8, 0.25 + pulse * 0.1), 1.5, true)
+		for k in 3:
+			dashes.append(at + Vector2.from_angle(a + TAU / 20.0 * k / 3.0) * 16.0)
+			dashes.append(at + Vector2.from_angle(a + TAU / 20.0 * (k + 1) / 3.0) * 16.0)
+	_links.draw_multiline(dashes, Color(0.7, 0.7, 0.8, 0.25 + pulse * 0.1), 1.5, true)
 	var font := UiTheme.display_font()
 	var mark_size := font.get_string_size("?", HORIZONTAL_ALIGNMENT_LEFT, -1, 18)
 	_links.draw_string(font, at + Vector2(-mark_size.x / 2.0, 7.0), "?", HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color(0.75, 0.75, 0.85, 0.35 + pulse * 0.15))

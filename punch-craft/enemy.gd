@@ -1278,13 +1278,15 @@ func _status_particles(color: Color, core: Color, rise: float, flicker: bool) ->
 	spark.material = _glow_material(core)
 	inner.mesh = spark
 	holder.add_child(inner)
-	var light := OmniLight3D.new()
-	light.light_color = color
-	light.light_energy = 1.4 if flicker else 0.8
-	light.omni_range = 2.5
-	holder.add_child(light)
-	if flicker:
-		light.create_tween().set_loops().tween_property(light, "light_energy", 0.7, 0.12).from(1.6)
+	# A light too, except in browsers (a crowd on fire would be a light each).
+	if not Settings.use_web_profile():
+		var light := OmniLight3D.new()
+		light.light_color = color
+		light.light_energy = 1.4 if flicker else 0.8
+		light.omni_range = 2.5
+		holder.add_child(light)
+		if flicker:
+			light.create_tween().set_loops().tween_property(light, "light_energy", 0.7, 0.12).from(1.6)
 	_topple.add_child(holder)
 	return holder
 
