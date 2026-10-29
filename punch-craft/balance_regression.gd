@@ -48,11 +48,12 @@ func _run() -> void:
 		get_tree().quit(1)
 
 
-## Damage numbers stack (2026-10-29): numbers on the same spot with the same
-## caption add up in one label; other captions, far spots and text don't.
+## Damage numbers stack (2026-10-29): every number on the same spot adds up in
+## one label, a repeated callout goes up once, far spots pop on their own.
 func _test_number_stacks() -> void:
 	var holder := Node3D.new()
 	add_child(holder)
+	DamagePopup.reset()
 	DamagePopup.spawn(holder, "10.0", Color.WHITE, 40, Vector3.ZERO)
 	DamagePopup.spawn(holder, "2.5", Color.WHITE, 40, Vector3(0.3, 0, 0))
 	DamagePopup.spawn(holder, "ECHO\n1.0", Color.WHITE, 40, Vector3.ZERO)
@@ -61,7 +62,7 @@ func _test_number_stacks() -> void:
 	DamagePopup.spawn(holder, "+12", Color.GREEN, 40, Vector3.ZERO)
 	DamagePopup.spawn(holder, "+12", Color.GREEN, 40, Vector3.ZERO)
 	var texts := holder.get_children().map(func(label: Node) -> String: return (label as Label3D).text)
-	_check(texts.size() == 5 and "12.5" in texts and "ECHO\n2.0" in texts and "5.0" in texts,
+	_check(texts.size() == 4 and "14.5" in texts and "ECHO" in texts and "5.0" in texts and "+12" in texts,
 			"Damage numbers stack on the same spot (%s)" % str(texts))
 	holder.free()
 

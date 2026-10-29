@@ -1945,7 +1945,12 @@ A planning list, not a work order: nothing here gets built until the user picks 
   - At half HP, "NO MORE GAMES!": tells 15% quicker again and 15% faster footwork, and the burning floor comes 40% sooner with 25% less warning.
   - The floor burns every 2.2-3.4s (was 3-4.5) and warns 1.2s. It burns a flat 5 damage a second while you stand in it (`BURN_DPS`; a share of his punch was far too much).
 - **Reading a busy fight:** with a maxed build, the boss stayed white and the screen filled with numbers.
-  - **Damage numbers stack** (`DamagePopup`): a number landing within 1.2m of a live one with the same caption and color, within 0.4s of its last hit, adds to it and pops again, for up to 1.6s. Echoes, chains, burns and repeated punches show as one growing number. Heals and text pop on their own.
+  - **Floating text** (`DamagePopup`, second pass):
+    - **Numbers:** every number landing within 1.8m of a live stack, within 0.5s of its last hit, adds to it, whatever its caption or color, for up to 2s. Each monster shows one growing number.
+    - **Callouts:** a caption ("ECHO", "SPEAR") or a word ("STUNNED") goes up at most once per 0.9s near the same spot.
+    - **A cap:** at most 14 labels at once (10 in browsers); past that only big ones (K.O.!, contender calls) still pop.
+  - **Particles:** every hit burst throws 55% of what it did (`HitFx.SHARE`), and no more than 160 particles go out per 0.25s (90 in browsers). Past that, bursts shrink or are skipped. Burst meshes are shared by color, glow and size (each burst used to build its own material). Burning and frozen monsters' motes are halved.
+  - **Lag from the Dead Weight glow:** every monster redid every mesh's overlay every frame, checking Dead Weight through every effect each time. Now overlays change only when a flash, freeze or mark starts or ends, and the weakness is checked once per mark.
   - **Boss hit flashes:** half as bright (14% white, was 30%) and at most every 0.3s (`BOSS_FLASH_GAP`).
   - **Frozen bosses:** no blue sheen; the ice drifting off them shows it.
 - **Dead Weight (Death Mark) reworked:** a Doom-marked monster deals 25 / 30 / 35% less damage (3 levels, was 1; `Powers.DEAD_WEIGHT`, applied in `Player.receive_attack`). While weakened it glows faint purple (`Enemy._rest_overlay`).

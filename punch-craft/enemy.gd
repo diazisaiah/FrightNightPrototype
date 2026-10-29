@@ -214,6 +214,11 @@ static var _flash_material: StandardMaterial3D
 static var _boss_flash_material: StandardMaterial3D
 static var _weakened_overlay: StandardMaterial3D
 var _flash_cooldown := 0.0
+## Wearing the hit flash now (so its end is set once, not every frame:
+## 2026-10-29, redoing every mesh's overlay each frame lagged).
+var _flashing := false
+## Marked while Dead Weight works (checked once, at the mark).
+var _weakened := false
 
 
 ## Call before adding to the tree. scaling holds wave multipliers:
@@ -314,7 +319,7 @@ func _physics_process(delta: float) -> void:
 		_check_hat_lesson(delta)
 		_flash_timer -= delta
 		_flash_cooldown -= delta
-		if _flash_timer <= 0.0:
+		if _flash_timer <= 0.0 and _flashing:
 			_set_flash(false)
 		_track_control(delta)
 		_stagger_timer -= delta
@@ -444,7 +449,9 @@ func _clear_doom() -> void:
 	if _doom_fx:
 		_doom_fx.queue_free()
 		_doom_fx = null
-	_refresh_overlay()
+	if _weakened:
+		_weakened = false
+		_refresh_overlay()
 
 
 func is_dead() -> bool:
@@ -571,7 +578,10 @@ func doom(seconds: float) -> void:
 		_doom_store = 0.0
 		DamagePopup.spawn(get_parent(), "MARKED", Powers.DOOM_COLOR, 38, global_position + Vector3(0, top_height() + 0.3, 0))
 	_doom_time = maxf(_doom_time, seconds)
-	_refresh_overlay()
+	var weakened := Powers.dead_weight() > 0.0
+	if weakened != _weakened:
+		_weakened = weakened
+		_refresh_overlay()
 	if _doom_fx == null:
 		_doom_fx = MoveFx.skull(Powers.DOOM_COLOR)
 		_doom_fx.position.y = top_height() + 0.45
@@ -1232,6 +1242,7 @@ func _set_flash(on: bool) -> void:
 		_flash_cooldown = BOSS_FLASH_GAP
 	if on:
 		_flash_timer = FLASH_TIME
+	_flashing = on
 	if _flash_material == null:
 		_flash_material = StandardMaterial3D.new()
 		_flash_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
@@ -1252,7 +1263,7 @@ func _rest_overlay(mesh: MeshInstance3D) -> Material:
 	# Bosses show frost by the ice drifting off them only, not a sheen.
 	if _frost_fx and _frost_overlay and not is_boss:
 		return _frost_overlay
-	if _doom_time > 0.0 and Powers.dead_weight() > 0.0:
+	if _weakened:
 		if _weakened_overlay == null:
 			_weakened_overlay = StandardMaterial3D.new()
 			_weakened_overlay.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
@@ -1264,7 +1275,7 @@ func _rest_overlay(mesh: MeshInstance3D) -> Material:
 
 ## Puts each mesh back in its resting overlay (unless it's mid-flash).
 func _refresh_overlay() -> void:
-	if _flash_timer > 0.0:
+	if _flashing:
 		return
 	for mesh in _meshes:
 		if is_instance_valid(mesh):
@@ -1285,7 +1296,7 @@ func _set_frozen_look(on: bool) -> void:
 	else:
 		_end_status_fx(_frost_fx)
 		_frost_fx = null
-	if _flash_timer <= 0.0:
+	if not _flashing:
 		for mesh in _meshes:
 			if is_instance_valid(mesh):
 				mesh.material_overlay = _rest_overlay(mesh)
@@ -1298,7 +1309,7 @@ func _status_particles(color: Color, core: Color, rise: float, flicker: bool) ->
 	var height := top_height() * _body.scale.y
 	holder.position.y = height * 0.5
 	var motes := CPUParticles3D.new()
-	motes.amount = 14 if Settings.use_web_profile() else 24
+	motes.amount = 8 if Settings.use_web_profile() else 12
 	motes.lifetime = 0.7 if rise > 0.0 else 1.2
 	motes.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
 	motes.emission_box_extents = Vector3(0.32, height * 0.42, 0.26) * maxf(_body.scale.x, 1.0)
@@ -1317,7 +1328,7 @@ func _status_particles(color: Color, core: Color, rise: float, flicker: bool) ->
 	motes.mesh = mote
 	holder.add_child(motes)
 	var inner := CPUParticles3D.new()
-	inner.amount = 6 if Settings.use_web_profile() else 10
+	inner.amount = 3 if Settings.use_web_profile() else 5
 	inner.lifetime = motes.lifetime * 0.8
 	inner.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
 	inner.emission_box_extents = motes.emission_box_extents * 0.8

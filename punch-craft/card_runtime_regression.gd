@@ -484,7 +484,7 @@ func _test_dead_weight() -> void:
 		hits.append(player.max_knuckles - player.knuckles)
 	_check(hits[0] > 0.0 and hits[1] < hits[0] * 0.85, "A marked monster hits softer (%.2f vs %.2f)" % [hits[1], hits[0]])
 	_check(target._chill_time <= 0.0, "Dead Weight doesn't chill")
-	target._flash_timer = 0.0
+	target._flashing = false
 	target._refresh_overlay()
 	_check(target._meshes[0].material_overlay == Enemy._weakened_overlay, "A weakened monster glows faint purple")
 	target._clear_doom()

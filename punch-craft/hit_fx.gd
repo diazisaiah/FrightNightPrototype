@@ -2,24 +2,38 @@ class_name HitFx
 ## One-shot particle bursts: blood/bone chips on hits, sparks on armor, coins on kills.
 
 
+## Bursts (2026-10-29: a maxed build's hits, echoes and powers filled the
+## screen with particles and lagged): each throws SHARE of what it asks for,
+## and no more than BUDGET particles go out per BUDGET_WINDOW seconds
+## (WEB_BUDGET in browsers); past that, bursts shrink or are skipped. Their
+## meshes are shared by color, glow and size.
+const SHARE := 0.55
+const BUDGET := 160
+const WEB_BUDGET := 90
+const BUDGET_WINDOW := 0.25
+
+static var _spent := 0
+static var _window_start := 0
+static var _meshes := {}
+
+
 static func burst(parent: Node, at: Vector3, direction: Vector3, color: Color, amount := 14, speed := 4.0, glow := false, size := 0.05) -> void:
+	var now := Time.get_ticks_msec()
+	if now - _window_start > BUDGET_WINDOW * 1000.0:
+		_window_start = now
+		_spent = 0
+	amount = maxi(2, roundi(amount * SHARE))
+	amount = mini(amount, (WEB_BUDGET if Settings.use_web_profile() else BUDGET) - _spent)
+	if amount < 2:
+		return
+	_spent += amount
 	var particles := CPUParticles3D.new()
 	particles.one_shot = true
 	particles.explosiveness = 0.95
 	particles.amount = amount
 	particles.lifetime = 0.7
 	particles.local_coords = false
-
-	var mesh := BoxMesh.new()
-	mesh.size = Vector3.ONE * size
-	var material := StandardMaterial3D.new()
-	material.albedo_color = color
-	if glow:
-		material.emission_enabled = true
-		material.emission = color
-		material.emission_energy_multiplier = 3.0
-	mesh.material = material
-	particles.mesh = mesh
+	particles.mesh = _mesh(color, glow, size)
 
 	particles.direction = direction.normalized() if direction.length_squared() > 0.0 else Vector3.UP
 	particles.spread = 55.0
@@ -35,6 +49,24 @@ static func burst(parent: Node, at: Vector3, direction: Vector3, color: Color, a
 	particles.global_position = at
 	particles.emitting = true
 	particles.finished.connect(particles.queue_free)
+
+
+## A burst's mote: one per color, glow and size, shared.
+static func _mesh(color: Color, glow: bool, size: float) -> BoxMesh:
+	var key := "%s|%s|%.3f" % [color.to_html(), glow, size]
+	if _meshes.has(key):
+		return _meshes[key]
+	var mesh := BoxMesh.new()
+	mesh.size = Vector3.ONE * size
+	var material := StandardMaterial3D.new()
+	material.albedo_color = color
+	if glow:
+		material.emission_enabled = true
+		material.emission = color
+		material.emission_energy_multiplier = 3.0
+	mesh.material = material
+	_meshes[key] = mesh
+	return mesh
 
 
 ## Coin denominations for kill bursts, biggest first: [copper worth, color,
