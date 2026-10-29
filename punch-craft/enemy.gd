@@ -13,6 +13,10 @@ const STAGGER_TIME := 0.5
 ## STAGGER_GRACE (hits still land). Bosses have their poise instead.
 const STAGGER_CHAIN_MAX := 1.0
 const STAGGER_GRACE := 1.0
+## Stuns too (2026-10-28: the Blur's shockwave every 5th hit kept refreshing
+## its 1.5s stun): once one wears off, a monster shakes off new stuns for this
+## long. Bosses have their poise instead.
+const STUN_GRACE := 2.0
 ## Boss poise: after a stagger or stun ends, a boss shrugs off the next ones
 ## for this long (hits still land). Without it the Mauler's hooks, which need
 ## no set-up and all stagger, kept a boss from ever attacking.
@@ -172,6 +176,7 @@ var _bleed_time := 0.0
 ## Doom (Death Mark): seconds left on the mark, what it took meanwhile, and
 ## the skull floating over it.
 var _doom_time := 0.0
+var _stun_grace := 0.0
 var _doom_store := 0.0
 var _doom_fx: Node3D
 var _stuck_time := 0.0
@@ -305,6 +310,7 @@ func _physics_process(delta: float) -> void:
 			if _stagger_timer <= delta and _stagger_run >= STAGGER_CHAIN_MAX - 0.05:
 				_stagger_grace = STAGGER_GRACE
 		_stagger_grace -= delta
+		_stun_grace -= delta
 		_stagger_timer -= delta
 		_hold_time -= delta
 		if _daze_fx:
@@ -676,8 +682,10 @@ func hit_zone(hit_point: Vector3) -> String:
 
 ## Knocked silly (e.g. by a Combo Master shockwave): can't act for a while.
 func stun(duration: float) -> void:
-	if _dead or not _can_stagger():
+	if _dead or not _can_stagger() or (not is_boss and _stun_grace > 0.0):
 		return
+	if not is_boss:
+		_stun_grace = duration + STUN_GRACE
 	_stagger_timer = maxf(_stagger_timer, duration)
 	_set_poise()
 	_on_staggered()

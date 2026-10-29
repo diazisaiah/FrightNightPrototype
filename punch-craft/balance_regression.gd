@@ -838,6 +838,17 @@ func _test_one_power() -> void:
 	var true_mark := Progression.true_par()
 	print("True Coffin King mark: damage %.1f ehp %.0f (Coffin King par: %.1f, %.0f)" % [true_mark.damage, true_mark.ehp, top.damage, top.ehp])
 	_check(true_mark.damage > top.damage * 1.2 and true_mark.ehp > top.ehp * 1.2, "The True Coffin King wants far more than the Coffin King's par")
+	# No stun-locks: a monster just stunned shakes off the next stun.
+	var zombie: Enemy = load("res://zombie.tscn").instantiate()
+	add_child(zombie)
+	zombie.stun(1.5)
+	zombie._stagger_timer = 0.0
+	zombie.stun(1.5)
+	_check(zombie._stagger_timer <= 0.0, "A monster just stunned shakes off the next stun")
+	zombie._stun_grace = 0.0
+	zombie.stun(1.5)
+	_check(zombie._stagger_timer > 0.0, "Once the grace is over it can be stunned again")
+	zombie.queue_free()
 	# Powers have a cooldown on top of their chance.
 	var play := PowerPlay.new()
 	_check(play.ready("sigil_fire"), "Powers start ready")
