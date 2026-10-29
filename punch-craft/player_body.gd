@@ -317,6 +317,18 @@ func _split_hair(head: Node3D, from: int) -> void:
 	_ops = ops
 
 
+## Finishes the painting now (an emote starting before it's done would show
+## the body appearing part by part, 2026-10-29).
+func finish_build() -> void:
+	if _ops.is_empty():
+		return
+	var budget := build_budget_ms
+	build_budget_ms = 1 << 30
+	while not _ops.is_empty():
+		_build_step()
+	build_budget_ms = budget
+
+
 ## Paints a little more each frame; bakes each part once it's painted.
 func _build_step() -> void:
 	var start := Time.get_ticks_msec()

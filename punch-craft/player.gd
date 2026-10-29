@@ -1027,6 +1027,7 @@ func start_emote(id: String) -> void:
 	if _emote_fx:
 		add_child(_emote_fx)
 	_pad_sprint = false
+	_body.finish_build()
 	_body.visible = true
 	_body.play(id)
 	_fists.visible = false

@@ -4,7 +4,7 @@ extends Node
 ## and saves the live game viewport under store_assets/. Modes: arena, crypt
 ## (2026-10-26); hats, web, cards, group, crypt_boss, lich_king, flame_burst,
 ## inferno, temporal_break, highlight_reel, league, hat_pop, hat_emote,
-## trailer (2026-10-29: itch
+## knockouts, duel, bags, trailer (2026-10-29: itch
 ## page; trailer plays a scripted sequence for --write-movie). Run it with
 ## FRIGHT_NIGHT_SAVE / FRIGHT_NIGHT_SETTINGS pointing at a test save. The
 ## secrets stay out of the store page: no Tony (or his things), no True
@@ -39,6 +39,12 @@ func _ready() -> void:
 			await _capture_hat_pop()
 		"hat_emote":
 			await _capture_hat_emote()
+		"knockouts":
+			await _capture_knockouts()
+		"duel":
+			await _capture_duel()
+		"bags":
+			await _capture_bags()
 		"trailer":
 			await _trailer()
 		_:
@@ -275,7 +281,12 @@ func _capture_crypt_boss(mode: String) -> void:
 	player.look_at(room.center + Vector3(0, 1.4, 0))
 	crypt.set("_current_room", room)
 	crypt.call("_start_boss_fight", room)
-	await _frames(150)
+	# Just the boss (no escorts).
+	for i in 150:
+		for enemy in crypt.get_node("Enemies").get_children():
+			if enemy is Enemy and not enemy.is_boss:
+				enemy.queue_free()
+		await get_tree().process_frame
 	_hide_center_messages(crypt)
 	for enemy in crypt.get_node("Enemies").get_children():
 		if enemy is Enemy and enemy.is_boss:
@@ -376,6 +387,120 @@ func _capture_hat_emote() -> void:
 	await _capture(SHOTS + "hat_emote.png")
 
 
+## Knockouts: a crowd at 1 HP, each sent flying by a big punch.
+func _capture_knockouts() -> void:
+	_max_build("berserker")
+	var world := await _arena(3)
+	var player: Player = world.get_node("Player")
+	await _crowd(world)
+	await _frames(45)
+	_hide_center_messages(world)
+	var punches := [["uppercut", "right"], ["hook", "left"], ["cross", "right"], ["uppercut", "left"], ["hook", "right"], ["uppercut", "right"]]
+	for i in punches.size():
+		var target := _nearest(player, world)
+		if target == null:
+			break
+		player.look_at(Vector3(target.global_position.x, player.global_position.y, target.global_position.z))
+		var fists: Fists = player.get("_fists")
+		fists.play_punch(punches[i][0], punches[i][1], 0.12, 0.4)
+		await _frames(4)
+		# A clean counter's knockout: the biggest launch there is.
+		var away := target.global_position - player.global_position
+		away.y = 0.0
+		target.finisher = {"type": punches[i][0], "hand": punches[i][1], "level": 2, "dir": away.normalized(), "player": player}
+		target.take_hit(target.hp * 2.0 + 100.0, target.global_position + Vector3(0, 1.3, 0), away.normalized() * 8.0, true, "CLEAN COUNTER!")
+		await _frames(10)
+		if i == 2:
+			await _snap(SHOTS + "knockouts.png")
+		await _frames(12)
+	await _capture(SHOTS + "knockouts_end.png")
+
+
+## A real exchange with a Brawler: slips, rolls and back steps read off its
+## gloves, counters with the hand that glows, set-up combos when it's open,
+## then a knockout.
+func _capture_duel() -> void:
+	_max_build("counter_master")
+	var world := await _arena(2)
+	var player: Player = world.get_node("Player")
+	world.call("_spawn_enemy", {"kind": "brawler", "armored": false}, Vector3(0, 0.1, -2.8))
+	await _frames(2)
+	var brawler: Boxer = world.get_node("Enemies").get_child(-1)
+	brawler.max_hp *= 4.0
+	brawler.hp = brawler.max_hp
+	await _frames(40)
+	_hide_center_messages(world)
+	var combo := [["jab", "left"], ["cross", "right"], ["hook", "left"], ["uppercut", "right"]]
+	var step := 0
+	var dodged := false
+	var last_eta := INF
+	var snapped := false
+	for frame in 480:
+		for enemy in world.get_node("Enemies").get_children():
+			if enemy != brawler:
+				enemy.queue_free()
+		if brawler.is_dead():
+			break
+		player.look_at(Vector3(brawler.global_position.x, player.global_position.y, brawler.global_position.z))
+		var attack := brawler.incoming_attack()
+		var eta := brawler.attack_eta()
+		if eta > last_eta + 0.05:
+			dodged = false
+		last_eta = eta
+		if attack != "" and not dodged and eta <= 0.16 and Player.ANSWERS.has(attack):
+			dodged = true
+			var move: String = Player.ANSWERS[attack][0]
+			player.call("_try_defense", move)
+			if not snapped and move.begins_with("roll"):
+				snapped = true
+				await _frames(4)
+				await _snap(SHOTS + "duel.png")
+		elif player.is_counter_ready() and float(player.get("_cooldown")) <= 0.0:
+			var side: String = player.get("_counter_side")
+			side = "right" if side == "any" else side
+			player.call("_punch", "jab" if side == "left" else "cross", side)
+			step = 0
+		elif attack == "" and float(player.get("_cooldown")) <= 0.0 and String(player.get("_defense")) == "" \
+				and player.global_position.distance_to(brawler.global_position) < 3.2:
+			player.call("_punch", combo[step][0], combo[step][1])
+			step = (step + 1) % combo.size()
+		await get_tree().process_frame
+	# The finish: a knockout that sends it flying.
+	brawler.hp = 1.0
+	player.call("_punch", "uppercut", "right")
+	await _frames(14)
+	await _capture(SHOTS + "duel_ko.png")
+
+
+## Heavy Bags (the daily drill): combos into the bags on the rack.
+func _capture_bags() -> void:
+	_max_build("berserker")
+	GameState.drill_pick = "bags"
+	var drills: Node = load("res://drills.tscn").instantiate()
+	add_child(drills)
+	var player: Player = drills.get_node("Player")
+	await _frames(150)
+	var combo := [["jab", "left"], ["cross", "right"], ["hook", "left"], ["uppercut", "right"]]
+	var step := 0
+	for frame in 360:
+		var bag: Node3D = null
+		for node in drills.get_children() + drills.get_node("Enemies").get_children() if drills.has_node("Enemies") else drills.get_children():
+			if node is HeavyBag and not node.is_dead() and (bag == null or node.global_position.distance_to(player.global_position) < bag.global_position.distance_to(player.global_position)):
+				bag = node
+		if bag:
+			# Right up at the bag.
+			var close := bag.global_position + (player.global_position - bag.global_position).normalized() * 1.6
+			player.global_position = Vector3(close.x, player.global_position.y, close.z)
+			player.look_at(Vector3(bag.global_position.x, player.global_position.y, bag.global_position.z))
+		if float(player.get("_cooldown")) <= 0.0:
+			player.call("_punch", combo[step][0], combo[step][1])
+			step = (step + 1) % combo.size()
+		if frame == 200:
+			await _snap(SHOTS + "bags.png")
+		await get_tree().process_frame
+	await _capture(SHOTS + "bags_end.png")
+
+
 ## A scripted run for a trailer (record it with --write-movie): the crowd
 ## closing in and punches flying, a Temporal Break, Flame Burst's blast.
 func _trailer() -> void:
@@ -401,6 +526,14 @@ func _trailer() -> void:
 		await _frames(8)
 	await _frames(150)
 	get_tree().quit(0)
+
+
+func _nearest(player: Player, scene: Node) -> Enemy:
+	var best: Enemy = null
+	for enemy in scene.get_node("Enemies").get_children():
+		if enemy is Enemy and not enemy.is_dead() and (best == null or enemy.global_position.distance_to(player.global_position) < best.global_position.distance_to(player.global_position)):
+			best = enemy
+	return best
 
 
 func _face_nearest(player: Player, scene: Node) -> void:
