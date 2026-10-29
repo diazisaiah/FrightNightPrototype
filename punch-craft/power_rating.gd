@@ -90,7 +90,7 @@ const CARDS := {
 	"conduit": [0.3, 0.0], "afterglow": [0.3, 0.0], "resonance": [0.04, 0.0], "overflow": [0.06, 0.0],
 	"ward": [0.0, 2.0], "focus": [0.4, 0.0], "twin_cast": [0.3, 0.0], "sigil_weave": [0.08, 0.0],
 	"deep_attunement": [0.08, 0.0], "spectrum": [0.1, 0.0], "elemental_fists_ii": [0.06, 0.0], "flame_burst_ii": [0.06, 0.0],
-	"archmage": [0.2, 0.0], "living_conduit": [0.1, 0.0], "elemental_body": [0.04, 0.03], "grand_unification": [0.06, 0.0],
+	"archmage": [0.2, 0.0], "living_conduit": [0.05, 0.0], "elemental_body": [0.04, 0.03], "grand_unification": [0.06, 0.0],
 }
 ## "Every Nth" cards (the smaller N, the better): [offense, defense] x 1/N.
 const EVERY := {

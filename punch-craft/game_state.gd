@@ -1409,11 +1409,9 @@ func power_active(id: String) -> bool:
 	if is_player_class("elementalist"):
 		match passive():
 			"dual_sigil":
-				return root == power_pick or root == power_pick_2 or root == power_pick_3
+				return root == power_pick or root == power_pick_2
 			"prism":
 				return id == root and root in prism_picks()
-			"attunement":
-				return root == power_pick or root == power_pick_2
 	return root == power_pick
 
 
@@ -1422,11 +1420,9 @@ func power_selected(root: String) -> bool:
 	if is_player_class("elementalist"):
 		match passive():
 			"dual_sigil":
-				return root == power_pick or root == power_pick_2 or root == power_pick_3
+				return root == power_pick or root == power_pick_2
 			"prism":
 				return root in prism_picks()
-			"attunement":
-				return root == power_pick or root == power_pick_2
 	return root == power_pick
 
 
@@ -1444,19 +1440,16 @@ func prism_picks() -> Array:
 	return picks.slice(0, PRISM_SLOTS)
 
 
-## How many powers can be selected at once: two under Dual Sigil, and Living
-## Conduit adds one (a second, plain one beside the attuned under Attunement).
+## How many powers can be selected at once: two under Dual Sigil, four
+## under Prism. (Living Conduit added one until 2026-10-29.)
 func power_slots() -> int:
 	if not is_player_class("elementalist"):
 		return 1
-	var extra := 1 if has_effect("living_conduit") else 0
 	match passive():
 		"prism":
 			return PRISM_SLOTS
 		"dual_sigil":
-			return 2 + extra
-		"attunement":
-			return 1 + extra
+			return 2
 	return 1
 
 

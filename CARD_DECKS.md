@@ -260,7 +260,7 @@ Dual Sigil / Attunement / Prism / Elemental Fists / Flame Burst. Punches that se
 | Seal | Card | Effect |
 |---|---|---|
 | Bellman | **Archmage** | Your powers are 30% stronger while your ultimate is over half full |
-| Headless | **Living Conduit** | Select one more power, whatever your passive |
+| Headless | **Living Conduit** | A power going off has a 5-10% chance (rising with level) to set off a random power you own |
 | Southpaw | **Ultimate Surge** | Every bout starts with your ultimate a quarter full, and using it gives a quarter back |
 | Plague Doctor | **Elemental Body** | Getting hit sets off one of your selected powers on the attacker (once a second) |
 | Coffin King | **Grand Unification** | Every 20th time a power goes off, every power you own goes off too |

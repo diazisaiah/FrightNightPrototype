@@ -1994,6 +1994,7 @@ A planning list, not a work order: nothing here gets built until the user picks 
 - **Fire and Blood proc less often:** Fire's cooldown is 3s (was 1.5s) and Blood's 4s (was 2s). The Catalyst's cards respect Blood's cooldown for healing too.
 - **Fighter picker hover:** hovering moved a card's pivot to its middle, which on shrunk cards (two rows) shifted the card down for good. The pivot stays put now; the card grows 3% and slides up-left by half of it, then back.
 - All checked in `card_runtime_regression`.
+- **Living Conduit reworked** (the Catalyst's legendary): it gave a power slot whatever the passive (Dual Sigil ran three, Attunement two), too strong. Now a power going off has a 5-10% chance (rising with passive power, `CardPlay.CONDUIT_CHANCE`) to set off a random power you own. Dual Sigil is two powers again, Attunement one.
 - **Feints:** a contender winds up a punch dark and silent (no lit glove, no blink), then, where its tell would flash, throws another instead. It's the other hand or another punch (`Boxer.FEINTS`: a jab feints into a cross or right hook, a hook into the other side or an uppercut). The real punch winds up for 0.3s, then lights up and blinks as usual.
   - **Who feints:** the Headless 12%, Sister Southpaw 18%, the Plague Doctor 15% and the Coffin King 20%, each +3% a round. The True Coffin King feints 25%, and 32% in Insano. The Bellman never does.
   - **Never:** while blind (the Plague Doctor's flash) or answering a slip.
