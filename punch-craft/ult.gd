@@ -1174,7 +1174,7 @@ func _reel_targets() -> Array[Enemy]:
 		to.y = 0.0
 		if to.length() > REEL_RANGE or (to.length() > 1.5 and to.normalized().dot(forward) < 0.25):
 			continue
-		var query := PhysicsRayQueryParameters3D.create(eye, enemy.global_position + Vector3(0, 1.2, 0), 1)
+		var query := PhysicsRayQueryParameters3D.create(eye, enemy.global_position + Vector3(0, 1.2, 0), 1 | Scenery.LAYER)
 		query.exclude = [player.get_rid()]
 		if not space.intersect_ray(query).is_empty():
 			continue  # Behind a wall.

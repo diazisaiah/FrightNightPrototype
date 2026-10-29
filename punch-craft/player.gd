@@ -1068,7 +1068,7 @@ func _emote_orbit_spot() -> Transform3D:
 	var pitch := _emote_orbit.y
 	var away := (Vector3(sin(yaw), 0, cos(yaw)) * cos(pitch) + Vector3.UP * sin(pitch)) * EMOTE_CAM_DISTANCE
 	var spot := focus + away
-	var query := PhysicsRayQueryParameters3D.create(focus, spot, 1, [get_rid()])
+	var query := PhysicsRayQueryParameters3D.create(focus, spot, 1 | Scenery.LAYER, [get_rid()])
 	var hit := get_world_3d().direct_space_state.intersect_ray(query)
 	if not hit.is_empty():
 		spot = hit.position - away.normalized() * 0.25
@@ -2058,7 +2058,7 @@ func _clear_grudge() -> void:
 func teleport_spot(enemy: Enemy, spot: Vector3) -> Vector3:
 	var from := global_position + Vector3.UP
 	var to := Vector3(spot.x, global_position.y, spot.z) + Vector3.UP
-	var query := PhysicsRayQueryParameters3D.create(from, to, 1)  # The world.
+	var query := PhysicsRayQueryParameters3D.create(from, to, 1 | Scenery.LAYER)  # The world and its buildings.
 	query.exclude = [get_rid()]
 	var hit := get_world_3d().direct_space_state.intersect_ray(query)
 	if hit.is_empty():

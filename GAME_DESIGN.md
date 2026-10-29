@@ -1981,6 +1981,12 @@ A planning list, not a work order: nothing here gets built until the user picks 
   - **First Crypt run:** "GILD TO KEEP", 1.5s in: finds are bound to the Crypt and crumble if you leave or go down, unless gilded at an altar (each floor's first room and by each boss) with Souls and silver.
   - **The Armory tab is hidden** until you bring home your first gear (kept or worn).
   - Checked in `card_runtime_regression` (the tutorial's pay).
+- **No hiding behind scenery:** monsters have no pathfinding, so since buildings went solid (2026-10-28) they piled up behind crypts, fences and the Ossuary's pillars while you hit them from the other side. One Bone Division endless run went 400+ knockouts that way.
+  - Scenery collision (`Scenery.solid`) is on its own layer (`Scenery.LAYER`, layer 4): it stops you, and monsters walk straight through it.
+  - Its walls reach 8m (`WALL_HEIGHT`) so nobody stands on a roof out of reach.
+  - The Ossuary's giant ribcages are solid now (you could stand inside one).
+  - The emote camera, the jumps past a monster and Highlight Reel's line of sight still see buildings.
+  - Checked in `balance_regression`.
 - **Feints:** a contender winds up a punch dark and silent (no lit glove, no blink), then, where its tell would flash, throws another instead. It's the other hand or another punch (`Boxer.FEINTS`: a jab feints into a cross or right hook, a hook into the other side or an uppercut). The real punch winds up for 0.3s, then lights up and blinks as usual.
   - **Who feints:** the Headless 12%, Sister Southpaw 18%, the Plague Doctor 15% and the Coffin King 20%, each +3% a round. The True Coffin King feints 25%, and 32% in Insano. The Bellman never does.
   - **Never:** while blind (the Plague Doctor's flash) or answering a slip.

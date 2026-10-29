@@ -456,6 +456,17 @@ func _test_web_optimization_structure() -> void:
 	var visuals := run.get_children().filter(func(child: Node) -> bool: return not child is StaticBody3D)
 	_check(visuals.size() == 2, "A fence run should be two batched MultiMeshes")
 	_check(run.get_children().any(func(child: Node) -> bool: return child is StaticBody3D), "Fences are solid")
+	# Scenery stops you but not monsters, and is too tall to stand on.
+	var wall: StaticBody3D = run.get_children().filter(func(child: Node) -> bool: return child is StaticBody3D)[0]
+	var player_node: Node = load("res://player.tscn").instantiate()
+	var zombie_node: Node = load("res://zombie.tscn").instantiate()
+	var player_mask: int = player_node.get("collision_mask")
+	var zombie_mask: int = zombie_node.get("collision_mask")
+	player_node.free()
+	zombie_node.free()
+	_check(wall.collision_layer == Scenery.LAYER and player_mask & Scenery.LAYER != 0 and zombie_mask & Scenery.LAYER == 0,
+			"Scenery blocks the player, not monsters")
+	_check((wall.get_child(0).shape as BoxShape3D).size.y >= Scenery.WALL_HEIGHT, "Scenery walls are too tall to stand on")
 	var instances := 0
 	for child in visuals:
 		_check(child is MultiMeshInstance3D, "Fence children must be MultiMesh batches, not individual meshes")

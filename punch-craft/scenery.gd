@@ -23,23 +23,35 @@ static func box(parent: Node3D, size: Vector3, pos: Vector3, material: Material,
 	return instance
 
 
-## Something you can't walk through: a box (or, with radius, an upright
-## cylinder) of collision under parent, on the world layer. Buildings and
-## fences get one; small props (graves, rocks, crates) stay walk-through so
-## nobody snags on clutter.
+## The physics layer scenery is on (layer 4): the player bumps into it,
+## monsters walk straight through (2026-10-29: they have no pathfinding, so
+## they piled up behind a crypt or the Bone Division's pillars while you hit
+## them from the other side; one endless run went 400 knockouts that way).
+const LAYER := 8
+## Scenery walls reach this high, so nobody stands on a roof out of reach.
+const WALL_HEIGHT := 8.0
+
+
+## Something you can't walk through (monsters can): a box (or, with radius,
+## an upright cylinder) of collision under parent, on LAYER, WALL_HEIGHT tall
+## from its base. Buildings and fences get one; small props (graves, rocks,
+## crates) stay walk-through so nobody snags on clutter.
 static func solid(parent: Node3D, size: Vector3, pos: Vector3, rot := Vector3.ZERO, radius := 0.0) -> StaticBody3D:
 	var body := StaticBody3D.new()
-	body.position = pos
+	body.collision_layer = LAYER
+	body.collision_mask = 0
+	var height := maxf(size.y, WALL_HEIGHT)
+	body.position = pos + Vector3(0, (height - size.y) / 2.0, 0)
 	body.rotation = rot
 	var shape := CollisionShape3D.new()
 	if radius > 0.0:
 		var cylinder := CylinderShape3D.new()
 		cylinder.radius = radius
-		cylinder.height = size.y
+		cylinder.height = height
 		shape.shape = cylinder
 	else:
 		var box_shape := BoxShape3D.new()
-		box_shape.size = size
+		box_shape.size = Vector3(size.x, height, size.z)
 		shape.shape = box_shape
 	body.add_child(shape)
 	parent.add_child(body)

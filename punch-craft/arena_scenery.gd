@@ -107,6 +107,8 @@ static func _ossuary(theme: Dictionary, parent: Node3D, rng: RandomNumberGenerat
 				Scenery.box(node, Vector3(0.35, 2.4, 0.35), Vector3(1.1 * s, 1.6, z), bone, Vector3(0, 0, -0.5 * s))
 				Scenery.box(node, Vector3(0.32, 2.0, 0.32), Vector3(2.0 * s, 3.4, z), bone, Vector3(0, 0, 0.35 * s))
 		_skull(node, Vector3(0, 1.2, 5.2), 2.2, bone, dark)
+		# Solid, ribs to skull (2026-10-29: you could stand inside one).
+		Scenery.solid(node, Vector3(5.0, 4.2, 11.0), Vector3(0, 2.1, 0.9))
 	# Bone piles.
 	for i in (14 if web else 26):
 		var node := _at(parent, _spot(rng, 7.0), rng.randf() * TAU)
