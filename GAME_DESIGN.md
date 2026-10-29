@@ -1927,10 +1927,10 @@ When all three are broken, the Tower opens, and so does Rebirth.
 - It's a simpler boss version of that fighter: the fighter's moves, their original passive and their ultimates. It doesn't get your cards or gear.
 - Phases: plain boxing with the passive first; the ultimates come in below half HP.
 - **Its time stop (if the fighter has Temporal Break):**
-  - When the Shadow stops time, an **R** prompt flashes for a moment.
-  - **Press R:** you get a weakened time stop of your own. You can dodge but not punch while the Shadow throws its frozen punches.
-  - **When time resumes,** every punch and every dodge replays very fast, in order. A dodge that matches a punch opens a counter; a missed dodge takes the hit.
-  - **Miss the prompt** and you stay frozen; every punch lands at once.
+  - **The tell:** the Shadow winds up with its own animation, its hands glowing. The **R** prompt shows during the windup.
+  - **Once time stops,** every punch it throws tags you, to land when time resumes, until you press R.
+  - **Press R:** you get a weakened time stop of your own. From then on you can dodge (not punch) the punches it throws; the earlier ones stay tagged.
+  - **When time resumes,** every punch and dodge replays very fast, in order. A dodged punch opens a counter; a tagged one hits.
   - **With Temporal Break equipped and charged,** using it during the Shadow's stop cancels both out (your ultimate is spent).
 - **Every big ultimate** gets a windup you can interrupt, or a zone you can leave.
 
