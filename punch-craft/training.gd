@@ -1,3 +1,4 @@
+class_name Training
 extends Node3D
 ## Training ground: an unkillable practice dummy for learning defense and
 ## counters. Starts with a guided tutorial the first time (T skips or restarts
@@ -19,55 +20,78 @@ const GOAL_COLOR := Color(1.0, 0.82, 0.35)
 const DONE_COLOR := Color(0.45, 1.0, 0.5)
 const SINGLE_STRAIGHTS := [["jab"], ["cross"]]
 const SINGLE_HOOKS := [["left_hook"], ["right_hook"]]
-## The guided tutorial. goals: {event: count} that all need reaching.
+## The guided tutorial (2026-10-29: shorter and easier, and it ends in real
+## fights). goals: {event: count} that all need reaching.
 ## dummy: "passive" stands still; otherwise it throws from combos.
 ## telegraph: Dummy.TELEGRAPHS index; slow: extra windup multiplier.
+## fight: [[monster, count], ...] in place of the dummy (FIGHT_SCENES).
 ## Events: move (meters), jab/cross/hook/uppercut (landed), slip/roll/
-## back_step/dodge (any), clean, counter, combo (a 2+ hit combo fully dodged).
+## back_step/dodge (any), counter, combo (a 2+ hit combo fully dodged), ko.
 ## Each step: a short line, the keys as keycap chips ([keys, what]), and the
 ## glove color it teaches ("cue"). <move> tokens become the player's keys.
-const STEPS := [
-	{"title": "MOVE", "goals": {"move": 6}, "dummy": "passive",
+## The plan is STEPS_START, then the dodge steps for your mode, then STEPS_END.
+const STEPS_START := [
+	{"title": "MOVE", "goals": {"move": 5}, "dummy": "passive",
 		"text": "Walk around the ring.",
 		"keys": [["<move>", "Move"], ["<look>", "Look"], ["<sprint>", "Sprint"]]},
 	{"title": "JAB AND CROSS", "goals": {"jab": 2, "cross": 2}, "dummy": "passive",
 		"text": "Walk up and hit the dummy.",
 		"keys": [["<jab>", "Jab"], ["<cross>", "Cross"]]},
-	{"title": "SET IT UP", "goals": {"setup": 3}, "dummy": "passive", "costs": true,
-		"text": "Every punch costs knuckle HP: jabs and crosses 1, hooks 2, uppercuts 3. A hook or uppercut only hits hard right after a jab or cross from the other hand. Thrown cold it's SLOPPY: weak and expensive.",
+	{"title": "SET IT UP", "goals": {"setup": 2}, "dummy": "passive", "costs": true,
+		"text": "Hooks and uppercuts hit hard right after a jab or cross. Thrown cold they're SLOPPY. Every punch costs knuckle HP.",
 		"keys": [["<jab> / <cross>", "Set up"], ["<hook>", "Hook"], ["<uppercut>", "Uppercut"]]},
-	{"title": "COMBOS", "goals": {"drill": 4}, "dummy": "passive", "costs": true,
-		"text": "Weak punches set up strong ones. Strong ones finish. Throw each combo in order.",
-		"drills": [["jab", "cross", "hook"], ["cross", "hook", "cross"], ["jab", "jab", "cross"], ["jab", "cross", "hook", "uppercut"]],
+	{"title": "COMBOS", "goals": {"drill": 2}, "dummy": "passive", "costs": true,
+		"text": "Throw each combo in order.",
+		"drills": [["jab", "cross", "hook"], ["jab", "cross", "hook", "uppercut"]],
 		"keys": [["<jab>", "Jab"], ["<cross>", "Cross"], ["<hook>", "Hook"], ["<uppercut>", "Uppercut"]]},
-	{"title": "SLIP", "goals": {"slip": 3}, "cue": "blue",
+]
+## Weenie Hut Junior Mode: one key a side picks the dodge for you.
+const STEPS_JUNIOR := [
+	{"title": "DODGE", "goals": {"dodge": 4},
+		"text": "A glowing glove is a punch coming. Dodge just before it lands. Hooks: dodge away from the glove.",
+		"keys": [["<slip>", "Dodge"]],
+		"combos": [["jab"], ["cross"], ["left_hook"], ["right_hook"], ["uppercut"]], "telegraph": 1, "slow": 1.6},
+]
+## Pro Gamer Mode: each dodge on its own key.
+const STEPS_PRO := [
+	{"title": "SLIP", "goals": {"slip": 2}, "cue": "blue",
 		"text": "A blue glove is a straight. Slip it just before it lands.",
 		"keys": [["<slip>", "Slip"]],
-		"combos": SINGLE_STRAIGHTS, "telegraph": 1, "slow": 1.5},
-	{"title": "COUNTER", "goals": {"counter": 3},
-		"text": "After a dodge, punch with the hand that glows.",
-		"keys": [["<slip>", "Slip"], ["<jab> / <cross>", "Counter"]],
-		"combos": SINGLE_STRAIGHTS, "telegraph": 1, "slow": 1.4},
-	{"title": "ROLL", "goals": {"roll": 3}, "cue": "orange",
+		"combos": SINGLE_STRAIGHTS, "telegraph": 1, "slow": 1.6},
+	{"title": "ROLL", "goals": {"roll": 2}, "cue": "orange",
 		"text": "An orange glove is a hook. Roll away from it.",
 		"keys": [["<roll>", "Roll"]],
-		"combos": SINGLE_HOOKS, "telegraph": 1, "slow": 1.5},
-	{"title": "BACK STEP", "goals": {"back_step": 3}, "cue": "red",
+		"combos": SINGLE_HOOKS, "telegraph": 1, "slow": 1.6},
+	{"title": "BACK STEP", "goals": {"back_step": 2}, "cue": "red",
 		"text": "A red glove is an uppercut or slam. Step back.",
 		"keys": [["<back_step>", "Back step"]],
-		"combos": [["uppercut"], ["slam"]], "telegraph": 1, "slow": 1.5},
-	{"title": "READ THE COMBO", "goals": {"combo": 2, "counter": 2},
-		"text": "The next glove lights up as each punch comes. Dodge them all, then counter.",
-		"combos": [["jab", "cross"], ["jab", "right_hook"], ["cross", "left_hook"], ["jab", "uppercut"]], "telegraph": 1, "slow": 1.2},
-	{"title": "CLEAN DODGE", "goals": {"clean": 2},
-		"text": "Wait for the flash, then dodge. Clean dodges slow time.",
-		"combos": [["jab"], ["cross"], ["left_hook"], ["right_hook"], ["uppercut"]], "telegraph": 2, "slow": 1.0},
-	{"title": "FIGHT SPEED", "goals": {"dodge": 6, "counter": 3},
-		"text": "No more hints. Dodge and counter whatever comes.",
-		"combos": Dummy.COMBOS, "telegraph": 2, "slow": 1.0},
-	{"title": "ULTIMATE", "goals": {"ult": 1}, "ult": true,
-		"combos": SINGLE_STRAIGHTS, "telegraph": 1, "slow": 1.2},
+		"combos": [["uppercut"], ["slam"]], "telegraph": 1, "slow": 1.6},
 ]
+const STEPS_END := [
+	{"title": "COUNTER", "goals": {"counter": 2},
+		"text": "After a dodge, punch with the hand that glows. Counters hit harder.",
+		"keys": [["<slip>", "Dodge"], ["<jab> / <cross>", "Counter"]],
+		"combos": SINGLE_STRAIGHTS, "telegraph": 1, "slow": 1.5},
+	{"title": "READ THE COMBO", "goals": {"combo": 1, "counter": 1},
+		"text": "The next glove lights up as each punch comes. Dodge them all, then counter.",
+		"combos": [["jab", "cross"], ["jab", "right_hook"], ["cross", "left_hook"]], "telegraph": 1, "slow": 1.4},
+	{"title": "ULTIMATE", "goals": {"ult": 1}, "ult": true,
+		"combos": SINGLE_STRAIGHTS, "telegraph": 1, "slow": 1.4},
+	{"title": "TAKE TURNS", "goals": {"ko": 2}, "fight": [["zombie", 2]],
+		"text": "Two zombies. Only one fights at a time; the other waits its turn. Back step the slams, then hit back.",
+		"keys": [["<back_step>", "Back step"]]},
+	{"title": "SLIP THE ARROWS", "goals": {"slip": 2, "ko": 1}, "fight": [["skeleton", 1]],
+		"text": "A skeleton shoots from range. Slip its arrows, then close in.",
+		"keys": [["<slip>", "Slip"]]},
+	{"title": "DODGE THE COMBO", "goals": {"dodge": 3, "ko": 1}, "fight": [["brawler", 1]],
+		"text": "A brawler throws combos. Dodge every punch, then counter.",
+		"keys": [["<slip>", "Dodge"], ["<jab> / <cross>", "Counter"]]},
+]
+## The monsters a fight step brings in.
+const FIGHT_SCENES := {"zombie": "res://zombie.tscn", "skeleton": "res://skeleton.tscn", "brawler": "res://brawler.tscn"}
+## In the fights, monsters go down in this many punches (a counter counts
+## 1.5), and you in this many of their hits.
+const FIGHT_HITS := 6
 ## The ultimate step, by class: [line, what the key does]. The meter starts full.
 const ULT_TIPS := {
 	"berserker": ["Walk up to the dummy, then:", "Inferno Uppercut"],
@@ -80,9 +104,13 @@ const ULT_TIPS := {
 const CUE_COLORS := {"blue": Color(0.35, 0.65, 1.0), "orange": Color(1.0, 0.6, 0.2), "red": Color(1.0, 0.3, 0.25)}
 
 var _dummy: Dummy
+## The steps this run (STEPS_START + your mode's dodges + STEPS_END).
+var _plan: Array = []
+## The monsters of the fight step under way.
+var _fighters: Array[Enemy] = []
 var _torches: Array[OmniLight3D] = []
 var _torch_time := 0.0
-## Index into STEPS, or -1 in free practice.
+## Index into _plan, or -1 in free practice.
 var _step := -1
 var _progress := {}
 var _step_done := false
@@ -194,7 +222,7 @@ func _set_dummy_level(level: int) -> void:
 
 func _process(delta: float) -> void:
 	_torch_time += delta
-	if _step >= 0 and not _step_done and STEPS[_step].goals.has("move"):
+	if _step >= 0 and not _step_done and _plan[_step].goals.has("move"):
 		var moved := _player.global_position - _last_position
 		moved.y = 0.0
 		_last_position = _player.global_position
@@ -214,12 +242,19 @@ func _on_knuckles_broken() -> void:
 
 # --- Tutorial ---------------------------------------------------------------------
 
+## The steps for your control mode.
+static func plan() -> Array:
+	return STEPS_START + (STEPS_JUNIOR if Controls.junior() else STEPS_PRO) + STEPS_END
+
+
 func _start_step(index: int) -> void:
+	if index == 0:
+		_plan = plan()
 	_step = index
 	_step_done = false
 	_progress.clear()
 	_last_position = _player.global_position
-	var step: Dictionary = STEPS[index]
+	var step: Dictionary = _plan[index]
 	_dummy.set_level(2)
 	_dummy.global_position = DUMMY_POSITION
 	_dummy.velocity = Vector3.ZERO
@@ -228,11 +263,14 @@ func _start_step(index: int) -> void:
 	_dummy.set_telegraph(step.get("telegraph", 1))
 	_dummy.windup_scale *= step.get("slow", 1.0)
 	_player.restore()
+	_clear_fight()
+	if step.has("fight"):
+		_start_fight(step.fight)
 	_coach.visible = true
 	_practice.visible = false
 	_hud.get_node("%LevelPanel").visible = false
 	_hud.set_info("TUTORIAL")
-	_coach_step.text = "STEP %d / %d" % [index + 1, STEPS.size()]
+	_coach_step.text = "STEP %d / %d" % [index + 1, _plan.size()]
 	_coach_title.text = step.title
 	_coach_title.add_theme_color_override("font_color", GOAL_COLOR)
 	if step.has("ult"):
@@ -250,6 +288,55 @@ func _start_step(index: int) -> void:
 	_update_goals()
 
 
+## A fight step: the dummy steps out, and real monsters come in, at FIGHT_HITS
+## both ways.
+func _start_fight(fight: Array) -> void:
+	_show_dummy(false)
+	_player.fixed_hit = _player.max_knuckles / FIGHT_HITS
+	var spot := 0
+	for entry in fight:
+		for i in int(entry[1]):
+			var enemy: Enemy = load(FIGHT_SCENES[entry[0]]).instantiate()
+			enemy.setup(_player, false, {"hp": 1.0, "damage": 1.0, "speed": 1.0, "reward": 0.0, "xp": 0.0, "position": 0.0, "hat": "", "gear": {}})
+			enemy.position = RING_CENTER + Vector3(-1.6 + 3.2 * spot, 0.1, -2.6)
+			enemy.arena_center = RING_CENTER
+			enemy.arena_limit = RING_HALF_SIZE - 0.6
+			if enemy is Skeleton:
+				# Its usual range is wider than the ring.
+				enemy.min_range = 3.0
+				enemy.max_range = 5.5
+			$Enemies.add_child(enemy)
+			enemy.hits_to_ko = FIGHT_HITS
+			if enemy is Boxer:
+				# A weak brawler: slow, clear tells.
+				enemy.windup_scale *= 1.5
+			enemy.died.connect(func(_e: Enemy) -> void: _add_progress("ko"))
+			_fighters.append(enemy)
+			spot += 1
+
+
+## The fight's over (or skipped): its monsters go, the dummy comes back.
+func _clear_fight() -> void:
+	for enemy in _fighters:
+		if is_instance_valid(enemy):
+			enemy.queue_free()
+	_fighters.clear()
+	_player.fixed_hit = 0.0
+	_show_dummy(true)
+
+
+func _show_dummy(on: bool) -> void:
+	_dummy.visible = on
+	_dummy.process_mode = Node.PROCESS_MODE_INHERIT if on else Node.PROCESS_MODE_DISABLED
+	if on:
+		_dummy.add_to_group("enemies")
+		_dummy.collision_layer = _dummy.get_meta("layer", _dummy.collision_layer)
+	elif _dummy.is_in_group("enemies"):
+		_dummy.remove_from_group("enemies")
+		_dummy.set_meta("layer", _dummy.collision_layer)
+		_dummy.collision_layer = 0
+
+
 ## The keycaps a step shows (the ultimate step: the class's ultimate).
 func _step_keys(step: Dictionary) -> Array:
 	if step.has("ult"):
@@ -263,7 +350,7 @@ func _refresh_keys() -> void:
 	if _skip_cap:
 		_skip_cap.get_child(0).text = Controls.key_name("map") if Controls.pad() else "T"
 	if _step >= 0:
-		_fill_keys(_step_keys(STEPS[_step]), STEPS[_step].get("cue", ""))
+		_fill_keys(_step_keys(_plan[_step]), _plan[_step].get("cue", ""))
 	elif _practice and _practice.visible:
 		_update_info()
 
@@ -271,7 +358,7 @@ func _refresh_keys() -> void:
 func _add_progress(event: String, amount := 1.0) -> void:
 	if _step < 0 or _step_done:
 		return
-	var goals: Dictionary = STEPS[_step].goals
+	var goals: Dictionary = _plan[_step].goals
 	if not goals.has(event):
 		return
 	_progress[event] = minf(_progress.get(event, 0.0) + amount, goals[event])
@@ -285,7 +372,7 @@ func _add_progress(event: String, amount := 1.0) -> void:
 func _update_goals() -> void:
 	for child in _coach_goals.get_children():
 		child.queue_free()
-	var goals: Dictionary = STEPS[_step].goals
+	var goals: Dictionary = _plan[_step].goals
 	for goal in goals:
 		var have: float = _progress.get(goal, 0.0)
 		var need: int = goals[goal]
@@ -326,6 +413,8 @@ func _goal_name(goal: String) -> String:
 			return "Set-up heavies"
 		"drill":
 			return "Combos"
+		"ko":
+			return "Knockouts"
 	return goal.capitalize() + "s"
 
 
@@ -341,7 +430,7 @@ func _complete_step() -> void:
 	await get_tree().create_timer(STEP_PAUSE).timeout
 	if _step != finished or not _step_done:
 		return  # Skipped or restarted meanwhile.
-	if _step + 1 < STEPS.size():
+	if _step + 1 < _plan.size():
 		_start_step(_step + 1)
 	else:
 		_finish_tutorial()
@@ -357,6 +446,7 @@ func _finish_tutorial() -> void:
 ## Free practice: the dummy's level and telegraph are up to the player.
 func _end_tutorial() -> void:
 	_step = -1
+	_clear_fight()
 	_coach.visible = false
 	_dummy.passive = false
 	_dummy.combo_pool = []
@@ -384,9 +474,9 @@ func _on_punch_connected(type: String, kind: String) -> void:
 		_add_progress("counter")
 	if kind == "setup":
 		_add_progress("setup")
-	if _step >= 0 and STEPS[_step].get("costs", false):
+	if _step >= 0 and _plan[_step].get("costs", false):
 		_show_cost(Player.PUNCHES[type].knuckle_cost, Player.PUNCHES[type].heavy and kind != "setup")
-	if _step >= 0 and STEPS[_step].has("drills") and not _step_done:
+	if _step >= 0 and _plan[_step].has("drills") and not _step_done:
 		_drill_punch(type, kind)
 
 
@@ -396,7 +486,7 @@ func _on_punch_connected(type: String, kind: String) -> void:
 ## order (hooks and uppercuts must be set up). A wrong or sloppy punch, or a
 ## broken combo, starts it over.
 func _start_drill(index: int) -> void:
-	var drills: Array = STEPS[_step].drills
+	var drills: Array = _plan[_step].drills
 	_drill = index % drills.size()
 	_drill_at = 0
 	_fill_drill()
@@ -405,7 +495,7 @@ func _start_drill(index: int) -> void:
 func _fill_drill() -> void:
 	for child in _drill_row.get_children():
 		child.queue_free()
-	var drills: Array = STEPS[_step].get("drills", [])
+	var drills: Array = _plan[_step].get("drills", [])
 	_drill_row.visible = not drills.is_empty()
 	if drills.is_empty():
 		return
@@ -428,7 +518,7 @@ func _fill_drill() -> void:
 
 
 func _drill_punch(type: String, kind: String) -> void:
-	var combo: Array = STEPS[_step].drills[_drill]
+	var combo: Array = _plan[_step].drills[_drill]
 	var heavy: bool = Player.PUNCHES[type].heavy
 	var right: bool = type == combo[_drill_at] and (not heavy or kind == "setup") and _player.combo == _drill_at + 1
 	if not right:
@@ -481,7 +571,7 @@ func _on_combo_done(dodged_all: bool, length: int) -> void:
 
 ## Got hit during the tutorial: say what it was and what would have dodged it.
 func _on_attacked() -> void:
-	if _step < 0 or _step_done:
+	if _step < 0 or _step_done or _plan[_step].has("fight"):
 		return
 	var cue: Dictionary = Boxer.CUES.get(_dummy._attack, {})
 	if cue.is_empty():

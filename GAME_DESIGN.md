@@ -1962,6 +1962,18 @@ A planning list, not a work order: nothing here gets built until the user picks 
   - **Damage:** each blast does 10x your damage (was 5x; Flame Burst II goes off twice).
   - **Stun:** everything in it is stunned while the flash blinds you. Bosses are stunned for 1s even through their poise (`Enemy.stun` `through_poise`); everything else is still blasted up and knocked down 1.6s.
   - Checked in `card_runtime_regression`.
+- **The tutorial, fresh and easier** (`training.gd`):
+  - **The steps:** Move, Jab and Cross, Set It Up, Combos (2 drills), then the dodges for your mode, then Counter, Read the Combo, Ultimate and three fights.
+    - Weenie Hut Junior Mode: one Dodge step, Q / E on any glove.
+    - Pro Gamer Mode: Slip, Roll and Back Step, 2 each.
+    - Clean Dodge and Fight Speed are gone.
+  - **Easier:** fewer reps everywhere, and slower tells (1.4-1.6x the windup).
+  - **The fights:** the dummy steps out and real monsters come in.
+    - Take Turns: two zombies; only one fights at a time while the other waits.
+    - Slip the Arrows: a skeleton, kept in range inside the ring.
+    - Dodge the Combo: a weak brawler, its tells 1.5x slower.
+  - **Tutorial stats:** monsters go down in 6 punches whatever you hit for, a counter counts 1.5, and burns and the like don't hurt them (`Enemy.hits_to_ko`). Every hit you take is a sixth of your knuckle HP (`Player.fixed_hit`).
+  - Checked in `card_runtime_regression`.
 - **Feints:** a contender winds up a punch dark and silent (no lit glove, no blink), then, where its tell would flash, throws another instead. It's the other hand or another punch (`Boxer.FEINTS`: a jab feints into a cross or right hook, a hook into the other side or an uppercut). The real punch winds up for 0.3s, then lights up and blinks as usual.
   - **Who feints:** the Headless 12%, Sister Southpaw 18%, the Plague Doctor 15% and the Coffin King 20%, each +3% a round. The True Coffin King feints 25%, and 32% in Insano. The Bellman never does.
   - **Never:** while blind (the Plague Doctor's flash) or answering a slip.

@@ -336,6 +336,9 @@ var _mix_hint_time := -100.0
 ## Whoever attacked last (Thunderhead strikes them on a clean dodge).
 var _last_attacker: Enemy
 var _dash_jab_time := 0.0
+## The tutorial's fights: every attack hits for this (before a graze), so six
+## take you down. 0: off.
+var fixed_hit := 0.0
 var _spear_cooldown := 0.0
 var _haymaker_cooldown := 0.0
 var _ghost_time := 0.0
@@ -670,6 +673,8 @@ func _physics_process(delta: float) -> void:
 ## attacker: the enemy throwing it, for melee attacks (Thorns hits it back).
 func receive_attack(amount: float, from: Vector3, attack: String, attacker: Node3D = null) -> String:
 	_stop_emote()
+	if fixed_hit > 0.0:
+		amount = fixed_hit
 	_last_attacker = attacker as Enemy
 	# Wise Up: an enraged monster hits Tony harder.
 	if _last_attacker and _last_attacker.is_taunted():

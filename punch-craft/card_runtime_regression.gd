@@ -40,6 +40,7 @@ func _run() -> void:
 	await _test_head_stomp()
 	await _test_dash_punch_cooldowns()
 	await _test_dead_weight()
+	await _test_tutorial_fights()
 	await _test_boss_poise()
 	await _test_endless_powers()
 	TimeFx.clear()
@@ -503,6 +504,59 @@ func _test_dead_weight() -> void:
 	_check(target._meshes[0].material_overlay != Enemy._weakened_overlay, "The glow goes with the mark")
 	await _free_rig(holder)
 	print("Card runtime: Dead Weight OK")
+
+
+## The tutorial (2026-10-29): your mode's dodge steps, and its last three
+## steps are real fights where monsters go down in 6 punches (a counter
+## counts 1.5) and you in 6 of their hits.
+func _test_tutorial_fights() -> void:
+	GameState._reset_fields()
+	GameState.player_class = "berserker"
+	GameState.tutorial_done = false
+	var mode: String = Settings.get_value("assist_mode")
+	for junior in [true, false]:
+		Settings.values["assist_mode"] = "junior" if junior else "pro"
+		var titles: Array = Training.plan().map(func(step: Dictionary) -> String: return step.title)
+		_check(("DODGE" in titles) == junior and ("ROLL" in titles) != junior, "The tutorial teaches dodging the %s way" % ("junior" if junior else "pro"))
+	Settings.values["assist_mode"] = mode
+	var training: Training = load("res://training.tscn").instantiate()
+	add_child(training)
+	await get_tree().process_frame
+	var plan: Array = training._plan
+	var first_fight := -1
+	for i in plan.size():
+		if plan[i].has("fight") and first_fight < 0:
+			first_fight = i
+	_check(first_fight >= 0 and plan.size() - first_fight == 3, "The tutorial ends in three fights")
+	training._start_step(first_fight)
+	await get_tree().process_frame
+	_check(training._fighters.size() == 2 and training._fighters.all(func(enemy: Enemy) -> bool: return enemy is Zombie), "Fight 1: two zombies")
+	_check(not training._dummy.visible, "The dummy steps out for the fights")
+	var zombie: Enemy = training._fighters[0]
+	for i in Training.FIGHT_HITS - 1:
+		zombie.take_hit(0.01, zombie.global_position + Vector3(0, 1.0, 0), Vector3.ZERO, false)
+	_check(not zombie.is_dead(), "Five punches don't drop it")
+	zombie.take_hit(0.01, zombie.global_position + Vector3(0, 1.0, 0), Vector3.ZERO, false)
+	_check(zombie.is_dead(), "The sixth does, whatever it hit for")
+	var other: Enemy = training._fighters[1]
+	for i in 3:
+		other.take_hit(0.01, other.global_position + Vector3(0, 1.0, 0), Vector3.ZERO, false, "COUNTER!")
+	_check(not other.is_dead(), "Three counters (4.5 punches) don't")
+	other.take_hit(0.01, other.global_position + Vector3(0, 1.0, 0), Vector3.ZERO, false, "COUNTER!")
+	_check(other.is_dead(), "Four counters (6 punches) do")
+	var player: Player = training._player
+	_check(is_equal_approx(player.fixed_hit, player.max_knuckles / Training.FIGHT_HITS), "You go down in six hits")
+	training._start_step(first_fight + 1)
+	await get_tree().process_frame
+	_check(training._fighters.size() == 1 and training._fighters[0] is Skeleton and training._fighters[0].max_range <= 6.0, "Fight 2: a skeleton, in range inside the ring")
+	training._start_step(first_fight + 2)
+	await get_tree().process_frame
+	_check(training._fighters.size() == 1 and training._fighters[0] is Brawler, "Fight 3: a brawler")
+	training._end_tutorial()
+	_check(training._fighters.is_empty() and training._dummy.visible and player.fixed_hit == 0.0, "Leaving the fights brings the dummy back")
+	training.queue_free()
+	await get_tree().process_frame
+	print("Card runtime: tutorial fights OK")
 
 
 ## Boss poise: a staggered boss can't be staggered or stunned again (or have

@@ -108,6 +108,9 @@ var hp := 0.0
 ## HP never drops below this (the True Coffin King holds on until he tags out,
 ## and can't be hurt while he's out of the ring).
 var hp_floor := 0.0
+## The tutorial's fights: goes down to this many punches whatever they hit
+## for (a counter counts 1.5), and burns and the like don't hurt it. 0: off.
+var hits_to_ko := 0
 var armor := 0.0
 ## Extra flat block on head shots (a helmet, see EnemyGear).
 var head_armor := 0.0
@@ -386,6 +389,8 @@ func take_hit(raw_damage: float, hit_point: Vector3, push: Vector3, stagger: boo
 	var worn := armor + (head_armor if head_shot else 0.0)
 	var effective_armor := 0.0 if pierce or crush else worn * (1.0 - GameState.get_armor_pierce())
 	var damage := maxf(0.0, raw_damage - effective_armor) * (1.0 - (0.0 if crush else damage_reduction))
+	if hits_to_ko > 0:
+		damage = max_hp / hits_to_ko * (1.5 if caption.contains("COUNTER") else 1.0)
 	if not head_shot and damage > 0.0:
 		var was_winded := _body_damage >= WINDED_THRESHOLD
 		_body_damage = minf(1.0, _body_damage + BODY_DAMAGE_PER_HIT)
@@ -650,7 +655,7 @@ func _update_statuses(delta: float) -> void:
 
 ## Damage over time and the like: ignores armor, no stagger.
 func _status_damage(amount: float, color: Color, caption := "") -> void:
-	if _dead or amount <= 0.0:
+	if _dead or amount <= 0.0 or hits_to_ko > 0:
 		return
 	hp = maxf(hp - amount, hp_floor)
 	var chest := global_position + Vector3(0, 1.3, 0)
@@ -680,7 +685,7 @@ func _update_burn(delta: float) -> void:
 	if _burn_tick < 0.5:
 		return
 	_burn_tick = 0.0
-	var damage := _burn_per_second * 0.5
+	var damage := _burn_per_second * 0.5 if hits_to_ko <= 0 else 0.0
 	hp = maxf(hp - damage, hp_floor)
 	var chest := global_position + Vector3(0, 1.2, 0)
 	DamagePopup.spawn(get_parent(), "%.1f" % damage, Powers.FIRE_COLOR, 36, chest)
