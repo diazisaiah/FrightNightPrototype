@@ -1968,9 +1968,9 @@ A planning list, not a work order: nothing here gets built until the user picks 
     - Pro Gamer Mode: Slip, Roll and Back Step, 2 each.
     - Clean Dodge and Fight Speed are gone.
   - **Easier:** fewer reps everywhere, and slower tells (1.4-1.6x the windup).
-  - **The fights:** the dummy steps out and real monsters come in.
+  - **The fights:** the dummy steps out and the ring comes down, so the monsters move as they do in the Arena: one fights while the rest circle about 3.8m out, waiting their turn. Real monsters come in 7m ahead of you.
     - Take Turns: two zombies; only one fights at a time while the other waits.
-    - Slip the Arrows: a skeleton, kept in range inside the ring.
+    - Slip the Arrows: a skeleton, at its usual range.
     - Dodge the Combo: a weak brawler, its tells 1.5x slower.
   - **Tutorial stats:** monsters go down in 6 punches whatever you hit for, a counter counts 1.5, and burns and the like don't hurt them (`Enemy.hits_to_ko`). Every hit you take is a sixth of your knuckle HP (`Player.fixed_hit`).
   - Checked in `card_runtime_regression`.

@@ -531,7 +531,7 @@ func _test_tutorial_fights() -> void:
 	training._start_step(first_fight)
 	await get_tree().process_frame
 	_check(training._fighters.size() == 2 and training._fighters.all(func(enemy: Enemy) -> bool: return enemy is Zombie), "Fight 1: two zombies")
-	_check(not training._dummy.visible, "The dummy steps out for the fights")
+	_check(not training._dummy.visible and not training._ring.visible, "The dummy and the ring step out for the fights")
 	var zombie: Enemy = training._fighters[0]
 	for i in Training.FIGHT_HITS - 1:
 		zombie.take_hit(0.01, zombie.global_position + Vector3(0, 1.0, 0), Vector3.ZERO, false)
@@ -548,12 +548,12 @@ func _test_tutorial_fights() -> void:
 	_check(is_equal_approx(player.fixed_hit, player.max_knuckles / Training.FIGHT_HITS), "You go down in six hits")
 	training._start_step(first_fight + 1)
 	await get_tree().process_frame
-	_check(training._fighters.size() == 1 and training._fighters[0] is Skeleton and training._fighters[0].max_range <= 6.0, "Fight 2: a skeleton, in range inside the ring")
+	_check(training._fighters.size() == 1 and training._fighters[0] is Skeleton, "Fight 2: a skeleton")
 	training._start_step(first_fight + 2)
 	await get_tree().process_frame
 	_check(training._fighters.size() == 1 and training._fighters[0] is Brawler, "Fight 3: a brawler")
 	training._end_tutorial()
-	_check(training._fighters.is_empty() and training._dummy.visible and player.fixed_hit == 0.0, "Leaving the fights brings the dummy back")
+	_check(training._fighters.is_empty() and training._dummy.visible and training._ring.visible and player.fixed_hit == 0.0, "Leaving the fights brings the dummy and the ring back")
 	training.queue_free()
 	await get_tree().process_frame
 	print("Card runtime: tutorial fights OK")

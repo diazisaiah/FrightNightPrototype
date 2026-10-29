@@ -108,6 +108,8 @@ var _dummy: Dummy
 var _plan: Array = []
 ## The monsters of the fight step under way.
 var _fighters: Array[Enemy] = []
+## The ring (ropes, canvas and the walls along the ropes).
+var _ring: Node3D
 var _torches: Array[OmniLight3D] = []
 var _torch_time := 0.0
 ## Index into _plan, or -1 in free practice.
@@ -288,23 +290,22 @@ func _start_step(index: int) -> void:
 	_update_goals()
 
 
-## A fight step: the dummy steps out, and real monsters come in, at FIGHT_HITS
-## both ways.
+## A fight step: the dummy steps out, the ring comes down (so they move as
+## they do in the Arena: one fights while the rest circle, waiting their turn),
+## and real monsters come in, at FIGHT_HITS both ways.
 func _start_fight(fight: Array) -> void:
 	_show_dummy(false)
+	_show_ring(false)
 	_player.fixed_hit = _player.max_knuckles / FIGHT_HITS
 	var spot := 0
 	for entry in fight:
 		for i in int(entry[1]):
 			var enemy: Enemy = load(FIGHT_SCENES[entry[0]]).instantiate()
 			enemy.setup(_player, false, {"hp": 1.0, "damage": 1.0, "speed": 1.0, "reward": 0.0, "xp": 0.0, "position": 0.0, "hat": "", "gear": {}})
-			enemy.position = RING_CENTER + Vector3(-1.6 + 3.2 * spot, 0.1, -2.6)
-			enemy.arena_center = RING_CENTER
-			enemy.arena_limit = RING_HALF_SIZE - 0.6
-			if enemy is Skeleton:
-				# Its usual range is wider than the ring.
-				enemy.min_range = 3.0
-				enemy.max_range = 5.5
+			var ahead := -_player.global_basis.z
+			ahead.y = 0.0
+			ahead = ahead.normalized() if ahead.length() > 0.1 else Vector3.FORWARD
+			enemy.position = _player.global_position + ahead.rotated(Vector3.UP, -0.5 + 1.0 * spot) * 7.0 + Vector3(0, 0.1, 0)
 			$Enemies.add_child(enemy)
 			enemy.hits_to_ko = FIGHT_HITS
 			if enemy is Boxer:
@@ -323,6 +324,19 @@ func _clear_fight() -> void:
 	_fighters.clear()
 	_player.fixed_hit = 0.0
 	_show_dummy(true)
+	_show_ring(true)
+
+
+## The ring up (with its walls) or down.
+func _show_ring(on: bool) -> void:
+	if _ring == null or _ring.visible == on:
+		return
+	_ring.visible = on
+	for shape in _ring.find_children("*", "CollisionShape3D", true, false):
+		shape.set_deferred("disabled", not on)
+	if on and _player.global_position.distance_to(RING_CENTER) > RING_HALF_SIZE:
+		# Back in the ring for the dummy.
+		_player.global_position = Vector3(0, 0.1, 0)
 
 
 func _show_dummy(on: bool) -> void:
@@ -765,6 +779,7 @@ func _build_ring() -> void:
 	var ring := Node3D.new()
 	ring.position = RING_CENTER
 	$Decorations.add_child(ring)
+	_ring = ring
 
 	var size := RING_HALF_SIZE * 2.0
 	_add_mesh(ring, Enemy._box(Vector3(size, 0.04, size)), canvas, Vector3(0, 0.02, 0))
