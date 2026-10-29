@@ -274,7 +274,7 @@ const DECKS := {
 		"archmage": {"name": "Archmage", "rarity": "legendary", "icon": "crown", "tags": ["Spell"], "seal": "bellman",
 			"text": ["Your powers are 30% stronger while your ultimate is over half full"], "effects": {"archmage": [0.3]}},
 		"living_conduit": {"name": "Living Conduit", "rarity": "legendary", "icon": "sigil", "tags": ["Spell"], "seal": "headless",
-			"text": ["A power going off has a 5-10% chance (rising with level) to set off a random power you own"], "effects": {"living_conduit": [1]}},
+			"text": ["A power going off has a 10% chance to set off a random power you own"], "effects": {"living_conduit": [0.1]}},
 		"ultimate_surge": SURGE,
 		"elemental_body": {"name": "Elemental Body", "rarity": "legendary", "icon": "nova", "tags": ["Spell"], "seal": "plague_doctor",
 			"text": ["Getting hit sets off one of your selected powers on the attacker (once a second)"], "effects": {"elemental_body": [1]}},

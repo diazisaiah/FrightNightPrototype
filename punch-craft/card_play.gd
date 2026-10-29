@@ -583,9 +583,6 @@ func dash_contact(enemy: Enemy) -> void:
 
 # --- The Catalyst's powers -------------------------------------------------------------------
 
-## Living Conduit: a power going off sets off a random owned one this often.
-const CONDUIT_CHANCE := Vector2(0.05, 0.1)
-
 ## A power went off on a target (Powers.listener).
 func _on_power(root: String, target: Enemy) -> void:
 	_afterglow = 1.0
@@ -617,9 +614,10 @@ func _on_power(root: String, target: Enemy) -> void:
 	_casting = true
 	if fx("twin_cast") > 0.0 and randf() < fx("twin_cast"):
 		_set_off(root, target)
-	# Living Conduit (2026-10-29: was a power slot, too strong): now and then
-	# a random power you own goes off too.
-	if fx("living_conduit") > 0.0 and randf() < conduit_chance():
+	# Living Conduit (2026-10-29: was a power slot, too strong): its value is
+	# the chance a random power you own goes off too (10% on the legendary; a
+	# rare or epic version would be 5%).
+	if fx("living_conduit") > 0.0 and randf() < fx("living_conduit"):
 		var owned := GameState.owned_powers()
 		if not owned.is_empty():
 			_set_off(owned.pick_random(), target)
@@ -629,11 +627,6 @@ func _on_power(root: String, target: Enemy) -> void:
 		for power in GameState.owned_powers():
 			_set_off(power, target)
 	_casting = false
-
-
-## Living Conduit's chance, CONDUIT_CHANCE.x to .y as passive power grows.
-static func conduit_chance() -> float:
-	return lerpf(CONDUIT_CHANCE.x, CONDUIT_CHANCE.y, GameState.passive_power() / float(GameState.PASSIVE_POWER_MAX))
 
 
 ## One of your selected powers, at random, on a target.
