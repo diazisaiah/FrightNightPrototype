@@ -34,6 +34,11 @@ var _action := ""
 var _action_time := 0.0
 var _action_duration := 1.0
 var _command: Dictionary = {}
+## The punch being thrown (set_swing): its kind, hand and phases, and the
+## one before it fading out (a combo's last punch eases into the next).
+var _swing := {}
+var _swing_prev := {}
+var _swing_fade := 0.0
 var _move_local := Vector3.ZERO
 var _move_amount := 0.0
 var _on_floor := true
@@ -109,12 +114,36 @@ func stop() -> void:
 	_action = ""
 
 
+## A punch driven straight from the fight's timing (Boss._drive_rig), one
+## smooth motion instead of separate clips: wind (0-1) coils into the wound-up
+## pose, swing (0-1) carries it to contact, follow (0-1) is the overswing,
+## settle (0-1) eases back to the guard; tremble shakes the loaded arm.
+## kind: jab, cross, hook, uppercut, slam or sweep.
+func set_swing(kind: String, hand: String, wind: float, swing: float, follow := 0.0, settle := 0.0, tremble := 0.0) -> void:
+	if not _swing.is_empty() and (_swing.kind != kind or _swing.hand != hand):
+		_swing_prev = _swing.duplicate()
+		_swing_fade = SWING_FADE
+	_swing = {"kind": kind, "hand": hand, "wind": wind, "swing": swing, "follow": follow, "settle": settle, "tremble": tremble}
+
+
+func clear_swing() -> void:
+	if not _swing.is_empty():
+		_swing_prev = _swing.duplicate()
+		_swing_fade = SWING_FADE
+	_swing = {}
+
+
+## How long the last punch takes to ease out when the next one starts.
+const SWING_FADE := 0.18
+
+
 func current_action() -> String:
 	return _action
 
 
 func advance(delta: float) -> void:
 	_clock += delta
+	_swing_fade = maxf(0.0, _swing_fade - delta)
 	if not _on_floor:
 		_airborne_time += delta
 	if _action != "":
@@ -146,6 +175,10 @@ func _apply_pose() -> void:
 		_pose_boxing_stance()
 		_pose_guard()
 	_pose_style()
+	if _swing_fade > 0.0 and not _swing_prev.is_empty():
+		_pose_swing(_swing_prev, 1.0 - _swing_fade / SWING_FADE)
+	if not _swing.is_empty():
+		_pose_swing(_swing, 0.0)
 	if _action != "":
 		_pose_action(_action, u)
 	_pose_secondary()
@@ -314,6 +347,95 @@ func _pose_uppercut(action: String, u: float) -> void:
 	_set_rot("upper_arm" + s, Vector3(1.52, -side * 0.10, side * 0.08), strike)
 	_set_rot("forearm" + s, Vector3(0.26, 0.0, -side * 0.12), strike)
 	_add_rot("wrist" + s, Vector3(0.16 * strike, 0.0, -side * 0.08 * strike))
+
+
+# --- Swings (set_swing) ---------------------------------------------------------
+
+## Each swing's three key poses, for the right hand (the left mirrors y, z and
+## x offsets): [wound, contact, follow-through]. arm / fore: upper arm and
+## forearm rotations; chest, spine, pelvis: added rotations; hips: pelvis
+## offset (-z is forward); thigh, shin: added to both legs.
+const SWINGS := {
+	"jab": {
+		"arm": [Vector3(0.2, 0.25, 0.6), Vector3(1.5, -0.05, 0.05), Vector3(1.58, -0.1, 0.0)],
+		"fore": [Vector3(2.35, 0, 0), Vector3(0.05, 0, 0), Vector3(0.0, 0, 0)],
+		"chest": [Vector3(0.06, 0.32, 0.0), Vector3(-0.08, -0.3, 0.0), Vector3(-0.1, -0.38, 0.0)],
+		"pelvis": [Vector3(0, 0.1, 0), Vector3(0, -0.12, 0), Vector3(0, -0.15, 0)],
+		"hips": [Vector3(0, 0, 0.05), Vector3(0, 0, -0.08), Vector3(0, 0, -0.1)],
+	},
+	"cross": {
+		"arm": [Vector3(-0.4, 0.3, 0.65), Vector3(1.5, -0.15, -0.05), Vector3(1.6, -0.28, -0.1)],
+		"fore": [Vector3(2.25, 0, 0), Vector3(0.05, 0, 0), Vector3(0.0, 0, 0)],
+		"chest": [Vector3(0.12, 0.7, 0.0), Vector3(-0.1, -0.45, 0.0), Vector3(-0.16, -0.62, 0.0)],
+		"spine": [Vector3(0, 0.18, 0), Vector3(0, -0.12, 0), Vector3(0, -0.18, 0)],
+		"pelvis": [Vector3(0, 0.32, 0), Vector3(0, -0.25, 0), Vector3(0, -0.32, 0)],
+		"hips": [Vector3(0, -0.04, 0.11), Vector3(0, 0, -0.13), Vector3(0, -0.01, -0.16)],
+	},
+	"hook": {
+		"arm": [Vector3(0.65, 0.65, 1.3), Vector3(1.35, -0.35, 0.85), Vector3(1.2, -0.8, 0.55)],
+		"fore": [Vector3(0.9, 0, 0), Vector3(1.45, 0.1, 0), Vector3(1.55, 0.1, 0)],
+		"chest": [Vector3(0.06, 0.85, 0.14), Vector3(-0.06, -0.55, -0.06), Vector3(-0.1, -0.95, -0.1)],
+		"spine": [Vector3(0, 0.2, 0.05), Vector3(0, -0.15, 0), Vector3(0, -0.22, 0)],
+		"pelvis": [Vector3(0, 0.35, 0), Vector3(0, -0.3, 0), Vector3(0, -0.42, 0)],
+		"hips": [Vector3(0.07, -0.03, 0.06), Vector3(-0.04, 0, -0.07), Vector3(-0.06, 0, -0.08)],
+	},
+	"uppercut": {
+		"arm": [Vector3(-0.45, 0.15, 0.35), Vector3(1.55, -0.15, 0.15), Vector3(1.95, -0.2, 0.1)],
+		"fore": [Vector3(1.35, 0, 0), Vector3(1.75, 0, 0), Vector3(1.5, 0, 0)],
+		"chest": [Vector3(-0.38, 0.42, 0.12), Vector3(0.15, -0.35, 0.0), Vector3(0.26, -0.42, 0.0)],
+		"spine": [Vector3(-0.15, 0.1, 0.05), Vector3(0.08, -0.08, 0), Vector3(0.12, -0.1, 0)],
+		"pelvis": [Vector3(0, 0.15, 0), Vector3(0, -0.2, 0), Vector3(0, -0.24, 0)],
+		"hips": [Vector3(0.03, -0.15, 0.05), Vector3(0, 0.03, -0.08), Vector3(0, 0.05, -0.08)],
+		"thigh": [Vector3(0.6, 0, 0), Vector3(-0.05, 0, 0), Vector3(-0.08, 0, 0)],
+		"shin": [Vector3(-0.95, 0, 0), Vector3(0.05, 0, 0), Vector3(0.05, 0, 0)],
+	},
+}
+
+
+## One swing's pose, faded out by `out` (0 = full, 1 = gone).
+func _pose_swing(swing: Dictionary, out: float) -> void:
+	var kind: String = swing.kind
+	var side := -1.0 if swing.hand == "left" else 1.0
+	var s := "_l" if side < 0.0 else "_r"
+	var keep := (1.0 - float(swing.settle)) * (1.0 - out)
+	var wound: float = float(swing.wind) * (1.0 - float(swing.swing)) * keep
+	var contact: float = float(swing.swing) * (1.0 - float(swing.follow)) * keep
+	var follow: float = float(swing.follow) * keep
+	if kind == "slam":
+		_pose_slam(wound, maxf(contact, follow))
+		_add_rot("chest", Vector3(0.2 * wound, 0, 0))
+		return
+	if kind == "sweep":
+		_pose_sweep(side, wound, maxf(contact, follow))
+		_add_rot("chest", Vector3(0, side * 0.3 * follow, 0))
+		return
+	if not SWINGS.has(kind):
+		return
+	var info: Dictionary = SWINGS[kind]
+	var m := Vector3(1.0, side, side)
+	var weights := [wound, contact, follow]
+	for i in 3:
+		_set_rot("upper_arm" + s, info.arm[i] * m, weights[i])
+		_set_rot("forearm" + s, info.fore[i] * m, weights[i])
+	var shake := sin(_clock * 38.0) * float(swing.tremble) * keep
+	_add_rot("upper_arm" + s, Vector3(shake, 0, shake * side))
+	# The torso turns the other way round the y axis: winding takes the
+	# punching shoulder back, the swing brings it through.
+	var turn := Vector3(1.0, -side, side)
+	for bone_name in ["chest", "spine", "pelvis"]:
+		if info.has(bone_name):
+			_add_rot(bone_name, _mix(info[bone_name], weights) * turn)
+	if info.has("hips"):
+		var hips := _mix(info.hips, weights)
+		_add_pos("pelvis", Vector3(hips.x * side, hips.y, hips.z))
+	for leg in ["thigh", "shin"]:
+		if info.has(leg):
+			for leg_side in ["_l", "_r"]:
+				_add_rot(leg + leg_side, _mix(info[leg], weights))
+
+
+func _mix(keys: Array, weights: Array) -> Vector3:
+	return keys[0] * weights[0] + keys[1] * weights[1] + keys[2] * weights[2]
 
 
 ## Head and upper back lead forward and down, the same-side shoulder turns

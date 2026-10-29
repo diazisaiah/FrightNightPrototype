@@ -520,7 +520,8 @@ func _build_headless() -> void:
 	_on("neck", _box(Vector3(0.3, 0.1, 0.28)), navy, Vector3(0, 1.64, 0))
 	_on("neck", _box(Vector3(0.14, 0.06, 0.14)), dark, Vector3(0, 1.7, 0))
 	_flame_stack(_rig.bone("neck"), Vector3(0, 0.02, 0), 0.13, flame)
-	_float_head = _skull(_rig.bone("neck"), Vector3(0, 0.3, -0.02), 0.3, bone, dark, eyes)
+	# Floating just over the neck stump's flame (it used to sit down in the chest).
+	_float_head = _skull(_rig.bone("neck"), Vector3(0, 0.44, -0.02), 0.3, bone, dark, eyes)
 	_flame_stack(_float_head, Vector3(0, 0.18, 0.05), 0.12, flame)
 	for arm in ["left", "right"]:
 		var s := "_l" if arm == "left" else "_r"

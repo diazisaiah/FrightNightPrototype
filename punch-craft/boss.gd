@@ -74,18 +74,25 @@ func _update_label() -> void:
 # --- The rigged body ---------------------------------------------------------------
 
 ## The body on a BossRig (the Character Lab's skeleton and clips), with the
-## AI's moves played on it: footwork into the walk cycle, every punch a
-## load pose held through the windup, then the punch clip started so it
-## lands on the strike (PUNCH_LEAD before it, peaking at PUNCH_PEAK), slips,
-## flinches, staggers, and each special's steps.
-const PUNCH_LEAD := {"jab": 0.15, "cross": 0.17, "hook": 0.26, "uppercut": 0.3, "slam": 0.22, "sweep": 0.3}
-const PUNCH_PEAK := {"jab": 0.5, "cross": 0.5, "hook": 0.54, "uppercut": 0.57, "slam": 0.5, "sweep": 0.5}
+## AI's moves played on it: footwork into the walk cycle, slips, flinches,
+## staggers, each special's steps, and every punch as one motion straight
+## from the fight's timing (BossRig.set_swing, 2026-10-28: the old load pose
+## and late clip were small and snapped): a big coil through the windup,
+## loaded and shaking by the time the glove flashes, the swing in the last
+## SWING_TIME so it connects as the hit lands, the overswing through the
+## strike and a settle back to the guard.
+const SWING_TIME := {"jab": 0.12, "cross": 0.14, "hook": 0.18, "uppercut": 0.17, "slam": 0.2, "sweep": 0.22}
+## A beat held fully wound before the swing (the tell reads on a still arm).
+const SWING_HOLD := 0.06
+const SETTLE_TIME := 0.3
+const LOADED_TREMBLE := 0.03
 const EVADE_SLIP := 0.55
 
 var _rig: BossRig
 var _rig_state := -1
-var _rig_attack := ""
-var _rig_punched := false
+## The punch thrown last ({kind, hand}) and how long since it landed.
+var _rig_swing := {}
+var _rig_since_hit := 0.0
 
 
 ## Stands the body on a rig of this shape. The AI keeps bare arm pivots for
@@ -141,37 +148,50 @@ func _animate(delta: float, speed: float) -> void:
 	_body.position.x = 0.0
 	_body.position.y = 0.0
 	_body.rotation = Vector3.ZERO
-	_drive_rig()
+	_drive_rig(delta)
 	_rig.advance(delta)
 
 
-func _drive_rig() -> void:
+func _drive_rig(delta: float) -> void:
 	# Posed without physics (the title screen): standing, not falling.
 	_rig.set_motion(velocity, global_basis, is_on_floor() or not is_physics_processing())
 	if _special != "":
 		_rig_state = -1
+		_rig_swing = {}
+		_rig.clear_swing()
 		return
-	if _state == State.WINDUP and (_rig_state != State.WINDUP or _rig_attack != _attack):
-		_rig_punched = false
-		var clip := _rig_clip(_attack)
-		if not clip.is_empty():
-			_rig.play(clip.load, maxf(_state_timer - clip.lead, 0.05), clip.hand)
-	elif _state == State.EVADE and _rig_state != State.EVADE:
+	if _state == State.EVADE and _rig_state != State.EVADE:
+		_rig.clear_swing()
+		_rig_swing = {}
 		_rig.play("slip_right" if _evade_side > 0.0 else "slip_left", EVADE_SLIP)
-	if _state in [State.WINDUP, State.STRIKE] and not _rig_punched:
-		var clip := _rig_clip(_attack)
-		if clip.is_empty():
-			_rig_punched = true
-		elif _state == State.STRIKE or _state_timer <= clip.lead:
-			_rig_punched = true
-			var early: float = _state_timer if _state == State.WINDUP else 0.0
-			_rig.play(clip.action, clip.lead / clip.peak, clip.hand, clip.peak, clip.lead - early)
+	var swing := _rig_clip(_attack) if _state in [State.WINDUP, State.STRIKE] else {}
+	if _state == State.WINDUP and not swing.is_empty():
+		# Coil, hold (shaking) for the tell, then swing in to land on the hit.
+		var swing_time := minf(SWING_TIME[swing.kind], _windup_total * 0.45)
+		var coil_time := maxf(_windup_total - swing_time - SWING_HOLD, 0.05)
+		var wind := smoothstep(0.0, 1.0, clampf((_windup_total - _state_timer) / coil_time, 0.0, 1.0))
+		var thrown := 0.0
+		if _state_timer < swing_time:
+			thrown = pow(1.0 - _state_timer / swing_time, 1.6)
+		_rig.set_swing(swing.kind, swing.hand, wind, thrown, 0.0, 0.0, LOADED_TREMBLE if wind >= 0.99 and thrown <= 0.0 else 0.0)
+		_rig_swing = swing
+		_rig_since_hit = 0.0
+	elif _state == State.STRIKE and not swing.is_empty():
+		_rig_since_hit += delta
+		_rig.set_swing(swing.kind, swing.hand, 1.0, 1.0, clampf(_rig_since_hit / STRIKE_TIME, 0.0, 1.0))
+		_rig_swing = swing
+	elif not _rig_swing.is_empty():
+		# Back to the guard.
+		_rig_since_hit += delta
+		var settle := clampf((_rig_since_hit - STRIKE_TIME) / SETTLE_TIME, 0.0, 1.0)
+		_rig.set_swing(_rig_swing.kind, _rig_swing.hand, 1.0, 1.0, 1.0, settle)
+		if settle >= 1.0:
+			_rig_swing = {}
+			_rig.clear_swing()
 	_rig_state = _state
-	_rig_attack = _attack
 
 
-## The rig clip for an attack: {action, hand, load (the windup pose), lead,
-## peak}, or {} if it has none.
+## The rig swing for an attack: {kind, hand}, or {} if it has none.
 func _rig_clip(attack: String) -> Dictionary:
 	var kind := attack
 	var hand := "left"
@@ -190,10 +210,9 @@ func _rig_clip(attack: String) -> Dictionary:
 			hand = _power_arm
 		"slam":
 			hand = ""
-	if not PUNCH_LEAD.has(kind):
+	if not SWING_TIME.has(kind):
 		return {}
-	var load := "slam_load" if kind == "slam" else "sweep_load" if kind == "sweep" else "load"
-	return {"action": kind, "hand": hand, "load": load, "lead": minf(PUNCH_LEAD[kind], _windup_total * 0.8), "peak": PUNCH_PEAK[kind]}
+	return {"kind": kind, "hand": hand}
 
 
 func _on_staggered() -> void:
