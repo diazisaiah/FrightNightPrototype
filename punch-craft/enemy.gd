@@ -829,6 +829,18 @@ func scare(seconds: float, from: Vector3) -> void:
 	delay(seconds, "SCARED")
 
 
+## How wide it is (its collision shape's radius), for keeping out of it.
+func body_radius() -> float:
+	for child in get_children():
+		var shape := child as CollisionShape3D
+		if shape and shape.shape is CapsuleShape3D:
+			return (shape.shape as CapsuleShape3D).radius
+		if shape and shape.shape is BoxShape3D:
+			var size := (shape.shape as BoxShape3D).size
+			return maxf(size.x, size.z) / 2.0
+	return 0.4
+
+
 ## How high its head reaches (the top of its collision shape), for stomps.
 func top_height() -> float:
 	for child in get_children():

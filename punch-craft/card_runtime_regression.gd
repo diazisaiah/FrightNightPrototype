@@ -301,11 +301,20 @@ func _exercise_ultimate(fighter: String, ultimate: String) -> void:
 	if ultimate == "temporal_break":
 		_check_time_stop(player)
 	if ultimate == "the_family":
-		# Stacked on one spot, they step apart and stay apart round a dummy.
+		# Stacked on one spot inside a dummy, they step apart and out, and stay
+		# that way round it.
 		var goons := get_tree().get_nodes_in_group("goons")
+		var dummies: Array[Enemy] = rig[2]
+		var dummy := dummies[0]
 		for goon: Node3D in goons:
-			goon.global_position = goons[0].global_position
+			goon.global_position = dummy.global_position + Vector3(0.05, 0, 0)
 		await get_tree().create_timer(1.5, false, false, true).timeout
+		var inside := 0
+		for goon: Node3D in goons:
+			for enemy: Enemy in dummies:
+				if Vector2(goon.global_position.x - enemy.global_position.x, goon.global_position.z - enemy.global_position.z).length() < enemy.body_radius() + Goon.BODY * 0.8:
+					inside += 1
+		_check(inside == 0, "The Family's goons stay out of monsters (%d inside)" % inside)
 		var closest := INF
 		for a in goons:
 			for b in goons:
