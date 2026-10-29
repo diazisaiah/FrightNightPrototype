@@ -674,6 +674,9 @@ func receive_attack(amount: float, from: Vector3, attack: String, attacker: Node
 	# Wise Up: an enraged monster hits Tony harder.
 	if _last_attacker and _last_attacker.is_taunted():
 		amount *= Enemy.TAUNT_DEALT
+	# Dead Weight: a Doom-marked monster hits softer.
+	if _last_attacker and _last_attacker.is_doomed():
+		amount *= 1.0 - Powers.dead_weight()
 	if not active:
 		return "dodged"
 	# Get Up: back on your feet, untouchable for a moment.

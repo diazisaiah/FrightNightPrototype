@@ -39,6 +39,7 @@ func _run() -> void:
 	await _test_teleport_walls()
 	await _test_head_stomp()
 	await _test_dash_punch_cooldowns()
+	await _test_dead_weight()
 	await _test_boss_poise()
 	await _test_endless_powers()
 	TimeFx.clear()
@@ -456,6 +457,40 @@ func _test_dash_punch_cooldowns() -> void:
 	_check(player._dash_punch_style("jab", false) == "spear", "Once it's back, a dash jab spears again")
 	await _free_rig(holder)
 	print("Card runtime: dash punch cooldowns OK")
+
+
+## Dead Weight (2026-10-29): a Doom-marked monster deals 25 / 30 / 35% less
+## and glows faint purple; it isn't chilled (that froze bosses white).
+func _test_dead_weight() -> void:
+	var rig := await _make_rig("berserker")
+	var holder: Node3D = rig[0]
+	var player: Player = rig[1]
+	var target: Enemy = rig[2][0]
+	_check(is_zero_approx(Powers.dead_weight()), "No Dead Weight, no softening")
+	GameState.upgrade_levels.dead_weight = 2
+	GameState.select_power("sigil_doom")
+	# No Granite Chin halving the second hit.
+	for attribute in Attributes.LIST:
+		GameState._classes.berserker.attributes[attribute] = 0
+	_check(is_equal_approx(Powers.dead_weight(), 0.3), "Dead Weight level 2: 30% less")
+	player.invulnerable = false
+	player.active = true
+	var hits := []
+	for marked in [false, true]:
+		if marked:
+			target.doom(3.0)
+		player.knuckles = player.max_knuckles
+		player.receive_attack(10.0, target.global_position, "jab", target)
+		hits.append(player.max_knuckles - player.knuckles)
+	_check(hits[0] > 0.0 and hits[1] < hits[0] * 0.85, "A marked monster hits softer (%.2f vs %.2f)" % [hits[1], hits[0]])
+	_check(target._chill_time <= 0.0, "Dead Weight doesn't chill")
+	target._flash_timer = 0.0
+	target._refresh_overlay()
+	_check(target._meshes[0].material_overlay == Enemy._weakened_overlay, "A weakened monster glows faint purple")
+	target._clear_doom()
+	_check(target._meshes[0].material_overlay != Enemy._weakened_overlay, "The glow goes with the mark")
+	await _free_rig(holder)
+	print("Card runtime: Dead Weight OK")
 
 
 ## Boss poise: a staggered boss can't be staggered or stunned again (or have

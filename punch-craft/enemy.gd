@@ -212,6 +212,7 @@ var _turn_age := 0.0
 
 static var _flash_material: StandardMaterial3D
 static var _boss_flash_material: StandardMaterial3D
+static var _weakened_overlay: StandardMaterial3D
 var _flash_cooldown := 0.0
 
 
@@ -443,6 +444,7 @@ func _clear_doom() -> void:
 	if _doom_fx:
 		_doom_fx.queue_free()
 		_doom_fx = null
+	_refresh_overlay()
 
 
 func is_dead() -> bool:
@@ -560,7 +562,8 @@ func chill(duration: float, amount: float, quiet := false) -> void:
 
 
 ## Doom marks it: when the mark runs out, a share of what it took meanwhile
-## hits it again (Powers.doom_burst). Dead Weight slows it while marked.
+## hits it again (Powers.doom_burst). Dead Weight makes it hit softer while
+## marked (Player.receive_attack), shown by a faint purple glow.
 func doom(seconds: float) -> void:
 	if _dead:
 		return
@@ -568,8 +571,7 @@ func doom(seconds: float) -> void:
 		_doom_store = 0.0
 		DamagePopup.spawn(get_parent(), "MARKED", Powers.DOOM_COLOR, 38, global_position + Vector3(0, top_height() + 0.3, 0))
 	_doom_time = maxf(_doom_time, seconds)
-	if GameState.has_effect("dead_weight"):
-		chill(seconds, 0.3, true)
+	_refresh_overlay()
 	if _doom_fx == null:
 		_doom_fx = MoveFx.skull(Powers.DOOM_COLOR)
 		_doom_fx.position.y = top_height() + 0.45
@@ -1244,13 +1246,29 @@ func _set_flash(on: bool) -> void:
 			mesh.material_overlay = _rest_overlay(mesh)
 
 
-## The overlay a mesh wears when it isn't flashing: frost while frozen, the
-## elite glow, or nothing.
+## The overlay a mesh wears when it isn't flashing: frost while frozen, a
+## faint purple while Dead Weight weakens it, the elite glow, or nothing.
 func _rest_overlay(mesh: MeshInstance3D) -> Material:
 	# Bosses show frost by the ice drifting off them only, not a sheen.
 	if _frost_fx and _frost_overlay and not is_boss:
 		return _frost_overlay
+	if _doom_time > 0.0 and Powers.dead_weight() > 0.0:
+		if _weakened_overlay == null:
+			_weakened_overlay = StandardMaterial3D.new()
+			_weakened_overlay.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			_weakened_overlay.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			_weakened_overlay.albedo_color = Color(Powers.DOOM_COLOR.lightened(0.35), 0.16)
+		return _weakened_overlay
 	return mesh.get_meta("elite_overlay") if mesh.has_meta("elite_overlay") else null
+
+
+## Puts each mesh back in its resting overlay (unless it's mid-flash).
+func _refresh_overlay() -> void:
+	if _flash_timer > 0.0:
+		return
+	for mesh in _meshes:
+		if is_instance_valid(mesh):
+			mesh.material_overlay = _rest_overlay(mesh)
 
 
 ## Frozen: an icy sheen over the whole body and ice drifting off it.

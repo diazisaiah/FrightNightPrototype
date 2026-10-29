@@ -32,6 +32,9 @@ const GALE_COLOR := Color(0.6, 1.0, 0.8)
 const CYCLONE_RADIUS := 3.5
 const DOOM_COLOR := Color(0.36, 0.1, 0.55)
 const DOOM_TIME := 3.0
+## Dead Weight: how much less a marked monster deals, by level (2026-10-29: it
+## slowed them with a chill, which froze bosses white).
+const DEAD_WEIGHT := [0.25, 0.3, 0.35]
 ## Reaper and Pall look this far for the next monster to mark.
 const DOOM_REACH := 6.0
 
@@ -210,6 +213,12 @@ static func cyclone(player: Node3D) -> void:
 		offset.y = 0.0
 		if offset.length() <= CYCLONE_RADIUS:
 			enemy.take_hit(GameState.get_damage() * 0.5, enemy.global_position + Vector3(0, 1.0, 0), offset.normalized() * 9.0, true, "CYCLONE")
+
+
+## How much less a marked monster deals (Dead Weight; 0 without it).
+static func dead_weight() -> float:
+	var level := roundi(GameState.get_effect("dead_weight"))
+	return DEAD_WEIGHT[clampi(level, 1, DEAD_WEIGHT.size()) - 1] if level > 0 else 0.0
 
 
 ## Doom: marks a monster (Enemy.doom); Pall marks the nearest other too.

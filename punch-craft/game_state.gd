@@ -918,8 +918,8 @@ const UPGRADES := {
 	},
 	"dead_weight": {
 		"name": "Dead Weight", "icon": "anchor", "pos": Vector2(-11.6, 0), "requires": ["long_shadow"], "ring": 5,
-		"desc": "Marked monsters are slowed.",
-		"max_level": 1, "cost": 36000, "cost_growth": 1.3, "effects": {"dead_weight": 1},
+		"desc": "Marked monsters hit softer.",
+		"max_level": 3, "cost": 36000, "cost_growth": 1.3, "effects": {"dead_weight": 1},
 	},
 	"hex": {
 		"name": "Hex", "icon": "eye", "pos": Vector2(-9, -1.3), "requires": ["sigil_doom"], "ring": 4,
@@ -1070,7 +1070,7 @@ const EFFECT_FORMATS := {
 	"doom": "Marked monsters take %s%% of what you dealt them again",
 	"doom_time": "Marks last %ss longer",
 	"reckoning": "The Doom burst staggers, bosses too",
-	"dead_weight": "Marked monsters are slowed",
+	"dead_weight": "Marked monsters deal 25 / 30 / 35% less damage",
 	"doom_chance": "%s%% chance any punch marks",
 	"pall": "Marks also land on the nearest other monster",
 	"reaper": "A Doom burst that knocks out jumps the mark on",
