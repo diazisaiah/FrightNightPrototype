@@ -166,7 +166,7 @@ Dash Punches / Head Stomp / Momentum / Highlight Reel / Hype Train. Always movin
 **Epics**
 | Card | Upgrades | Effect |
 |---|---|---|
-| **Spear Line** | Dash Punches | Dash Punches: Spear Jab reaches twice as far and staggers; Haymaker's blast throws monsters into the ones behind them |
+| **Spear Line** | Dash Punches | Dash Punches: Spear Jab reaches 50% farther and staggers; Haymaker's blast throws monsters into the ones behind them |
 | **Bounce House** | Head Stomp | Head Stomp: each bounce in a chain deals 50% more than the last, and a chain of 3 gives your dash back |
 | **Full Tilt** | Momentum | Momentum: goes up to x3, and a punch spends only half of it |
 | **Director's Cut** | Highlight Reel | Highlight Reel: hits 3 more monsters, and every hit stuns them for 1s |

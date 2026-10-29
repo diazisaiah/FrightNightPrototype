@@ -34,6 +34,7 @@ func _run() -> void:
 	_test_gentler_ramp()
 	_test_one_power()
 	_test_endless_powers()
+	_test_endless_falloff()
 	_test_skins()
 	if _failures.is_empty():
 		print("BALANCE REGRESSION: PASS")
@@ -43,6 +44,33 @@ func _run() -> void:
 			push_error(failure)
 		print("BALANCE REGRESSION: FAIL (%d)" % _failures.size())
 		get_tree().quit(1)
+
+
+## Endless bouts: monsters toughen every wave, but pay stays at bout 3's and
+## falls off past the clear, so a run can't farm forever (2026-10-29).
+func _test_endless_falloff() -> void:
+	var world: Node3D = load("res://world.gd").new()
+	world._endless = true
+	for division in [1, Progression.TIER_COUNT]:
+		world._division = division
+		world._wave = 0
+		var first: Dictionary = world._night_scaling()
+		_check(is_equal_approx(world._endless_pay(), 1.0), "Endless pays in full before the clear")
+		world._wave = 1
+		_check(is_equal_approx(world._endless_pay(), 1.0), "Endless pays in full up to the clear")
+		world._wave = 2
+		_check(is_equal_approx(world._endless_pay(), world.ENDLESS_FALLOFF), "Endless pay falls off past the clear")
+		world._wave = 4
+		var later: Dictionary = world._night_scaling()
+		_check(later.hp >= first.hp * 1.25, "Division %d endless: wave 5 monsters are tougher (x%.2f HP)" % [division, later.hp / first.hp])
+		_check(is_equal_approx(later.reward, first.reward), "Division %d endless: pay doesn't climb with waves" % division)
+		# A whole run, however long, pays a few waves' worth past the clear.
+		var total := 0.0
+		for wave in 200:
+			world._wave = wave
+			total += world._endless_pay()
+		_check(total < 8.0, "An endless run pays at most ~7 waves in full (%.1f)" % total)
+	world.free()
 
 
 ## Skins: each belongs to a real fighter, only recolors parts that fighter

@@ -38,6 +38,7 @@ func _run() -> void:
 			await _exercise_ultimate(fighter, ultimate.id)
 	await _test_teleport_walls()
 	await _test_head_stomp()
+	await _test_dash_punch_cooldowns()
 	await _test_boss_poise()
 	await _test_endless_powers()
 	TimeFx.clear()
@@ -430,6 +431,31 @@ func _test_head_stomp() -> void:
 	_check(target.is_staggered() and player.velocity.y > 0.0, "Coming down by a head stomps it")
 	await _free_rig(holder)
 	print("Card runtime: head stomp OK")
+
+
+## The Stray's dash punches: a Spear Jab and a Haymaker each have a cooldown
+## (a dash punch on cooldown is a plain punch), and the Spear Jab's reach is
+## short enough not to spear from across the yard (2026-10-29).
+func _test_dash_punch_cooldowns() -> void:
+	var rig := await _make_rig("free_runner")
+	var holder: Node3D = rig[0]
+	var player: Player = rig[1]
+	GameState.loadouts.free_runner.passive = "dash_punches"
+	# (The max build holds Spear Line: 50% farther. It used to double 5m.)
+	_check(player._spear_reach() <= 6.0, "Spear Jab reach is short (%.1fm)" % player._spear_reach())
+	for type in ["jab", "cross"]:
+		player._dash_jab_time = Player.DASH_PUNCH_WINDOW
+		var style: String = player._dash_punch_style(type, false)
+		var cooldown: float = player._spear_cooldown if type == "jab" else player._haymaker_cooldown
+		_check(style != "" and cooldown > 0.0, "A dash %s is a dash punch and starts its cooldown" % type)
+		player._dash_jab_time = Player.DASH_PUNCH_WINDOW
+		_check(player._dash_punch_style(type, false) == "", "On cooldown, a dash %s is a plain punch" % type)
+	_check(player._haymaker_cooldown > player._spear_cooldown, "The Haymaker's cooldown is the longer")
+	player._spear_cooldown = 0.0
+	player._dash_jab_time = Player.DASH_PUNCH_WINDOW
+	_check(player._dash_punch_style("jab", false) == "spear", "Once it's back, a dash jab spears again")
+	await _free_rig(holder)
+	print("Card runtime: dash punch cooldowns OK")
 
 
 ## Boss poise: a staggered boss can't be staggered or stunned again (or have

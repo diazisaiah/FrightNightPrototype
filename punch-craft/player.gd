@@ -165,7 +165,13 @@ const DASH_JAB_WINDOW := 0.45
 ## Haymaker that blasts the target (and anyone beside it) back.
 const DASH_PUNCH_WINDOW := 0.55
 const SPEAR_JAB_MULTIPLIER := 1.8
-const SPEAR_JAB_REACH := 5.0
+## 2026-10-29: was 5m (10m with Spear Line), skeletons speared from afar.
+const SPEAR_JAB_REACH := 3.5
+## Seconds before each dash punch comes back (2026-10-29: none before, so
+## Haymakers kept everything knocked back and away). On cooldown, a dash
+## punch is a plain one.
+const SPEAR_JAB_COOLDOWN := 2.0
+const HAYMAKER_COOLDOWN := 4.0
 const SPEAR_JAB_WIDTH := 1.0
 const HAYMAKER_MULTIPLIER := 2.4
 const HAYMAKER_KNOCKBACK := 3.5
@@ -327,6 +333,8 @@ var _mix_hint_time := -100.0
 ## Whoever attacked last (Thunderhead strikes them on a clean dodge).
 var _last_attacker: Enemy
 var _dash_jab_time := 0.0
+var _spear_cooldown := 0.0
+var _haymaker_cooldown := 0.0
 var _ghost_time := 0.0
 var _dodge_chain := 0
 var _hook_count := 0
@@ -1349,18 +1357,31 @@ func _punch(type: String, hand: String) -> void:
 	_animate_head(type, hand, impact, _cooldown)
 	# Free Runner moves are judged when the punch starts.
 	var airborne := not is_on_floor()
-	var style := ""
-	# Only the straights: a jab spears, a cross is the haymaker. Hooks and
-	# uppercuts out of a dash are just hooks and uppercuts.
-	if GameState.has_passive("dash_punches") and _dash_jab_time > 0.0 and not airborne and type in ["jab", "cross"]:
-		style = "spear" if type == "jab" else "haymaker"
-		_dash_jab_time = 0.0
+	var style := _dash_punch_style(type, airborne)
 	await get_tree().create_timer(impact, false).timeout
 	if active:
 		powers.on_punch_thrown(type, hand, GameState.get_damage() * float(punch.mult))
 		_dash_style = style
 		_land_punch(type, hand, style != "", airborne)
 		_dash_style = ""
+
+
+## The Stray's dash punch this punch becomes ("spear", "haymaker" or ""),
+## starting its cooldown. Only the straights: a jab spears, a cross is the
+## haymaker. Hooks and uppercuts out of a dash are just hooks and uppercuts.
+func _dash_punch_style(type: String, airborne: bool) -> String:
+	if not GameState.has_passive("dash_punches") or _dash_jab_time <= 0.0 or airborne or type not in ["jab", "cross"]:
+		return ""
+	if type == "jab":
+		if _spear_cooldown > 0.0:
+			return ""
+		_spear_cooldown = SPEAR_JAB_COOLDOWN
+	else:
+		if _haymaker_cooldown > 0.0:
+			return ""
+		_haymaker_cooldown = HAYMAKER_COOLDOWN
+	_dash_jab_time = 0.0
+	return "spear" if type == "jab" else "haymaker"
 
 
 ## Punches something that isn't a monster (group "punchable", with a
@@ -1671,7 +1692,7 @@ func _bowl_into(flier: Enemy, damage: float) -> void:
 
 
 func _spear_reach() -> float:
-	return SPEAR_JAB_REACH * (2.0 if GameState.has_effect("spear_line") else 1.0)
+	return SPEAR_JAB_REACH * (1.5 if GameState.has_effect("spear_line") else 1.0)
 
 
 ## Living enemies in a line straight ahead, nearest first.
@@ -2079,6 +2100,8 @@ func _phantom_step(attacker: Node3D) -> bool:
 
 func _update_passive_timers(delta: float) -> void:
 	_phantom_cooldown = maxf(0.0, _phantom_cooldown - delta)
+	_spear_cooldown = maxf(0.0, _spear_cooldown - delta)
+	_haymaker_cooldown = maxf(0.0, _haymaker_cooldown - delta)
 	if is_instance_valid(_grudge_mark):
 		_grudge_mark.rotation.y += delta * 2.0
 		_grudge_mark.position.y = _grudge.top_height() + 0.55 + 0.06 * sin(Time.get_ticks_msec() * 0.005) if is_instance_valid(_grudge) else _grudge_mark.position.y
@@ -2234,6 +2257,11 @@ func _update_speed_lines() -> void:
 	_speed_lines.speed_scale = maxf(rush, 0.5)
 
 
+## "2s", or "OK" once it's back.
+static func _cooldown_text(seconds: float) -> String:
+	return "OK" if seconds <= 0.0 else "%ds" % ceili(seconds)
+
+
 func _shockwave_every() -> int:
 	return SHOCKWAVE_EVERY
 
@@ -2254,6 +2282,12 @@ func _update_class_timers(delta: float) -> void:
 			status = "READY" if _perfect_cooldown <= 0.0 else "%ds" % ceili(_perfect_cooldown)
 		"phantom_step":
 			status = "READY" if _phantom_cooldown <= 0.0 else "%ds" % ceili(_phantom_cooldown)
+		"dash_punches":
+			# Left: Spear Jab. Right: Haymaker.
+			if _spear_cooldown <= 0.0 and _haymaker_cooldown <= 0.0:
+				status = "READY"
+			else:
+				status = "L %s  R %s" % [_cooldown_text(_spear_cooldown), _cooldown_text(_haymaker_cooldown)]
 		"dodge_chain":
 			status = "x%d" % _dodge_chain_charge
 		"rapid_combos":

@@ -180,7 +180,7 @@ const DECKS := {
 		"slick": {"name": "Slick", "rarity": "rare", "icon": "drop", "tags": ["Dodge"],
 			"text": ["Getting hit while sprinting only grazes you (half damage)", "Getting hit while sprinting only grazes you (half damage), and every 3s one is a full dodge"], "effects": {"slick": [1, 2]}},
 		"spear_line": {"name": "Spear Line", "rarity": "epic", "icon": "chevrons", "tags": ["Power"], "upgrades": "dash_punches",
-			"text": ["Dash Punches: Spear Jab reaches twice as far and staggers; Haymaker's blast throws monsters into the ones behind them"], "effects": {"spear_line": [1]}},
+			"text": ["Dash Punches: Spear Jab reaches 50% farther and staggers; Haymaker's blast throws monsters into the ones behind them"], "effects": {"spear_line": [1]}},
 		"bounce_house": {"name": "Bounce House", "rarity": "epic", "icon": "boot", "tags": ["Movement"], "upgrades": "head_stomp",
 			"text": ["Head Stomp: each bounce in a chain deals 50% more than the last, and a chain of 3 gives your dash back"], "effects": {"bounce_house": [1]}},
 		"full_tilt": {"name": "Full Tilt", "rarity": "epic", "icon": "road", "tags": ["Movement"], "upgrades": "momentum",
