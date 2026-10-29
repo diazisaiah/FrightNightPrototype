@@ -23,6 +23,7 @@ var _chips := {}
 var _shown_once := false
 var _night_label: Label
 var _tab_buttons := {}
+var _league_button: Button
 var _pages := {}
 var _trees := {}
 var _details := {}
@@ -75,6 +76,8 @@ func _open_draw() -> CardDraw:
 func _camp_tips() -> void:
 	if not is_inside_tree():
 		return
+	if _onboarding_tips():
+		return
 	if not Tutorial.seen("hat_first") or GameState.hats.is_empty() or Tutorial.seen("hat_rack"):
 		_ability_tip()
 		return
@@ -87,6 +90,34 @@ func _camp_tips() -> void:
 		Tutorial.open(self, "hat_rack_tour", "THE HAT RACK",
 				"Every hat gives a small boost that's yours for good, worn or not, so collect them all!\n\nClick a hat to wear it, and hold %s in a fight to emote and show it off." % Controls.key_name("emote"),
 				_hat_grid, Callable(), false, true))
+
+
+## New players (2026-10-29): your first upgrade (the tutorial paid for it),
+## then the Dead League; your first attribute points. True if one opened.
+func _onboarding_tips() -> bool:
+	var cheapest := GameState.cheapest_upgrade()
+	if GameState.upgrade_levels.is_empty() and cheapest > 0 and GameState.resources.get("coins", 0) >= cheapest:
+		var upgrade := Tutorial.open(self, "first_upgrade", "YOUR FIRST UPGRADE",
+				"Coins buy upgrades on this web, and they work for every fighter. The tutorial paid for your first one: buy it.",
+				_details["upgrade"].buy, func() -> bool: return not GameState.upgrade_levels.is_empty(), false)
+		if upgrade:
+			upgrade.finished.connect(_league_tip.bind(true))
+			return true
+	if _league_tip(false):
+		return true
+	if GameState.attribute_points > 0:
+		return Tutorial.open(self, "attribute_points", "ATTRIBUTE POINTS",
+				"Every level gives %d points to spend in Attributes. Each point is a small boost, and 10, 20 and 30 in one attribute unlock a perk." % Attributes.POINTS_PER_LEVEL,
+				_tab_buttons["Attributes"], Callable(), false) != null
+	return false
+
+
+func _league_tip(chain: bool) -> bool:
+	if _league_button == null:
+		return false
+	return Tutorial.open(self, "dead_league", "THE DEAD LEAGUE",
+			"Five contenders, one at a time. Challenge the next one whenever you like, as often as you like.\n\nBeating them is how you progress: each win breaks a seal, opening the next Arena division, new upgrades and more.",
+			_league_button, Callable(), false, chain) != null
 
 
 ## Back from breaking the Bellman's seal: the menus fall away, the camera
@@ -306,6 +337,7 @@ func _build_tabs() -> Control:
 	league.add_theme_color_override("font_color", UiTheme.GOLD)
 	league.pressed.connect(_start_dead_league)
 	tabs.add_child(league)
+	_league_button = league
 	for mode in [["Arena", _pick_division], ["Crypt", _pick_crypt_floors]]:
 		var start := Button.new()
 		start.text = mode[0]
@@ -1216,6 +1248,9 @@ func _build_armory_page() -> Control:
 
 
 func _refresh_armory() -> void:
+	# Locked until you bring back your first gear (2026-10-29).
+	if _tab_buttons.has("Armory"):
+		_tab_buttons["Armory"].visible = not GameState.armory.is_empty() or not GameState.equipped.is_empty()
 	if _armory_list == null:
 		return
 	for child in _armory_worn.get_children() + _armory_list.get_children():

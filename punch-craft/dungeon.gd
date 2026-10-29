@@ -168,6 +168,13 @@ var _minimap: Minimap
 @onready var _enemies: Node3D = $Enemies
 
 
+## Your first Crypt run: what gilding is for.
+func _gild_tip() -> void:
+	if is_inside_tree():
+		Tutorial.open(self, "crypt_gilding", "GILD TO KEEP",
+				"Gear you find down here is bound to the Crypt. Leave, or get knocked out, and it crumbles to dust.\n\nGild it at a gilding altar (in each floor's first room and by each boss) with Souls and silver, and it comes home to your Armory.")
+
+
 func _ready() -> void:
 	add_to_group("map_scene")  # A tap of the controller emote button opens the map.
 	# You bring your kept gear in; what you find is bound to the Crypt until
@@ -198,6 +205,7 @@ func _ready() -> void:
 	_hud.ware_chosen.connect(_on_ware_chosen)
 	_hud.back_to_camp_requested.connect(_leave_crypt)
 	_hud.continue_requested.connect(_descend)
+	get_tree().create_timer(1.5, false).timeout.connect(_gild_tip)
 	_hud.item_decided.connect(_on_item_decided)
 	_hud.set_knuckles(_player.knuckles, _player.max_knuckles)
 	_hud.set_combo(0, 1.0)

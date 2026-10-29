@@ -2359,6 +2359,18 @@ func node_seal_text(kind: String, id: String) -> String:
 	return ("win the " if holder.ends_with(" ENDLESS") else "beat ") + holder
 
 
+## The cheapest upgrade on the web you could buy now (0 if none): what
+## finishing the tutorial pays.
+func cheapest_upgrade() -> int:
+	var cheapest := 0
+	for id in UPGRADES:
+		if node_state("upgrade", id) == "available":
+			var cost := node_cost("upgrade", id)
+			if cheapest == 0 or cost < cheapest:
+				cheapest = cost
+	return cheapest
+
+
 func can_buy_node(kind: String, id: String) -> bool:
 	var state := node_state(kind, id)
 	return (state == "available" or state == "owned") \

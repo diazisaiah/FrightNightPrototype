@@ -1974,6 +1974,13 @@ A planning list, not a work order: nothing here gets built until the user picks 
     - Dodge the Combo: a weak brawler, its tells 1.5x slower.
   - **Tutorial stats:** monsters go down in 6 punches whatever you hit for, a counter counts 1.5, and burns and the like don't hurt them (`Enemy.hits_to_ko`). Every hit you take is a sixth of your knuckle HP (`Player.fixed_hit`).
   - Checked in `card_runtime_regression`.
+- **New-player onboarding** (one-time tips, `Tutorial`):
+  - **The tutorial pays:** finishing it the first time pays the cheapest upgrade on the web (`GameState.cheapest_upgrade`, 60 coins: Taped Up). Skipping pays nothing; skippers learn the hard way.
+  - **First camp visit:** "YOUR FIRST UPGRADE" points at the Buy button and closes when you buy. Then "THE DEAD LEAGUE": challenge the next contender whenever you like, as often as you like; beating them is how you progress (each win breaks a seal: the next Arena division, new upgrades and more).
+  - **First attribute points:** one card on the Attributes tab: 3 points a level, a small boost each, and perks at 10, 20 and 30.
+  - **First Crypt run:** "GILD TO KEEP", 1.5s in: finds are bound to the Crypt and crumble if you leave or go down, unless gilded at an altar (each floor's first room and by each boss) with Souls and silver.
+  - **The Armory tab is hidden** until you bring home your first gear (kept or worn).
+  - Checked in `card_runtime_regression` (the tutorial's pay).
 - **Feints:** a contender winds up a punch dark and silent (no lit glove, no blink), then, where its tell would flash, throws another instead. It's the other hand or another punch (`Boxer.FEINTS`: a jab feints into a cross or right hook, a hook into the other side or an uppercut). The real punch winds up for 0.3s, then lights up and blinks as usual.
   - **Who feints:** the Headless 12%, Sister Southpaw 18%, the Plague Doctor 15% and the Coffin King 20%, each +3% a round. The True Coffin King feints 25%, and 32% in Insano. The Bellman never does.
   - **Never:** while blind (the Plague Doctor's flash) or answering a slip.
