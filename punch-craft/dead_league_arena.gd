@@ -37,6 +37,10 @@ const TAG_LINES := [
 	"Doctor! He needs a checkup.",
 ]
 
+## Where leaving goes ("League menu", end run): the playground sends you
+## back to itself.
+static var leave_to := "res://dead_league_menu.tscn"
+
 var _boss: DeadLeagueBoss
 var _round := 1
 var _elapsed := 0.0
@@ -459,7 +463,7 @@ func _rematch() -> void:
 
 func _go_to_league() -> void:
 	get_tree().paused = false
-	Loading.go("res://dead_league_menu.tscn")
+	Loading.go(leave_to)
 
 
 func _exit_tree() -> void:

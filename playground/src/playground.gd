@@ -23,6 +23,8 @@ static var _resume_lab_mode := ""
 var _panel: Control
 var _enemy_pick: OptionButton
 var _tier := 1
+## Spawned monsters' rank: "normal", "elite" or "champion".
+var _rank := "normal"
 var _god := true
 var _frozen := false
 var _theme_node: Node3D
@@ -47,6 +49,7 @@ const HOTKEYS := "F1 panel   V third person   G god mode   K spawn   C clear   F
 func _ready() -> void:
 	# Everything unlocked, nothing interrupting.
 	GameState.tutorial_done = true
+	GameState.true_king_bout = false
 	for id in Achievements.LIST:
 		GameState.achievements[id] = true
 	for tip in ["hat_first", "hat_rack", "hat_rack_tour", "power_select"]:
@@ -229,6 +232,7 @@ func _build_panel() -> void:
 	var tier := _options(["tier 1", "tier 2", "tier 3", "tier 4", "tier 5"], "tier 1", func(id: String) -> void:
 		_tier = int(id.get_slice(" ", 1)))
 	box.add_child(tier)
+	box.add_child(_options(["normal", "elite", "champion"], _rank, func(id: String) -> void: _rank = id))
 	var spawn_row := HBoxContainer.new()
 	box.add_child(spawn_row)
 	spawn_row.add_child(_button("Spawn", func() -> void: _spawn(1)))
@@ -239,6 +243,9 @@ func _build_panel() -> void:
 		for enemy in $Enemies.get_children():
 			enemy.set_physics_process(not on))
 	box.add_child(_freeze_check)
+
+	_section(box, "DEAD LEAGUE")
+	box.add_child(_button("True Coffin King (maxes this fighter)", _true_coffin_king))
 
 	_section(box, "FORCE A SPECIAL (nearest boxer)")
 	var special_grid := GridContainer.new()
@@ -588,8 +595,48 @@ func _spawn(count: int) -> void:
 		ahead.y = 0.0
 		enemy.position = _player.global_position + ahead.normalized() * 5.0 + Vector3((i - count / 2.0) * 1.4, 0.1, 0)
 		$Enemies.add_child(enemy)
+		if not pick.begins_with("contender: "):
+			_rank_up(enemy)
 		if _frozen:
 			enemy.set_physics_process(false)
+
+
+## Makes it an elite or a champion (as the Arena does), per the rank picked.
+func _rank_up(enemy: Enemy) -> void:
+	if _rank == "elite":
+		enemy.make_elite(Enemy.ELITE_TRAITS.pick_random())
+		enemy.set_meta("elite", true)
+	elif _rank == "champion":
+		var traits: Array = Enemy.ELITE_TRAITS.duplicate()
+		traits.shuffle()
+		enemy.make_champion(traits.slice(0, 2))
+
+
+## Maxes this fighter (web, level, every card at full rank, every attribute,
+## every contender beaten) and steps into the ring with the True Coffin King.
+## Leaving the fight comes back here.
+func _true_coffin_king() -> void:
+	var fighter := GameState.player_class
+	for id in GameState.UPGRADES:
+		GameState.upgrade_levels[id] = int(GameState.UPGRADES[id].max_level)
+	for i in DeadLeagueRules.BOSS_COUNT:
+		GameState.dead_league_clears[DeadLeagueRules.boss(i).id] = true
+	var info: Dictionary = GameState._classes[fighter]
+	info.level = maxi(int(info.level), Attributes.MAX * Attributes.LIST.size() / Attributes.POINTS_PER_LEVEL + 1)
+	info.attribute_points = 0
+	for attribute in Attributes.LIST:
+		info.attributes[attribute] = Attributes.MAX
+	for id in Cards.deck(fighter):
+		info.cards[id] = Cards.copies(Cards.deck(fighter)[id])
+	info.draws = 0
+	info.offer = []
+	if GameState.power_pick == "":
+		GameState.select_power("sigil_fire")
+	GameState.save_game()
+	load("res://dead_league_arena.gd").leave_to = "res://playground/playground.tscn"
+	GameState.dead_league_bout = DeadLeagueRules.BOSS_COUNT - 1
+	GameState.true_king_bout = true
+	Loading.go("res://dead_league_arena.tscn")
 
 
 func _clear() -> void:

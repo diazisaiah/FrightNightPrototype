@@ -20,7 +20,8 @@ Both sync first, so the playground always has the latest code. Opening `playgrou
 - **Emotes**: every dance, unlocked.
 - **Hand idles**: every fighter's idle and every shop idle. Tick **Loop the last one** to keep replaying it. Click one to play it on your hands now; it's equipped too if this fighter can wear it (shop idles are all unlocked; another fighter's own idle just plays).
 - **Character Lab**: inspect the current fighter and skin, orbit/zoom the camera, preview 50 locomotion/combat/damage/knockdown/ultimate states, compare approved reference art, review live first-person glove poses, capture four views, and spawn three command-driven remote avatars. Fighter changes reload only the isolated playground; skin changes update the body and production hands live without resetting the rig or clip.
-- **Spawn**: any enemy at tier 1-5, five at once, or clear them. Freeze enemies to inspect them.
+- **Spawn**: any enemy at tier 1-5, as a normal monster, an elite or a champion. Spawn five at once, or clear them. Freeze enemies to inspect them.
+- **Dead League**: True Coffin King maxes the current fighter (web, level 51, every card at full rank, every attribute, every contender beaten) and starts his fight. Leaving the fight comes back to the playground.
 - **Force a special**: makes the nearest boxer use any special move.
 - **Power**: gives a whole power line and selects it.
 - **Player**: god mode, fill the ultimate, +5 levels, replay the mini tutorials.

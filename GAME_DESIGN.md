@@ -1930,6 +1930,9 @@ A planning list, not a work order: nothing here gets built until the user picks 
   - **Cooldowns:** Spear Jab 2s, Haymaker 4s; before, there were none, and chained Haymakers kept everything knocked back. On cooldown, a dash punch is a plain punch.
   - **Passive chip:** reads READY, or "L 1s  R OK" (left Spear Jab, right Haymaker).
   - Checked in `card_runtime_regression`.
+- **Playground:**
+  - Spawns can be elites or champions.
+  - A True Coffin King button maxes the current fighter and starts his fight. Leaving the fight comes back to the playground: `DeadLeagueArena.leave_to` is set by the playground and is the League menu otherwise.
 - **The Blur's Long Reach:** 3.2m plus 0.05m a point of passive power, up to 3.65m (was 3.8m plus 0.1m, up to 4.7m). Normal reach is 2.5m.
 
 ## The Tower and Rebirth (plan, 2026-10-29) [Planned]
