@@ -7,6 +7,9 @@ extends CharacterBody3D
 signal died(enemy: Enemy)
 
 const FLASH_TIME := 0.08
+## Bosses flash fainter and at most this often (2026-10-29: a maxed build's
+## echoes, powers and chains kept a boss white, so his moves were hard to read).
+const BOSS_FLASH_GAP := 0.3
 const STAGGER_TIME := 0.5
 ## No stun-locks, from anything (2026-10-28): every hold on a monster (punch
 ## staggers, stuns, knockdowns, delays and scares) counts as control. A
@@ -208,6 +211,8 @@ var _bowled: Array = []
 var _turn_age := 0.0
 
 static var _flash_material: StandardMaterial3D
+static var _boss_flash_material: StandardMaterial3D
+var _flash_cooldown := 0.0
 
 
 ## Call before adding to the tree. scaling holds wave multipliers:
@@ -307,6 +312,7 @@ func _physics_process(delta: float) -> void:
 	if not _dead:
 		_check_hat_lesson(delta)
 		_flash_timer -= delta
+		_flash_cooldown -= delta
 		if _flash_timer <= 0.0:
 			_set_flash(false)
 		_track_control(delta)
@@ -1218,6 +1224,10 @@ func _update_label() -> void:
 
 
 func _set_flash(on: bool) -> void:
+	if on and is_boss:
+		if _flash_cooldown > 0.0:
+			return
+		_flash_cooldown = BOSS_FLASH_GAP
 	if on:
 		_flash_timer = FLASH_TIME
 	if _flash_material == null:
@@ -1225,9 +1235,11 @@ func _set_flash(on: bool) -> void:
 		_flash_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 		_flash_material.albedo_color = Color(1, 1, 1, 0.3)
 		_flash_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		_boss_flash_material = _flash_material.duplicate()
+		_boss_flash_material.albedo_color = Color(1, 1, 1, 0.14)
 	for mesh in _meshes:
 		if on:
-			mesh.material_overlay = _flash_material
+			mesh.material_overlay = _boss_flash_material if is_boss else _flash_material
 		else:
 			mesh.material_overlay = _rest_overlay(mesh)
 
@@ -1235,7 +1247,8 @@ func _set_flash(on: bool) -> void:
 ## The overlay a mesh wears when it isn't flashing: frost while frozen, the
 ## elite glow, or nothing.
 func _rest_overlay(mesh: MeshInstance3D) -> Material:
-	if _frost_fx and _frost_overlay:
+	# Bosses show frost by the ice drifting off them only, not a sheen.
+	if _frost_fx and _frost_overlay and not is_boss:
 		return _frost_overlay
 	return mesh.get_meta("elite_overlay") if mesh.has_meta("elite_overlay") else null
 

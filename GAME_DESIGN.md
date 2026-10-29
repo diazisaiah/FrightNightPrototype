@@ -1936,14 +1936,18 @@ A planning list, not a work order: nothing here gets built until the user picks 
   - The tag-in checks the round hasn't changed. Checked in `dead_league_regression` with a real bout.
 - **The True Coffin King is built for a maxed fighter:** he was tuned for `Progression.true_par` (a level-29 build with 90% of the web). A maxed fighter (level 51, every card at full rank, every attribute, the whole web) rated 10-18x his offense and 3-4x his defense, so every round melted in seconds.
   - **The tuning:** he and his tag-ins now take a maxed fighter's offense ratio in HP and the square root of its defense ratio in damage, measured per class (`DeadLeagueBoss.TRUE_MAXED`, from `PowerRating.maxed_over_true_par`).
-  - **With a maxed fighter:** about 10-18.5x HP and 1.6-1.9x damage. Combo Master is x14.9 HP, the Catalyst x18.6.
+  - **With a maxed fighter:** HP is a third of the maxed offense ratio (`TRUE_HP_SHARE` 0.33; the full ratio was too tanky), about 3.4-6.1x, and damage 1.6-1.9x. Combo Master is x4.9 HP, the Catalyst x6.1.
   - **Fixed:** he doesn't grow with you, so you need to be near maxed to beat him.
   - `balance_regression` re-measures each class and fails if the tuning drifts more than 15%.
 - **Insano, harder:**
   - HP and damage by round: 1 / 1.16 / 1.34 / 1.5 / 2.2x HP and 1 / 1.08 / 1.17 / 1.25 / 1.4x damage (`TRUE_ROUND_HP` / `TRUE_ROUND_DAMAGE`). Rounds 4 and 5 used to be round 3's.
   - Insano tells 25% quicker (was 15%), and pauses between combos 60% shorter.
   - At half HP, "NO MORE GAMES!": tells 15% quicker again and 15% faster footwork, and the burning floor comes 40% sooner with 25% less warning.
-  - The floor burns every 2.2-3.4s (was 3-4.5), warns 1.2s, and each tick is half his punch (was a third).
+  - The floor burns every 2.2-3.4s (was 3-4.5) and warns 1.2s. It burns a flat 5 damage a second while you stand in it (`BURN_DPS`; a share of his punch was far too much).
+- **Reading a busy fight:** with a maxed build, the boss stayed white and the screen filled with numbers.
+  - **Damage numbers stack** (`DamagePopup`): a number landing within 1.2m of a live one with the same caption and color, within 0.4s of its last hit, adds to it and pops again, for up to 1.6s. Echoes, chains, burns and repeated punches show as one growing number. Heals and text pop on their own.
+  - **Boss hit flashes:** half as bright (14% white, was 30%) and at most every 0.3s (`BOSS_FLASH_GAP`).
+  - **Frozen bosses:** no blue sheen; the ice drifting off them shows it.
 - **Feints:** a contender winds up a punch dark and silent (no lit glove, no blink), then, where its tell would flash, throws another instead. It's the other hand or another punch (`Boxer.FEINTS`: a jab feints into a cross or right hook, a hook into the other side or an uppercut). The real punch winds up for 0.3s, then lights up and blinks as usual.
   - **Who feints:** the Headless 12%, Sister Southpaw 18%, the Plague Doctor 15% and the Coffin King 20%, each +3% a round. The True Coffin King feints 25%, and 32% in Insano. The Bellman never does.
   - **Never:** while blind (the Plague Doctor's flash) or answering a slip.

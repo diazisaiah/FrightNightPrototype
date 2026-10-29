@@ -85,6 +85,8 @@ const INSANO_FEINT := 0.32
 ## dodging and healing, not HP). Fixed: he doesn't grow with you, so you need
 ## to be near maxed to beat him (2026-10-29: tuned to true par alone, a maxed
 ## fighter melted every round in seconds).
+## The share of that HP he gets (2026-10-29: the full share was too tanky).
+const TRUE_HP_SHARE := 0.33
 const TRUE_MAXED := {
 	"berserker": Vector2(11.2, 3.54), "counter_master": Vector2(10.3, 3.29),
 	"combo_master": Vector2(14.85, 3.14), "free_runner": Vector2(10.9, 3.17),
@@ -188,7 +190,7 @@ func empower(bout_round: int, partner := false) -> void:
 	attack_damage = king.damage * TRUE_ROUND_DAMAGE[step] * build.ehp / Progression.BASE_KNUCKLES
 	# Built for a maxed fighter of your class, whatever you bring.
 	var maxed: Vector2 = TRUE_MAXED.get(GameState.player_class, Vector2.ONE)
-	max_hp *= maxed.x
+	max_hp *= maxed.x * TRUE_HP_SHARE
 	attack_damage *= sqrt(maxed.y)
 	windup_scale = minf(windup_scale, king.windup * (1.0 - 0.045 * step))
 	move_speed = maxf(move_speed, 2.5 * king.speed)

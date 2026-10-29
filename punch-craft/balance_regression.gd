@@ -36,6 +36,7 @@ func _run() -> void:
 	_test_endless_powers()
 	_test_endless_falloff()
 	_test_true_king_maxed()
+	_test_number_stacks()
 	_test_skins()
 	if _failures.is_empty():
 		print("BALANCE REGRESSION: PASS")
@@ -45,6 +46,24 @@ func _run() -> void:
 			push_error(failure)
 		print("BALANCE REGRESSION: FAIL (%d)" % _failures.size())
 		get_tree().quit(1)
+
+
+## Damage numbers stack (2026-10-29): numbers on the same spot with the same
+## caption add up in one label; other captions, far spots and text don't.
+func _test_number_stacks() -> void:
+	var holder := Node3D.new()
+	add_child(holder)
+	DamagePopup.spawn(holder, "10.0", Color.WHITE, 40, Vector3.ZERO)
+	DamagePopup.spawn(holder, "2.5", Color.WHITE, 40, Vector3(0.3, 0, 0))
+	DamagePopup.spawn(holder, "ECHO\n1.0", Color.WHITE, 40, Vector3.ZERO)
+	DamagePopup.spawn(holder, "ECHO\n1.0", Color.WHITE, 40, Vector3.ZERO)
+	DamagePopup.spawn(holder, "5.0", Color.WHITE, 40, Vector3(5, 0, 0))
+	DamagePopup.spawn(holder, "+12", Color.GREEN, 40, Vector3.ZERO)
+	DamagePopup.spawn(holder, "+12", Color.GREEN, 40, Vector3.ZERO)
+	var texts := holder.get_children().map(func(label: Node) -> String: return (label as Label3D).text)
+	_check(texts.size() == 5 and "12.5" in texts and "ECHO\n2.0" in texts and "5.0" in texts,
+			"Damage numbers stack on the same spot (%s)" % str(texts))
+	holder.free()
 
 
 ## The True Coffin King's maxed-build tuning (DeadLeagueBoss.TRUE_MAXED) still

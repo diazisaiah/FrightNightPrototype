@@ -10,8 +10,9 @@ const EVERY := Vector2(2.2, 3.4)
 const WARN := 1.2
 const BURN := 2.6
 const TICK := 0.4
-## Each tick takes this share of the King's punch.
-const TICK_SHARE := 0.5
+## Damage a second while you stand in it (2026-10-29: was a share of his
+## punch, half of it every 0.4s, far too much).
+const BURN_DPS := 5.0
 ## Below the King's half HP (fury): patterns come this much sooner, with
 ## this much less warning.
 const FURY_PACE := 0.6
@@ -51,9 +52,9 @@ func _physics_process(delta: float) -> void:
 			if _tick <= 0.0:
 				_tick = TICK
 				if player.active and _standing_in():
-					var hit: float = (float(king.get("attack_damage")) if is_instance_valid(king) else 6.0) * TICK_SHARE
+					var hit := BURN_DPS * TICK
 					player._take_damage(hit, null)
-					DamagePopup.spawn(get_parent(), "BURN", COLOR, 26, player.global_position + Vector3(0, 1.4, 0))
+					DamagePopup.spawn(get_parent(), "BURN\n%.1f" % hit, COLOR, 26, player.global_position + Vector3(0, 1.4, 0))
 			if _phase_time <= 0.0:
 				_clear()
 
