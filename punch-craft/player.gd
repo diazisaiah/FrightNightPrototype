@@ -69,7 +69,10 @@ const ECHO_SHARE := 0.3
 const ECHO_DELAY := 0.25
 const ECHO_COMBO := 0.05
 const PUNCH_REACH := 2.5
-const LONG_REACH := 3.8
+## The Blur's Long Reach, plus this per point of passive power (2026-10-29:
+## was 3.8m + 0.1, up to 4.7m).
+const LONG_REACH := 3.2
+const LONG_REACH_PER_POWER := 0.05
 const STOMP_STUN := 1.0
 const STOMP_DAMAGE := 1.5
 const MOMENTUM_BUILD := 2.0
@@ -402,7 +405,7 @@ func _ready() -> void:
 	_punch_ray.add_exception(self)
 	max_knuckles = GameState.get_max_knuckles()
 	knuckles = max_knuckles
-	_punch_ray.target_position = Vector3(0, 0, -(LONG_REACH + 0.1 * GameState.passive_power()) if GameState.has_passive("long_reach") else -PUNCH_REACH)
+	_punch_ray.target_position = Vector3(0, 0, -(LONG_REACH + LONG_REACH_PER_POWER * GameState.passive_power()) if GameState.has_passive("long_reach") else -PUNCH_REACH)
 	_camera.fov = Settings.fov()
 	Settings.changed.connect(func() -> void: _camera.fov = Settings.fov())
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED

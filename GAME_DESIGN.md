@@ -1290,7 +1290,7 @@ Each fighter has **three passives and two ultimates** (`abilities.gd`): the defa
 |---|---|---|
 | Rapid Combos | 1 | Every 5th hit stuns everything nearby and holds the combo timer. |
 | Echo Fists | 5 | Every punch repeats 0.25s later as a violet echo for 30% damage. With the **Flurry** node, echoes add +0.05 to the combo multiplier. |
-| Long Reach | 15 | Punches reach 3.8 m instead of 2.5 m. |
+| Long Reach | 15 | Punches reach 3.2 m instead of 2.5 m (+0.05 m a point of passive power; 2026-10-29: was 3.8 m + 0.1). |
 
 | Ultimate | Level | What it does |
 |---|---|---|
@@ -1930,6 +1930,7 @@ A planning list, not a work order: nothing here gets built until the user picks 
   - **Cooldowns:** Spear Jab 2s, Haymaker 4s; before, there were none, and chained Haymakers kept everything knocked back. On cooldown, a dash punch is a plain punch.
   - **Passive chip:** reads READY, or "L 1s  R OK" (left Spear Jab, right Haymaker).
   - Checked in `card_runtime_regression`.
+- **The Blur's Long Reach:** 3.2m plus 0.05m a point of passive power, up to 3.65m (was 3.8m plus 0.1m, up to 4.7m). Normal reach is 2.5m.
 
 ## The Tower and Rebirth (plan, 2026-10-29) [Planned]
 

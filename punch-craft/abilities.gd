@@ -110,7 +110,7 @@ const POWER_TEXT := {
 	"phantom_step": [0.2, "-%ss Phantom Step cooldown"],
 	"dodge_chain": [5.0, "+%s%% per chained dodge"],
 	"echo_fists": [4.0, "+%s%% echo damage"],
-	"long_reach": [0.1, "+%sm reach"],
+	"long_reach": [0.05, "+%sm reach"],
 	"head_stomp": [0.1, "+%ss stomp stun"],
 	"momentum": [0.1, "+%sx max momentum"],
 	"the_muscle": [0.8, "-%ss between Vinnie's grabs"],
