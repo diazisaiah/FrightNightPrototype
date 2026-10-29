@@ -1892,3 +1892,8 @@ A planning list, not a work order: nothing here gets built until the user picks 
    - **The secret ending moves here:** reaching the top of the Tower as Tony in the Plumber Overalls and the Fat Plumber Cap plays the true secret ending (it plays after the Coffin King for now).
 9. **Multiplayer [Planned]:** the Versus prototype (Phase 1 of the plan above). A first draft is parked on the `versus-prototype-wip` branch (Net autoload over WebSockets, a camp lobby, the graveyard split by a seal line, KOs sent across, first down loses); not reviewed, tested or merged.
 10. **New looks [Planned]:** updated KO screens, the camp background and the title screen.
+
+## Patchwork (2026-10-28)
+- **Upgrade web zoom:** out to 0.2x (was 0.5x) and in to 2x; it opens fitted down to 0.35x, and each wheel step is 15%. The "UPGRADES OWNED x / y" counter has room for three-digit counts.
+- **Tony's bald spot:** his buzz cut was thinner than a voxel (1.2 cm vs 1.6 cm), so the flat back of his skull showed through, ringed by hair; it's 2 cm now, and it stays on under hats (only bald hats take it).
+- **Drawn-On Hairline:** painted on, so it's head-sized now (hats are built 1.4x to read): the sides, back, peak and square glasses sit right on the head.

@@ -839,24 +839,27 @@ static func _doctor_mask(hat: Node3D, u: float) -> void:
 ## painted over the top and down the sides, bald temples either side of a
 ## sharp triangle widow's peak, and square black sunglasses.
 static func _drawn_hairline(hat: Node3D, u: float) -> void:
+	# Painted on, so head-sized (hats are built SIZE times bigger to read):
+	# in head widths, the scalp's sides sit at about 0.53 and its back at 0.52.
+	u /= SIZE
 	var ink := Color(0.04, 0.035, 0.04)
-	# Hugging the scalp, a touch under the hat seat.
-	_b(hat, u, Vector3(0.8, 0.06, 0.72), Vector3(0, -0.035, 0.1), ink)
-	_b(hat, u, Vector3(0.32, 0.06, 0.28), Vector3(0, -0.035, -0.34), ink)
+	# Over the top of the scalp, a touch under the hat seat.
+	_b(hat, u, Vector3(0.92, 0.05, 0.86), Vector3(0, -0.05, 0.06), ink)
 	# The peak: a triangle pointing down the forehead.
 	for i in 4:
-		_b(hat, u, Vector3(0.28 - i * 0.075, 0.06, 0.03), Vector3(0, -0.1 - i * 0.06, -0.48), ink)
+		_b(hat, u, Vector3(0.36 - i * 0.09, 0.07, 0.03), Vector3(0, -0.12 - i * 0.07, -0.53), ink)
 	# Painted down the sides of the head to above the ears, and the back.
 	for side in [-1.0, 1.0]:
-		_b(hat, u, Vector3(0.03, 0.34, 0.66), Vector3(0.46 * side, -0.22, 0.1), ink)
-		_b(hat, u, Vector3(0.1, 0.06, 0.66), Vector3(0.42 * side, -0.05, 0.1), ink)
-	_b(hat, u, Vector3(0.86, 0.4, 0.03), Vector3(0, -0.24, 0.45), ink)
+		_b(hat, u, Vector3(0.03, 0.36, 0.78), Vector3(0.55 * side, -0.24, 0.08), ink)
+		_b(hat, u, Vector3(0.08, 0.06, 0.78), Vector3(0.51 * side, -0.07, 0.08), ink)
+	_b(hat, u, Vector3(1.08, 0.42, 0.03), Vector3(0, -0.25, 0.54), ink)
+	# Square sunglasses resting on the face, arms back to the ears.
 	var lens := Color(0.03, 0.03, 0.04)
 	var frame := Color(0.5, 0.5, 0.52)
 	for side in [-1.0, 1.0]:
-		_b(hat, u, Vector3(0.2, 0.15, 0.03), Vector3(0.17 * side, -0.32, -0.56), lens, Vector3.ZERO, false, 0.9)
-		_b(hat, u, Vector3(0.03, 0.03, 0.5), Vector3(0.44 * side, -0.29, -0.32), frame, Vector3.ZERO, false, 0.8)
-	_b(hat, u, Vector3(0.14, 0.03, 0.03), Vector3(0, -0.28, -0.57), frame, Vector3.ZERO, false, 0.8)
+		_b(hat, u, Vector3(0.26, 0.19, 0.03), Vector3(0.19 * side, -0.42, -0.56), lens, Vector3.ZERO, false, 0.9)
+		_b(hat, u, Vector3(0.03, 0.03, 0.5), Vector3(0.55 * side, -0.38, -0.3), frame, Vector3.ZERO, false, 0.8)
+	_b(hat, u, Vector3(0.16, 0.035, 0.03), Vector3(0, -0.37, -0.575), frame, Vector3.ZERO, false, 0.8)
 
 
 ## The earth warrior's hair and headband: black hair with bangs over the

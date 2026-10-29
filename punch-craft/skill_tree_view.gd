@@ -14,8 +14,10 @@ signal node_selected(id: String)
 signal node_activated(id: String)
 
 const SPACING := 84.0
-const MIN_ZOOM := 0.5
-const MAX_ZOOM := 1.6
+## Far enough out to see the whole web (it grew with the seal rings and the
+## Endless powers), close enough to read a node.
+const MIN_ZOOM := 0.2
+const MAX_ZOOM := 2.0
 const GRID_SPACING := 28.0
 ## The powers' colors and names, keyed by their Sigil node: the four
 ## elements in the corners, the four Endless powers north, east, south, west.
@@ -280,7 +282,7 @@ func recenter() -> void:
 	var room := size - Vector2(40, 90)
 	_zoom = 1.0
 	if bounds.size.x > 0.0 and bounds.size.y > 0.0 and room.x > 0.0 and room.y > 0.0:
-		_zoom = clampf(minf(room.x / bounds.size.x, room.y / bounds.size.y), 0.7, 1.0)
+		_zoom = clampf(minf(room.x / bounds.size.x, room.y / bounds.size.y), 0.35, 1.0)
 	_pan = size / 2.0 + Vector2(0, 6) - bounds.get_center() * _zoom
 	_apply_transform()
 
@@ -307,7 +309,7 @@ func _gui_input(event: InputEvent) -> void:
 				_dragging = event.pressed
 			MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN:
 				if event.pressed:
-					_zoom_at(event.position, 1.12 if event.button_index == MOUSE_BUTTON_WHEEL_UP else 1.0 / 1.12)
+					_zoom_at(event.position, 1.15 if event.button_index == MOUSE_BUTTON_WHEEL_UP else 1.0 / 1.15)
 			MOUSE_BUTTON_RIGHT:
 				if event.pressed:
 					recenter()
@@ -536,7 +538,10 @@ func _draw_unknown(at: Vector2) -> void:
 func _build_progress() -> void:
 	var box := VBoxContainer.new()
 	box.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
-	box.offset_left = -170.0
+	# Room for three-digit counts ("UPGRADES OWNED  120 / 160"); grows left
+	# if it needs more.
+	box.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	box.offset_left = -270.0
 	box.offset_right = -14.0
 	box.offset_top = 8.0
 	box.add_theme_constant_override("separation", 2)

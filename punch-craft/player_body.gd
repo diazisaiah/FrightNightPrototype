@@ -176,8 +176,11 @@ func wear_hat(id: String) -> void:
 	var bare := id == "" or not Hats.CATALOG.has(id)
 	if _beanie:
 		_beanie.visible = bare
+	# Tony's buzz cut sits flush under any hat (hiding it bared his scalp where
+	# a cap doesn't reach); bigger hair would poke through, so it goes.
+	var bald: bool = not bare and Hats.info(id).get("bald", false)
 	if _hair_top:
-		_hair_top.visible = bare
+		_hair_top.visible = bare or (fighter == "wise_guy" and not bald)
 	if _hair_low:
 		_hair_low.visible = bare or not Hats.info(id).get("bald", false)
 	if bare:
@@ -981,7 +984,8 @@ func _hair(head: Node3D) -> void:
 			_ribbon(head, Vector3(-0.02, 0.265, 0.2), Vector3(-0.3, 0.0, 0.48), 0.04, 0.016, _cloth(red.darkened(0.1), 0.1), Vector3.UP, 0.03)
 		"wise_guy":
 			# Short at the sides under a knit beanie with a folded brim.
-			_cap(head, hair, 0.012, 0.22, 0.12)
+			# Over a voxel thick (0.016), or the flat back of the skull shows through.
+			_cap(head, hair, 0.02, 0.22, 0.12)
 			_beanie = Node3D.new()
 			_beanie.name = "Beanie"
 			head.add_child(_beanie)
