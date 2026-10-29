@@ -138,6 +138,11 @@ func _build_panel() -> void:
 	var fighters := _options(GameState.CLASSES.keys(), GameState.player_class, _switch_fighter)
 	box.add_child(fighters)
 
+	_section(box, "PASSIVE")
+	box.add_child(_ability_options("passive"))
+	_section(box, "ULTIMATE")
+	box.add_child(_ability_options("ultimate"))
+
 	_section(box, "HAT")
 	var hats: Array = [""] + Hats.CATALOG.keys()
 	box.add_child(_options(hats, GameState.worn_hat, func(id: String) -> void:
@@ -406,6 +411,39 @@ func _switch_fighter(id: String) -> void:
 		return
 	_resume_lab_mode = "inspect" if _lab and _lab.mode == "inspect" else "third_person" if _lab and _lab.mode == "third_person" else ""
 	GameState.set_player_class(id)
+	get_tree().reload_current_scene()
+
+
+## Every passive or ultimate the fighter has, by name, locked or not.
+func _ability_options(slot: String) -> OptionButton:
+	var fighter := GameState.player_class
+	var entries: Array = Abilities.passives(fighter) if slot == "passive" else Abilities.ultimates(fighter)
+	var current := GameState.passive() if slot == "passive" else GameState.ultimate()
+	var options := OptionButton.new()
+	options.focus_mode = Control.FOCUS_NONE
+	for i in entries.size():
+		options.add_item(String(entries[i].get("name", entries[i].id)))
+		options.set_item_metadata(i, entries[i].id)
+		if entries[i].id == current:
+			options.select(i)
+	options.item_selected.connect(func(index: int) -> void: _equip_ability(slot, options.get_item_metadata(index)))
+	return options
+
+
+## Equips it whatever the fighter's level (raising the class level to its
+## unlock if needed), then reloads the ring so the ultimate and passive start
+## fresh.
+func _equip_ability(slot: String, id: String) -> void:
+	var fighter := GameState.player_class
+	var entry := Abilities.info(fighter, id)
+	if entry.is_empty():
+		return
+	var info: Dictionary = GameState._classes[fighter]
+	info.level = maxi(int(info.level), int(entry.get("level", 1)))
+	var picks: Dictionary = GameState.loadouts.get(fighter, {})
+	picks[slot] = id
+	GameState.loadouts[fighter] = picks
+	_resume_lab_mode = "inspect" if _lab and _lab.mode == "inspect" else "third_person" if _lab and _lab.mode == "third_person" else ""
 	get_tree().reload_current_scene()
 
 
