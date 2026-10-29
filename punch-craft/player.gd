@@ -818,6 +818,7 @@ func restore() -> void:
 ## class specials ready (used when continuing into the next night).
 func start_fresh() -> void:
 	restore()
+	unbroken_time = 0.0
 	_rhythm = 0.0
 	_dodge_chain = 0
 	_ghost_time = 0.0
@@ -832,6 +833,7 @@ func start_fresh() -> void:
 ## combo/counter state and recover a small corner-rest share of max knuckles.
 func prepare_bout_round(recovery_fraction: float) -> void:
 	active = true
+	unbroken_time = 0.0
 	heal(max_knuckles * recovery_fraction)
 	_set_combo(0)
 	_clear_counter()
@@ -2323,6 +2325,10 @@ func _kick_fov(amount: float) -> void:
 
 
 func _set_combo(value: int) -> void:
+	# Unbroken: nothing drops the combo while it lasts (getting hit, a slipped
+	# punch and a shield used to; 2026-10-29). A knockout still does.
+	if unbroken_time > 0.0 and active and value < combo:
+		return
 	combo = value
 	if combo >= 25:
 		Achievements.earn("combo_25")

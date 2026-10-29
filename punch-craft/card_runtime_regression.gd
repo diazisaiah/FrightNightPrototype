@@ -300,6 +300,17 @@ func _exercise_ultimate(fighter: String, ultimate: String) -> void:
 		_check(is_equal_approx(player.ult.meter, before), "%s's %s doesn't charge while it's up" % [fighter, ultimate])
 	if ultimate == "temporal_break":
 		_check_time_stop(player)
+	if ultimate == "unbroken":
+		# Nothing drops the combo while it lasts: not a real hit, not a
+		# slipped punch or a shield (their _set_combo(0)).
+		player.invulnerable = false
+		player._set_combo(6)
+		player.receive_attack(2.0, player.global_position + Vector3(0, 0, -1.5), "jab", null)
+		player._set_combo(0)
+		_check(player.combo == 6, "Unbroken: the combo doesn't drop (%d, was 6)" % player.combo)
+		player.unbroken_time = 0.0
+		player._set_combo(0)
+		_check(player.combo == 0, "Unbroken: once it ends, the combo can drop")
 	if ultimate == "the_family":
 		# Stacked on one spot inside a dummy, they step apart and out, and stay
 		# that way round it.
