@@ -35,6 +35,13 @@ var _ring: Node3D
 var _ring_on := true
 var _lab: PlaygroundCharacterLab
 var _lab_status: Label
+var _freeze_check: CheckBox
+var _god_check: CheckBox
+var _power_label: Label
+## Upgrade tiers to test at: none, each contender's par build, everything.
+const UPGRADE_TIERS := ["Fresh", "Tier 1", "Tier 2", "Tier 3", "Tier 4", "Tier 5", "Maxed"]
+## Hotkeys (shown in the panel).
+const HOTKEYS := "F1 panel   V third person   G god mode   K spawn   C clear   F freeze   U fill ultimate"
 
 
 func _ready() -> void:
@@ -103,6 +110,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_V:
 		_lab.toggle_third_person()
 		get_viewport().set_input_as_handled()
+	elif event is InputEventKey and event.pressed and not event.echo and _hotkey(event.physical_keycode):
+		get_viewport().set_input_as_handled()
 	elif event is InputEventJoypadButton and event.pressed and event.button_index in [JOY_BUTTON_TOUCHPAD, JOY_BUTTON_MISC1]:
 		# These buttons are intentionally absent from the production control map.
 		# Controllers that do not expose either can use the panel's mode selector.
@@ -110,6 +119,26 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 	elif _lab and _lab.handle_input(event):
 		get_viewport().set_input_as_handled()
+
+
+## The quick keys (HOTKEYS); true if it was one.
+func _hotkey(key: Key) -> bool:
+	match key:
+		KEY_G:
+			_god_check.button_pressed = not _god_check.button_pressed
+			_hud.announce_small("God mode " + ("on" if _god else "off"), UiTheme.GOLD)
+		KEY_K:
+			_spawn(1)
+		KEY_C:
+			_clear()
+		KEY_F:
+			_freeze_check.button_pressed = not _freeze_check.button_pressed
+			_hud.announce_small("Enemies " + ("frozen" if _frozen else "moving"), UiTheme.GOLD)
+		KEY_U:
+			_player.ult.fill()
+		_:
+			return false
+	return true
 
 
 # --- The panel ---------------------------------------------------------------------
@@ -121,22 +150,39 @@ func _build_panel() -> void:
 	_panel = PanelContainer.new()
 	_panel.add_theme_stylebox_override("panel", UiTheme.raised(Color(UiTheme.PANEL, 0.94), UiTheme.GOLD, 2, 10, 12.0))
 	_panel.position = Vector2(12, 90)
-	_panel.custom_minimum_size = Vector2(330, 600)
+	# As tall as the window allows.
+	var tall := maxf(get_viewport().get_visible_rect().size.y - 110.0, 360.0)
+	_panel.custom_minimum_size = Vector2(330, tall)
 	layer.add_child(_panel)
 	var scroll := ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.custom_minimum_size = Vector2(320, 590)
+	scroll.custom_minimum_size = Vector2(320, tall - 10.0)
 	_panel.add_child(scroll)
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 6)
 	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(box)
 	box.add_child(UiTheme.title_label("PLAYGROUND", 24, UiTheme.GOLD))
-	box.add_child(_note("F1 hides this. Click the ring to fight."))
+	box.add_child(_note("F1 hides this. Click the ring to fight. Click a heading to fold it."))
+	var keys := _note(HOTKEYS)
+	keys.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	keys.custom_minimum_size.x = 300
+	box.add_child(keys)
 
 	_section(box, "FIGHTER")
 	var fighters := _options(GameState.CLASSES.keys(), GameState.player_class, _switch_fighter)
 	box.add_child(fighters)
+	var skins: Array = [""] + Skins.of(GameState.player_class)
+	box.add_child(_options(skins, GameState.skin(), _switch_skin))
+
+	_section(box, "UPGRADES (test at a power level)")
+	var tiers := GridContainer.new()
+	tiers.columns = 4
+	box.add_child(tiers)
+	for i in UPGRADE_TIERS.size():
+		tiers.add_child(_button(UPGRADE_TIERS[i], func() -> void: _set_upgrade_tier(i)))
+	_power_label = _note("POWER %d" % PowerRating.player())
+	box.add_child(_power_label)
 
 	_section(box, "PASSIVE")
 	box.add_child(_ability_options("passive"))
@@ -188,10 +234,11 @@ func _build_panel() -> void:
 	spawn_row.add_child(_button("Spawn", func() -> void: _spawn(1)))
 	spawn_row.add_child(_button("Spawn 5", func() -> void: _spawn(5)))
 	spawn_row.add_child(_button("Clear", _clear))
-	box.add_child(_check("Freeze enemies", false, func(on: bool) -> void:
+	_freeze_check = _check("Freeze enemies", false, func(on: bool) -> void:
 		_frozen = on
 		for enemy in $Enemies.get_children():
-			enemy.set_physics_process(not on)))
+			enemy.set_physics_process(not on))
+	box.add_child(_freeze_check)
 
 	_section(box, "FORCE A SPECIAL (nearest boxer)")
 	var special_grid := GridContainer.new()
@@ -204,7 +251,8 @@ func _build_panel() -> void:
 	box.add_child(_options(POWERS, GameState.power_pick, func(root: String) -> void: _give_power(root)))
 
 	_section(box, "PLAYER")
-	box.add_child(_check("God mode", true, _set_god))
+	_god_check = _check("God mode", true, _set_god)
+	box.add_child(_god_check)
 	box.add_child(_button("Fill ultimate", func() -> void: _player.ult.fill()))
 	box.add_child(_button("+5 levels", func() -> void:
 		for i in 5:
@@ -221,9 +269,29 @@ func _build_panel() -> void:
 	box.add_child(_options(["ring"] + themes, "ring", _set_theme))
 
 
+## A heading; click it to fold everything under it (up to the next heading).
 func _section(box: VBoxContainer, title: String) -> void:
-	var label := UiTheme.title_label(title, 15, UiTheme.MUTED)
-	box.add_child(label)
+	var header := Button.new()
+	header.text = "▾  " + title
+	header.flat = true
+	header.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	header.focus_mode = Control.FOCUS_NONE
+	header.add_theme_font_override("font", UiTheme.display_font())
+	header.add_theme_font_size_override("font_size", 15)
+	header.add_theme_color_override("font_color", UiTheme.MUTED)
+	header.set_meta("section", true)
+	header.pressed.connect(func() -> void:
+		var open := header.text.begins_with("▸")
+		header.text = ("▾  " if open else "▸  ") + title
+		var past := false
+		for child in box.get_children():
+			if child == header:
+				past = true
+			elif past:
+				if child.has_meta("section"):
+					break
+				(child as CanvasItem).visible = open)
+	box.add_child(header)
 
 
 func _note(text: String) -> Label:
@@ -443,6 +511,42 @@ func _equip_ability(slot: String, id: String) -> void:
 	var picks: Dictionary = GameState.loadouts.get(fighter, {})
 	picks[slot] = id
 	GameState.loadouts[fighter] = picks
+	_resume_lab_mode = "inspect" if _lab and _lab.mode == "inspect" else "third_person" if _lab and _lab.mode == "third_person" else ""
+	get_tree().reload_current_scene()
+
+
+## Upgrades as at a point on the climb (then the ring reloads): none, the
+## par build for contender tier t (85% of the open rings' levels, cheapest
+## first, the fighter at that tier's level, the contenders before it beaten),
+## or every node maxed.
+func _set_upgrade_tier(index: int) -> void:
+	GameState.upgrade_levels = {}
+	var info: Dictionary = GameState._classes[GameState.player_class]
+	if index == UPGRADE_TIERS.size() - 1:
+		for id in GameState.UPGRADES:
+			GameState.upgrade_levels[id] = int(GameState.UPGRADES[id].max_level)
+		info.level = maxi(int(info.level), Progression.PAR_LEVEL[Progression.TIER_COUNT])
+		for i in DeadLeagueRules.BOSS_COUNT:
+			GameState.dead_league_clears[DeadLeagueRules.boss(i).id] = true
+	elif index > 0:
+		var levels := []
+		for id in GameState.UPGRADES:
+			var node: Dictionary = GameState.UPGRADES[id]
+			if int(node.get("ring", 1)) > index or GameState.power_of(id) != "" or node.has("endless"):
+				continue
+			for level in int(node.max_level):
+				levels.append([GameState.price_at(node, level), id])
+		levels.sort_custom(func(a, b) -> bool: return a[0] < b[0])
+		for i in ceili(levels.size() * Progression.PAR_SHARE):
+			var id: String = levels[i][1]
+			GameState.upgrade_levels[id] = int(GameState.upgrade_levels.get(id, 0)) + 1
+		info.level = Progression.PAR_LEVEL[index]
+		GameState.dead_league_clears = {}
+		for i in index - 1:
+			GameState.dead_league_clears[DeadLeagueRules.boss(i).id] = true
+	else:
+		info.level = 1
+		GameState.dead_league_clears = {}
 	_resume_lab_mode = "inspect" if _lab and _lab.mode == "inspect" else "third_person" if _lab and _lab.mode == "third_person" else ""
 	get_tree().reload_current_scene()
 
