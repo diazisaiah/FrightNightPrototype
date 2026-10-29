@@ -86,7 +86,9 @@ var _settings_holder: Control
 var _class_heading: Label
 var _class_back: Button
 var _tutorial_offer: Control
-## First start: PLAY goes class picker -> tutorial offer instead of to camp.
+var _mode_offer: Control
+## First start: PLAY goes class picker -> control mode -> tutorial offer
+## instead of to camp.
 var _onboarding := false
 
 
@@ -119,7 +121,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel") and _picked != "":
 		_unpick_fighter()
 		get_viewport().set_input_as_handled()
-	elif event.is_action_pressed("ui_cancel") and (_class_panel.visible or _tutorial_offer.visible):
+	elif event.is_action_pressed("ui_cancel") and (_class_panel.visible or _tutorial_offer.visible or _mode_offer.visible):
 		_close_panels()
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed("ui_accept") and not _overlay.visible and _title_ready and not _leaving:
@@ -500,6 +502,7 @@ func _build_ui() -> void:
 	_settings_holder.visible = false
 	_ui.add_child(_settings_holder)
 	_build_tutorial_offer()
+	_build_mode_offer()
 	var settings := SettingsPanel.new()
 	settings.closed.connect(_close_panels)
 	_settings_holder.add_child(settings)
@@ -1091,7 +1094,7 @@ func _choose_picked() -> void:
 	_refresh_class()
 	if _onboarding:
 		_reset_picker()
-		_show_tutorial_offer()
+		_show_mode_offer()
 	else:
 		_close_panels()
 
@@ -1163,6 +1166,54 @@ func _close_panels() -> void:
 	_class_panel.visible = false
 	_settings_holder.visible = false
 	_tutorial_offer.visible = false
+	_mode_offer.visible = false
+
+
+# --- First start: control mode -----------------------------------------------------
+
+## How dodging works (Settings, Controls, Mode), picked once on the first start.
+func _build_mode_offer() -> void:
+	_mode_offer = CenterContainer.new()
+	_mode_offer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_mode_offer.visible = false
+	_ui.add_child(_mode_offer)
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size.x = 640
+	panel.add_theme_stylebox_override("panel", UiTheme.card(30.0))
+	_mode_offer.add_child(panel)
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 14)
+	panel.add_child(column)
+	column.add_child(UiTheme.heading("HOW DO YOU DODGE?", 40, BLOOD.lightened(0.25)))
+	for mode in [
+		["junior", "WEENIE HUT JUNIOR MODE", "Q / E dodge. The game picks the right move."],
+		["pro", "PRO GAMER MODE", "Slip, roll and back step yourself."],
+	]:
+		var pick := Button.new()
+		pick.text = "%s\n%s" % [mode[1], mode[2]]
+		pick.theme_type_variation = "PrimaryButton" if mode[0] == "junior" else ""
+		pick.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		pick.custom_minimum_size = Vector2(580, 70)
+		pick.add_theme_font_size_override("font_size", 18)
+		pick.pressed.connect(_choose_mode.bind(mode[0]))
+		column.add_child(pick)
+	var note := _card_label("You can change this any time in Settings, Controls.", 18, UiTheme.GOLD)
+	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	note.custom_minimum_size.x = 580
+	column.add_child(note)
+
+
+func _show_mode_offer() -> void:
+	_class_panel.visible = false
+	_mode_offer.visible = true
+	_mode_offer.modulate.a = 0.0
+	_mode_offer.create_tween().tween_property(_mode_offer, "modulate:a", 1.0, 0.2)
+
+
+func _choose_mode(mode: String) -> void:
+	Settings.set_value("assist_mode", mode)
+	_mode_offer.visible = false
+	_show_tutorial_offer()
 
 
 # --- First start: tutorial offer ----------------------------------------------------

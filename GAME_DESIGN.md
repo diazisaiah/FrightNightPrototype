@@ -54,6 +54,7 @@ Playtesting said there were too many controls. **Settings → Controls → Mode*
   - The wrong side grazes, as usual.
   - Training hints show just the key ("LEFT HOOK - E").
 - **Pro Gamer Mode**: the original controls, where every dodge has its own input (the schemes below).
+- **Picked on the first start (2026-10-29):** after choosing your first fighter, "HOW DO YOU DODGE?" offers both modes (Weenie Hut Junior highlighted), with "You can change this any time in Settings, Controls." in gold, then the tutorial offer (`title.gd` `_build_mode_offer`).
 
 **Default dodge scheme is now Space + A / D / S / W** (playtesters liked it best; jump is on C). Settings saved before this change switch to it once.
 
