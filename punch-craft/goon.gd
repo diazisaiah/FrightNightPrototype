@@ -9,11 +9,15 @@ extends Node3D
 ## shares its materials and meshes, has no light of its own in the browser,
 ## looks for a new target a few times a second rather than every frame, and
 ## its punches add no effects of their own beyond the hit's.
+## Brawling goons keep SPACING apart (they used to pile into one spot, through
+## each other), and their hits show plain numbers.
 
 const COLOR := Color(0.45, 1.0, 0.6)
 const SPEED := 5.5
 const REACH := 1.4
 const PUNCH_EVERY := 0.55
+## How close two brawling goons' centers get.
+const SPACING := 0.9
 
 var mode := "hold"
 var target: Enemy
@@ -58,6 +62,8 @@ func _ready() -> void:
 	if warm:
 		set_physics_process(false)
 		return
+	if mode == "brawl":
+		add_to_group("goons")
 	scale = Vector3.ONE * 0.05
 	create_tween().tween_property(self, "scale", Vector3.ONE, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	HitFx.burst(get_parent(), global_position + Vector3.UP, Vector3.UP, COLOR, 18, 3.0, true, 0.05)
@@ -78,6 +84,7 @@ func _physics_process(delta: float) -> void:
 			for arm in _arms:
 				arm.rotation.x = lerpf(arm.rotation.x, 0.0, minf(1.0, 10.0 * delta))  # Arms out, holding on.
 		return
+	_keep_apart()
 	# Brawl: find someone and hit them.
 	if not is_instance_valid(target) or target.is_dead():
 		target = null
@@ -102,7 +109,23 @@ func _physics_process(delta: float) -> void:
 		var tween := arm.create_tween()
 		tween.tween_property(arm, "rotation:x", 0.05, 0.08)
 		tween.tween_property(arm, "rotation:x", -0.9, 0.2)
-		target.take_hit(damage, target.global_position + Vector3(0, 1.3, 0), to.normalized() * 2.0, false, "FAMILY")
+		target.take_hit(damage, target.global_position + Vector3(0, 1.3, 0), to.normalized() * 2.0, false)
+
+
+## Steps out of any other brawling goon it's overlapping (each takes half).
+func _keep_apart() -> void:
+	for node in get_tree().get_nodes_in_group("goons"):
+		if node == self:
+			continue
+		var away: Vector3 = global_position - (node as Node3D).global_position
+		away.y = 0.0
+		var distance := away.length()
+		if distance >= SPACING:
+			continue
+		if distance < 0.01:
+			away = Vector3.RIGHT.rotated(Vector3.UP, get_instance_id() % 628 / 100.0)
+			distance = 0.0
+		global_position += away.normalized() * (SPACING - distance) * 0.5
 
 
 func _nearest() -> Enemy:

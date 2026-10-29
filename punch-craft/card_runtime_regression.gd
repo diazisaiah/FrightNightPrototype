@@ -300,6 +300,18 @@ func _exercise_ultimate(fighter: String, ultimate: String) -> void:
 		_check(is_equal_approx(player.ult.meter, before), "%s's %s doesn't charge while it's up" % [fighter, ultimate])
 	if ultimate == "temporal_break":
 		_check_time_stop(player)
+	if ultimate == "the_family":
+		# Stacked on one spot, they step apart and stay apart round a dummy.
+		var goons := get_tree().get_nodes_in_group("goons")
+		for goon: Node3D in goons:
+			goon.global_position = goons[0].global_position
+		await get_tree().create_timer(1.5, false, false, true).timeout
+		var closest := INF
+		for a in goons:
+			for b in goons:
+				if a != b:
+					closest = minf(closest, Vector2(a.global_position.x - b.global_position.x, a.global_position.z - b.global_position.z).length())
+		_check(goons.size() >= 3 and closest > Goon.SPACING * 0.8, "The Family's goons keep apart (%d goons, closest %.2fm)" % [goons.size(), closest])
 	await _free_rig(holder)
 	print("Card runtime: %s / %s OK" % [fighter, ultimate])
 
