@@ -1887,9 +1887,7 @@ A planning list, not a work order: nothing here gets built until the user picks 
 5. **No stun-locks, anywhere [Planned]:** audit that no fighter, power or card can stun-lock bosses or monsters (stuns, staggers, freezes, knockdowns, card effects), with tests.
 6. **Balance check per fighter [Planned].**
 7. **Playground [Planned]:** easier controls, a skin picker, and set upgrade tiers to test at different power levels.
-8. **The Tower [Idea]:** a post-Coffin King mode to escape the underworld: climb an obstacle course and fight through rooms (the Crypt, going up). New enemies try to stop you leaving; the floor crumbles under you as you climb, and falling loses the level. New bosses, new upgrades; where decks and webs get maxed.
-   - **Prestige ("Elite"):** a maxed fighter can go elite: stats, cards and levels reset, but you gild cards (pick from 5; each prestige is 4 draws of 5). After prestige you start with the gilded cards and levels and stat points equal to 4x your gilded card count. Every card gilded and the fighter maxed: **Legend** status.
-   - **The secret ending moves here:** reaching the top of the Tower as Tony in the Plumber Overalls and the Fat Plumber Cap plays the true secret ending (it plays after the Coffin King for now).
+8. **The Tower and Rebirth [Planned]:** see "The Tower and Rebirth (plan, 2026-10-29)" below. It replaces the old "Elite" prestige idea.
 9. **Multiplayer [Planned]:** the Versus prototype (Phase 1 of the plan above). A first draft is parked on the `versus-prototype-wip` branch (Net autoload over WebSockets, a camp lobby, the graveyard split by a seal line, KOs sent across, first down loses); not reviewed, tested or merged.
 10. **New looks [Planned]:** updated KO screens, the camp background and the title screen.
 
@@ -1912,3 +1910,84 @@ A planning list, not a work order: nothing here gets built until the user picks 
 - **Unbroken, fixed:** it promised the combo can't drop, but only the combo timer and the same-hand rule respected it: getting hit, a slipped punch and a shield still reset the combo to 0. Now nothing drops it while it lasts (`Player._set_combo` ignores drops); a knockout or a new bout still clears it. Checked in `card_runtime_regression`.
 - **Temporal Break, diminishing returns:** a fast player could keep time stopped. Each refund is x0.8 of the last (was x0.9: about 1.25s bought back at most, was 2.5s), refunds never push the clock past where it started, and a Temporal Break used within 30s of the last one's end lasts 25% less, stacking down to half (its call-out shows "-25%"). Checked in `card_runtime_regression`: 60 alternating punches leave under 2.4s on a 1s clock, and one right after the last is shorter.
 - **Browser bench:** `?bench=fx` fires each ultimate and power in a crowd and prints frame numbers for each (a hidden browser tab throttles the game to about 1 fps, so it has to be on screen).
+
+## The Tower and Rebirth (plan, 2026-10-29) [Planned]
+
+The post-Coffin King game, as planned with the user. Nothing here is built yet.
+
+### Unlocking: three seals
+1. **Arena seal:** win every division's bouts, including the Crown's endless bout (50 knockouts).
+2. **Crypt seal:** beat the new floor 10 boss, **Your Shadow**.
+3. **Crown seal:** beat the Coffin King.
+
+When all three are broken, the Tower opens, and so does Rebirth.
+
+### Floor 10 boss: Your Shadow
+- A dark copy of the fighter you bring, on `BossRig`.
+- It's a simpler boss version of that fighter: the fighter's moves, their original passive and their ultimates. It doesn't get your cards or gear.
+- Phases: plain boxing with the passive first; the ultimates come in below half HP.
+- **Its time stop (if the fighter has Temporal Break):**
+  - It winds a clock for 1.5s while a grey ring closes in. Hit the Shadow during the windup to shatter the clock: the move fails and the Shadow staggers.
+  - If the stop goes off, time doesn't stop for you; it slows to a crawl for 2s. Its frozen punches hang as glowing markers where they'll land.
+  - Step out of the markers before time snaps back and they all miss. Stay in them and they all land at once.
+- **Every big ultimate** gets a windup you can interrupt, or a zone you can leave.
+
+### Rebirth
+- **Who can rebirth:** a fighter at their max level, once the Tower is open.
+- **What resets:** that fighter's level, cards and attributes.
+- **What stays:** everything else (coin web, gear, Souls, coins, hats, skins, Tower paths).
+- **Gilding:** at a rebirth you draw 5 copies from the cards you hold and gild 2. Rerolls cost Souls.
+  - A common is 4 copies and a rare 2, so a fully gilded common takes 4 gildings.
+  - 40 copies at 2 a rebirth is 20 rebirths to gild the deck.
+- **A new life** starts with every gilded card already drawn. The level equals the number of gilded copies, with that level's attribute points.
+- **Max level:** 41 in the first life (every card drawn), +2 per rebirth, up to 81 after 20 rebirths.
+- **Attribute caps:** 30 + 1 per rebirth, up to 50 each, with a new perk at 40 in each attribute. Level 81 gives 240 points, about 48 in every attribute.
+- **Faster lives:** the web and gear stay, so each life levels much faster. The Utility path adds XP gain on top.
+
+### Legend
+- **Earned with:** all 40 copies gilded and the fighter at max level (81).
+- **Rewards:** Legend art replaces the fighter's character art, and their Legendary skin unlocks.
+- **Art:** the user makes the Legend concept art and voxel refs; until then a placeholder gold-and-glow look.
+
+### The Tower
+- **100 rooms** in order, climbing out of the underworld.
+- **Boss rooms:** every 5th room has a boss.
+  - Rooms 25, 50, 75 and 100 have **Wardens** (big unique bosses).
+  - The other 16 have **mini-bosses** (elite Tower monsters, a few designs remixed).
+- **Checkpoints:** a beaten boss room becomes a checkpoint, where you choose Continue up or Leave. Camp's Tower button starts from any checkpoint you've reached.
+- **Strength by floor, from the Coffin King's:** floor 1 already fights like the Crown. A fresh rebirth levels in the Arena and Crypt before pushing high.
+- **Secret ending:** it moves to the top. Reaching room 100 as Tony in the Plumber Overalls and the Fat Plumber Cap plays the true secret ending.
+
+### Rooms
+- **Timer:** 1 minute per room.
+- **Floor break:** at 10s left, cracks spread and tiles drop from the edges inward. At 0 the rest falls, and so do you, back to your checkpoint.
+- **Knockouts** also send you back to the checkpoint.
+- **Currency:** all Tower currency earned is kept, falls included.
+- **Room types:**
+  - **Fight:** new Tower monsters that try to stop you leaving.
+  - **Obstacle course:** jumps, moving and crumbling platforms. Every course can be cleared without double jump or wall jump; those reach shortcuts and currency caches.
+  - **Punch code:** circles on the wall spell a code (blue a straight, yellow a hook, red an uppercut; L or R in the middle for the hand). You punch it into a statue in the middle of the room.
+  - **Pressure plates:** punch crates or coffins onto plates to open the door.
+  - **Memory sequence:** a sequence lights up once; you repeat it from memory.
+
+### Tower currency and the four paths
+- **Name:** working name **Skyshards**.
+- **Earned from:** room clears (more for faster ones), bosses, and caches in obstacle rooms.
+- **The paths:** Agility, Power, Utility and Resilience, shared by every fighter. Their boosts work everywhere (Arena, Crypt and Tower).
+- **Growth:** each stat in a path grows as boost = stat boost x log10(1 + shards sunk into the path). Every 10x more shards adds the same boost again.
+- **Milestones:** sinking set totals into a path unlocks its milestones.
+- **The path stats:**
+
+| Path | Stats | Milestones |
+|---|---|---|
+| Agility | Move speed, jump height, punch speed, dodge / counter / combo windows | Double jump, wall jump |
+| Power (proposed) | Damage, power damage, ultimate charge | to decide |
+| Utility (proposed) | XP gain, coins, Souls, Skyshards, room timer seconds | to decide |
+| Resilience (proposed) | Knuckle HP, damage taken, healing | to decide |
+
+### Still to decide
+- The currency's name.
+- Milestone thresholds, and the Power / Utility / Resilience milestones.
+- The four Wardens, the mini-bosses and the Tower monsters.
+- The 40-point attribute perks.
+- Whether path boosts count toward par. They're post-game power, so probably not.
