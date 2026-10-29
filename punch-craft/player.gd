@@ -421,11 +421,6 @@ func _ready() -> void:
 	powers = PowerPlay.new()
 	powers.player = self
 	add_child(powers)
-	# The Catalyst's runes, one per power his passive runs.
-	if GameState.player_class == "elementalist":
-		var runes := CatalystRunes.new()
-		runes.player = self
-		_camera.add_child(runes)
 	# Speed lines: the Blur's long combos, the Stray's momentum and Hype Train.
 	if GameState.player_class in ["combo_master", "free_runner"]:
 		_speed_lines = MoveFx.speed_lines(_camera, GameState.fighter_color().lightened(0.3))

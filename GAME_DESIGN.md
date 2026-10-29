@@ -1930,6 +1930,7 @@ A planning list, not a work order: nothing here gets built until the user picks 
   - **Cooldowns:** Spear Jab 2s, Haymaker 4s; before, there were none, and chained Haymakers kept everything knocked back. On cooldown, a dash punch is a plain punch.
   - **Passive chip:** reads READY, or "L 1s  R OK" (left Spear Jab, right Haymaker).
   - Checked in `card_runtime_regression`.
+- **The Catalyst's floating runes are gone:** the arc of runes over his hands (`CatalystRunes`, on the camera) read as aiming reticles. The runes on his gloves still glow and flash his powers' colors.
 - **Playground:**
   - Spawns can be elites or champions.
   - A True Coffin King button maxes the current fighter and starts his fight. Leaving the fight comes back to the playground: `DeadLeagueArena.leave_to` is set by the playground and is the League menu otherwise.
