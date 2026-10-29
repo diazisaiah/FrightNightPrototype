@@ -80,9 +80,17 @@ const INFERNO_BURN_TIME := 4.0
 ## mid-stop used to die frozen, and a Dead League boss could linger into the
 ## next round). The other hand from your last punch (it glows) buys back
 ## time, half what a prompt did.
+## Diminishing returns (2026-10-29: a fast player kept it running): each
+## refund is smaller than the last, refunds never push the clock past where
+## it started, and a Temporal Break soon after the last one is shorter.
 const TIME_STOP_START := 6.0
 const TIME_STOP_REFUND := 0.25
-const TIME_STOP_REFUND_DECAY := 0.9
+const TIME_STOP_REFUND_DECAY := 0.8
+## A Temporal Break within this long of the last one's end lasts
+## TIME_STOP_REPEAT as long, stacking, down to TIME_STOP_REPEAT_MIN.
+const TIME_STOP_FATIGUE := 30.0
+const TIME_STOP_REPEAT := 0.75
+const TIME_STOP_REPEAT_MIN := 0.5
 ## Each hit makes the clock run this much faster.
 const TIME_STOP_SPEEDUP := 0.12
 const TIME_STOP_RANGE := 12.0
@@ -163,7 +171,12 @@ var spellfists := 0.0
 var _status := ""
 # Temporal Break
 var _time_left := 0.0
+var _time_full := 0.0
 var _refund := 0.0
+## Seconds left in which another Temporal Break comes back shorter, and how
+## many came back to back.
+var _stop_fatigue := 0.0
+var _stop_repeats := 0
 var _hits := 0
 ## Damage waiting on each monster: {enemy: [damage, sparks]}.
 var _held := {}
@@ -332,6 +345,8 @@ func _process(delta: float) -> void:
 		_set_status("")
 	if mode == "time_stop":
 		_update_time_stop(real_delta)
+	elif _stop_fatigue > 0.0:
+		_stop_fatigue -= real_delta
 
 
 # --- Wise Guy: Big Mouth --------------------------------------------------------------
@@ -531,7 +546,10 @@ func _start_time_stop() -> void:
 	_struck.assign(targets)
 	_target_index = 0
 	_freeze(true)
-	_time_left = (TIME_STOP_START + 1.5 * _power()) * (1.3 if _card("temporal_break_ii") else 1.0)
+	_stop_repeats = _stop_repeats + 1 if _stop_fatigue > 0.0 else 0
+	var repeat := maxf(pow(TIME_STOP_REPEAT, _stop_repeats), TIME_STOP_REPEAT_MIN)
+	_time_full = (TIME_STOP_START + 1.5 * _power()) * (1.3 if _card("temporal_break_ii") else 1.0) * repeat
+	_time_left = _time_full
 	_refund = TIME_STOP_REFUND
 	_hits = 0
 	_held.clear()
@@ -543,7 +561,7 @@ func _start_time_stop() -> void:
 	Sfx.play("counter", -2.0, 0.45)
 	player._kick_fov(-10.0)
 	player.shake(0.08)
-	player.class_event.emit("TEMPORAL BREAK!")
+	player.class_event.emit("TEMPORAL BREAK!" if repeat >= 1.0 else "TEMPORAL BREAK  -%d%%" % roundi((1.0 - repeat) * 100.0))
 
 
 ## Freezes every enemy and everything they've thrown (bolts, arrows, fireballs).
@@ -591,7 +609,7 @@ func _update_time_stop(real_delta: float) -> void:
 		_end_time_stop()
 		return
 	player._fists.set_next_hand("any" if _stop_hand == "" else _next_hand())
-	time_stop_changed.emit(true, clampf(_time_left / TIME_STOP_START, 0.0, 1.0), "", "ALTERNATE HANDS" if _hits < 4 else "", _hits)
+	time_stop_changed.emit(true, clampf(_time_left / maxf(_time_full, 0.01), 0.0, 1.0), "", "ALTERNATE HANDS" if _hits < 4 else "", _hits)
 
 
 ## A punch in stopped time: it lands on what you aim at (or the nearest
@@ -611,7 +629,7 @@ func _stop_punch(hand: String, type := "") -> void:
 		Sfx.play("whoosh", -8.0, 1.3)
 		return
 	if hand != _stop_hand:
-		_time_left += _refund
+		_time_left = minf(_time_left + _refund, _time_full)
 		_refund *= TIME_STOP_REFUND_DECAY
 	_stop_hand = hand
 	_hits += 1
@@ -682,6 +700,7 @@ func _frozen_spark(at: Vector3) -> MeshInstance3D:
 
 func _end_time_stop() -> void:
 	mode = ""
+	_stop_fatigue = TIME_STOP_FATIGUE
 	_freeze(false)
 	time_stop_changed.emit(false, 0.0, "", "", _hits)
 	player._fists.set_next_hand("")

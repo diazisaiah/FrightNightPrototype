@@ -307,9 +307,12 @@ func _exercise_ultimate(fighter: String, ultimate: String) -> void:
 ## Temporal Break holds every punch's damage until time resumes, then lands
 ## it all at once (a monster that died mid-stop died frozen, and a Dead
 ## League boss lingered into the next round); the other hand buys time back,
-## the same hand doesn't.
+## the same hand doesn't. Diminishing returns: mashing can't keep it running,
+## and one soon after the last is shorter.
 func _check_time_stop(player: Player) -> void:
 	var ult := player.ult
+	var full := ult._time_full
+	ult._time_left = full - 1.5  # Some time gone, to buy back.
 	var target := ult._stop_target()
 	_check(target != null, "Temporal Break: a punch finds a frozen monster in reach")
 	if target == null:
@@ -325,9 +328,23 @@ func _check_time_stop(player: Player) -> void:
 	ult._stop_punch("right", "cross")
 	_check(ult._time_left > left, "Temporal Break: the other hand buys time back")
 	_check(float(target.get("_last_damage")) == 0.0, "Temporal Break: no damage lands while time is stopped")
+	ult._time_left = 1.0
+	for i in 60:
+		ult._punch_wait = 0.0
+		ult._stop_punch("left" if i % 2 == 0 else "right", "jab")
+	_check(ult._time_left < 2.4, "Temporal Break: endless alternating buys little time (%.2fs left)" % ult._time_left)
+	ult._time_left = full
+	ult._punch_wait = 0.0
+	ult._stop_punch(ult._next_hand(), "jab")
+	_check(ult._time_left <= full, "Temporal Break: buying time never passes where the clock started")
 	ult._time_left = 0.0
 	ult._update_time_stop(0.0)
 	_check(ult.mode == "" and float(target.get("_last_damage")) > 0.0, "Temporal Break: the held damage lands when time resumes")
+	ult.fill()
+	ult._start_time_stop()
+	_check(ult.mode == "time_stop" and ult._time_full < full * 0.8, "Temporal Break: one right after the last is shorter (%.1fs, was %.1fs)" % [ult._time_full, full])
+	ult._time_left = 0.0
+	ult._update_time_stop(0.0)
 
 
 ## Phantom Step and Vault jump behind a monster: never through a wall (the
