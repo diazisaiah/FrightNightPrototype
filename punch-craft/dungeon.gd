@@ -658,8 +658,17 @@ func _boss_kind() -> String:
 ## (Progression.crypt_position).
 func _scaling(room: Dictionary) -> Dictionary:
 	var progress := _room_progress(room)
-	var scaling := Progression.enemy_scaling(_position(progress), Progression.crypt_difficulty(_floor, _start_floor, progress))
+	var scaling := _endless(Progression.enemy_scaling(_position(progress), Progression.crypt_difficulty(_floor, _start_floor, progress)), progress)
 	scaling.speed = 1.0 + 0.2 * progress
+	return scaling
+
+
+## Past floor 10 the monsters keep growing (Progression.crypt_endless_growth);
+## pay stays at floor 10's.
+func _endless(scaling: Dictionary, progress := 1.0) -> Dictionary:
+	var growth := Progression.crypt_endless_growth(_floor, progress)
+	scaling.hp *= growth
+	scaling.damage *= growth
 	return scaling
 
 
@@ -687,7 +696,7 @@ func _spawn_enemy(entry: Dictionary, at: Vector3) -> Enemy:
 	var enemy: Enemy = (veteran if veteran else _scene(kind)).instantiate()
 	if veteran:
 		enemy.set_meta("veteran", true)
-	var night_only := Progression.enemy_scaling(_position(), Progression.crypt_difficulty(_floor, _start_floor))
+	var night_only := _endless(Progression.enemy_scaling(_position(), Progression.crypt_difficulty(_floor, _start_floor)))
 	var is_boss_kind: bool = kind in BOSS_CYCLE
 	enemy.setup(_player, entry.armored, entry.scaling if entry.has("scaling") else night_only if is_boss_kind else _scaling(_current_room))
 	enemy.set_meta("kind", kind)

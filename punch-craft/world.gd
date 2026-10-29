@@ -104,14 +104,11 @@ const ENDLESS_CLEAR := 50
 const MINI_BOSS_CHANCE := 0.005
 const ENDLESS_KO := 10
 const ENDLESS_MINI_BOSS := 150
-## Each wave's monsters are built this far further up the climb (2026-10-29:
-## was 0.15, about 3% tougher a wave in the Crown).
-const ENDLESS_STEP := 0.3
-## Pay stays at bout 3's, and past ENDLESS_CLEAR each wave pays this much of the
-## one before (2026-10-29: pay climbed 35% a wave, so one run of a level-1
-## fighter in good gear farmed 12.8M coins and 37 levels).
-const ENDLESS_FALLOFF := 0.8
-## Ending purse: score (each knockout's points at its wave's pay) x pay x this.
+## Pay stays at bout 3's; the monsters grow every wave
+## (Progression.endless_growth). 2026-10-29: pay climbed 35% a wave and
+## monsters 3%, so one run of a level-1 fighter in good gear farmed 12.8M coins
+## and 37 levels.
+## Ending purse: score x pay x this.
 const ENDLESS_PURSE := 0.3
 ## A mini-boss's HP over the elite's own (x2): 3x a regular in all.
 const MINI_BOSS_HP := 1.5
@@ -156,8 +153,6 @@ var _night := 1
 var _division := 1
 var _endless := false
 var _score := 0
-## The score at each knockout's wave pay (ENDLESS_FALLOFF), for the purse.
-var _purse := 0.0
 var _wave := 0
 ## This endless bout reached ENDLESS_CLEAR (won).
 var _endless_won := false
@@ -409,8 +404,8 @@ func _spawn_scaling() -> Dictionary:
 		"hp": (1.0 + HP_GROWTH * progress) * night.hp,
 		"damage": (1.0 + DAMAGE_GROWTH * progress) * night.damage,
 		"speed": 1.0 + SPEED_GROWTH * progress,
-		"reward": (1.0 + REWARD_GROWTH * progress) * night.reward * _endless_pay(),
-		"xp": (1.0 + REWARD_GROWTH * progress) * night.xp * _endless_pay(),
+		"reward": (1.0 + REWARD_GROWTH * progress) * night.reward,
+		"xp": (1.0 + REWARD_GROWTH * progress) * night.xp,
 		"position": night.position,
 	}
 
@@ -425,16 +420,12 @@ func _night_scaling(night := -1) -> Dictionary:
 		# From this division's third bout, tougher every wave.
 		var top := Progression.arena_position(_division, Progression.BOUTS_PER_DIVISION)
 		var hard := Progression.arena_difficulty(_division, Progression.BOUTS_PER_DIVISION)
-		return Progression.enemy_scaling(top, hard + ENDLESS_STEP * _wave)
+		var scaling := Progression.enemy_scaling(top, hard)
+		var growth := Progression.endless_growth(_wave, Progression.ENDLESS_RAMP_WAVES)
+		scaling.hp *= growth
+		scaling.damage *= growth
+		return scaling
 	return Progression.enemy_scaling(_position(night), Progression.arena_difficulty(_division, _night if night < 0 else night))
-
-
-## An endless bout's pay this wave: full up to ENDLESS_CLEAR, then
-## ENDLESS_FALLOFF less each wave (1 outside endless bouts).
-func _endless_pay() -> float:
-	if not _endless:
-		return 1.0
-	return pow(ENDLESS_FALLOFF, maxi(0, _wave + 1 - ENDLESS_CLEAR / ENDLESS_WAVE))
 
 
 func _boss_scaling() -> Dictionary:
@@ -561,7 +552,6 @@ func _on_endless_ko(enemy: Enemy) -> void:
 	var points := ENDLESS_MINI_BOSS if enemy.has_meta("mini_boss") else ENDLESS_CHAMPION if enemy.has_meta("champion") \
 			else ENDLESS_ELITE if enemy.has_meta("elite") else ENDLESS_KO
 	_score += points
-	_purse += points * _endless_pay()
 	if _night_kills >= Achievements.ENDLESS_KOS:
 		Achievements.earn("endless_50")
 	if _night_kills >= ENDLESS_CLEAR and not _endless_won:
@@ -696,7 +686,6 @@ func _continue_to_next_night() -> void:
 	_night = mini(_night + 1, Progression.BOUTS_PER_DIVISION)
 	_endless = _night >= Progression.BOUTS_PER_DIVISION
 	_score = 0
-	_purse = 0.0
 	_wave = 0
 	_endless_won = false
 	_reset_style()
@@ -762,7 +751,7 @@ func _end_endless(title: String) -> void:
 	var before := GameState.endless_best_in(_division)
 	var best := _score > before
 	GameState.endless_bests[str(_division)] = maxi(before, _score)
-	var purse := roundi(_purse * Progression.pay(_night_scaling().position) * ENDLESS_PURSE)
+	var purse := roundi(_score * Progression.pay(_night_scaling().position) * ENDLESS_PURSE)
 	_run_coins += purse
 	GameState.add_resource("coins", purse)
 	GameState.save_game()

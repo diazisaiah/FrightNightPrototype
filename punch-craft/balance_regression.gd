@@ -46,30 +46,25 @@ func _run() -> void:
 		get_tree().quit(1)
 
 
-## Endless bouts: monsters toughen every wave, but pay stays at bout 3's and
-## falls off past the clear, so a run can't farm forever (2026-10-29).
+## Endless bouts and floors (2026-10-29): pay stays flat however deep you go;
+## monsters grow 7% a wave / floor, 2% more every 5 waves / 2 floors.
 func _test_endless_falloff() -> void:
+	_check(is_equal_approx(Progression.endless_growth(1, 5), 1.07), "Endless wave 1 to 2: +7%")
+	var five_to_six := Progression.endless_growth(5, 5) / Progression.endless_growth(4, 5)
+	_check(is_equal_approx(five_to_six, 1.09), "Endless wave 5 to 6: +9%% (%.3f)" % five_to_six)
+	var twelve_to_thirteen := Progression.crypt_endless_growth(13) / Progression.crypt_endless_growth(12)
+	_check(is_equal_approx(twelve_to_thirteen, 1.09), "Endless floor 12 to 13: +9%% (%.3f)" % twelve_to_thirteen)
+	_check(is_equal_approx(Progression.crypt_endless_growth(11, 0.0), 1.0), "Floor 11 starts at floor 10's monsters")
 	var world: Node3D = load("res://world.gd").new()
 	world._endless = true
 	for division in [1, Progression.TIER_COUNT]:
 		world._division = division
 		world._wave = 0
 		var first: Dictionary = world._night_scaling()
-		_check(is_equal_approx(world._endless_pay(), 1.0), "Endless pays in full before the clear")
-		world._wave = 1
-		_check(is_equal_approx(world._endless_pay(), 1.0), "Endless pays in full up to the clear")
-		world._wave = 2
-		_check(is_equal_approx(world._endless_pay(), world.ENDLESS_FALLOFF), "Endless pay falls off past the clear")
-		world._wave = 4
+		world._wave = 20
 		var later: Dictionary = world._night_scaling()
-		_check(later.hp >= first.hp * 1.25, "Division %d endless: wave 5 monsters are tougher (x%.2f HP)" % [division, later.hp / first.hp])
-		_check(is_equal_approx(later.reward, first.reward), "Division %d endless: pay doesn't climb with waves" % division)
-		# A whole run, however long, pays a few waves' worth past the clear.
-		var total := 0.0
-		for wave in 200:
-			world._wave = wave
-			total += world._endless_pay()
-		_check(total < 8.0, "An endless run pays at most ~7 waves in full (%.1f)" % total)
+		_check(later.hp >= first.hp * 5.0, "Division %d endless: wave 21 monsters are far tougher (x%.1f HP)" % [division, later.hp / first.hp])
+		_check(is_equal_approx(later.reward, first.reward) and is_equal_approx(later.xp, first.xp), "Division %d endless: pay doesn't climb with waves" % division)
 	world.free()
 
 
@@ -780,6 +775,13 @@ func _test_gentler_ramp() -> void:
 	# (it used to be most of the way to the Headless's by then).
 	_check(is_equal_approx(Progression.crypt_difficulty(4, 1), 1.0) and Progression.crypt_difficulty(4, 1) < Progression.crypt_position(4) - 0.5, "Crypt floors climb a quarter tier each")
 	_check(is_equal_approx(Progression.crypt_difficulty(3, 3, 0.0), 1.0), "A bracket-2 run starts at the Bellman's par")
+	# The endless floors (2026-10-29): pay stops climbing; the monsters build
+	# on the top bracket's floor 10 whatever the start, and keep growing.
+	var last := Progression.crypt_last_floor()
+	_check(is_equal_approx(Progression.crypt_position(last + 10), Progression.crypt_position(last)), "Endless Crypt floors don't pay more than floor 10")
+	_check(Progression.crypt_difficulty(last + 1, 1, 0.0) >= Progression.crypt_difficulty(last, Progression.crypt_start_floor(Progression.TIER_COUNT)) - 0.001, "A floor-1 run's endless floors are as tough as a top-bracket run's")
+	var floors := Progression.crypt_endless_growth(last + 10) / Progression.crypt_endless_growth(last + 1)
+	_check(floors >= 2.5, "Endless Crypt monsters toughen fast (x%.1f floor 11 to 20)" % floors)
 	var boss := Enemy.new()
 	boss.is_boss = true
 	_check(boss.chill_length(5.0) <= Enemy.BOSS_CHILL_TIME, "Bosses shake off a freeze in half a second")

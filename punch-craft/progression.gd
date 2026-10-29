@@ -320,20 +320,61 @@ static func arena_difficulty(division: int, bout: int) -> float:
 ## however deep it goes (it used to jump a whole tier every two floors).
 ## progress is 0-1 through the floor. Pay still uses crypt_position.
 const CRYPT_RAMP := 0.25
+## Endless bouts and the endless Crypt floors (2026-10-29): pay stays flat
+## (it climbed 35% a wave and 2.25x a floor, so deep runs paid millions) and the
+## monsters grow ENDLESS_GROWTH a wave / floor, that rate rising
+## ENDLESS_GROWTH_RAMP every few (Arena: wave 1 to 2 is +7%, wave 5 to 6 +9%).
+const ENDLESS_GROWTH := 0.07
+const ENDLESS_GROWTH_RAMP := 0.02
+const ENDLESS_RAMP_WAVES := 5
+const ENDLESS_RAMP_FLOORS := 2
 
 
 static func crypt_difficulty(floor_number: int, start_floor: int, progress := 1.0) -> float:
+	# The endless floors build on the top bracket's floor 10, whatever bracket
+	# you came in on (endless_growth does the climbing).
+	var last := crypt_last_floor()
+	if floor_number > last:
+		return maxf(crypt_difficulty(last, start_floor), crypt_difficulty(last, crypt_start_floor(TIER_COUNT)))
 	var start_tier := ceili(start_floor / float(FLOORS_PER_TIER))
 	return (start_tier - 1) + (floor_number - start_floor + clampf(progress, 0.0, 1.0)) * CRYPT_RAMP
 
 
+## The last floor before the endless ones (10).
+static func crypt_last_floor() -> int:
+	return TIER_COUNT * FLOORS_PER_TIER
+
+
+## How much tougher (HP and damage) endless monsters are after steps waves or
+## floors (fractions for part of the way through one): each step adds
+## ENDLESS_GROWTH, plus ENDLESS_GROWTH_RAMP for every ramp_every steps before it.
+static func endless_growth(steps: float, ramp_every: int) -> float:
+	var factor := 1.0
+	var whole := floori(maxf(steps, 0.0))
+	for step in range(1, whole + 2):
+		var amount := 1.0 if step <= whole else maxf(steps, 0.0) - whole
+		if amount <= 0.0:
+			break
+		factor *= pow(1.0 + ENDLESS_GROWTH + ENDLESS_GROWTH_RAMP * floori(step / float(ramp_every)), amount)
+	return factor
+
+
+## An endless Crypt floor's growth (1 up to floor 10; floor 11 starts at 1).
+static func crypt_endless_growth(floor_number: int, progress := 1.0) -> float:
+	if floor_number <= crypt_last_floor():
+		return 1.0
+	return endless_growth(floor_number - crypt_last_floor() - 1 + clampf(progress, 0.0, 1.0), ENDLESS_RAMP_FLOORS)
+
+
 ## Crypt: a tier's first floor climbs to 40% of the way to its contender's
 ## par and the second to 80%. progress is 0-1 through the floor. Past floor
-## 10 it keeps going.
+## 10 it pays as floor 10's end.
 const CRYPT_FLOOR_SPAN := 0.4
 
 
 static func crypt_position(floor_number: int, progress := 1.0) -> float:
+	if floor_number > crypt_last_floor():
+		return crypt_position(crypt_last_floor(), 1.0)
 	var tier := ceili(floor_number / float(FLOORS_PER_TIER))
 	var within := floor_number - (tier - 1) * FLOORS_PER_TIER - 1
 	return (tier - 1) + (within + clampf(progress, 0.0, 1.0)) * CRYPT_FLOOR_SPAN

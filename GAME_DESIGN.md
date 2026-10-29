@@ -1912,11 +1912,19 @@ A planning list, not a work order: nothing here gets built until the user picks 
 - **Browser bench:** `?bench=fx` fires each ultimate and power in a crowd and prints frame numbers for each (a hidden browser tab throttles the game to about 1 fps, so it has to be on screen).
 
 ## Endless pay and the Stray's dash punches (2026-10-29)
-- **Endless bouts paid more every wave.** Each wave moved pay 0.25 of a tier up the climb (about 35% more a wave, so 1.35^20 by wave 20). Monsters only toughened 0.15 of a tier (about 3% a wave in the Crown). A level-1 fighter in good gear and with a big coin web went dozens of waves deep and came out with 12.8M coins and 37 levels.
-  - **Pay:** every knockout now pays what bout 3 pays, never more.
-  - **Falloff:** past the 50-knockout clear, each wave pays 80% of the one before (`ENDLESS_FALLOFF`). A whole run, however long, pays about 6 waves' worth at full pay. The end purse falls off the same way (each knockout's points at its wave's pay).
-  - **Monsters:** they toughen 0.3 of a tier a wave (`ENDLESS_STEP`, was 0.15): about 7% a wave in the Crown, 3.8x by wave 20.
-  - **Score:** unchanged, so the high score is what deep runs are for. Checked in `balance_regression`.
+- **Endless runs paid more every wave and floor:**
+  - **Arena:** each wave moved pay 0.25 of a tier up the climb (about 35% more a wave, 1.35^20 by wave 20), while monsters toughened only about 3% a wave.
+  - **Crypt:** past floor 10, pay climbed a tier every two floors (about 2.25x a floor), and the monsters ramped from your own starting bracket.
+  - A level-1 fighter with good gear and a big coin web went dozens of waves deep and came out with 12.8M coins and 37 levels.
+- **Pay is flat now:**
+  - Every knockout in an endless bout (every division's) pays what bout 3 pays, and the purse is score x that pay.
+  - Endless Crypt floors pay what floor 10 pays: coins, XP, Souls, and drill pay from your deepest floor.
+  - There are no diminishing returns.
+- **Monsters keep growing** (`Progression.endless_growth`, HP and damage):
+  - **Arena:** +7% a wave, and the rate rises 2% every 5 waves. Wave 1 to 2 is +7%, wave 5 to 6 +9%, wave 10 to 11 +11% (about 7x by wave 21).
+  - **Crypt:** +7% a floor past floor 10, and the rate rises 2% every 2 floors. Floor 11 to 12 is +7%, floor 12 to 13 +9%.
+  - **Where the Crypt starts:** endless floors build on the top bracket's floor 10, whatever bracket the run started in.
+  - Checked in `balance_regression`.
 - **The Stray's dash punches:**
   - **Spear Jab reach:** 3.5m, was 5m. Spear Line now adds 50% (5.25m); it used to double the reach (10m).
   - **Cooldowns:** Spear Jab 2s, Haymaker 4s; before, there were none, and chained Haymakers kept everything knocked back. On cooldown, a dash punch is a plain punch.
