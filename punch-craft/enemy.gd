@@ -8,15 +8,17 @@ signal died(enemy: Enemy)
 
 const FLASH_TIME := 0.08
 const STAGGER_TIME := 0.5
-## Punches can't stun-lock (2026-10-27): a run of punch staggers holds a
-## monster at most STAGGER_CHAIN_MAX, then it shrugs off punch staggers for
-## STAGGER_GRACE (hits still land). Bosses have their poise instead.
+## No stun-locks, from anything (2026-10-28): every hold on a monster (punch
+## staggers, stuns, knockdowns, delays and scares) counts as control. A
+## monster is held at most CONTROL_MAX at a stretch (punch staggers alone at
+## most STAGGER_CHAIN_MAX), and once it's free it shrugs off all control for
+## as long as it was just held (at least CONTROL_GRACE_MIN): so it's never
+## held more than half the time, whatever the fighter, power or card. Hits
+## still land. Ultimates force through (they're rare). Bosses have their
+## poise instead.
+const CONTROL_MAX := 2.0
 const STAGGER_CHAIN_MAX := 1.0
-const STAGGER_GRACE := 1.0
-## Stuns too (2026-10-28: the Blur's shockwave every 5th hit kept refreshing
-## its 1.5s stun): once one wears off, a monster shakes off new stuns for this
-## long. Bosses have their poise instead.
-const STUN_GRACE := 2.0
+const CONTROL_GRACE_MIN := 1.0
 ## Boss poise: after a stagger or stun ends, a boss shrugs off the next ones
 ## for this long (hits still land). Without it the Mauler's hooks, which need
 ## no set-up and all stagger, kept a boss from ever attacking.
@@ -135,10 +137,10 @@ var _hp_label: Label3D
 var _meshes: Array[MeshInstance3D] = []
 var _knockback := Vector3.ZERO
 var _stagger_timer := 0.0
-## How long the current run of punch staggers has held it, and the grace left
-## after one (see STAGGER_CHAIN_MAX).
-var _stagger_run := 0.0
-var _stagger_grace := 0.0
+## How long it's been held this stretch, and the grace left after one (see
+## CONTROL_MAX).
+var _control_run := 0.0
+var _control_grace := 0.0
 ## Held still without a stagger (delay, scare): no moving, no attacking.
 var _hold_time := 0.0
 ## The pivot the body falls over on (knock_down), and its fall.
@@ -176,7 +178,6 @@ var _bleed_time := 0.0
 ## Doom (Death Mark): seconds left on the mark, what it took meanwhile, and
 ## the skull floating over it.
 var _doom_time := 0.0
-var _stun_grace := 0.0
 var _doom_store := 0.0
 var _doom_fx: Node3D
 var _stuck_time := 0.0
@@ -305,12 +306,7 @@ func _physics_process(delta: float) -> void:
 		_flash_timer -= delta
 		if _flash_timer <= 0.0:
 			_set_flash(false)
-		if _stagger_timer > 0.0:
-			_stagger_run += delta
-			if _stagger_timer <= delta and _stagger_run >= STAGGER_CHAIN_MAX - 0.05:
-				_stagger_grace = STAGGER_GRACE
-		_stagger_grace -= delta
-		_stun_grace -= delta
+		_track_control(delta)
 		_stagger_timer -= delta
 		_hold_time -= delta
 		if _daze_fx:
@@ -388,15 +384,12 @@ func take_hit(raw_damage: float, hit_point: Vector3, push: Vector3, stagger: boo
 	_set_flash(true)
 	if stagger and not _can_stagger():
 		stagger = false
-	if stagger and not is_boss:
-		if _stagger_grace > 0.0 or (_stagger_timer > 0.0 and _stagger_run >= STAGGER_CHAIN_MAX - 0.05):
-			stagger = false
-		elif _stagger_timer <= 0.0:
-			_stagger_run = 0.0
+	if stagger and not is_boss and (_control_grace > 0.0 or _control_run >= STAGGER_CHAIN_MAX - 0.05):
+		stagger = false
 	if stagger:
 		var hold := STAGGER_TIME * (HEAVY_HANDS if GameState.perk("heavy_hands") else 1.0)
 		if not is_boss:
-			hold = minf(hold, STAGGER_CHAIN_MAX - _stagger_run)
+			hold = minf(hold, STAGGER_CHAIN_MAX - _control_run)
 		_stagger_timer = maxf(_stagger_timer, hold)
 		_set_poise()
 		_on_staggered()
@@ -681,11 +674,11 @@ func hit_zone(hit_point: Vector3) -> String:
 
 
 ## Knocked silly (e.g. by a Combo Master shockwave): can't act for a while.
-func stun(duration: float) -> void:
-	if _dead or not _can_stagger() or (not is_boss and _stun_grace > 0.0):
+## force: an ultimate's (past the control grace, still within CONTROL_MAX).
+func stun(duration: float, force := false) -> void:
+	if _dead or not _can_stagger() or not _controllable(force):
 		return
-	if not is_boss:
-		_stun_grace = duration + STUN_GRACE
+	duration = _control_for(duration)
 	_stagger_timer = maxf(_stagger_timer, duration)
 	_set_poise()
 	_on_staggered()
@@ -729,12 +722,17 @@ func squash() -> void:
 ## Knocked off its feet: it topples away from the blow, hits the ground with a
 ## thud and a bounce, lies there, then hops back up. Out of the fight the whole
 ## time. Bosses are too heavy to fall (a stun, which their poise can refuse).
-func knock_down(seconds: float, push: Vector3) -> void:
+func knock_down(seconds: float, push: Vector3, force := false) -> void:
 	if _dead:
 		return
 	if is_boss or not _can_stagger():
-		stun(minf(seconds, 1.0))
+		stun(minf(seconds, 1.0), force)
 		return
+	# Recently held: it staggers back from the blow but keeps its feet.
+	if not _controllable(force):
+		_knockback = Vector3(push.x, 0.0, push.z).normalized() * 4.0
+		return
+	seconds = _control_for(seconds)
 	_stagger_timer = maxf(_stagger_timer, seconds)
 	_on_staggered()
 	var away := global_basis.inverse() * Vector3(push.x, 0.0, push.z)
@@ -755,6 +753,35 @@ func knock_down(seconds: float, push: Vector3) -> void:
 	_topple_tween.tween_property(_topple, "rotation", Vector3.ZERO, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	_topple_tween.parallel().tween_property(_topple, "position:y", 0.3, 0.15).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	_topple_tween.tween_property(_topple, "position:y", 0.0, 0.13).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+
+
+## Control (CONTROL_MAX): time held this stretch while staggered or held;
+## once free, the grace is as long as the hold was.
+func _track_control(delta: float) -> void:
+	if is_boss:
+		return
+	if _stagger_timer > 0.0 or _hold_time > 0.0:
+		_control_run += delta
+	elif _control_run > 0.0:
+		_control_grace = maxf(CONTROL_GRACE_MIN, _control_run)
+		_control_run = 0.0
+	else:
+		_control_grace -= delta
+
+
+## Can be held right now (bosses: see their poise). force: an ultimate,
+## past the grace but not past CONTROL_MAX.
+func _controllable(force := false) -> bool:
+	if is_boss:
+		return true
+	if _control_run >= CONTROL_MAX - 0.05:
+		return false
+	return force or _control_grace <= 0.0
+
+
+## A hold trimmed to what's left of this stretch's CONTROL_MAX.
+func _control_for(seconds: float) -> float:
+	return seconds if is_boss else minf(seconds, CONTROL_MAX - _control_run)
 
 
 ## A boss holding its poise shrugs off staggers and stuns ("STEADY", once a
@@ -778,8 +805,14 @@ func _set_poise() -> void:
 ## Holds it still for a moment (no move, no attack) without a stagger: its
 ## next attack waits.
 func delay(seconds: float, caption := "") -> void:
-	if _dead:
+	if _dead or not _controllable():
 		return
+	if is_boss:
+		if not _can_stagger():
+			return
+		_poise_time = seconds + BOSS_POISE
+	else:
+		seconds = _control_for(seconds)
 	_hold_time = maxf(_hold_time, seconds)
 	if caption != "":
 		DamagePopup.spawn(get_parent(), caption, Color(0.6, 0.9, 1.0), 36, global_position + Vector3(0, 2.0 * _body.scale.y, 0))
@@ -1265,9 +1298,10 @@ func _end_status_fx(holder: Node3D) -> void:
 			(child as CPUParticles3D).emitting = false
 		elif child is OmniLight3D:
 			child.queue_free()
-	get_tree().create_timer(1.3).timeout.connect(func() -> void:
-		if is_instance_valid(holder):
-			holder.queue_free())
+	# Its own tween, so it goes with it if the monster goes first.
+	var linger := holder.create_tween()
+	linger.tween_interval(1.3)
+	linger.tween_callback(holder.queue_free)
 
 
 # --- Attack turns ---------------------------------------------------------------

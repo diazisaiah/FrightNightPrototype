@@ -271,19 +271,21 @@ static func blood_drain(target: Enemy, player: Node3D) -> void:
 		drop.global_position = from + Vector3(randf_range(-0.3, 0.3), randf_range(-0.3, 0.3), randf_range(-0.3, 0.3))
 		var lift := Vector3(randf_range(-0.6, 0.6), randf_range(0.4, 1.0), randf_range(-0.6, 0.6))
 		var start := drop.global_position
+		var drinker: WeakRef = weakref(player)
+		var end := player.global_position + Vector3(0, 1.2, 0)
 		var tween := drop.create_tween()
 		tween.tween_interval(i * 0.025)
 		tween.tween_method(func(t: float) -> void:
-			if is_instance_valid(player) and is_instance_valid(drop):
-				var to := player.global_position + Vector3(0, 1.2, 0)
-				drop.global_position = start.lerp(to, t) + lift * sin(t * PI), 0.0, 1.0, 0.38)
+			var who := drinker.get_ref() as Node3D
+			if who:
+				end = who.global_position + Vector3(0, 1.2, 0)
+			drop.global_position = start.lerp(end, t) + lift * sin(t * PI), 0.0, 1.0, 0.38)
 		tween.tween_callback(drop.queue_free)
 	var pulse := player.create_tween()
 	pulse.tween_interval(0.45)
 	pulse.tween_callback(func() -> void:
-		if is_instance_valid(player):
-			HitFx.ring(player.get_parent(), player.global_position + Vector3(0, 0.15, 0), Color(BLOOD_COLOR, 0.8), 1.8)
-			HitFx.burst(player.get_parent(), player.global_position + Vector3(0, 1.0, 0), Vector3.UP, BLOOD_COLOR, 14, 2.5, true, 0.05))
+		HitFx.ring(player.get_parent(), player.global_position + Vector3(0, 0.15, 0), Color(BLOOD_COLOR, 0.8), 1.8)
+		HitFx.burst(player.get_parent(), player.global_position + Vector3(0, 1.0, 0), Vector3.UP, BLOOD_COLOR, 14, 2.5, true, 0.05))
 
 
 const BLOOD_COLOR := Color(0.85, 0.05, 0.1)

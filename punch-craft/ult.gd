@@ -504,7 +504,7 @@ func _inferno_at(target: Enemy) -> void:
 	if not boss and target.collision_mask != 0:
 		target.velocity.y = INFERNO_LAUNCH * 1.4
 		target.global_position.y += 0.1
-	target.knock_down(INFERNO_STUN, target.global_position - player.global_position)
+	target.knock_down(INFERNO_STUN, target.global_position - player.global_position, true)
 
 
 # --- Combo Master: Temporal Break --------------------------------------------------------
@@ -622,7 +622,7 @@ func _end_time_stop() -> void:
 	time_stop_changed.emit(false, 0.0, "", "", _hits)
 	for enemy in _struck:
 		if is_instance_valid(enemy) and not enemy.is_dead():
-			enemy.stun(TIME_STOP_STUN)
+			enemy.stun(TIME_STOP_STUN, true)
 	_struck.clear()
 	player._combo_timer = GameState.get_combo_window()
 	Sfx.play("counter", 0.0, 0.6)
@@ -719,7 +719,7 @@ func _shield_break() -> void:
 			enemy.take_hit(damage, enemy.global_position + Vector3(0, 1.0, 0), away.normalized() * 8.0, true, "BRIMSTONE!")
 			if not enemy.is_dead():
 				enemy.ignite(GameState.get_damage() * 1.5, INFERNO_BURN_TIME)
-				enemy.knock_down(0.8, away)
+				enemy.knock_down(0.8, away, true)
 	player.class_event.emit("BRIMSTONE!")
 
 
@@ -950,14 +950,14 @@ func _start_reel() -> void:
 		if last:
 			player._land_punch(type, hand, false, false, target, REEL_FINISHER * (1.0 + 0.3 * _power()), "HAYMAKER!")
 			if is_instance_valid(target) and not target.is_dead():
-				target.knock_down(1.2, target.global_position - player.global_position)
+				target.knock_down(1.2, target.global_position - player.global_position, true)
 			player._shake = maxf(player._shake, 0.1)
 			player._kick_fov(8.0)
 		else:
 			player._land_punch(type, hand, false, false, target, REEL_DAMAGE * (1.0 + 0.3 * _power()), "HIGHLIGHT!")
 		# Director's Cut: every hit stuns.
 		if _card("directors_cut") and is_instance_valid(target) and not target.is_dead():
-			target.stun(1.0)
+			target.stun(1.0, true)
 		if is_instance_valid(target):
 			HitFx.burst(player.get_parent(), target.global_position + Vector3(0, 1.3, 0), Vector3.UP, LIGHTNING_COLOR, 24, 6.0, true, 0.05)
 		await _wait(REEL_PAUSE)

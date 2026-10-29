@@ -840,17 +840,16 @@ func _test_one_power() -> void:
 	var true_mark := Progression.true_par()
 	print("True Coffin King mark: damage %.1f ehp %.0f (Coffin King par: %.1f, %.0f)" % [true_mark.damage, true_mark.ehp, top.damage, top.ehp])
 	_check(true_mark.damage > top.damage * 1.2 and true_mark.ehp > top.ehp * 1.2, "The True Coffin King wants far more than the Coffin King's par")
-	# No stun-locks: a monster just stunned shakes off the next stun.
-	var zombie: Enemy = load("res://zombie.tscn").instantiate()
-	add_child(zombie)
-	zombie.stun(1.5)
-	zombie._stagger_timer = 0.0
-	zombie.stun(1.5)
-	_check(zombie._stagger_timer <= 0.0, "A monster just stunned shakes off the next stun")
-	zombie._stun_grace = 0.0
-	zombie.stun(1.5)
-	_check(zombie._stagger_timer > 0.0, "Once the grace is over it can be stunned again")
-	zombie.queue_free()
+	# No stun-locks, from anything: hammered every frame for 30s with each
+	# kind of hold (and all of them mixed), a monster is still free about
+	# half the time; a boss's poise keeps it free most of the time.
+	for kind in ["stun", "knockdown", "delay", "punch", "mixed"]:
+		var held := _held_share("res://zombie.tscn", kind)
+		print("held share %s: %.2f" % [kind, held])
+		_check(held <= 0.56, "No stun-lock from %s: a monster held %d%% of the time" % [kind, roundi(held * 100.0)])
+	var boss_held := _held_share("res://dead_league_boss.tscn", "mixed")
+	print("held share boss: %.2f" % boss_held)
+	_check(boss_held <= 0.5, "No stun-lock on a boss: held %d%% of the time" % roundi(boss_held * 100.0))
 	# Powers have a cooldown on top of their chance.
 	var play := PowerPlay.new()
 	_check(play.ready("sigil_fire"), "Powers start ready")
@@ -861,3 +860,36 @@ func _test_one_power() -> void:
 	_check(play.ready("sigil_fire"), "Then it's ready again")
 	play.free()
 	GameState._reset_fields()
+
+
+## Share of 30 seconds a monster spends held when every frame it's hit with
+## kind ("stun", "knockdown", "delay", "punch" or "mixed": all of them).
+func _held_share(scene: String, kind: String) -> float:
+	var enemy: Enemy = load(scene).instantiate()
+	if enemy is DeadLeagueBoss:
+		enemy.configure(4, 1)
+	add_child(enemy)
+	enemy.set_physics_process(false)
+	var step := 1.0 / 60.0
+	var held := 0.0
+	for i in 1800:
+		var pick: String = kind if kind != "mixed" else ["stun", "knockdown", "delay", "punch"][i % 4]
+		match pick:
+			"stun":
+				enemy.stun(1.5)
+			"knockdown":
+				enemy.knock_down(1.3, Vector3.FORWARD)
+			"delay":
+				enemy.delay(2.0)
+			"punch":
+				enemy.hp = enemy.max_hp
+				enemy.take_hit(0.01, enemy.global_position + Vector3.UP, Vector3.ZERO, true)
+		# What _physics_process does each frame.
+		enemy._track_control(step)
+		if enemy._stagger_timer > 0.0 or enemy._hold_time > 0.0:
+			held += step
+		enemy._stagger_timer -= step
+		enemy._hold_time -= step
+		enemy._poise_time -= step
+	enemy.queue_free()
+	return held / 30.0
