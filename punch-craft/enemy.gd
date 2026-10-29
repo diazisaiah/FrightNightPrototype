@@ -102,6 +102,9 @@ const TURN_TIMEOUT := 4.0
 @export var armor_bonus_hp := 20.0
 
 var hp := 0.0
+## HP never drops below this (the True Coffin King holds on until he tags out,
+## and can't be hurt while he's out of the ring).
+var hp_floor := 0.0
 var armor := 0.0
 ## Extra flat block on head shots (a helmet, see EnemyGear).
 var head_armor := 0.0
@@ -376,7 +379,7 @@ func take_hit(raw_damage: float, hit_point: Vector3, push: Vector3, stagger: boo
 		_body_damage = minf(1.0, _body_damage + BODY_DAMAGE_PER_HIT)
 		if not was_winded and _body_damage >= WINDED_THRESHOLD:
 			DamagePopup.spawn(get_parent(), "WINDED", BODY_COLOR, 44, global_position + Vector3(0, 1.2, 0))
-	hp -= damage
+	hp = maxf(hp - damage, hp_floor)
 	if _doom_time > 0.0 and caption != "DOOM":
 		_doom_store += damage
 	_knockback = push
@@ -420,6 +423,13 @@ func take_hit(raw_damage: float, hit_point: Vector3, push: Vector3, stagger: boo
 		if hat != "" and finisher.get("type", "") == "uppercut" and randf() < Hats.POP_CHANCE[Hats.info(hat).rarity]:
 			_pop_hat()
 	return damage
+
+
+## Puts out burns, poison and doom (the True Coffin King tagging out).
+func clear_statuses() -> void:
+	_burn_time = 0.0
+	_poison_stacks = 0
+	_clear_doom()
 
 
 func _clear_doom() -> void:
@@ -624,7 +634,7 @@ func _update_statuses(delta: float) -> void:
 func _status_damage(amount: float, color: Color, caption := "") -> void:
 	if _dead or amount <= 0.0:
 		return
-	hp -= amount
+	hp = maxf(hp - amount, hp_floor)
 	var chest := global_position + Vector3(0, 1.3, 0)
 	var text := "%.1f" % amount if caption == "" else "%s\n%.1f" % [caption, amount]
 	DamagePopup.spawn(get_parent(), text, color, 34, chest)
@@ -653,7 +663,7 @@ func _update_burn(delta: float) -> void:
 		return
 	_burn_tick = 0.0
 	var damage := _burn_per_second * 0.5
-	hp -= damage
+	hp = maxf(hp - damage, hp_floor)
 	var chest := global_position + Vector3(0, 1.2, 0)
 	DamagePopup.spawn(get_parent(), "%.1f" % damage, Powers.FIRE_COLOR, 36, chest)
 	HitFx.burst(get_parent(), chest, Vector3.UP, Powers.FIRE_COLOR, 5, 1.5, true, 0.05)

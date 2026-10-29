@@ -35,6 +35,7 @@ func _run() -> void:
 	_test_one_power()
 	_test_endless_powers()
 	_test_endless_falloff()
+	_test_true_king_maxed()
 	_test_skins()
 	if _failures.is_empty():
 		print("BALANCE REGRESSION: PASS")
@@ -44,6 +45,33 @@ func _run() -> void:
 			push_error(failure)
 		print("BALANCE REGRESSION: FAIL (%d)" % _failures.size())
 		get_tree().quit(1)
+
+
+## The True Coffin King's maxed-build tuning (DeadLeagueBoss.TRUE_MAXED) still
+## matches a maxed fighter of each class, within 15%.
+func _test_true_king_maxed() -> void:
+	for fighter in GameState.CLASSES:
+		GameState._reset_fields()
+		GameState.player_class = fighter
+		GameState.tony_unlocked = true
+		GameState.fighters_bought.elementalist = true
+		for i in DeadLeagueRules.BOSS_COUNT:
+			GameState.dead_league_clears[DeadLeagueRules.boss(i).id] = true
+		for id in GameState.UPGRADES:
+			GameState.upgrade_levels[id] = int(GameState.UPGRADES[id].max_level)
+		var info: Dictionary = GameState._classes[fighter]
+		info.level = 51
+		for attribute in Attributes.LIST:
+			info.attributes[attribute] = Attributes.MAX
+		for id in Cards.deck(fighter):
+			info.cards[id] = Cards.copies(Cards.deck(fighter)[id])
+		GameState.select_power("sigil_fire")
+		var now := PowerRating.maxed_over_true_par()
+		var tuned: Vector2 = DeadLeagueBoss.TRUE_MAXED[fighter]
+		print("%s maxed over true par: offense x%.2f defense x%.2f (tuned %.2f, %.2f)" % [fighter, now.x, now.y, tuned.x, tuned.y])
+		_check(absf(now.x / tuned.x - 1.0) < 0.15 and absf(now.y / tuned.y - 1.0) < 0.15,
+				"True Coffin King tuning for %s is stale: maxed is x%.2f / x%.2f, tuned x%.2f / x%.2f" % [fighter, now.x, now.y, tuned.x, tuned.y])
+	GameState._reset_fields()
 
 
 ## Endless bouts and floors (2026-10-29): pay stays flat however deep you go;

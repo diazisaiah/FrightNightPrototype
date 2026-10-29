@@ -19,6 +19,7 @@ func _run() -> void:
 	await _test_runtime_bosses()
 	_test_unlocks_and_rewards()
 	_test_scenes()
+	await _test_true_king()
 	GameState.end_dead_league()
 	if _failures.is_empty():
 		print("DEAD LEAGUE REGRESSION: PASS")
@@ -139,6 +140,46 @@ func _test_unlocks_and_rewards() -> void:
 	_check(int(GameState.dead_league_best.bellman.score) == 950, "A worse repeat must not replace the personal best")
 	GameState.record_dead_league_result("bellman", "S", 1100)
 	_check(int(GameState.dead_league_best.bellman.score) == 1100, "A better result must replace the personal best")
+
+
+## The True Coffin King (2026-10-29): an overkill hit can't skip his tag-in,
+## he can't be hurt out of the ring (a burn used to kill him mid-hop, so the
+## round ended and the tag-in became a second Coffin King), the right
+## contender comes in, and the Insano round goes into a fury at half HP.
+func _test_true_king() -> void:
+	GameState._reset_fields()
+	GameState.dead_league_bout = DeadLeagueRules.BOSS_COUNT - 1
+	GameState.true_king_bout = true
+	var arena: Node = load("res://dead_league_arena.tscn").instantiate()
+	add_child(arena)
+	for i in 600:
+		await get_tree().process_frame
+		if arena._player.active:
+			break
+	var king: DeadLeagueBoss = arena._boss
+	king.take_hit(king.max_hp * 10.0, king.global_position + Vector3(0, 1.0, 0), Vector3.ZERO, false)
+	_check(not king.is_dead() and arena._tagged, "An overkill hit sends the True Coffin King out to tag, not down")
+	var hp: float = king.hp
+	king.ignite(king.max_hp, 5.0)
+	king._status_damage(king.max_hp, Color.RED)
+	await get_tree().create_timer(1.2).timeout
+	_check(not king.is_dead() and is_equal_approx(king.hp, hp), "Out of the ring, nothing hurts the True Coffin King")
+	_check(arena._round == 1, "His round doesn't end while he's out (round %d)" % arena._round)
+	var partner: DeadLeagueBoss = arena._partner
+	_check(partner != null and partner.profile_index == 0, "Round 1 tags in the Bellman")
+	# The Insano round: a fresh King, a burning floor, a fury at half HP.
+	if is_instance_valid(partner):
+		partner.queue_free()
+	arena._round = arena.TRUE_ROUNDS
+	arena._spawn_boss()
+	var insano: DeadLeagueBoss = arena._boss
+	_check(insano.insano and insano.hp_floor == 0.0, "Round 5: Insano, and he can go down")
+	var windup: float = insano.windup_scale
+	insano.take_hit(insano.max_hp * 0.55, insano.global_position + Vector3(0, 1.0, 0), Vector3.ZERO, false)
+	_check(arena._floor.fury and insano._base_windup < windup, "Below half HP the Insano King goes into a fury")
+	arena.queue_free()
+	await get_tree().process_frame
+	GameState.true_king_bout = false
 
 
 func _test_scenes() -> void:

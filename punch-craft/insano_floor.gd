@@ -6,18 +6,23 @@ extends Node3D
 
 const COLOR := Color(0.9, 0.12, 0.4)
 ## Seconds between patterns, of warning, and of burning.
-const EVERY := Vector2(3.0, 4.5)
-const WARN := 1.3
+const EVERY := Vector2(2.2, 3.4)
+const WARN := 1.2
 const BURN := 2.6
 const TICK := 0.4
 ## Each tick takes this share of the King's punch.
-const TICK_SHARE := 0.35
+const TICK_SHARE := 0.5
+## Below the King's half HP (fury): patterns come this much sooner, with
+## this much less warning.
+const FURY_PACE := 0.6
+const FURY_WARN := 0.75
 
 var center := Vector3.ZERO
 var half := 4.0
 var player: Player
 ## The King (his punch sets the burn).
 var king: Node3D
+var fury := false
 
 var _wait := 2.0
 var _zones: Array[Dictionary] = []
@@ -36,9 +41,9 @@ func _physics_process(delta: float) -> void:
 			if _wait <= 0.0:
 				_lay(_pattern())
 		"warn":
-			var beat := 0.5 + 0.5 * sin(Time.get_ticks_msec() * 0.001 * lerpf(8.0, 22.0, 1.0 - _phase_time / WARN))
+			var beat := 0.5 + 0.5 * sin(Time.get_ticks_msec() * 0.001 * lerpf(8.0, 22.0, 1.0 - _phase_time / _warn()))
 			for zone in _zones:
-				(zone.fill as StandardMaterial3D).albedo_color.a = lerpf(0.12, 0.42, 1.0 - _phase_time / WARN) * (0.7 + 0.3 * beat)
+				(zone.fill as StandardMaterial3D).albedo_color.a = lerpf(0.12, 0.42, 1.0 - _phase_time / _warn()) * (0.7 + 0.3 * beat)
 			if _phase_time <= 0.0:
 				_ignite()
 		"burn":
@@ -51,6 +56,10 @@ func _physics_process(delta: float) -> void:
 					DamagePopup.spawn(get_parent(), "BURN", COLOR, 26, player.global_position + Vector3(0, 1.4, 0))
 			if _phase_time <= 0.0:
 				_clear()
+
+
+func _warn() -> float:
+	return WARN * (FURY_WARN if fury else 1.0)
 
 
 ## Stops (the round's over) and clears the floor.
@@ -88,7 +97,7 @@ func _lay(rects: Array) -> void:
 		plate.global_position = at
 		_zones.append({"node": plate, "fill": fill, "at": at, "size": size})
 	_phase = "warn"
-	_phase_time = WARN
+	_phase_time = _warn()
 	Sfx.play("tell", -2.0, 0.7)
 
 
@@ -136,4 +145,4 @@ func _clear() -> void:
 			(zone.node as Node3D).queue_free()
 	_zones.clear()
 	_phase = ""
-	_wait = randf_range(EVERY.x, EVERY.y)
+	_wait = randf_range(EVERY.x, EVERY.y) * (FURY_PACE if fury else 1.0)

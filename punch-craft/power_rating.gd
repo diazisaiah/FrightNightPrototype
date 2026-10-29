@@ -125,6 +125,16 @@ const VERDICTS := [
 
 ## build: {damage, knuckles, defense, punch_speed, combo_step, effects: {effect: total}}.
 static func rate(build: Dictionary) -> int:
+	var worth := split(build)
+	var specials := 0
+	for key in SPECIALS:
+		if float(build.effects.get(key, 0.0)) > 0.0:
+			specials += 1
+	return roundi(100.0 * sqrt(maxf(worth.x, 0.01) * maxf(worth.y, 0.01)) * (1.0 + SPECIAL_WORTH * specials))
+
+
+## A build's (offense, defense): how fast it kills and how much it takes.
+static func split(build: Dictionary) -> Vector2:
 	var fx: Dictionary = build.effects
 	var offense: float = build.damage / 2.0 * build.punch_speed * (1.0 + 2.5 * build.combo_step) / FRESH_COMBO
 	offense *= 1.0 + _weighted(fx, OFFENSE)
@@ -134,17 +144,15 @@ static func rate(build: Dictionary) -> int:
 	var defense: float = build.knuckles * (10.0 + build.defense) / 10.0 / 50.0 / (1.0 + maxf(fx.get("damage_taken", 0.0), -0.5))
 	defense *= 1.0 + _weighted(fx, DEFENSE)
 	var cards := _card_worth(fx, build.get("perks", []))
-	offense *= 1.0 + cards.x
-	defense *= 1.0 + cards.y
-	var specials := 0
-	for key in SPECIALS:
-		if float(fx.get(key, 0.0)) > 0.0:
-			specials += 1
-	return roundi(100.0 * sqrt(maxf(offense, 0.01) * maxf(defense, 0.01)) * (1.0 + SPECIAL_WORTH * specials))
+	return Vector2(offense * (1.0 + cards.x), defense * (1.0 + cards.y))
 
 
 ## The current fighter: every upgrade, card, attribute, worn item and blessing.
 static func player() -> int:
+	return rate(player_build())
+
+
+static func player_build() -> Dictionary:
 	var fx := {}
 	for key in _all_keys():
 		var value := GameState.get_effect(key)
@@ -153,11 +161,20 @@ static func player() -> int:
 	var passive_power := GameState.passive_power()
 	if passive_power > 0.0:
 		fx["passive_power"] = passive_power
-	return rate({
+	return {
 		"damage": GameState.get_damage(), "knuckles": GameState.get_max_knuckles(),
 		"defense": GameState.get_defense(), "punch_speed": GameState.get_punch_speed(),
 		"combo_step": GameState.get_combo_step(), "effects": fx, "perks": PERKS.keys().filter(GameState.perk),
-	})
+	}
+
+
+## A maxed fighter's (offense, defense) over what the True Coffin King's
+## base numbers are built for (Progression.true_par). The playground measures
+## DeadLeagueBoss.TRUE_MAXED with it; balance_regression keeps them in step.
+static func maxed_over_true_par() -> Vector2:
+	var mine := split(player_build())
+	var theirs := split(_par_as_player(Progression.true_par()))
+	return Vector2(mine.x / maxf(theirs.x, 0.01), mine.y / maxf(theirs.y, 0.01))
 
 
 ## What cards and perks add: (offense, defense) shares.
@@ -181,18 +198,22 @@ static func _card_worth(fx: Dictionary, perks: Array) -> Vector2:
 ## built-in bonuses and drawbacks count on both sides, so the comparison is
 ## about your build, not which fighter you picked).
 static func contender(index: int) -> int:
-	var par := Progression.par(index + 1)
+	return rate(_par_as_player(Progression.par(index + 1)))
+
+
+## A par build (Progression.par) as the current fighter would have it.
+static func _par_as_player(par: Dictionary) -> Dictionary:
 	var fx: Dictionary = par.get("effects", {}).duplicate()
 	var mods: Dictionary = GameState.CLASSES[GameState.player_class].get("mods", {})
 	if mods.has("dodge_window"):
 		fx["dodge_window"] = fx.get("dodge_window", 0.0) + mods.dodge_window - 1.0
-	return rate({
+	return {
 		"damage": par.damage * mods.get("damage", 1.0), "knuckles": par.knuckles * mods.get("knuckles", 1.0),
 		"defense": par.defense + mods.get("defense", 0.0),
 		"punch_speed": (1.0 + fx.get("punch_speed", 0.0)) * mods.get("punch_speed", 1.0),
 		"combo_step": (0.25 + fx.get("combo_step", 0.0)) * mods.get("combo_step", 1.0),
 		"effects": fx,
-	})
+	}
 
 
 ## [word, ratio] for your POWER against a contender's.

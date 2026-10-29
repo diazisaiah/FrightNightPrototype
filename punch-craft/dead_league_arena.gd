@@ -185,6 +185,10 @@ func _spawn_boss() -> void:
 	_tagged = false
 	if _true:
 		_boss.health_changed.connect(_on_king_health)
+		# He can't go down before he tags out (2026-10-29: a big hit or a burn
+		# could finish him early, skipping the tag-in).
+		if _round < TRUE_ROUNDS:
+			_boss.hp_floor = _boss.max_hp * TAG_AT
 		if _round == TRUE_ROUNDS:
 			_boss.go_insano()
 			_hud.announce_small("INSANO STYLE!", DeadLeagueBoss.INSANO_COLOR)
@@ -197,12 +201,24 @@ func _spawn_boss() -> void:
 
 
 ## The True Coffin King at half HP: out over the ropes, and the next
-## contender in.
+## contender in. In the Insano round, half HP sends the burning floor into a
+## fury instead.
 func _on_king_health(current: float, maximum: float) -> void:
+	if _round == TRUE_ROUNDS and _floor and not _floor.fury and current > 0.0 and current <= maximum * TAG_AT:
+		_floor.fury = true
+		_boss.insano_fury()
+		_hud.announce_small("NO MORE GAMES!", DeadLeagueBoss.INSANO_COLOR)
+		return
 	if _tagged or _bout_finished or _round >= TRUE_ROUNDS or current <= 0.0 or current > maximum * TAG_AT:
 		return
 	_tagged = true
 	var king := _boss
+	# Out of the ring he can't be hurt: burns, poison and doom go out with him
+	# (2026-10-29: a burn killed him mid-hop, the round ended, and the tag-in
+	# became a second Coffin King in the Insano round).
+	king.hp_floor = king.hp
+	king.clear_statuses()
+	var index := _round - 1
 	king.end_turn()
 	king.set_physics_process(false)
 	king.remove_from_group("enemies")
@@ -218,8 +234,9 @@ func _on_king_health(current: float, maximum: float) -> void:
 	await _hop(king, RING_CENTER + out * (RING_HALF_SIZE + APRON))
 	if not is_inside_tree() or _bout_finished:
 		return
+	if _round - 1 != index or not is_instance_valid(king) or king.is_dead():
+		return
 	king.look_at(Vector3(RING_CENTER.x, king.global_position.y, RING_CENTER.z))
-	var index := _round - 1
 	_partner = BOSS_SCENE.instantiate() as DeadLeagueBoss
 	_partner.configure(index, DeadLeagueRules.ROUND_COUNT)
 	_partner.empower(_round, true)
@@ -256,6 +273,7 @@ func _on_partner_died(_enemy: Enemy) -> void:
 	if not is_inside_tree() or _bout_finished:
 		return
 	king.collision_layer = king.get_meta("layer", 1)
+	king.hp_floor = 0.0
 	king.add_to_group("enemies")
 	king.set_physics_process(true)
 	_hud.show_boss(king.display_name, king.hp, king.max_hp)

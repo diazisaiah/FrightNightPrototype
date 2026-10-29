@@ -1930,6 +1930,20 @@ A planning list, not a work order: nothing here gets built until the user picks 
   - **Cooldowns:** Spear Jab 2s, Haymaker 4s; before, there were none, and chained Haymakers kept everything knocked back. On cooldown, a dash punch is a plain punch.
   - **Passive chip:** reads READY, or "L 1s  R OK" (left Spear Jab, right Haymaker).
   - Checked in `card_runtime_regression`.
+- **The True Coffin King, fixed:** a burn (or any damage over time) could kill him while he hopped out to tag. That ended the round, and the tag-in that followed used the next round's contender, so the Plague Doctor never showed and the Insano round had two Coffin Kings.
+  - Before tagging, his HP can't drop below half (`Enemy.hp_floor`), so one huge hit can't skip the tag-in.
+  - Out of the ring he can't be hurt, and his burns, poison and doom go out (`Enemy.clear_statuses`).
+  - The tag-in checks the round hasn't changed. Checked in `dead_league_regression` with a real bout.
+- **The True Coffin King is built for a maxed fighter:** he was tuned for `Progression.true_par` (a level-29 build with 90% of the web). A maxed fighter (level 51, every card at full rank, every attribute, the whole web) rated 10-18x his offense and 3-4x his defense, so every round melted in seconds.
+  - **The tuning:** he and his tag-ins now take a maxed fighter's offense ratio in HP and the square root of its defense ratio in damage, measured per class (`DeadLeagueBoss.TRUE_MAXED`, from `PowerRating.maxed_over_true_par`).
+  - **With a maxed fighter:** about 10-18.5x HP and 1.6-1.9x damage. Combo Master is x14.9 HP, the Catalyst x18.6.
+  - **Fixed:** he doesn't grow with you, so you need to be near maxed to beat him.
+  - `balance_regression` re-measures each class and fails if the tuning drifts more than 15%.
+- **Insano, harder:**
+  - HP and damage by round: 1 / 1.16 / 1.34 / 1.5 / 2.2x HP and 1 / 1.08 / 1.17 / 1.25 / 1.4x damage (`TRUE_ROUND_HP` / `TRUE_ROUND_DAMAGE`). Rounds 4 and 5 used to be round 3's.
+  - Insano tells 25% quicker (was 15%), and pauses between combos 60% shorter.
+  - At half HP, "NO MORE GAMES!": tells 15% quicker again and 15% faster footwork, and the burning floor comes 40% sooner with 25% less warning.
+  - The floor burns every 2.2-3.4s (was 3-4.5), warns 1.2s, and each tick is half his punch (was a third).
 - **The Catalyst's floating runes are gone:** the arc of runes over his hands (`CatalystRunes`, on the camera) read as aiming reticles. The runes on his gloves still glow and flash his powers' colors.
 - **Playground:**
   - Spawns can be elites or champions.

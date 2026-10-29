@@ -71,8 +71,29 @@ const KING_REST := 0.6
 ## level with this share of his HP. Round 5 he goes Insano: combos of six to
 ## eight punches, super armor through every punch of them, quicker tells.
 const TRUE_PARTNER_HP := 0.6
+## A maxed fighter (level 51, every card at full rank, every attribute, the
+## whole web) over Progression.true_par, by class: (offense, defense) from
+## PowerRating.maxed_over_true_par. The True Coffin King and his tag-ins take
+## the offense in HP (so a maxed fighter needs as long as true par would) and
+## the square root of the defense in damage (much of a maxed defense is
+## dodging and healing, not HP). Fixed: he doesn't grow with you, so you need
+## to be near maxed to beat him (2026-10-29: tuned to true par alone, a maxed
+## fighter melted every round in seconds).
+const TRUE_MAXED := {
+	"berserker": Vector2(11.2, 3.54), "counter_master": Vector2(10.3, 3.29),
+	"combo_master": Vector2(14.85, 3.14), "free_runner": Vector2(10.9, 3.17),
+	"wise_guy": Vector2(12.1, 3.2), "elementalist": Vector2(18.55, 2.71),
+}
+## The True Coffin King's HP and damage by round (2026-10-29: rounds 4 and 5
+## were round 3's, so the Insano finale went down fast).
+const TRUE_ROUND_HP := [1.0, 1.16, 1.34, 1.5, 2.2]
+const TRUE_ROUND_DAMAGE := [1.0, 1.08, 1.17, 1.25, 1.4]
 const INSANO_COLOR := Color(0.9, 0.12, 0.4)
-const INSANO_WINDUP := 0.85
+## Insano: tells this much quicker (was 0.85), pauses between combos this
+## much shorter, and below half HP (insano_fury) quicker again and faster.
+const INSANO_WINDUP := 0.75
+const INSANO_REST := 0.4
+const INSANO_FURY := 0.85
 const INSANO_COMBOS := [
 	["jab", "cross", "left_hook", "right_hook", "jab", "cross", "uppercut"],
 	["left_hook", "right_hook", "left_hook", "right_hook", "cross", "slam"],
@@ -154,9 +175,13 @@ func _ready() -> void:
 func empower(bout_round: int, partner := false) -> void:
 	var king := DeadLeagueRules.boss(DeadLeagueRules.BOSS_COUNT - 1)
 	var build := Progression.true_par()
-	var step := clampi(bout_round, 1, ROUND_HP.size()) - 1
-	max_hp = king.hp * ROUND_HP[step] * build.damage / Progression.BASE_DAMAGE * (TRUE_PARTNER_HP if partner else 1.0)
-	attack_damage = king.damage * ROUND_DAMAGE[step] * build.ehp / Progression.BASE_KNUCKLES
+	var step := clampi(bout_round, 1, TRUE_ROUND_HP.size()) - 1
+	max_hp = king.hp * TRUE_ROUND_HP[step] * build.damage / Progression.BASE_DAMAGE * (TRUE_PARTNER_HP if partner else 1.0)
+	attack_damage = king.damage * TRUE_ROUND_DAMAGE[step] * build.ehp / Progression.BASE_KNUCKLES
+	# Built for a maxed fighter of your class, whatever you bring.
+	var maxed: Vector2 = TRUE_MAXED.get(GameState.player_class, Vector2.ONE)
+	max_hp *= maxed.x
+	attack_damage *= sqrt(maxed.y)
 	windup_scale = minf(windup_scale, king.windup * (1.0 - 0.045 * step))
 	move_speed = maxf(move_speed, 2.5 * king.speed)
 	_base_windup = windup_scale
@@ -188,6 +213,16 @@ func go_insano() -> void:
 	add_child(aura)
 	DamagePopup.spawn(get_parent(), "INSANO STYLE!", INSANO_COLOR, 70, global_position + Vector3(0, 3.4, 0))
 	Sfx.play_at("growl", global_position + Vector3.UP * 2.0, 6.0, 0.6)
+
+
+## Insano at half HP: quicker tells and footwork still.
+func insano_fury() -> void:
+	_base_windup *= INSANO_FURY
+	_base_speed *= 1.15
+	windup_scale = _base_windup
+	move_speed = _base_speed
+	DamagePopup.spawn(get_parent(), "NO MORE GAMES!", INSANO_COLOR, 64, global_position + Vector3(0, 3.4, 0))
+	Sfx.play_at("growl", global_position + Vector3.UP * 2.0, 8.0, 0.5)
 
 
 ## Insano: armored through the last punch of a combo too.
@@ -270,6 +305,8 @@ func _idle_time() -> float:
 		rest *= 0.45
 	if profile_index == 4:
 		rest *= 1.0 - KING_REST * _hurt()
+	if insano:
+		rest *= INSANO_REST
 	return rest
 
 
