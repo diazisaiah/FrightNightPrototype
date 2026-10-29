@@ -1878,6 +1878,8 @@ The rigged bosses' punches were small and snapped (a slight load pose through th
 
 ## Roadmap: the user's to-do list (2026-10-28)
 
+A planning list, not a work order: nothing here gets built until the user picks it.
+
 1. **The Catalyst's runes [Planned]:** runes around him by passive: one big rune for the single power, two medium for two powers, four for Prism's four. Each glows its power's color.
 2. **Flame Burst ultimate [Planned]:** a very dramatic, big AoE explosion that sends regular enemies flying.
 3. **Tony's family [Planned]:** better fighting rigs and skull-cracking hits. Fix Tony's bald spot.
@@ -1887,4 +1889,6 @@ The rigged bosses' punches were small and snapped (a slight load pose through th
 7. **Playground [Planned]:** easier controls, a skin picker, and set upgrade tiers to test at different power levels.
 8. **The Tower [Idea]:** a post-Coffin King mode to escape the underworld: climb an obstacle course and fight through rooms (the Crypt, going up). New enemies try to stop you leaving; the floor crumbles under you as you climb, and falling loses the level. New bosses, new upgrades; where decks and webs get maxed.
    - **Prestige ("Elite"):** a maxed fighter can go elite: stats, cards and levels reset, but you gild cards (pick from 5; each prestige is 4 draws of 5). After prestige you start with the gilded cards and levels and stat points equal to 4x your gilded card count. Every card gilded and the fighter maxed: **Legend** status.
-9. **Multiplayer [In progress]:** start with the Versus prototype (Phase 1 of the plan above).
+   - **The secret ending moves here:** reaching the top of the Tower as Tony in the Plumber Overalls and the Fat Plumber Cap plays the true secret ending (it plays after the Coffin King for now).
+9. **Multiplayer [Planned]:** the Versus prototype (Phase 1 of the plan above). A first draft is parked on the `versus-prototype-wip` branch (Net autoload over WebSockets, a camp lobby, the graveyard split by a seal line, KOs sent across, first down loses); not reviewed, tested or merged.
+10. **New looks [Planned]:** updated KO screens, the camp background and the title screen.
