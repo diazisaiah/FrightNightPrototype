@@ -117,7 +117,12 @@ const SPELL_LIGHTNING := 3.0
 const SPELL_JUMPS := 3
 const SPELL_HEAL := 0.3
 ## Flame Burst: a ring of fire around him.
-const BURST_RADIUS := 6.0
+## Flame Burst (2026-10-28: made a real explosion): a fireball, a shockwave
+## across the ground, a ring of flame pillars and debris; regular monsters it
+## doesn't knock out are blasted up and away (BURST_LAUNCH), then land down.
+const BURST_RADIUS := 9.0
+const BURST_LAUNCH := 16.0
+const BURST_LIFT := 10.0
 const BURST_DAMAGE := 5.0
 const BURST_BURN := 0.8
 const BURST_BURN_TIME := 5.0
@@ -873,16 +878,13 @@ func _burst_ring() -> void:
 	var radius := BURST_RADIUS + _power()
 	var damage := GameState.get_damage() * BURST_DAMAGE * (1.0 + 0.25 * _power())
 	var burn := GameState.get_damage() * BURST_BURN
-	Sfx.play("fire", 4.0, 0.6)
-	Sfx.play("quake", -2.0, 0.8)
-	player.shake(0.08)
-	player._kick_fov(10.0)
-	HitFx.flash(world, center + Vector3(0, 1.0, 0), BURST_COLOR, 3.0)
-	for i in 16:
-		var direction := Vector3.FORWARD.rotated(Vector3.UP, TAU * i / 16.0)
-		for ring in [0.35, 0.7, 1.0]:
-			HitFx.burst(world, center + direction * radius * ring + Vector3(0, 0.3, 0), direction + Vector3.UP * 0.8,
-					BURST_COLOR if ring < 1.0 else Color(1.0, 0.75, 0.25), 6, 4.0, true, 0.08)
+	TimeFx.hitstop(0.09)
+	Sfx.play("fire", 6.0, 0.5)
+	Sfx.play("quake", 4.0, 0.6)
+	Sfx.play("heavy", 4.0, 0.5)
+	player.shake(0.3)
+	player._kick_fov(18.0)
+	_burst_fx(world, center, radius)
 	for node in player.get_tree().get_nodes_in_group("enemies"):
 		var enemy := node as Enemy
 		if enemy == null or enemy.is_dead():
@@ -891,9 +893,128 @@ func _burst_ring() -> void:
 		offset.y = 0.0
 		if offset.length() > radius:
 			continue
-		enemy.take_hit(damage, enemy.global_position + Vector3(0, 1.0, 0), offset.normalized() * 6.0, true, "FLAME BURST")
+		var away := offset.normalized() if offset.length() > 0.1 else Vector3.FORWARD
+		# Closer in, thrown harder.
+		var force := lerpf(1.0, 0.55, offset.length() / radius)
+		# Knocked out: the full fling.
+		enemy.finisher = {"type": "haymaker", "hand": "right", "level": 1, "dir": away, "player": player}
+		enemy.take_hit(damage, enemy.global_position + Vector3(0, 1.0, 0), away * BURST_LAUNCH * force, true, "FLAME BURST")
+		if enemy.is_dead():
+			continue
+		enemy.finisher = {}
 		enemy.ignite(burn, BURST_BURN_TIME)
+		if not enemy.is_boss:
+			# Blasted up and away, and down when it lands.
+			enemy.velocity.y = BURST_LIFT * force
+			enemy.knock_down(1.6, away, true)
 	player.class_event.emit("FLAME BURST")
+
+
+## The explosion: a fireball swelling out of you, a shockwave racing across the
+## ground to the edge, flame pillars around it, debris and smoke thrown out,
+## and a flash that lights the whole place.
+func _burst_fx(world: Node, center: Vector3, radius: float) -> void:
+	var web := Settings.use_web_profile()
+	var light := OmniLight3D.new()
+	light.light_color = BURST_COLOR
+	light.light_energy = 14.0
+	light.omni_range = radius * 2.2
+	world.add_child(light)
+	light.global_position = center + Vector3(0, 2.0, 0)
+	var dim := light.create_tween()
+	dim.tween_property(light, "light_energy", 0.0, 0.9).set_ease(Tween.EASE_OUT)
+	dim.tween_callback(light.queue_free)
+	# The fireball: a hot core inside a swelling orange ball.
+	for layer in [[BURST_COLOR, 1.0, 0.75], [Color(1.0, 0.85, 0.4), 0.6, 0.95]]:
+		var ball := MeshInstance3D.new()
+		var sphere := SphereMesh.new()
+		sphere.radius = 1.0
+		sphere.height = 2.0
+		sphere.radial_segments = 16
+		sphere.rings = 8
+		var hot := Telegraphs.material(Color(layer[0], layer[2]))
+		hot.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+		sphere.material = hot
+		ball.mesh = sphere
+		ball.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		world.add_child(ball)
+		ball.global_position = center + Vector3(0, 1.0, 0)
+		ball.scale = Vector3.ONE * 0.3
+		var size: float = radius * 0.55 * float(layer[1])
+		var grow := ball.create_tween().set_parallel()
+		grow.tween_property(ball, "scale", Vector3(size, size * 0.8, size), 0.3).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
+		grow.tween_property(hot, "albedo_color:a", 0.0, 0.55).set_delay(0.15)
+		grow.chain().tween_callback(ball.queue_free)
+	# The shockwave across the ground.
+	var wave := MeshInstance3D.new()
+	var ring := TorusMesh.new()
+	ring.inner_radius = 0.85
+	ring.outer_radius = 1.0
+	ring.rings = 48
+	ring.ring_segments = 6
+	var wave_material := Telegraphs.material(Color(1.0, 0.7, 0.3, 0.9))
+	wave_material.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	ring.material = wave_material
+	wave.mesh = ring
+	wave.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	world.add_child(wave)
+	wave.global_position = center + Vector3(0, 0.12, 0)
+	wave.scale = Vector3(0.5, 0.3, 0.5)
+	var spread := wave.create_tween().set_parallel()
+	spread.tween_property(wave, "scale", Vector3(radius, 0.3, radius), 0.45).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	spread.tween_property(wave_material, "albedo_color:a", 0.0, 0.5).set_delay(0.15)
+	spread.chain().tween_callback(wave.queue_free)
+	# Flame pillars round the blast, a beat after it.
+	var pillars := 8 if web else 12
+	for i in pillars:
+		var direction := Vector3.FORWARD.rotated(Vector3.UP, TAU * i / pillars + randf() * 0.3)
+		var spot := center + direction * radius * randf_range(0.45, 0.8)
+		var pillar := MeshInstance3D.new()
+		var column := CylinderMesh.new()
+		column.top_radius = 0.25
+		column.bottom_radius = 0.6
+		column.height = 1.0
+		column.radial_segments = 8
+		var flame := Telegraphs.material(Color(1.0, 0.55, 0.15, 0.8))
+		flame.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+		column.material = flame
+		pillar.mesh = column
+		pillar.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		world.add_child(pillar)
+		pillar.global_position = spot
+		pillar.scale = Vector3(1, 0.05, 1)
+		var height := randf_range(3.5, 5.5)
+		var rise := pillar.create_tween()
+		rise.tween_interval(0.08 + i * 0.015)
+		rise.tween_property(pillar, "scale", Vector3(1, height, 1), 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		rise.parallel().tween_property(pillar, "position:y", spot.y + height * 0.5, 0.18)
+		rise.tween_property(flame, "albedo_color:a", 0.0, 0.4)
+		rise.tween_callback(pillar.queue_free)
+		HitFx.burst(world, spot + Vector3(0, 0.3, 0), Vector3.UP, BURST_COLOR, 5 if web else 9, 6.0, true, 0.09)
+	# Embers and smoke thrown outward, and chunks of ground.
+	for i in 16:
+		var direction := Vector3.FORWARD.rotated(Vector3.UP, TAU * i / 16.0)
+		HitFx.burst(world, center + direction * 1.2 + Vector3(0, 0.6, 0), direction + Vector3.UP * 0.5,
+				Color(1.0, 0.75, 0.25) if i % 2 == 0 else Color(0.25, 0.22, 0.2), 6, 9.0, i % 2 == 0, 0.09)
+	for i in (6 if web else 12):
+		var rock := MeshInstance3D.new()
+		var chunk := BoxMesh.new()
+		var size := randf_range(0.12, 0.3)
+		chunk.size = Vector3(size, size * 0.7, size)
+		chunk.material = Look.block_material(Color(0.3, 0.26, 0.22), 0.0)
+		rock.mesh = chunk
+		world.add_child(rock)
+		var direction := Vector3.FORWARD.rotated(Vector3.UP, randf() * TAU)
+		var from := center + direction * randf_range(0.5, 2.0)
+		rock.global_position = from
+		var land := from + direction * randf_range(3.0, radius)
+		var arc := rock.create_tween()
+		arc.tween_method(func(t: float) -> void:
+			rock.global_position = from.lerp(land, t) + Vector3.UP * sin(t * PI) * 3.0
+			rock.rotation += Vector3(0.2, 0.15, 0.1), 0.0, 1.0, randf_range(0.6, 0.9))
+		arc.tween_property(rock, "scale", Vector3.ONE * 0.01, 0.3)
+		arc.tween_callback(rock.queue_free)
+	HitFx.flash(world, center + Vector3(0, 1.0, 0), Color(1.0, 0.8, 0.5), 6.0)
 
 
 # --- Free Runner: Highlight Reel ----------------------------------------------------
