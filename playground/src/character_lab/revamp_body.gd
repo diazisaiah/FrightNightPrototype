@@ -514,8 +514,9 @@ func _answer_face(head: Node3D) -> void:
 		_px(head, 0, 4, 1, 4, mouth)
 		_px(head, 6, 3, 7, 6, _sh(skin))
 	elif voxel_scale == "medium":
+		# Pupils in the middle of each eye (at the inner edge they read cross-eyed).
 		_px(head, 2, 7, 4, 8, white)
-		_px(head, 2, 7, 2, 8, dark)
+		_px(head, 3, 7, 3, 8, dark)
 		_px(head, 1, 8, 1, 8, dark, 1)
 		_px(head, 1, 9, 4, 9, dark, 1)
 		_px(head, 0, 5, 0, 6, skin, 1)
