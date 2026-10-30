@@ -2088,3 +2088,129 @@ When all three are broken, the Tower opens, and so does Rebirth.
 - The four Wardens, the mini-bosses and the Tower monsters.
 - The 40-point attribute perks.
 - Whether path boosts count toward par. They're post-game power, so probably not.
+
+### Build plan (2026-10-29)
+
+Built on its own branch, **`tower-rebirth`**, and launched on itch in one go when it's all done. Each step ends playable and testable in the playground, and the user approves it there before the next step starts. Steps 5 and 6 can swap.
+
+**How the branch works**
+- **`main` stays live.** Bug fixes and small tweaks still go on `main` and follow the usual flow: commit, push, the Pages deploy, and itch releases when the user says release. `main` is merged into the branch after each fix, so the branch never drifts.
+- **The branch** gets a commit and a push for each change, and runs all three test suites plus the new ones. It never runs `deploy_pages.sh` as is, since that would put unfinished work on the live web build.
+- **A preview web build:** the branch deploys to `/next/` on the same Pages site, so the live build at the root stays untouched. Step 0 makes `deploy_pages.sh` keep the other half when it deploys.
+- **Its own save:** the preview build saves to a separate file (`frightnight_next.json`), because a page on the same site shares browser storage with the live build. A save from the live build can be copied in once from a button, but never written back. The save version goes to 3 on the branch only.
+- **The playground** mirrors whatever branch is checked out, so it always has the newest step.
+- **Launch:** merge the branch into `main`, test the save upgrade on copies of real saves, write the devlog, then release.
+
+**Step 0: Setup**
+- Create the branch and push it.
+- Make `deploy_pages.sh` take a target (`main` for the root, `next` for `/next/`) and keep the other one's files.
+- Give the preview build its own save file and a "COPY LIVE SAVE" button in Settings.
+- Add a **Tower & Rebirth** panel to the playground. Each later step adds its buttons there.
+- A version tag on the title screen ("NEXT, step N"), so screenshots say what build they came from.
+
+**Step 1: Three seals**
+- Save fields: `tower_seals {arena, crypt, crown}`.
+- **Arena seal:** set when every division's bouts are won, including the Crown's endless bout (50 knockouts). Saves that already qualify get it on load.
+- **Crown seal:** set on a Coffin King win, including saves that already have one.
+- **Crypt seal:** set by Step 2's Shadow. Until Step 2 is in, the playground can set it.
+- A seal tracker in camp: three slots that light up, and a locked Tower door with "BREAK ALL THREE SEALS".
+- **Playground:** a toggle for each seal.
+- **Tests:** what sets each seal, the save upgrade, and that the door opens only with all three.
+
+**Step 2: Your Shadow (Crypt floor 10)**
+- **2a: The Shadow boxes.** A dark, glowing-eyed copy of the fighter you bring, on `BossRig`, using the same Dead League boss brain (tells, combos, feints, poise). It throws that fighter's punches and runs their original passive. It becomes floor 10's boss in place of the Lich King. Beating it breaks the Crypt seal. It's tuned to the floor 10 par build.
+- **2b: The ultimates.** Below half HP it uses the fighter's two ultimates, simpler boss versions, each with a windup you can interrupt or a zone you can leave. Proposed counters, for the user to approve:
+
+| Fighter | Ultimate | The Shadow's version | Answer |
+|---|---|---|---|
+| Mauler | Inferno Uppercut | Crouches, fist on fire, then leaps at you | Back step as it leaves the ground |
+| Mauler | Brimstone Shield | A burning shield that explodes by what it soaked | Stop punching; back off before it bursts |
+| Answer | Riposte Stance | Slips and counters every punch for a few seconds | Don't punch; wait it out |
+| Answer | Flow State | Dodges everything for a while | Only counters land; bait and counter |
+| Blur | Temporal Break | Time stop (below) | Press R, dodge, counter |
+| Blur | Unbroken | A flurry that speeds up | Dodge the chain; the last punch leaves it open |
+| Stray | Highlight Reel | Lightning dashes, each lined up first | Slip each line |
+| Stray | Hype Train | A sprinting charge across the ring | Sidestep; it stumbles at the wall |
+| Tony | Big Mouth | Insults you: it hits harder for a while | Play safe until it wears off |
+| Tony | The Family | Three ghost goons join for 10s | Knock out the goons or outlast them |
+| Catalyst | Elemental Fists | Punches glow a power's color | Each color has its own dodge |
+| Catalyst | Flame Burst | Charges a ring of fire | Hit it to interrupt, or leave the ring |
+
+- **2c: The time stop duel** (the Blur's Shadow), as planned above: glowing hands on the windup, the R prompt slightly early, tagged punches, your weakened stop (dodge but no punching), the fast replay of every punch and dodge, and Temporal Break cancelling it out.
+- **Playground:** "FIGHT YOUR SHADOW" for the selected fighter, plus buttons to jump to the ultimate phase and to set off a given ultimate.
+- **Tests:** a Shadow for every fighter, phase changes, each ultimate's answer works, the time stop's tagging and replay, the seal on a win, and a par-build win rate check in `balance_report`.
+
+**Step 3: Rebirth**
+- Per-fighter save fields: `rebirths`, `gilded {card: copies}`.
+- **Max level** 41 + 2 per rebirth, up to 81. **Attribute caps** 30 + 1 per rebirth, up to 50.
+- **The Rebirth screen:** shown at camp for a fighter at max level once the Tower is open. It says what resets (level, cards, attributes) and what stays (everything else), and has a big confirm.
+- At this step a rebirth only resets. Gilding comes in Step 4.
+- **Playground:** set the rebirth count and jump to max level.
+- **Tests:** what resets and what stays, the caps, max level per rebirth, and par untouched.
+
+**Step 4: Card gilding**
+- **At a rebirth:** draw 5 copies from the cards you hold and gild 2. Rerolls cost Souls.
+- A common holds 4 copies and a rare 2. Gilded copies show as gold pips on the card.
+- **A new life** starts with every gilded card drawn. The level equals the gilded copies, with that level's attribute points.
+- The Deck page shows the gilded count, e.g. "GILDED 12 / 40".
+- **Playground:** "GILD ALL" and a set gilded count.
+- **Tests:** copies per rarity, a new life's level and points, rerolls, and no gilding past full.
+
+**Step 5: Legend and the 40-point perks**
+- **Needs the user:** the four 40-point perks (one per attribute).
+- **Legend:** earned with all 40 copies gilded at level 81. It uses a placeholder gold-and-glow look until the user's art and voxel refs arrive. Their Legendary skin waits for the skins work.
+- **Playground:** "MAKE LEGEND".
+
+**Step 6: The Tower's frame**
+- A Tower scene: one room at a time, climbing (an underworld-to-sky look that brightens as you go).
+- **Rooms:** a 1 minute timer per room. At 10s left the floor breaks from the edges in; at 0 you fall back to your checkpoint. Knockouts also send you back to the checkpoint.
+- **Bosses and checkpoints:** a boss every 5th room. A beaten boss room is a checkpoint offering Continue or Leave, and camp's Tower button starts from any checkpoint you've reached.
+- **Strength:** room 1 fights like the Coffin King's par, growing per room.
+- **Skyshards:** earned from clears (more for fast ones), bosses and caches, and kept through falls.
+- At this step every room is a fight with Crypt monsters, and the bosses are stand-ins.
+- **Playground:** "TOWER ROOM N", and a timer toggle.
+- **Tests:** the timer and floor break, the fall, checkpoints saved, scaling per room, and shards kept.
+
+**Step 7: Room types**
+- **7a, Obstacle courses:** jumps, moving and crumbling platforms. Each is clearable without double jump or wall jump; those reach shortcuts and caches. Built from hand-made room pieces.
+- **7b, Punch code:** wall circles (blue straight, yellow hook, red uppercut, L or R in the middle) punched into a center statue. A wrong punch resets it, with a buzz.
+- **7c, Pressure plates:** punch crates or coffins onto plates to open the door.
+- **7d, Memory sequence:** a sequence lights up once and you repeat it.
+- **A room mix per stretch of the Tower:** puzzles start easy and get longer codes and sequences higher up.
+- **Playground:** "TOWER ROOM: type".
+- **Tests:** each room's win and fail, and that every course can be cleared without double jump (a scripted path).
+
+**Step 8: The four paths**
+- **Needs the user:** the currency name, milestone thresholds, and the Power, Utility and Resilience milestones.
+- **The camp Paths page:** four columns of stats. Boost = stat boost × log10(1 + shards sunk), with milestones marked.
+- **Agility milestones:** double jump and wall jump, which also open the obstacle shortcuts.
+- **Boosts work everywhere** but don't count toward par, so Arena, Crypt and Dead League tuning stays as it is.
+- **Playground:** set the shards in each path.
+- **Tests:** the log growth, milestones, boosts applied in each mode, and par untouched.
+
+**Step 9: Tower monsters and mini-bosses**
+- **Needs the user:** monster ideas and art.
+- **New Tower monsters** that try to stop you leaving: they guard the door, push you to the edge and slow you. Then 16 mini-bosses, a few designs remixed.
+- **Playground:** spawn buttons for each one.
+- **Tests:** each monster's tells and answers, and the no-stun-lock rule for each.
+
+**Step 10: The four Wardens (rooms 25, 50, 75, 100)**
+- **Needs the user:** Warden designs and art.
+- One Warden at a time, each with its own arena and rounds, built like the Dead League bosses.
+- **Playground:** "FIGHT WARDEN N".
+
+**Step 11: The secret ending moves up**
+- Reaching room 100 as Tony in the Plumber Overalls and the Fat Plumber Cap plays the true secret ending. The old trigger is removed.
+- Tested by a playground jump to room 100.
+
+**Step 12: Balance and the full climb**
+- `balance_report` grows a section each for rebirth pacing (time per life with the web and gear kept), Tower scaling per room against path boosts, and the Shadow's and Wardens' par checks.
+- Run full climbs: a fresh save to the Tower, a few rebirths, and room 100.
+- Onboarding tips for the seals, the Tower, Rebirth, gilding and the paths.
+
+**Step 13: Launch**
+- Merge into `main` and test the save upgrade on copies of real saves (the user's and the brother's).
+- Run the full test suites, store shots and a trailer cut (with no Shadow of Tony and no secret ending).
+- A combined devlog, then `release.sh`.
+
+**Decisions by step:** Step 2b the ultimate counters (the table above); Step 5 the 40-point perks; Step 8 the currency name, the milestones and their thresholds; Steps 9 and 10 the monsters, mini-bosses, Wardens and their art; Step 5 the Legend art (a placeholder until then).
