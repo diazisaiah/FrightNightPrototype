@@ -9,6 +9,7 @@ builds/
 
 # Big local-only folders
 recordings/
+store_assets/
 unused_assets/
 downloads/
 
