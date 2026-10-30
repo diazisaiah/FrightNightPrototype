@@ -9,9 +9,16 @@ extends Node3D
 const AvatarScript = preload("res://playground/character_lab/fighter_avatar.gd")
 const RevampBody = preload("res://playground/character_lab/revamp_body.gd")
 const FIGHTER := "counter_master"
-## Shown by default (2026-10-29: the user liked the large design but not
-## how toy-like it reads; medium is in between).
-const VARIANTS := ["medium", "large"]
+## Shown by default (2026-10-29: the user picked the large cubes).
+const VARIANTS := ["large"]
+## Pose shots (-- --poses): [action, phase, body turn, camera, look-at height].
+const POSE_SHOTS := [
+	["guard", 0.5, -0.6, Vector3(0.0, 1.45, -4.5), 0.95],
+	["cross_right", 0.42, -1.25, Vector3(0.0, 1.3, -4.5), 0.95],
+	["uppercut_right", 0.5, -0.3, Vector3(0.0, 0.45, -4.3), 1.0],
+	["slip_left", 0.5, 0.55, Vector3(0.0, 2.1, -4.3), 0.9],
+	["taunt", 0.55, 0.3, Vector3(0.0, 1.25, -4.3), 0.95],
+]
 const VIEWS := {"Front": 0.0, "Three-quarter": -0.7, "Side": -PI / 2.0, "Back": PI}
 const HATS := {"No hat": "", "Cap": "pocket_trainer_cap", "Crown": "paper_crown", "Mask": "iron_mask", "Wig": "wig_black"}
 const SPACING := 1.35
@@ -39,6 +46,10 @@ func _ready() -> void:
 	if "--capture" in OS.get_cmdline_user_args():
 		_panel.visible = false
 		await _capture_all()
+		get_tree().quit()
+	elif "--poses" in OS.get_cmdline_user_args():
+		_panel.visible = false
+		await _capture_poses()
 		get_tree().quit()
 
 
@@ -303,6 +314,25 @@ func _capture_all() -> void:
 	_build_avatars()
 	_set_pose("guard")
 	await _snap("voxel_compare_with_current.png")
+
+
+## Five poses, each from its own angle, without the labels.
+func _capture_poses() -> void:
+	for label in _labels:
+		label.visible = false
+	var subject: Vector3 = _avatars[0].position
+	for i in POSE_SHOTS.size():
+		var shot: Array = POSE_SHOTS[i]
+		_view = "Front"
+		_yaw = shot[2]
+		_set_pose(shot[0])
+		for avatar in _avatars:
+			avatar._action_time = avatar._action_duration * float(shot[1])
+			avatar._apply_pose()
+		_camera.position = subject + (shot[3] as Vector3)
+		_camera.look_at(subject + Vector3(0, shot[4], 0), Vector3.UP)
+		await _snap("pose_%d_%s.png" % [i + 1, shot[0]])
+	_frame_camera()
 
 
 ## Four shots in a 2x2 sheet at half size.
