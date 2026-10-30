@@ -1,5 +1,5 @@
 extends Node3D
-## Key art (2026-10-29): the four revamp fighters (revamp_body.gd) in their
+## Key art (2026-10-29): the four revamp fighters (fighter_body.gd) in their
 ## action poses (banner_pose.gd) on a graveyard set built from the game's own
 ## scenery (stars and moon, gravestones, dead trees, a crypt glowing green,
 ## torches, mist), each with their energy (the Mauler's embers and a fire
@@ -8,7 +8,7 @@ extends Node3D
 ## Rendered off screen; run with -- --capture to save the banner (2172x724,
 ## with and without the title) and each fighter alone (1080x1440), then quit.
 
-const RevampBody = preload("res://playground/character_lab/revamp_body.gd")
+const RevampBody = preload("res://fighter_body.gd")
 const Banner = preload("res://playground/character_lab/banner_pose.gd")
 const OUT := "user://character_lab_captures/"
 const BANNER := Vector2i(2172, 724)
@@ -17,6 +17,43 @@ const PORTRAIT := Vector2i(1080, 1440)
 const ENERGY := {
 	"berserker": Color(1.0, 0.42, 0.1), "counter_master": Color(0.35, 0.7, 1.0),
 	"combo_master": Color(0.68, 0.35, 1.0), "free_runner": Color(0.3, 1.0, 0.45),
+	"elementalist": Color(1.0, 0.5, 0.15), "wise_guy": Color(1.0, 0.78, 0.25),
+}
+## Character select poses (2026-10-30), one signature pose each: [turn, pose].
+## The Blur's is his flurry jab (the echo fists ride on it).
+const SELECT := {
+	"berserker": [0.15, {
+		# Gloves knocking together low at his chest, chin down, leaning in.
+		"pos": Vector3(0, -0.07, 0), "torso": Vector3(-0.16, 0.1, 0), "head": Vector3(-0.12, -0.1, 0),
+		"ls": Vector3(0.6, 0, 0.5), "le": Vector3(1.35, 0, 0), "rs": Vector3(0.6, 0, -0.5), "re": Vector3(1.35, 0, 0),
+		"lh": Vector3(0.3, 0, -0.06), "lk": Vector3(-0.1, 0, 0), "rh": Vector3(-0.25, 0, 0.06), "rk": Vector3(0, 0, 0),
+		"lf": Vector3(0, 0.05, 0), "rf": Vector3(0, -0.6, 0)}],
+	"counter_master": [0.45, {
+		# Waiting for you: the lead hand out low, reading; the rear glove high.
+		"pos": Vector3(0, -0.05, 0), "torso": Vector3(0.06, 0.3, 0), "head": Vector3(-0.06, -0.32, 0),
+		"ls": Vector3(1.3, 0, 0.12), "le": Vector3(0.55, 0, 0), "rs": Vector3(1.0, 0, -0.1), "re": Vector3(2.35, 0, 0),
+		"lh": Vector3(0.3, 0, -0.06), "lk": Vector3(-0.1, 0, 0), "rh": Vector3(-0.25, 0, 0.06), "rk": Vector3(0, 0, 0),
+		"lf": Vector3(0, 0.0, 0), "rf": Vector3(0, -0.6, 0)}],
+	"combo_master": [0.55, {}],
+	"free_runner": [0.5, {
+		# A low crouch, the lead fist out, the rear at his chin.
+		"pos": Vector3(0, -0.22, 0), "torso": Vector3(-0.3, -0.3, 0), "head": Vector3(0.28, 0.32, 0),
+		"ls": Vector3(1.35, 0, -0.18), "le": Vector3(0.35, 0, 0), "rs": Vector3(0.7, 0, 0.3), "re": Vector3(2.1, 0, 0),
+		"lh": Vector3(0.55, 0, -0.12), "lk": Vector3(-0.25, 0, 0), "rh": Vector3(-0.55, 0, 0.12), "rk": Vector3(0, 0, 0),
+		"lf": Vector3(0, 0.12, 0), "rf": Vector3(0, -0.65, 0)}],
+	"elementalist": [-0.35, {
+		# A fireball in his raised right palm, the left fist at his hip.
+		"pos": Vector3(0, -0.05, 0), "torso": Vector3(0.05, -0.18, 0), "head": Vector3(0.05, 0.25, 0),
+		"ls": Vector3(0.35, 0, -0.35), "le": Vector3(1.7, 0, 0), "rs": Vector3(1.9, 0, 0.25), "re": Vector3(1.3, 0, 0),
+		"lh": Vector3(0.3, 0, -0.06), "lk": Vector3(-0.1, 0, 0), "rh": Vector3(-0.25, 0, 0.06), "rk": Vector3(0, 0, 0),
+		"lf": Vector3(0, 0.05, 0), "rf": Vector3(0, -0.6, 0)}],
+	"wise_guy": [0.2, {
+		# "Come on": one fist up at his chest, the other hand out low, leaning
+		# back, head cocked.
+		"pos": Vector3(0, -0.04, 0), "torso": Vector3(0.1, 0.22, -0.05), "head": Vector3(0.06, -0.3, 0.1),
+		"ls": Vector3(1.05, 0, 0.35), "le": Vector3(2.15, 0, 0), "rs": Vector3(0.75, 0, 0.75), "re": Vector3(0.7, 0, 0),
+		"lh": Vector3(0.25, 0, -0.06), "lk": Vector3(-0.08, 0, 0), "rh": Vector3(-0.2, 0, 0.06), "rk": Vector3(0, 0, 0),
+		"lf": Vector3(0, 0.0, 0), "rf": Vector3(0, -0.6, 0)}],
 }
 
 var _view: SubViewport
@@ -60,6 +97,35 @@ func _ready() -> void:
 		await _snap("key_art_banner_title.png")
 		await _portraits()
 		get_tree().quit()
+	elif "--select" in OS.get_cmdline_user_args():
+		_title.visible = false
+		await _select()
+		get_tree().quit()
+
+
+## The character select art: each fighter alone in their signature pose,
+## head to toe, 3:4 (1086x1448, the versus and loading size too).
+func _select() -> void:
+	_view.size = Vector2i(1086, 1448)
+	# A neutral fill from the front, so their own colors read under the glow.
+	var fill := DirectionalLight3D.new()
+	fill.rotation_degrees = Vector3(-25, 170, 0)
+	fill.light_color = Color(1.0, 0.96, 0.9)
+	fill.light_energy = 0.9
+	_world.add_child(fill)
+	for fighter in SELECT:
+		for node in _cast:
+			node.queue_free()
+		_cast.clear()
+		var pose: Dictionary = SELECT[fighter][1]
+		if pose.is_empty():
+			pose = Banner.CAST[fighter].pose
+		_fighter(fighter, Vector3.ZERO, SELECT[fighter][0], pose)
+		var tall: float = _cast[0].scale.y / 0.92
+		_camera.fov = 30.0
+		_camera.position = Vector3(0.2, 1.05 * tall, -4.6 * tall)
+		_camera.look_at(Vector3(0, 0.98 * tall, 0), Vector3.UP)
+		await _snap("select_%s.png" % fighter)
 
 
 # --- The set -------------------------------------------------------------------------
@@ -218,13 +284,20 @@ func _fighter(fighter: String, at: Vector3, turn: float, pose: Dictionary) -> vo
 	match fighter:
 		"berserker":
 			_embers(at, tall, rng)
-			_fire_ring(body)
+			# The ring of fire only round a punch.
+			if (pose.get("re", Vector3.ZERO) as Vector3).x < 0.5:
+				_fire_ring(body)
 		"counter_master":
 			_lightning(at, tall, color, rng)
 		"combo_master":
 			_echo_fists(body, color)
 		"free_runner":
 			_swirl(at, tall, color)
+		"elementalist":
+			_fireball(body)
+			_embers(at, tall, rng)
+		"wise_guy":
+			_glints(at, tall, color, rng)
 
 
 ## Eyes glowing in the fighter's color, over the eye cubes.
@@ -306,6 +379,44 @@ func _echo_fists(body: Node3D, color: Color) -> void:
 		_cast.append(echo)
 	# A bright flash where the punch lands.
 	_cast.append(_cube(_world, fist * 1.15, glove - back * 0.02, _glow(color.lerp(Color.WHITE, 0.4), 4.0)))
+
+
+## A fireball over the Catalyst's raised right fist: a hot core in layers,
+## sparks of his two inks round it.
+func _fireball(body: Node3D) -> void:
+	var elbow: Node3D = body._joints.re
+	var palm: Vector3 = elbow.global_transform * Vector3(0, RevampBody.WRIST - 0.08, 0) + Vector3.UP * 0.17
+	for layer: Array in [[0.2, Color(1.0, 0.35, 0.06), 4.0], [0.14, Color(1.0, 0.6, 0.15), 5.0], [0.08, Color(1.0, 0.92, 0.6), 7.0]]:
+		_cast.append(_cube(_world, Vector3.ONE * layer[0], palm, _glow(layer[1], layer[2]), Vector3(0.6, 0.7, 0.3)))
+	var light := OmniLight3D.new()
+	light.light_color = Color(1.0, 0.55, 0.2)
+	light.light_energy = 6.0
+	light.omni_range = 3.0
+	light.position = palm
+	_world.add_child(light)
+	_cast.append(light)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 77
+	for i in 26:
+		var a := rng.randf() * TAU
+		var spot := palm + Vector3(cos(a), rng.randf_range(-0.3, 1.0), sin(a)) * rng.randf_range(0.22, 0.45)
+		var ink := _p_ink(i)
+		_cast.append(_cube(_world, Vector3.ONE * rng.randf_range(0.03, 0.06), spot, _glow(ink, 5.0), Vector3(a, a, 0)))
+
+
+func _p_ink(i: int) -> Color:
+	return Color(1.0, 0.5, 0.12) if i % 2 == 0 else Color(0.6, 0.3, 1.0)
+
+
+## Gold glints round Tony (the chain, the ring, the money).
+func _glints(at: Vector3, tall: float, color: Color, rng: RandomNumberGenerator) -> void:
+	for i in 12:
+		var a := rng.randf() * TAU
+		var r := rng.randf_range(0.55, 1.0) * tall
+		var spot := at + Vector3(cos(a) * r, rng.randf_range(0.5, 2.0) * tall, sin(a) * r * 0.6)
+		var size := rng.randf_range(0.015, 0.03)
+		_cast.append(_cube(_world, Vector3(size, size * 2.2, size * 0.4), spot, _glow(color.lightened(rng.randf() * 0.3), 5.0), Vector3(0, 0, PI * 0.25)))
+		_cast.append(_cube(_world, Vector3(size * 2.2, size, size * 0.4), spot, _glow(color.lightened(0.2), 5.0), Vector3(0, 0, PI * 0.25)))
 
 
 ## Speed streaks trailing the Blur's dash (unused: he's hand speed).

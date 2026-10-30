@@ -115,7 +115,7 @@ func _build_stage() -> void:
 
 ## Who's on stage (PrincessRescue has its own).
 func _build_cast() -> void:
-	_tony = PlayerBody.new("wise_guy", "plumber_overalls")
+	_tony = FighterBody.new("wise_guy", "plumber_overalls")
 	_tony.build_budget_ms = 12
 	_tony.position = Vector3(-1.2, 0, 0)
 	_viewport.add_child(_tony)

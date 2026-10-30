@@ -435,7 +435,7 @@ func _ready() -> void:
 	# Speed lines: the Blur's long combos, the Stray's momentum and Hype Train.
 	if GameState.player_class in ["combo_master", "free_runner"]:
 		_speed_lines = MoveFx.speed_lines(_camera, GameState.fighter_color().lightened(0.3))
-	_body = PlayerBody.new()
+	_body = FighterBody.new()
 	_body.visible = false
 	add_child(_body)
 	_emote_cam = Camera3D.new()

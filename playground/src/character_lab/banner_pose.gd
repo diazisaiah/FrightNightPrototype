@@ -1,5 +1,5 @@
 extends Node3D
-## Banner pose (2026-10-29): the four revamp bodies (revamp_body.gd) posed
+## Banner pose (2026-10-29): the four revamp bodies (fighter_body.gd) posed
 ## like the Fright Night four-fighter banner (store_assets/fright-night-
 ## banner.png), as a reference for new art: the Blur lunging in from the
 ## left, the Mauler front and center driving both gloves at the camera, the
@@ -12,7 +12,7 @@ extends Node3D
 ## alone in a signature pose (after their character art), 3:4 portrait,
 ## moody and studio.
 
-const RevampBody = preload("res://playground/character_lab/revamp_body.gd")
+const RevampBody = preload("res://fighter_body.gd")
 const OUT := "user://character_lab_captures/"
 const SIZE := Vector2i(2172, 724)
 ## Each fighter: where they stand (x as seen on screen, + to the right; the

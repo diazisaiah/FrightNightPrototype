@@ -29,7 +29,7 @@ static func plumber() -> bool:
 
 
 func _build_cast() -> void:
-	_tony = PlayerBody.new(GameState.player_class, "auto")
+	_tony = FighterBody.new(GameState.player_class, "auto")
 	_tony.build_budget_ms = 12
 	_tony.position = Vector3(-1.4, 0, 0)
 	_viewport.add_child(_tony)

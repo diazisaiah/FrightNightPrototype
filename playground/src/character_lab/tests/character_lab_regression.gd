@@ -2,7 +2,7 @@ extends Node
 ## Headless structural regression for the shared rig and command surface.
 
 const AvatarScript = preload("res://playground/character_lab/fighter_avatar.gd")
-const PlayerBodyScript = preload("res://player_body.gd")
+const PlayerBodyScript = preload("res://fighter_body.gd")
 const REQUIRED_BONES := [
 	"root", "pelvis", "spine", "chest", "neck", "head",
 	"clavicle_l", "upper_arm_l", "forearm_l", "wrist_l", "hand_l",

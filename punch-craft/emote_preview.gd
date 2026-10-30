@@ -63,7 +63,7 @@ func wear(skin: String) -> void:
 
 
 func _dancer(fighter: String, skin: String) -> PlayerBody:
-	var dancer := PlayerBody.new(fighter, skin)
+	var dancer := FighterBody.new(fighter, skin)
 	dancer.build_budget_ms = 12
 	dancer.rotation.y = -0.35
 	return dancer

@@ -1,23 +1,23 @@
+class_name FighterBody
 extends PlayerBody
-## Body revamp prototype (2026-10-29, playground only): the four base
-## fighters (the Mauler, the Answer, the Blur, the Stray) rebuilt clean in
-## large cubes (the Answer was also tried at tiny and medium sizes). It is the
-## production PlayerBody with a new sculpture and paint: the same pivots
-## (hips, torso, head, shoulders, elbows, hips, knees, plus ankles), poses,
-## emotes, skins and hats. Tony and the Catalyst fall back to the production
-## body. Each fighter has its own overall size (SIZE), its cubes the same
-## size in the world as everyone else's.
+## The fighters' bodies (2026-10-30): all six rebuilt clean in large cubes
+## (the revamp, prototyped in the playground 2026-10-29), on PlayerBody's
+## pivots (hips, torso, head, shoulders, elbows, hips, knees, plus ankles
+## lf / rf), poses, emotes, skins and hats. PlayerBody's own small-cube
+## sculpture is only a fallback now. Each fighter has its own overall size
+## (SIZE), its cubes the same size in the world as everyone else's.
 ##
-## The rules it tries out, for all six bodies later:
+## The rules (the user's, from the prototype passes):
 ## - No per-voxel jitter, mottling, crease speckle or random wear. Every cell
 ##   is a base, shadow or highlight color placed on purpose.
-## - Detail is sized in lines (trim, piping, wrap bands): two voxels on the
-##   tiny scale, one on the medium and large, so all read as the same design.
-##   Medium and large share the simplified design; the face, fringe and hair
-##   clumps are drawn for each grid.
-## - Overlays (belt, wraps, cuffs, hood trim) stand proud by a whole voxel.
-## - Hair is built in named zones (top, front, sides, back), and a hat's fit
-##   profile says where it sits and which zones it hides.
+## - No two parts overlap (the neck, chin, beard and long hair keep clear of
+##   the trunk): overlapping cubes read as speckle.
+## - Detail is sized in lines (trim, piping, wrap bands): one cube.
+## - Wraps and tape are painted on the forearm, not built over it.
+## - Hair is built in named zones (top, front, sides, back, puff, short),
+##   split at the hat line; a hat's fit profile says where it sits and which
+##   zones it hides (big hair swaps to a short cut under a cap or crown).
+## (The Answer was also tried at tiny and medium cube sizes; voxel_scale.)
 
 const SCALES := {
 	"tiny": {"voxel": 0.016, "line": 0.032, "lift": 0.016, "name": "Tiny Cube Revamp"},
@@ -46,13 +46,16 @@ const DRESS := {
 	"berserker": ["_mauler_torso", "_mauler_leg", "_mauler_face", "_mauler_hair", "_mauler_arm"],
 	"combo_master": ["_blur_torso", "_blur_leg", "_blur_face", "_blur_hair", "_blur_arm"],
 	"free_runner": ["_stray_torso", "_stray_leg", "_stray_face", "_stray_hair", "_stray_arm"],
+	"elementalist": ["_catalyst_torso", "_catalyst_leg", "_catalyst_face", "_catalyst_hair", "_catalyst_arm"],
+	"wise_guy": ["_tony_torso", "_tony_leg", "_tony_face", "_tony_hair", "_tony_arm"],
 }
 ## The revamp's own changes to a fighter's build (BUILDS): the Blur's jaw
 ## fuller and his head a touch bigger (it read tiny and pinched).
 const BUILD_TWEAKS := {"combo_master": {"jaw": 0.65, "face": 1.0}}
 ## Overall size (PlayerBody's is 0.92 for all): the Mauler big and tall, the
 ## Blur small and lean.
-const SIZE := {"berserker": 1.06, "counter_master": 0.92, "combo_master": 0.83, "free_runner": 0.93}
+const SIZE := {"berserker": 1.06, "counter_master": 0.92, "combo_master": 0.83, "free_runner": 0.93,
+	"elementalist": 1.0, "wise_guy": 0.88}
 const HAT_KIND := {
 	"paper_crown": "crown", "coffin_crown": "crown", "frost_tiara": "crown", "quake_headband": "crown",
 	"storm_ears": "crown", "party_hat": "crown",
@@ -62,7 +65,7 @@ const HAT_KIND := {
 }
 
 ## "tiny", "medium" or "large"; set before the body enters the tree.
-var voxel_scale := "tiny"
+var voxel_scale := "large"
 var _v := VOXEL
 var _line := 0.032
 var _lift := 0.016
@@ -349,13 +352,25 @@ func _neck_clear(p: Vector3) -> bool:
 ## A whole cube clear of the jaw (torso space; the head pivot is 0.57 up):
 ## collars, scarves and the hood keep out of it.
 func _off_head(p: Vector3) -> bool:
-	if p.y < 0.5:
+	# (The Catalyst's beard reaches down his chest.)
+	if p.y < (0.3 if fighter == "elementalist" else 0.5):
 		return true
 	var h := p - Vector3(0, 0.57, 0)
 	for d: Vector3 in [Vector3.ZERO, Vector3.LEFT, Vector3.RIGHT, Vector3.UP, Vector3.DOWN, Vector3.FORWARD, Vector3.BACK]:
-		if _in_jaw(h + d * _v):
+		if _in_jaw(h + d * _v) or _in_beard(h + d * _v):
 			return false
 	return true
+
+
+## The Catalyst's beard (head space): from the cheeks to a broad point on
+## the chest, higher at the sides (the mouth under the moustache).
+func _in_beard(p: Vector3) -> bool:
+	if fighter != "elementalist" or p.y > 0.13 or p.y < -0.2:
+		return false
+	var fw := 0.15 * _b("face")
+	var t := clampf((0.13 - p.y) / 0.33, 0.0, 1.0)
+	var half := lerpf(fw, 0.06, t * t)
+	return absf(p.x) <= half and p.y < 0.07 + absf(p.x) * 0.5 and p.z >= -0.19 and p.z <= lerpf(0.06, -0.06, t)
 
 
 func _in_trunk(p: Vector3, grow := 0.0) -> bool:
@@ -692,6 +707,12 @@ const HAT_CUT := 0.3
 func _lock(node: Node3D, from: Vector3, to: Vector3, color: Color, r := 0.0) -> void:
 	var lo := from.min(to)
 	var hi := from.max(to)
+	if lo.y < 0.05:
+		# Long hair: kept a cube clear of the trunk (the head pivot is 0.57 up).
+		var inside := func(p: Vector3) -> bool:
+			return _in_rounded(p, lo, hi, r) and not _in_skull(p) and not _in_trunk(p + Vector3(0, 0.57, 0), _lift * 2.0)
+		_fill(node, lo, hi, color, inside)
+		return
 	var id: String = _zone_of.get(node, "")
 	var cut: float = HAT_CUT if id in ["front", "sides", "back", "short"] else (_crown_cut if id == "top" else 9.0)
 	if cut > 5.0:
@@ -825,7 +846,9 @@ func _bare_trunk(torso: Node3D, abs_top: float) -> void:
 		return _in_trunk(p) and _neck_clear(p))
 	var pec := func(p: Vector3) -> Color:
 		return _sh(skin) if p.y < 0.34 + _v else skin
-	_block(torso, Vector3(-0.2 * c, 0.34, -_hz(0.42) - _lift), Vector3(0.2 * c, 0.5, -0.05), pec)
+	var lo := Vector3(-0.2 * c, 0.34, -_hz(0.42) - _lift)
+	var hi := Vector3(0.2 * c, 0.5, -0.05)
+	_fill(torso, lo, hi, pec, func(p: Vector3) -> bool: return _in_rounded(p, lo, hi, 0.0) and _off_head(p))
 
 
 ## Cloth over the trunk, one cube out, where keep() says (paint() colors it).
@@ -1284,3 +1307,244 @@ func _stray_hair(head: Node3D) -> void:
 func _in_skull_only(p: Vector3) -> bool:
 	var fw := 0.15 * _b("face")
 	return _in_rounded(p, Vector3(-fw, 0.13, -0.15), Vector3(fw, 0.345, 0.155), 0.03) or _in_jaw(p)
+
+
+# --- The Catalyst --------------------------------------------------------------------
+
+## A barrel chest under an open dark robe trimmed white, the sash dark with
+## a white stripe, knotted in front.
+func _catalyst_torso(hips: Node3D, torso: Node3D) -> void:
+	var robe := _p("robe")
+	var trim := _p("trim")
+	var c := _r("chest")
+	_bare_trunk(torso, 0.34)
+	var open := func(p: Vector3) -> float:
+		return lerpf(0.09, 0.19 * c, clampf(p.y / 0.5, 0.0, 1.0))
+	var paint := func(p: Vector3) -> Color:
+		if p.z < 0.0 and absf(p.x) < open.call(p) + _line:
+			return trim
+		if p.y > 0.36 and absf(p.x) > _hx(p.y) + _lift - _line:
+			return trim
+		return robe
+	_trunk_shell(torso, paint, func(p: Vector3) -> bool:
+		return p.y > 0.04 and not (p.z < 0.0 and absf(p.x) < open.call(p)))
+	var front := -_hz(0.0) - 2.0 * _lift
+	var sash := func(p: Vector3) -> Color:
+		return _p("sash_stripe") if p.y > 0.005 and p.y < 0.005 + _v else _p("sash")
+	_fill(torso, Vector3(-0.45, -0.06, -0.3), Vector3(0.45, 0.07, 0.3), sash, func(p: Vector3) -> bool:
+		return p.y <= 0.05 and _in_trunk(p, _lift * 2.0))
+	_block(torso, Vector3(-0.05, -0.05, front - 0.05), Vector3(0.05, 0.06, front), _p("sash"))
+	for side in [-1.0, 1.0]:
+		_side_block(torso, side, 0.01, 0.055, -0.22 + (0.05 if side > 0 else 0.0), -0.04, front - _v, front, _p("sash"))
+	var w := _r("waist")
+	_block(hips, Vector3(-0.2 * w, -0.11, -0.13 * w), Vector3(0.2 * w, 0.12, 0.14 * w), robe)
+
+
+## Wide dark hakama to the knee, a white hem; bare shins; black boots bound
+## with white straps.
+func _catalyst_leg(hip: Node3D, knee: Node3D, side: float) -> void:
+	var t := _r("thigh")
+	var k := _r("calf")
+	var hakama := func(p: Vector3) -> Color:
+		return _p("trim") if p.y < -0.42 + _v else _p("robe")
+	_taper(hip, -0.42, 0.04, Vector2(0.125, 0.13) * t, Vector2(0.115, 0.12) * t, hakama, 0.04)
+	_block(knee, Vector3(-0.055 * k, -0.06, -0.055 * k), Vector3(0.055 * k, 0.03, 0.05 * k), _skin, 0.03)
+	_taper(knee, -0.24, 0.0, Vector2(0.05, 0.052) * k, Vector2(0.058, 0.06) * k, _skin, 0.025)
+	var top := -0.22
+	var boot := func(p: Vector3) -> Color:
+		return _p("straps") if posmod(floori(p.y / _v), 3) == 0 else _p("shoes")
+	_shoe_on(knee, side, _p("shoes"), _p("sole"), _p("shoes"), _p("straps"), _p("straps"), top, boot)
+
+
+## Big arms; the robe's short sleeve over the shoulder; white wraps up the
+## forearm with a key pattern in his ink (fire orange left, violet right).
+func _catalyst_arm(shoulder: Node3D, elbow: Node3D, side: float) -> void:
+	var skin := _skin
+	var ink := _p("ink_left") if side < 0 else _p("ink_right")
+	var wraps := func(p: Vector3) -> Color:
+		if p.y > WRIST + 0.17:
+			return skin
+		var row := posmod(floori((p.y - WRIST) / _v), 4)
+		var col := floori((p.x + p.z) / _v)
+		if row == 1 or (row == 2 and posmod(col, 2) == 0):
+			return ink
+		return _p("tape_a") if row != 3 else _p("tape_b")
+	_arm_shape(shoulder, elbow, side, wraps, _p("robe"), _p("trim"))
+	_fist(elbow, side, _p("hand_tape"), _p("tape_b"))
+
+
+## Bushy white brows, a big nose, a moustache over the beard.
+func _catalyst_face(head: Node3D) -> void:
+	var skin := _skin
+	var white := _color("hair")
+	_px(head, 1, 5, 2, 5, Color(0.96, 0.95, 0.93))
+	_px(head, 1, 5, 1, 5, Color(0.06, 0.05, 0.06))
+	_px(head, 1, 6, 3, 6, white, 1)
+	_px(head, 0, 4, 0, 4, skin, 1)
+	_px(head, 0, 3, 2, 3, white, 1)
+	# The beard, from the cheeks to a broad point on the chest.
+	_fill(head, Vector3(-0.25, -0.22, -0.22), Vector3(0.25, 0.14, 0.1), white, func(p: Vector3) -> bool: return _in_beard(p))
+
+
+## Long white hair swept back off a high brow: a mass over the crown that
+## climbs toward the back, swept sides leaving the temples, and the back
+## falling in layers past the shoulders.
+func _catalyst_hair(head: Node3D) -> void:
+	var hair := _color("hair")
+	var fw := 0.15 * _b("face")
+	var w := fw + 0.035
+	_crown_at = 0.53
+	_crown_half = w
+	var top := _zone(head, "top")
+	_lock(top, Vector3(-w, 0.32, -0.15), Vector3(w, 0.44, 0.2), hair, 0.03)
+	_lock(top, Vector3(-w + 0.02, 0.4, -0.06), Vector3(w - 0.02, 0.5, 0.22), hair, 0.02)
+	for x: float in [-0.1, 0.0, 0.1]:
+		_lock(top, Vector3(x - 0.04, 0.44, 0.04), Vector3(x + 0.04, 0.53, 0.24), hair)
+	var sides := _zone(head, "sides")
+	for side in [-1.0, 1.0]:
+		_side_lock(sides, side, fw - 0.02, w + 0.02, 0.2, 0.42, -0.04, 0.22, hair, 0.02)
+	var back := _zone(head, "back")
+	# Layers falling down the back, each a little wider and further back.
+	var layers := [[0.22, 0.42, w, 0.24], [0.06, 0.26, w + 0.02, 0.27], [-0.1, 0.1, w + 0.04, 0.29], [-0.24, -0.06, w, 0.29]]
+	for l: Array in layers:
+		_lock(back, Vector3(-l[2], l[0], 0.08), Vector3(l[2], l[1], l[3]), hair, 0.02)
+
+
+# --- Tony ----------------------------------------------------------------------------
+
+## The track jacket half zipped over a white tee, white trim down the V and
+## the stand-up collar, a ribbed hem, pocket flaps, the gold chain. In the
+## Plumber Overalls (the palette's "shirt" has alpha): a red flannel shirt
+## under denim bib overalls on two straps, brass rivets.
+func _tony_torso(hips: Node3D, torso: Node3D) -> void:
+	var jacket := _p("jacket")
+	var white := _p("zip")
+	var neck := 0.066 * _r("neck")
+	if _p("shirt").a > 0.0:
+		var flannel := func(p: Vector3) -> Color: return _flannel_cell(p)
+		_fill(torso, Vector3(-0.4, -0.05, -0.25), Vector3(0.4, 0.63, 0.25), flannel, func(p: Vector3) -> bool:
+			return _in_trunk(p) and _neck_clear(p))
+		var denim := func(p: Vector3) -> bool:
+			if p.y < 0.28:
+				return true
+			if p.z < 0.0 and p.y < 0.46 and absf(p.x) < 0.12:
+				return true
+			return p.y < 0.62 and absf(absf(p.x) - 0.09) < _v * 0.75
+		_trunk_shell(torso, func(p: Vector3) -> Color: return jacket, denim)
+		var front := -_hz(0.44) - 2.0 * _lift
+		for side in [-1.0, 1.0]:
+			_side_block(torso, side, 0.07, 0.11, 0.42, 0.46, front - 0.01, front + _v, _p("zip"))
+		_block(hips, Vector3(-0.2, -0.11, -0.13), Vector3(0.2, 0.12, 0.14), jacket)
+		return
+	_fill(torso, Vector3(-0.4, -0.05, -0.25), Vector3(0.4, 0.63, 0.25), _p("tee"), func(p: Vector3) -> bool:
+		return _in_trunk(p) and _neck_clear(p))
+	var vee := func(p: Vector3) -> float:
+		return (p.y - 0.34) * 0.5
+	var paint := func(p: Vector3) -> Color:
+		if p.z < 0.0 and p.y > 0.32 and absf(p.x) < vee.call(p) + _line:
+			return white
+		if p.y < 0.0 + _v:
+			return _p("rib_a")
+		return jacket
+	_trunk_shell(torso, paint, func(p: Vector3) -> bool:
+		return not (p.z < 0.0 and p.y > 0.34 and absf(p.x) < vee.call(p)))
+	# The collar standing up round the neck, its front edge white.
+	var collar := func(p: Vector3) -> Color:
+		return white if p.y > 0.68 - _v else jacket
+	_fill(torso, Vector3(-0.22, 0.5, -0.22), Vector3(0.22, 0.7, 0.22), collar, func(p: Vector3) -> bool:
+		var r := Vector2(p.x, p.z - 0.015).length()
+		return p.y > 0.55 and p.y < 0.68 and r > neck + 0.035 and r < neck + 0.035 + 2.0 * _v and p.z > -0.04 and _off_head(p))
+	var front := -_hz(0.12) - 2.0 * _lift
+	for side in [-1.0, 1.0]:
+		_side_block(torso, side, 0.06, 0.15, 0.1, 0.12 + _v, front, front + _v, jacket.lightened(0.06))
+	# The gold chain: links down the V.
+	var gold := Color(1.0, 0.78, 0.22)
+	for i in 7:
+		var a := -0.9 + i * 0.3
+		var at := Vector3(sin(a) * 0.08, 0.58 - cos(a) * 0.09, -_hz(0.5) - _lift)
+		_block(torso, at - Vector3.ONE * _v * 0.5, at + Vector3.ONE * _v * 0.5, gold)
+	_block(hips, Vector3(-0.2, -0.11, -0.13), Vector3(0.2, 0.12, 0.14), jacket)
+
+
+## Red flannel: dark lines every third cube, down and across.
+func _flannel_cell(p: Vector3) -> Color:
+	var shirt := _p("shirt")
+	shirt.a = 1.0
+	var across := posmod(floori(p.y / _v), 3) == 0
+	var down := posmod(floori((p.x + p.z) / _v), 3) == 0
+	return shirt.darkened(0.55 if across and down else (0.3 if across or down else 0.0))
+
+
+## Loose track pants, two white stripes down the outside, gathered at the
+## ankle; black sneakers. Overalls: denim, brown work boots.
+func _tony_leg(hip: Node3D, knee: Node3D, side: float) -> void:
+	var jacket := _p("jacket")
+	var plumber := _p("shirt").a > 0.0
+	var stripes := func(p: Vector3) -> Color:
+		if not plumber and p.x * side >= 0.06 and posmod(floori(p.z / _v), 2) == 0 and absf(p.z) < 0.08:
+			return _p("stripe")
+		return jacket
+	_taper(hip, -0.44, 0.04, Vector2(0.108, 0.112), Vector2(0.112, 0.116), stripes, 0.04)
+	_taper(knee, -0.27, 0.03, Vector2(0.09, 0.094), Vector2(0.104, 0.108), stripes, 0.035)
+	_taper(knee, -0.33, -0.27, Vector2(0.07, 0.074), Vector2(0.074, 0.078), _p("rib_b") if not plumber else jacket, 0.02)
+	_shoe_on(knee, side, _p("shoes"), _p("sole"), _p("shoes"), _p("accent"), _p("accent"), -0.33)
+
+
+## Puffy jacket sleeves to the wrist, two white stripes down the outside,
+## ribbed cuffs; taped fists (fingers bare). Overalls: flannel sleeves.
+func _tony_arm(shoulder: Node3D, elbow: Node3D, side: float) -> void:
+	var a := _r("arm")
+	var f := _r("forearm")
+	var plumber := _p("shirt").a > 0.0
+	_arm_shape(shoulder, elbow, side, func(p: Vector3) -> Color: return _skin)
+	var sleeve := func(p: Vector3) -> Color:
+		if plumber:
+			return _flannel_cell(p)
+		if p.x * side >= 0.04 and posmod(floori(p.z / _v), 2) == 0 and absf(p.z) < 0.07:
+			return _p("stripe")
+		return _p("jacket")
+	var center := Vector3(0.012 * side, -0.035, 0)
+	var half := Vector3(0.095, 0.09, 0.09) * a + Vector3.ONE * _lift
+	_block(shoulder, center - half, center + half, sleeve, 0.045)
+	_taper(shoulder, -0.3, -0.04, Vector2(0.075, 0.075) * a + Vector2.ONE * _lift, Vector2(0.085, 0.083) * a + Vector2.ONE * _lift, sleeve, 0.03)
+	_taper(elbow, WRIST + 0.06, 0.05, Vector2(0.06, 0.058) * f + Vector2.ONE * _lift, Vector2(0.07, 0.068) * f + Vector2.ONE * _lift, sleeve, 0.03)
+	_taper(elbow, WRIST + 0.03, WRIST + 0.06, Vector2(0.06, 0.058) * f + Vector2.ONE * _lift * 0.5, Vector2(0.06, 0.058) * f + Vector2.ONE * _lift * 0.5, _p("rib_a") if not plumber else _p("rib_b"))
+	_fist(elbow, side, _p("tape"), null, _skin)
+
+
+## Heavy brows, a red nose, a smirk up one side, stubble.
+func _tony_face(head: Node3D) -> void:
+	var skin := _skin
+	var dark := Color(0.06, 0.05, 0.06)
+	var stubble := skin.lerp(Color(0.45, 0.43, 0.45), 0.5)
+	_px(head, 0, 0, 3, 3, stubble)
+	_px(head, 1, 5, 2, 5, Color(0.96, 0.95, 0.93))
+	_px(head, 1, 5, 1, 5, dark)
+	_px(head, 1, 6, 3, 6, dark, 1)
+	_px(head, 0, 4, 0, 4, Color(0.86, 0.48, 0.42), 1)
+	_px(head, 0, 2, 0, 2, skin.darkened(0.4))
+	_px(head, -2, 3, -2, 3, skin.darkened(0.4), 0, false)
+
+
+## Short dark hair at the sides and back under a knit beanie (ribbed, a
+## folded brim); under a cap or crown the beanie comes off for a close crop.
+func _tony_hair(head: Node3D) -> void:
+	var hair := _color("hair")
+	var fw := 0.15 * _b("face")
+	var c := fw + _v * 1.1
+	_short_under_hats = true
+	_crown_at = 0.52
+	_crown_half = fw + 0.03
+	var beanie := _zone(head, "top")
+	var knit := func(p: Vector3) -> Color:
+		if p.y < 0.31:
+			return _p("brim")
+		return _p("beanie_a") if posmod(floori(p.x / _v) + floori(p.z / _v), 2) == 0 else _p("beanie_b")
+	_lock(beanie, Vector3(-fw - _v, 0.25, -0.15 - _v), Vector3(fw + _v, 0.44, 0.155 + _v), Color.WHITE, 0.05)
+	_fill(beanie, Vector3(-0.3, 0.2, -0.3), Vector3(0.3, 0.5, 0.3), knit, func(p: Vector3) -> bool: return true, true)
+	var sides := _zone(head, "sides")
+	for side in [-1.0, 1.0]:
+		_side_lock(sides, side, fw - 0.02, c, 0.18, 0.3, -0.07, 0.13, hair)
+	_lock(_zone(head, "back"), Vector3(-c, 0.12, 0.06), Vector3(c, 0.3, 0.155 + _v * 1.1), hair)
+	var short := _zone(head, "short")
+	_lock(short, Vector3(-c, 0.28, -0.15), Vector3(c, 0.38, 0.155 + _v * 1.1), hair, 0.02)

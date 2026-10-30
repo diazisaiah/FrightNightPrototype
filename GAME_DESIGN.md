@@ -2222,3 +2222,11 @@ Art rendered from the game's own models in the playground (`playground/src/chara
 - **The True Coffin King's portrait** (`portrait_true.png`, Insano Style in his burning ring): a loading card that joins the rotation only once he's been beaten (the "true_king" achievement), and always shows heading into his bout.
 - **Full-screen loading scenes** (`Loading.SCENES`): the four fighters on the graveyard set, and the Dead League ring; they creep in like the portraits, the words on the left.
 - **Key art** for the store (`key_art.tscn`): the revamp fighters in action poses on the graveyard set (the Mauler's embers and fire ring, the Answer's lightning, the Blur's purple echo fists, the Stray's swirl), monsters among the graves, the spooky title. Banner 2172x724 and 1080x1440 portraits, in `store_assets/` (not committed).
+
+## The fighters' new bodies (2026-10-30)
+
+All six fighters' third-person bodies are rebuilt in large, clean cubes (`FighterBody`, `fighter_body.gd`, on PlayerBody's pivots plus ankles; prototyped in the playground 2026-10-29 and picked over tiny and medium cube sizes). Used everywhere the body shows: emotes, the Emotes stage, the princess rescue and the secret ending.
+- **Sizes:** the Mauler biggest and tallest, the Catalyst big, the Blur small and lean, Tony short; the cubes are the same size in the world on everyone.
+- **Rules:** flat, deliberate colors (no random speckle), no overlapping parts, one-cube trim lines, wraps painted on the forearm, a straight lead foot and a rear foot turned out.
+- **Hats:** hair in zones split at the hat line; caps and crowns hide what's above it, masks and wigs all of it. The Blur and Tony swap to a short cut under a cap or crown; the Stray keeps his headband (tied round the outside of a mask).
+- **Character art:** the select cards, versus panels and fighter loading cards are in-engine renders of the new bodies in signature poses (`key_art.tscn -- --select`): the Mauler's gloves knocking, the Answer reading you, the Blur's echo-fist flurry, the Stray's crouch, the Catalyst's fireball, Tony's "come on".

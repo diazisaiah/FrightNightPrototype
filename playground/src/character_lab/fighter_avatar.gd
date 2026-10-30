@@ -10,9 +10,10 @@ signal effect_marker(marker: String, action: String, command: Dictionary)
 
 const SkinsData = preload("res://skins.gd")
 const FistsData = preload("res://fists.gd")
-const PlayerBodyScript = preload("res://player_body.gd")
-## The body revamp prototype (revamp_body.gd): "tiny" or "large" voxels.
-const RevampBodyScript = preload("res://playground/character_lab/revamp_body.gd")
+## The game's fighter body (FighterBody, 2026-10-30; PlayerBody before).
+const PlayerBodyScript = preload("res://fighter_body.gd")
+## The body revamp (FighterBody, fighter_body.gd) at a cube size ("tiny", "medium", "large").
+const RevampBodyScript = preload("res://fighter_body.gd")
 const BODY_LAYER := 1 << 9
 const ELLIPSOID_RADIAL := 32
 const ELLIPSOID_RINGS := 18

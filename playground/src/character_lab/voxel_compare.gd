@@ -1,15 +1,15 @@
 extends Node3D
 ## Body revamp lineup (2026-10-29): the four base fighters rebuilt in large
-## cubes (revamp_body.gd) side by side, on the Character Lab's animation rig,
+## cubes (fighter_body.gd) side by side, on the Character Lab's animation rig,
 ## under the same camera, light and floor. Pick a view, a pose (any of the
 ## lab's 50 states, held or looping), a hat, a silhouette check, or swap in
 ## the current production bodies for reference.
 ## Run with -- --capture (review shots) or -- --poses (five poses), then quit.
 
 const AvatarScript = preload("res://playground/character_lab/fighter_avatar.gd")
-const RevampBody = preload("res://playground/character_lab/revamp_body.gd")
-const FIGHTERS := ["berserker", "counter_master", "combo_master", "free_runner"]
-const NAMES := {"berserker": "The Mauler", "counter_master": "The Answer", "combo_master": "The Blur", "free_runner": "The Stray"}
+const RevampBody = preload("res://fighter_body.gd")
+const FIGHTERS := ["berserker", "counter_master", "combo_master", "free_runner", "elementalist", "wise_guy"]
+const NAMES := {"berserker": "The Mauler", "counter_master": "The Answer", "combo_master": "The Blur", "free_runner": "The Stray", "elementalist": "The Catalyst", "wise_guy": "Tony"}
 ## Pose shots (-- --poses): [action, phase, body turn, camera, look-at height].
 const POSE_SHOTS := [
 	["guard", 0.5, -0.6, Vector3(0.0, 1.45, -4.5), 0.95],
@@ -20,7 +20,7 @@ const POSE_SHOTS := [
 ]
 const VIEWS := {"Front": 0.0, "Three-quarter": -0.7, "Side": -PI / 2.0, "Back": PI}
 const HATS := {"No hat": "", "Cap": "pocket_trainer_cap", "Crown": "paper_crown", "Mask": "iron_mask", "Wig": "wig_black"}
-const SPACING := 1.2
+const SPACING := 1.1
 const OUT := "user://character_lab_captures/"
 
 var _avatars: Array = []
