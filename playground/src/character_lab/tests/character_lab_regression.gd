@@ -101,7 +101,16 @@ func _check_boxing_motion_contract() -> void:
 	var foot_l := avatar._bones["foot_l"] as Node3D
 	var foot_r := avatar._bones["foot_r"] as Node3D
 	_check(thigh_l.rotation.x > thigh_r.rotation.x, "Boxing stance did not stagger lead and rear legs")
-	_check(foot_l.rotation.y < 0.0 and foot_r.rotation.y > 0.0, "Boxing stance feet are not angled outward")
+	# 2026-10-29: the lead (left) foot points straight ahead, the rear foot
+	# turns out 30-45 degrees (toe toward +X); measured with every turn above
+	# the feet (pelvis, thighs, ankles) included.
+	var toe_yaw := func(foot: Node3D) -> float:
+		var toe := (avatar.global_basis.inverse() * foot.global_basis) * Vector3.FORWARD
+		return atan2(-toe.x, -toe.z)
+	var lead: float = toe_yaw.call(foot_l)
+	var rear: float = toe_yaw.call(foot_r)
+	_check(absf(lead) < deg_to_rad(8.0), "Boxing stance lead foot is not straight (%.0f degrees)" % rad_to_deg(lead))
+	_check(rear < -deg_to_rad(30.0) and rear > -deg_to_rad(45.0), "Boxing stance rear foot is not turned out 30-45 degrees (%.0f)" % rad_to_deg(rear))
 	_check((avatar._bones["pelvis"] as Node3D).position.y >= pelvis_rest.origin.y - 0.0001, "Boxing stance moved the pelvis downward")
 
 	_set_phase(avatar, "roll_left", 0.25)

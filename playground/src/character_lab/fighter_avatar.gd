@@ -11,6 +11,8 @@ signal effect_marker(marker: String, action: String, command: Dictionary)
 const SkinsData = preload("res://skins.gd")
 const FistsData = preload("res://fists.gd")
 const PlayerBodyScript = preload("res://player_body.gd")
+## The body revamp prototype (revamp_body.gd): "tiny" or "large" voxels.
+const RevampBodyScript = preload("res://playground/character_lab/revamp_body.gd")
 const BODY_LAYER := 1 << 9
 const ELLIPSOID_RADIAL := 32
 const ELLIPSOID_RINGS := 18
@@ -110,6 +112,8 @@ const MODEL_SKIN := {
 
 var fighter_id := "berserker"
 var skin_id := ""
+## "" for the production body, or a revamp scale ("tiny", "large").
+var body_variant := ""
 var playback_speed := 1.0
 var paused := false
 var loop_action := false
@@ -395,7 +399,11 @@ func _bone(name: String, parent: Node, at: Vector3) -> Node3D:
 func _build_production_body() -> void:
 	if _production_body != null and is_instance_valid(_production_body):
 		_production_body.free()
-	_production_body = PlayerBodyScript.new(fighter_id, skin_id)
+	if body_variant != "":
+		_production_body = RevampBodyScript.new(fighter_id, skin_id)
+		_production_body.voxel_scale = body_variant
+	else:
+		_production_body = PlayerBodyScript.new(fighter_id, skin_id)
 	_production_body.name = "DetailedVoxelBody"
 	# Character Lab review must never show a half-painted fighter. PlayerBody's
 	# normal game path spreads this work over frames; here we finish the same
@@ -414,7 +422,7 @@ func _capture_production_rest() -> void:
 	_production_rest["body_position"] = _production_body.position
 	_production_rest["body_rotation"] = _production_body.rotation
 	_production_rest["body_scale"] = _production_body.scale
-	for joint_name in ["hips", "torso", "head", "ls", "le", "rs", "re", "lh", "lk", "rh", "rk"]:
+	for joint_name in ["hips", "torso", "head", "ls", "le", "rs", "re", "lh", "lk", "rh", "rk", "lf", "rf"]:
 		if _production_body._joints.has(joint_name):
 			_production_rest[joint_name] = (_production_body._joints[joint_name] as Node3D).transform
 
@@ -436,9 +444,16 @@ func _sync_production_body() -> void:
 	_sync_production_joint("rs", ["clavicle_r", "upper_arm_r"])
 	_sync_production_joint("re", ["forearm_r", "wrist_r", "hand_r"])
 	_sync_production_joint("lh", ["thigh_l"])
-	_sync_production_joint("lk", ["shin_l", "ankle_l", "foot_l"])
+	# A body with ankle pivots (the revamp) turns just the shoe; otherwise the
+	# ankle and foot fold into the knee.
+	var ankles: bool = _production_body._joints.has("lf")
+	_sync_production_joint("lk", ["shin_l"] if ankles else ["shin_l", "ankle_l", "foot_l"])
+	if ankles:
+		_sync_production_joint("lf", ["ankle_l", "foot_l"])
 	_sync_production_joint("rh", ["thigh_r"])
-	_sync_production_joint("rk", ["shin_r", "ankle_r", "foot_r"])
+	_sync_production_joint("rk", ["shin_r"] if ankles else ["shin_r", "ankle_r", "foot_r"])
+	if ankles:
+		_sync_production_joint("rf", ["ankle_r", "foot_r"])
 
 
 func _sync_production_joint(production_name: String, semantic_chain: Array, position_source := "") -> void:
@@ -1240,12 +1255,15 @@ func _pose_boxing_stance() -> void:
 	_add_rot("chest", Vector3(0.0, 0.08 * weight, -0.025 * weight))
 	_add_rot("thigh_l", Vector3(0.14, -0.035, -0.055) * weight)
 	_add_rot("shin_l", Vector3(-0.16, 0.0, 0.025) * weight)
-	_add_rot("ankle_l", Vector3(0.04, -0.12, 0.0) * weight)
-	_add_rot("foot_l", Vector3(0.0, -0.12, 0.0) * weight)
+	# Feet (2026-10-29): the lead foot points straight at the opponent, the
+	# rear foot turns out about 35 degrees. These cancel the pelvis and thigh
+	# turns above (they were adding up to both feet toeing in).
+	_add_rot("ankle_l", Vector3(0.04, 0.0875, 0.0) * weight)
+	_add_rot("foot_l", Vector3(0.0, 0.0875, 0.0) * weight)
 	_add_rot("thigh_r", Vector3(-0.085, 0.045, 0.06) * weight)
 	_add_rot("shin_r", Vector3(-0.11, 0.0, -0.025) * weight)
-	_add_rot("ankle_r", Vector3(0.035, 0.18, 0.0) * weight)
-	_add_rot("foot_r", Vector3(0.0, 0.18, 0.0) * weight)
+	_add_rot("ankle_r", Vector3(0.035, -0.2525, 0.0) * weight)
+	_add_rot("foot_r", Vector3(0.0, -0.2525, 0.0) * weight)
 
 
 func _pose_guard() -> void:

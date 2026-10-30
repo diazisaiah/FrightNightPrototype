@@ -363,6 +363,14 @@ func _build_character_lab_panel(box: VBoxContainer) -> void:
 		_lab.set_mode(id)))
 	var skins: Array = [""] + Skins.of(GameState.player_class)
 	box.add_child(_options(skins, GameState.skin(), _switch_skin))
+	# The body revamp prototype (2026-10-29, the Answer only so far): play in
+	# third person as either voxel scale, or compare them side by side.
+	box.add_child(_note("Body (revamp prototype: the Answer)"))
+	box.add_child(_options(["current", "tiny", "large"], "current", func(id: String) -> void:
+		_lab.avatar.body_variant = "" if id == "current" else id
+		_lab.avatar.rebuild(GameState.player_class, GameState.skin())))
+	box.add_child(_button("Voxel scale comparison (side by side)", func() -> void:
+		get_tree().change_scene_to_file("res://playground/character_lab/voxel_compare.tscn")))
 
 	var camera_row := HBoxContainer.new()
 	camera_row.add_child(_note("Distance"))
