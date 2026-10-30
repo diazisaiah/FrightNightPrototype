@@ -21,21 +21,31 @@ const KNEE := [25, 26]
 const ANKLE := [27, 28]
 const HEEL := [29, 30]
 const TOE := [31, 32]
-## The nose sits below and ahead of the ears: a level head reads this much
-## pitched down.
-const NOSE_PITCH := 0.32
+const PINKY := [17, 18]
+const INDEX := [19, 20]
+## The nose tip against the ears on a level head (MediaPipe puts them about
+## level; the Griddy clip's median was 2 degrees up).
+const NOSE_PITCH := 0.0
 ## The fighter's thigh and shin (FighterBody: knee 0.44 under the hip, ankle
 ## 0.4 under the knee).
 const RIG_LEG := 0.84
 ## A hop must lift the lower foot at least this far (meters) to count.
 const JUMP_MIN := 0.04
+## How much of the tracker's depth (toward / away from the camera) to keep.
+## It's the shaky axis (on the Griddy clip, 2026-10-30, it leaned the spine
+## 22 degrees at the camera and twisted the chest 17 degrees off square; square
+## takes that out), but less of it flattens the knees' forward bend and turns
+## the legs, so all of it by default.
+const DEPTH := 1.0
 
 
 ## The emote file for a track. options: smooth (frames of blur, 0 none),
 ## tolerance (degrees a key may be off before another is kept), travel (keep
-## side to side movement across the floor), loop.
+## side to side movement across the floor), loop, depth and square (see
+## landmark_frames).
 static func to_emote(track: Dictionary, body: PlayerBody, options := {}) -> Dictionary:
-	var frames := landmark_frames(track, float(options.get("smooth", 1.5)))
+	var frames := landmark_frames(track, float(options.get("smooth", 1.5)), float(options.get("depth", DEPTH)),
+			bool(options.get("square", true)))
 	if frames.is_empty():
 		return {}
 	var poses: Array = []
@@ -45,6 +55,12 @@ static func to_emote(track: Dictionary, body: PlayerBody, options := {}) -> Dict
 		previous = pose
 		poses.append(pose)
 	_unwrap(poses)
+	_level_feet(poses)
+	if bool(options.get("square", true)):
+		_level_head(poses)
+	if bool(options.get("reach", true)):
+		_reach_face(poses, frames, body)
+		_unwrap(poses)
 	_place_hips(poses, frames, track, body, bool(options.get("travel", true)))
 	var times: Array = track.frames.map(func(f: Dictionary) -> float: return float(f.t))
 	var keep := _reduce(poses, times, float(options.get("tolerance", 6.0)))
@@ -67,8 +83,9 @@ static func to_emote(track: Dictionary, body: PlayerBody, options := {}) -> Dict
 
 ## Every frame's 33 joints in the fighter's space (Vector3s), gaps filled
 ## from the frames either side, blurred over time to take out the tracker's
-## jitter.
-static func landmark_frames(track: Dictionary, smooth: float) -> Array:
+## jitter. depth scales the tracker's depth; square takes out the camera's
+## angle (see _square).
+static func landmark_frames(track: Dictionary, smooth: float, depth := 1.0, square := false) -> Array:
 	var raw: Array = track.get("frames", [])
 	var mirror: bool = track.get("mirror", false)
 	var out: Array = []
@@ -81,7 +98,7 @@ static func landmark_frames(track: Dictionary, smooth: float) -> Array:
 		joints.resize(33)
 		for i in 33:
 			var p: Array = f.world[_swap(i) if mirror else i]
-			joints[i] = Vector3(p[0] if mirror else -p[0], -p[1], p[2])
+			joints[i] = Vector3(p[0] if mirror else -p[0], -p[1], p[2] * depth)
 		out.append(joints)
 		found.append(out.size() - 1)
 	if found.is_empty():
@@ -105,6 +122,8 @@ static func landmark_frames(track: Dictionary, smooth: float) -> Array:
 			for j in 33:
 				joints.append((out[before][j] as Vector3).lerp(out[after][j], u))
 			out[i] = joints
+	if square:
+		_square(out)
 	if smooth <= 0.0:
 		return out
 	var reach := int(ceil(smooth * 2.5))
@@ -121,6 +140,43 @@ static func landmark_frames(track: Dictionary, smooth: float) -> Array:
 			joints.append(sum / weight)
 		blurred.append(joints)
 	return blurred
+
+
+## Takes out the camera's angle, from what dancers do on average: the legs
+## stand straight up under the hips (a camera looking down tips them back and
+## the body forward), the hips face the camera, and the chest is square over
+## the hips. Each is the median over the clip, so a lean, turn or twist that
+## comes and goes in the dance stays.
+static func _square(frames: Array) -> void:
+	var leans: Array = []
+	var turns: Array = []
+	var twists: Array = []
+	for joints: Array in frames:
+		var hips: Vector3 = (joints[HIP[0]] + joints[HIP[1]]) * 0.5
+		var feet: Vector3 = (joints[ANKLE[0]] + joints[ANKLE[1]]) * 0.5 - hips
+		leans.append(atan2(feet.z, -feet.y))
+		var hip_right: Vector3 = joints[HIP[1]] - joints[HIP[0]]
+		var shoulder_right: Vector3 = joints[SHOULDER[1]] - joints[SHOULDER[0]]
+		var turn := atan2(-hip_right.z, hip_right.x)
+		turns.append(turn)
+		twists.append(wrapf(atan2(-shoulder_right.z, shoulder_right.x) - turn, -PI, PI))
+	var tip := Basis(Vector3.RIGHT, _median(leans))
+	var face := Basis(Vector3.UP, -_median(turns))
+	var untwist := Basis(Vector3.UP, -_median(twists))
+	for joints: Array in frames:
+		for i in 33:
+			joints[i] = face * (tip * (joints[i] as Vector3))
+		# The upper body (face, shoulders, arms, hands: 0-22) turned square
+		# round the spine.
+		var hips: Vector3 = (joints[HIP[0]] + joints[HIP[1]]) * 0.5
+		for i in 23:
+			joints[i] = hips + untwist * (joints[i] - hips)
+
+
+static func _median(values: Array) -> float:
+	var sorted := values.duplicate()
+	sorted.sort()
+	return sorted[sorted.size() / 2] if not sorted.is_empty() else 0.0
 
 
 ## MediaPipe's joint on the other side (left 11 <-> right 12, and so on).
@@ -149,12 +205,7 @@ static func _pose(p: Array, previous: Dictionary) -> Dictionary:
 	var shoulder_mid: Vector3 = (p[SHOULDER[0]] + p[SHOULDER[1]]) * 0.5
 	var pelvis := _frame(p[HIP[1]] - p[HIP[0]], shoulder_mid - hip_mid)
 	var ribs := _frame(p[SHOULDER[1]] - p[SHOULDER[0]], shoulder_mid - hip_mid)
-	var ear_mid: Vector3 = (p[EAR[0]] + p[EAR[1]]) * 0.5
-	var ear_right: Vector3 = (p[EAR[1]] - p[EAR[0]]).normalized()
-	var face: Vector3 = p[NOSE] - ear_mid
-	var back := -(face - ear_right * face.dot(ear_right)).normalized()
-	var skull := Basis(ear_right, back.cross(ear_right), back)
-	skull = skull * Basis(Vector3.RIGHT, NOSE_PITCH)
+	var skull := _skull(p)
 	var pose := {}
 	pose.hips = pelvis.get_euler()
 	# The pelvis to the rib cage, half at the waist and half at the chest; the
@@ -179,8 +230,67 @@ static func _pose(p: Array, previous: Dictionary) -> Dictionary:
 		var foot: Vector3 = p[TOE[side]] - p[HEEL[side]]
 		var level := Vector2(foot.x, foot.z).length()
 		var turn := wrapf(atan2(-foot.x, -foot.z) - pose.hips.y, -PI, PI)
-		pose[s + "f"] = Vector3(atan2(foot.y, level), clampf(turn, -0.7, 0.7), 0)
+		pose[s + "f"] = Vector3(atan2(foot.y, level), turn, 0)
 	return pose
+
+
+## The head's axes (x right, y up, z back) from the ears and nose.
+static func _skull(p: Array) -> Basis:
+	var ear_mid: Vector3 = (p[EAR[0]] + p[EAR[1]]) * 0.5
+	var ear_right: Vector3 = (p[EAR[1]] - p[EAR[0]]).normalized()
+	var face: Vector3 = p[NOSE] - ear_mid
+	var back := -(face - ear_right * face.dot(ear_right)).normalized()
+	return Basis(ear_right, back.cross(ear_right), back) * Basis(Vector3.RIGHT, NOSE_PITCH)
+
+
+## Hands on the face (goggles, a salute, an L on the forehead, a dab's
+## face in the elbow) land where they touch on the fighter's own face. His
+## head is far bigger for his body than a person's, so the arm's angles
+## alone stop short (at the cheeks for the Griddy's goggles). A hand within
+## FACE_REACH ear-widths of the ears' middle is reached there (the arm bent
+## to fit, the elbow kept to its side), fading out to FACE_LEAVE.
+const FACE_REACH := 1.8
+const FACE_LEAVE := 2.6
+
+
+static func _reach_face(poses: Array, frames: Array, body: PlayerBody) -> void:
+	var j: Dictionary = body._joints
+	for i in poses.size():
+		var p: Array = frames[i]
+		var ear_mid: Vector3 = (p[EAR[0]] + p[EAR[1]]) * 0.5
+		var ear_width: float = maxf((p[EAR[1]] - p[EAR[0]]).length(), 0.01)
+		var skull := _skull(p)
+		var pose: Dictionary = poses[i]
+		for side in 2:
+			# The middle of the hand (the fist is the whole hand).
+			var hand_mid: Vector3 = (p[WRIST[side]] + p[INDEX[side]] + p[PINKY[side]]) / 3.0
+			var near: float = (hand_mid - ear_mid).length() / ear_width
+			var weight := 1.0 - smoothstep(FACE_REACH, FACE_LEAVE, near)
+			if weight <= 0.0:
+				continue
+			var s := "l" if side == 0 else "r"
+			pose.pos = Vector3.ZERO
+			body._apply(pose, false)
+			# Where the hand touches, in ear-widths round the ears' middle, on
+			# his head (ears 0.32 apart, 0.2 up the head).
+			var touch: Vector3 = skull.inverse() * (hand_mid - ear_mid) / ear_width
+			var target: Vector3 = (j.head as Node3D).global_transform * (Vector3(0, 0.2, 0) + touch * 0.32)
+			var shoulder: Vector3 = j[s + "s"].global_position
+			var elbow: Vector3 = j[s + "e"].global_position
+			var hand: Vector3 = (j[s + "e"] as Node3D).global_transform * Vector3(0, -0.26, 0)
+			target = hand.lerp(target, weight)
+			var upper := (elbow - shoulder).length()
+			var lower := (hand - elbow).length()
+			var to := target - shoulder
+			var reach := clampf(to.length(), absf(upper - lower) + 0.01, upper + lower - 0.01)
+			var aim := to.normalized()
+			var pole := (elbow - shoulder) - aim * (elbow - shoulder).dot(aim)
+			pole = pole.normalized() if pole.length() > 0.001 else Vector3.DOWN
+			var angle := acos(clampf((upper * upper + reach * reach - lower * lower) / (2.0 * upper * reach), -1.0, 1.0))
+			var new_elbow := shoulder + aim * upper * cos(angle) + pole * upper * sin(angle)
+			var arm := _limb((j.chest as Node3D).global_basis.orthonormalized(), shoulder, new_elbow, shoulder + aim * reach, -1.0, pose[s + "s"])
+			pose[s + "s"] = arm[0]
+			pose[s + "e"] = Vector3(arm[1], 0, 0)
 
 
 ## A two-bone limb (shoulder or hip) in its parent's frame: [rotation of the
@@ -207,6 +317,38 @@ static func _limb(parent: Basis, a: Vector3, b: Vector3, c: Vector3, bend: float
 		z = z.normalized() if z.length() > 0.01 else Vector3(1, 0, 0)
 	var basis := Basis(y.cross(z), y, z)
 	return [basis.get_euler(), acos(clampf(upper.dot(lower), -1.0, 1.0))]
+
+
+## The feet run straight along the camera's depth (heel behind toe), the
+## tracker's shakiest axis, so their angles come out tipped and turned by a
+## fixed amount. Each foot's typical angle over the clip counts as flat and
+## straight; what changes from it (a heel tap, toes up, a turn out) stays.
+static func _level_feet(poses: Array) -> void:
+	var tips: Array = []
+	var turns: Array = []
+	for pose: Dictionary in poses:
+		for s in ["lf", "rf"]:
+			tips.append(pose[s].x)
+			turns.append(pose[s].y)
+	var flat := Vector3(_median(tips), _median(turns), 0)
+	for pose: Dictionary in poses:
+		for s in ["lf", "rf"]:
+			var v: Vector3 = pose[s] - flat
+			pose[s] = Vector3(clampf(v.x, -0.9, 0.9), clampf(v.y, -0.7, 0.7), 0)
+
+
+## The ears and nose don't say reliably where level is (the Griddy clip,
+## 2026-10-30, came out chin up 18 degrees), so the head's typical tip over
+## the clip, against the floor, counts as looking ahead; nods and tilts that
+## come and go stay. Taken out half at the neck, half at the head.
+static func _level_head(poses: Array) -> void:
+	var tips: Array = []
+	for pose: Dictionary in poses:
+		tips.append(pose.hips.x + pose.torso.x + pose.chest.x + pose.neck.x + pose.head.x)
+	var level := _median(tips) * 0.5
+	for pose: Dictionary in poses:
+		pose.neck = pose.neck - Vector3(level, 0, 0)
+		pose.head = pose.head - Vector3(level, 0, 0)
 
 
 ## Keeps each angle continuous frame to frame (no jump from 179 to -179).

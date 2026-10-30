@@ -23,7 +23,7 @@ static func run(body: PlayerBody, id: String) -> bool:
 		body._apply(Emotes.sample(clip, t), clip.plant)
 		truth.append(_ends(body))
 		track.frames.append(_seen(body, t))
-	var data := EmoteRetarget.to_emote(track, body, {"smooth": 0.0, "tolerance": 2.0, "travel": false})
+	var data := EmoteRetarget.to_emote(track, body, {"smooth": 0.0, "tolerance": 2.0, "travel": false, "depth": 1.0, "square": false})
 	var back := Emotes.parse(data)
 	var total := 0.0
 	var worst := 0.0
@@ -80,6 +80,9 @@ static func _seen(body: PlayerBody, t: float) -> Dictionary:
 		at[11 + side] = j[s + "s"].global_position
 		at[13 + side] = j[s + "e"].global_position
 		at[15 + side] = j[s + "e"].global_transform * Vector3(0, -0.26, 0)
+		# Pinky, index and thumb at the fist too (the face reach aims its middle).
+		for k in [17, 19, 21]:
+			at[k + side] = at[15 + side]
 		at[23 + side] = j[s + "h"].global_position
 		at[25 + side] = j[s + "k"].global_position
 		at[27 + side] = j[s + "f"].global_position

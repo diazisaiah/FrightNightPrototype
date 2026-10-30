@@ -1490,6 +1490,10 @@ Emotes are redone to match real sources (clips, GIFs, stills, written breakdowns
 - **Edit:** the source frame beside the fighter and the tracked skeleton over him, synced to the timeline. Click a joint on the body and drag it (limbs point where you drag), or use its sliders. Editing between keys makes a key. Move keys on the timeline, drag the end to change the length, Faster / Slower stretch the whole dance, a beat grid snaps keys to the music, mirror a pose or the whole dance, copy and paste poses, undo.
 - **Save** writes the game's file.
 - Checked by a round trip (`-- --selftest`): five game dances written out as tracking and imported back land within about 2 cm.
+- **Import corrections (the Griddy, 2026-10-30):** tracked depth is the shaky axis, so the import squares the dancer to the camera (the clip's typical lean, turn and chest twist taken out, measured from the legs standing straight), counts each foot's typical angle as flat and the head's as looking ahead, and lands hands that touch the face on the fighter's own face (his head is far bigger for his body, so arm angles alone stop at the cheeks). Depth trust and squaring are sliders in the import panel.
+
+**Redone from sources:**
+- **Griddy (2026-10-30):** tracked from the user's clip of the game emote (fingers ignored). Crouched heel-tap footwork with pumping arms, a wide-arm lean, the forward lean, then the goggles; 3.96s loop, keys straight from the import.
 
 **Tightened 2026-10-17:** the dances were stiff from the front, because knee bends and hip dips happen front to back, and the feet sank into the floor.
 - `PlayerBody._plant_feet` now keeps the feet on the canvas: dropping the hips bends the knees, and swaying them sideways leans the legs.

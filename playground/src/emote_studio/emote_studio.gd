@@ -16,7 +16,7 @@ extends Node3D
 ## wheel zooms.
 ##
 ## Shots for review: -- --shot --emote=<id> [--times=0,0.25] [--import=<file>]
-## [--fighter=<id>] saves PNGs in user://emote_studio/ and quits;
+## [--save] [--fighter=<id>] [--clean [--yaw=0]] saves PNGs in user://emote_studio/ and quits;
 ## -- --render --emote=<id> [--seconds=3] writes a frame per 1/30s (a test clip);
 ## -- --selftest [--emotes=a,b] checks the import round trip on game dances.
 
@@ -84,6 +84,8 @@ var _import_mirror: CheckBox
 var _import_smooth: HSlider
 var _import_detail: HSlider
 var _import_travel: CheckBox
+var _import_depth: HSlider
+var _import_square: CheckBox
 var _joint_buttons := {}
 var _joint_title: Label
 var _sliders: Array = []
@@ -113,6 +115,8 @@ func _ready() -> void:
 	_load_emote(first if FileAccess.file_exists(_game_dir().path_join(first + ".json")) else "default")
 	if _arg("import", "") != "":
 		_import(_arg("import", ""))
+		if "--save" in OS.get_cmdline_user_args():
+			_save()
 	var args := OS.get_cmdline_user_args()
 	if "--shot" in args:
 		await _shots()
@@ -485,7 +489,8 @@ func _load_source(file: String) -> bool:
 		var image := Image.new()
 		if image.load_jpg_from_buffer(Marshalls.base64_to_raw(sheet.jpg)) == OK:
 			_sheet = ImageTexture.create_from_image(image)
-	_ghost_frames = EmoteRetarget.landmark_frames(_track, 1.0)
+	_ghost_frames = EmoteRetarget.landmark_frames(_track, 1.0, _import_depth.value if _import_depth else EmoteRetarget.DEPTH,
+			_import_square.button_pressed if _import_square else true)
 	_fit_ghost()
 	return true
 
@@ -559,6 +564,8 @@ func _import(file: String) -> void:
 		"smooth": _import_smooth.value if _import_smooth else 1.5,
 		"tolerance": _import_detail.value if _import_detail else 6.0,
 		"travel": _import_travel.button_pressed if _import_travel else true,
+		"depth": _import_depth.value if _import_depth else EmoteRetarget.DEPTH,
+		"square": _import_square.button_pressed if _import_square else true,
 	}
 	var data := EmoteRetarget.to_emote(track, _body, options)
 	if data.is_empty():
@@ -908,6 +915,11 @@ func _left_panel() -> Control:
 	_import_travel = _check("Keep travel across the floor", func(_on: bool) -> void: pass)
 	_import_travel.button_pressed = true
 	box.add_child(_import_travel)
+	_import_square = _check("Square to the camera (takes out its angle)", func(_on: bool) -> void: pass)
+	_import_square.button_pressed = true
+	box.add_child(_import_square)
+	_import_depth = _hslider("Depth trust (the tracker's shaky axis)", 0.0, 1.0, 0.05, EmoteRetarget.DEPTH)
+	box.add_child(_import_depth.get_parent())
 	_import_smooth = _hslider("Smoothing", 0.0, 4.0, 0.25, 1.5)
 	box.add_child(_import_smooth.get_parent())
 	_import_detail = _hslider("Fewer keys (degrees off allowed)", 1.0, 20.0, 0.5, 6.0)
@@ -1214,6 +1226,23 @@ func _say(text: String) -> void:
 func _shots() -> void:
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(OUT))
 	var times := _arg("times", "0,0.25,0.5,0.75").split(",")
+	# --print: the legs, frame by frame (checking an import).
+	if "--print" in OS.get_cmdline_user_args():
+		for i in int(float(_data.length) * 10.0):
+			var pose := Emotes.sample(_clip, i / 10.0)
+			var line := "%.1f" % (i / 10.0)
+			for j in ["pos", "hips", "lh", "lk", "lf", "rh", "rk", "rf"]:
+				var v: Vector3 = pose.get(j, Vector3.ZERO)
+				line += "  %s %s" % [j, (v * 100.0).round() if j == "pos" else (v * 180.0 / PI).round()]
+			print(line)
+	# --clean: just the fighter (and the tracked skeleton), front on.
+	if "--clean" in OS.get_cmdline_user_args():
+		_ui.visible = false
+		_show_ref = false
+		_marker.visible = false
+		_camera.v_offset = 0.0
+		_yaw = float(_arg("yaw", "0"))
+		_place_camera()
 	for i in 10:
 		await get_tree().process_frame
 	for t in times:
