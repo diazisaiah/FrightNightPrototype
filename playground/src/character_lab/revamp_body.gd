@@ -66,6 +66,8 @@ var _lift := 0.016
 var _revamp := false
 ## Hair zones by name: top, front, sides, back.
 var _zones := {}
+## Zone node -> its name.
+var _zone_of := {}
 ## The top of the hair and its half width (crowns sit on it).
 var _crown_at := 0.52
 var _crown_half := 0.17
@@ -109,7 +111,7 @@ func wear_hat(id: String) -> void:
 	var bare := id == "" or not Hats.CATALOG.has(id)
 	var fit: Dictionary = {} if bare else HAT_FIT[hat_kind(id)]
 	for zone in _zones:
-		(_zones[zone] as Node3D).visible = bare or not (zone in fit.hide or (hat_kind(id) == "crown" and zone in _crown_hides))
+		(_zones[zone] as Node3D).visible = bare or not (_zone_hidden(zone, fit.hide) or (hat_kind(id) == "crown" and _zone_hidden(zone, _crown_hides)))
 	if _headband:
 		_headband.visible = bare
 	if bare:
@@ -599,7 +601,25 @@ func _zone(head: Node3D, id: String) -> Node3D:
 	node.name = "Hair" + id.capitalize()
 	head.add_child(node)
 	_zones[id] = node
+	_zone_of[node] = id
 	return node
+
+
+## The part of a zone above HAT_CUT ("sides_high"...), made on first use.
+func _zone_high(node: Node3D) -> Node3D:
+	var id: String = _zone_of[node] + "_high"
+	if not _zones.has(id):
+		var high := Node3D.new()
+		high.name = node.name + "High"
+		node.get_parent().add_child(high)
+		_zones[id] = high
+	return _zones[id]
+
+
+## Hidden under a hat that hides these zones. A hat hiding the top hides
+## every zone's high part too.
+static func _zone_hidden(zone: String, hide: Array) -> bool:
+	return zone in hide or zone.trim_suffix("_high") in hide or (zone.ends_with("_high") and "top" in hide)
 
 
 ## Inside the skull or jaw (head pivot space).
@@ -620,11 +640,23 @@ func _in_band(p: Vector3) -> bool:
 
 ## A block of hair that leaves the skull's own cells alone: hair and skull
 ## share the head's grid, and a hair cube on a skin cube flickers.
+## Hair above it splits off onto its zone's high part (a cap or crown
+## hides it, so no hair pokes out through the hat; the hair below shows
+## under the brim).
+const HAT_CUT := 0.3
+
+
 func _lock(node: Node3D, from: Vector3, to: Vector3, color: Color, r := 0.0) -> void:
 	var lo := from.min(to)
 	var hi := from.max(to)
+	if not _zone_of.has(node) or _zone_of[node] == "top":
+		_fill(node, lo, hi, color, func(p: Vector3) -> bool:
+			return _in_rounded(p, lo, hi, r) and not _in_skull(p))
+		return
 	_fill(node, lo, hi, color, func(p: Vector3) -> bool:
-		return _in_rounded(p, lo, hi, r) and not _in_skull(p))
+		return p.y < HAT_CUT and _in_rounded(p, lo, hi, r) and not _in_skull(p))
+	_fill(_zone_high(node), lo, hi, color, func(p: Vector3) -> bool:
+		return p.y >= HAT_CUT and _in_rounded(p, lo, hi, r) and not _in_skull(p))
 
 
 func _side_lock(node: Node3D, side: float, x0: float, x1: float, y0: float, y1: float, z0: float, z1: float, color: Color, r := 0.0) -> void:
@@ -1016,8 +1048,8 @@ func _blur_hair(head: Node3D) -> void:
 	var fw := 0.15 * _b("face")
 	var w := fw + 0.07
 	var curl := 0.1
-	_crown_at = 0.495
-	_crown_half = w
+	_crown_at = HAT_CUT + 0.125
+	_crown_half = fw + 0.03
 	_crown_hides = ["top"]
 	var top := _zone(head, "top")
 	_lock(top, Vector3(-w, 0.3, -0.16), Vector3(w, 0.58, 0.25), hair, 0.07)
@@ -1134,8 +1166,8 @@ func _stray_hair(head: Node3D) -> void:
 	var hair := _color("hair")
 	var fw := 0.15 * _b("face")
 	var w := fw + 0.03
-	_crown_at = 0.475
-	_crown_half = w
+	_crown_at = HAT_CUT + 0.125
+	_crown_half = fw + 0.03
 	_crown_hides = ["top"]
 	var top := _zone(head, "top")
 	_lock(top, Vector3(-w, 0.324, -0.17), Vector3(w, 0.42, 0.19), hair, 0.02)
