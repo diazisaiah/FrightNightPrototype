@@ -38,7 +38,7 @@ const STEPS_START := [
 		"text": "Punching monsters isn't good for your knuckles, but it has to be done. Every punch costs a little knuckle HP.",
 		"keys": [["<jab>", "Jab"], ["<cross>", "Cross"]]},
 	{"title": "SET IT UP", "goals": {"setup": 2}, "dummy": "passive", "costs": true,
-		"text": "Hooks and uppercuts hit hard after a jab, a cross, or a slip or roll to that side. Thrown cold they're SLOPPY. Every punch costs knuckle HP.",
+		"text": "Hooks and uppercuts cost more knuckle HP, but hit big when set up: right after a jab, a cross, or a slip or roll to that side. Thrown cold they're SLOPPY.",
 		"keys": [["<jab> / <cross>", "Set up"], ["<hook>", "Hook"], ["<uppercut>", "Uppercut"]]},
 	{"title": "COMBOS", "goals": {"drill": 2}, "dummy": "passive", "costs": true,
 		"text": "Throw each combo in order. The longer the combo, the harder you hit.",
