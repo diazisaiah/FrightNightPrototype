@@ -350,24 +350,99 @@ void fragment() {
 	_view.add_child(shade)
 
 
-## The title across the top: bone-white Anton, a dark red edge, a fiery glow.
+## The title across the top: Anton drawn off screen, then made spooky by
+## TITLE_SHADER: bone white fading to fire down each letter, pitted and
+## cracked, blocky blood drips hanging off the bottoms, a red glow behind.
 func _make_title() -> Control:
-	var title := Label.new()
-	title.text = "FRIGHT NIGHT"
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_override("font", load("res://fonts/Anton-Regular.ttf"))
-	title.add_theme_font_size_override("font_size", 150)
-	title.add_theme_color_override("font_color", Color(0.98, 0.9, 0.74))
-	title.add_theme_color_override("font_outline_color", Color(0.4, 0.04, 0.02))
-	title.add_theme_constant_override("outline_size", 22)
-	title.add_theme_color_override("font_shadow_color", Color(1.0, 0.35, 0.05, 0.85))
-	title.add_theme_constant_override("shadow_outline_size", 40)
-	title.add_theme_constant_override("shadow_offset_x", 0)
-	title.add_theme_constant_override("shadow_offset_y", 0)
-	title.position = Vector2(0, -6)
-	title.size = Vector2(BANNER.x, 240)
+	var page := SubViewport.new()
+	page.size = Vector2i(BANNER.x, 330)
+	page.transparent_bg = true
+	page.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	add_child(page)
+	var label := Label.new()
+	label.text = "FRIGHT NIGHT"
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.add_theme_font_override("font", load("res://fonts/Anton-Regular.ttf"))
+	label.add_theme_font_size_override("font_size", 160)
+	label.add_theme_color_override("font_color", Color(1, 1, 1))
+	label.add_theme_color_override("font_outline_color", Color(0, 0, 0))
+	label.add_theme_constant_override("outline_size", 14)
+	label.position = Vector2(0, 10)
+	label.size = Vector2(BANNER.x, 240)
+	page.add_child(label)
+	var title := TextureRect.new()
+	title.texture = page.get_texture()
+	title.position = Vector2(0, -14)
+	title.size = Vector2(page.size)
+	var material := ShaderMaterial.new()
+	var shader := Shader.new()
+	shader.code = TITLE_SHADER
+	material.shader = shader
+	title.material = material
 	_view.add_child(title)
 	return title
+
+
+## (The page: white letters, a black outline, on clear.)
+const TITLE_SHADER := """shader_type canvas_item;
+const float CELL = 7.0;
+
+float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float noise(vec2 p) {
+	vec2 i = floor(p);
+	vec2 f = fract(p);
+	f = f * f * (3.0 - 2.0 * f);
+	return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
+}
+
+void fragment() {
+	vec2 px = TEXTURE_PIXEL_SIZE;
+	vec2 at = UV / px;
+	vec4 page = texture(TEXTURE, UV);
+	float face = page.a * page.r;
+	float edge = page.a * (1.0 - page.r);
+	// Pitted and worn: patches eaten out of the letters and their edge.
+	float wear = noise(at / 10.0) * 0.65 + noise(at / 3.0) * 0.35;
+	float pit = step(wear, 0.22);
+	face *= 1.0 - pit;
+	edge *= 1.0 - pit * 0.6;
+	// Cracks: thin dark lines along the ridges of a broad noise.
+	float crack = step(abs(noise(at / 22.0 + 7.0) - 0.5), 0.022) * face;
+	// Bone white at the top, fire at the bottom of the letters.
+	float down = clamp((at.y - 40.0) / 190.0, 0.0, 1.0);
+	vec3 fill = mix(vec3(1.0, 0.94, 0.8), vec3(1.0, 0.42, 0.08), smoothstep(0.35, 0.95, down));
+	fill = mix(fill, vec3(0.35, 0.03, 0.02), crack);
+	// Blood drips in blocky cells: a column of cells hangs down from a
+	// letter's bottom, each column its own length (most short, a few long).
+	vec2 cell = floor(at / CELL);
+	float length = floor(pow(hash(vec2(cell.x, 3.0)), 2.6) * 11.0);
+	float drip = 0.0;
+	if (page.a < 0.5 && length > 0.0) {
+		for (int k = 1; k <= 11; k++) {
+			if (float(k) > length) break;
+			vec2 above = (vec2(cell.x, cell.y - float(k)) + 0.5) * CELL * px;
+			if (texture(TEXTURE, above).a > 0.6) {
+				// Narrower toward the tip.
+				float width = mix(0.5, 0.22, float(k) / length);
+				drip = step(abs(fract(at.x / CELL) - 0.5), width);
+				break;
+			}
+		}
+	}
+	// A red glow round it all.
+	float glow = 0.0;
+	for (int i = 0; i < 12; i++) {
+		float a = float(i) * 0.5236;
+		glow += texture(TEXTURE, UV + vec2(cos(a), sin(a)) * 16.0 * px).a;
+	}
+	glow = glow / 12.0 * 0.75;
+	vec4 color = vec4(0.9, 0.18, 0.04, glow);
+	color = mix(color, vec4(0.48, 0.03, 0.02, 1.0), drip);
+	color = mix(color, vec4(0.25, 0.02, 0.01, 1.0), edge);
+	color = mix(color, vec4(fill, 1.0), face);
+	COLOR = color;
+}
+"""
 
 
 # --- Captures -------------------------------------------------------------------------
