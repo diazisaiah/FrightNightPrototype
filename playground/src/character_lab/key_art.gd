@@ -6,7 +6,8 @@ extends Node3D
 ## ring round his punch, the Answer's lightning, the Blur's speed streaks,
 ## the Stray's swirl), glowing eyes, bloom, a vignette and the title.
 ## Rendered off screen; run with -- --capture to save the banner (2172x724,
-## with and without the title) and each fighter alone (1080x1440), then quit.
+## with and without the title) and each fighter alone (1080x1440), then quit;
+## -- --cover saves the itch.io cover (630x500, at 3x: 1890x1500).
 
 const RevampBody = preload("res://fighter_body.gd")
 const Banner = preload("res://playground/character_lab/banner_pose.gd")
@@ -97,10 +98,39 @@ func _ready() -> void:
 		await _snap("key_art_banner_title.png")
 		await _portraits()
 		get_tree().quit()
+	elif "--cover" in OS.get_cmdline_user_args():
+		await _cover()
+		get_tree().quit()
 	elif "--select" in OS.get_cmdline_user_args():
 		_title.visible = false
 		await _select()
 		get_tree().quit()
+
+
+## The itch.io cover (2026-10-30): the four closer together, framed for
+## 630x500 (rendered at 3x), with and without the title over them.
+const COVER := Vector2i(1890, 1500)
+const COVER_SPREAD := 0.95
+
+
+func _cover() -> void:
+	_view.size = COVER
+	for node in _cast:
+		node.queue_free()
+	_cast.clear()
+	for fighter in Banner.CAST:
+		var spec: Dictionary = Banner.CAST[fighter]
+		_fighter(fighter, spec.at * Vector3(-COVER_SPREAD, 1, 1), spec.turn, spec.pose)
+	_camera.keep_aspect = Camera3D.KEEP_WIDTH
+	_camera.fov = 39.0
+	_camera.position = Vector3(0.0, 1.5, -7.3)
+	_camera.look_at(Vector3(0.0, 1.5, 0.2), Vector3.UP)
+	_title.scale = Vector2.ONE * 1.45
+	_title.position = Vector2((COVER.x - BANNER.x * 1.45) * 0.5, 10)
+	_title.visible = false
+	await _snap("cover.png")
+	_title.visible = true
+	await _snap("cover_title.png")
 
 
 ## The character select art: each fighter alone in their signature pose,

@@ -37,6 +37,8 @@ const JUMP_MIN := 0.04
 ## takes that out), but less of it flattens the knees' forward bend and turns
 ## the legs, so all of it by default.
 const DEPTH := 1.0
+## How much bigger the legs' moves play than tracked (see _boost_legs).
+const LEG_GAIN := 1.6
 
 
 ## The emote file for a track. options: smooth (frames of blur, 0 none),
@@ -58,17 +60,23 @@ static func to_emote(track: Dictionary, body: PlayerBody, options := {}) -> Dict
 	_level_feet(poses)
 	if bool(options.get("square", true)):
 		_level_head(poses)
+	_boost_legs(poses, float(options.get("legs", LEG_GAIN)))
 	if bool(options.get("reach", true)):
-		_reach_face(poses, frames, body)
-		_unwrap(poses)
-	_place_hips(poses, frames, track, body, bool(options.get("travel", true)))
+		_reach_face(poses, frames)
+	_place_hips(poses, frames, track, body, bool(options.get("travel", false)))
 	var times: Array = track.frames.map(func(f: Dictionary) -> float: return float(f.t))
 	var keep := _reduce(poses, times, float(options.get("tolerance", 6.0)))
 	var keys: Array = []
 	for i in keep:
 		var pose := {}
-		for joint in poses[i]:
+		for joint: String in poses[i]:
 			var v: Vector3 = poses[i][joint]
+			if joint.ends_with("_w"):
+				continue
+			if joint in Emotes.HANDS:
+				v *= 100.0
+				pose[joint] = [snappedf(v.x, 1.0), snappedf(v.y, 1.0), snappedf(v.z, 1.0), snappedf(poses[i][joint + "_w"].x * 100.0, 1.0)]
+				continue
 			v = v * 100.0 if joint == "pos" else v * (180.0 / PI)
 			pose[joint] = [snappedf(v.x, 0.1), snappedf(v.y, 0.1), snappedf(v.z, 0.1)]
 		keys.append({"t": snappedf(times[i] - times[0], 0.001), "pose": pose})
@@ -244,17 +252,18 @@ static func _skull(p: Array) -> Basis:
 
 
 ## Hands on the face (goggles, a salute, an L on the forehead, a dab's
-## face in the elbow) land where they touch on the fighter's own face. His
-## head is far bigger for his body than a person's, so the arm's angles
-## alone stop short (at the cheeks for the Griddy's goggles). A hand within
-## FACE_REACH ear-widths of the ears' middle is reached there (the arm bent
-## to fit, the elbow kept to its side), fading out to FACE_LEAVE.
+## face in the elbow): where each hand touches the head goes in the dance
+## (Emotes "lhand" / "rhand"), and each fighter's arm reaches that spot on
+## his own face as it plays. Angles alone miss: the fighters' heads are far
+## bigger for their bodies than a person's, and their fists and gloves differ
+## (the Griddy's goggles stopped at the Answer's cheeks and went over the
+## Mauler's head). Full within FACE_REACH ear-widths of the ears' middle,
+## fading out to FACE_LEAVE.
 const FACE_REACH := 1.8
 const FACE_LEAVE := 2.6
 
 
-static func _reach_face(poses: Array, frames: Array, body: PlayerBody) -> void:
-	var j: Dictionary = body._joints
+static func _reach_face(poses: Array, frames: Array) -> void:
 	for i in poses.size():
 		var p: Array = frames[i]
 		var ear_mid: Vector3 = (p[EAR[0]] + p[EAR[1]]) * 0.5
@@ -265,32 +274,27 @@ static func _reach_face(poses: Array, frames: Array, body: PlayerBody) -> void:
 			# The middle of the hand (the fist is the whole hand).
 			var hand_mid: Vector3 = (p[WRIST[side]] + p[INDEX[side]] + p[PINKY[side]]) / 3.0
 			var near: float = (hand_mid - ear_mid).length() / ear_width
-			var weight := 1.0 - smoothstep(FACE_REACH, FACE_LEAVE, near)
-			if weight <= 0.0:
-				continue
 			var s := "l" if side == 0 else "r"
-			pose.pos = Vector3.ZERO
-			body._apply(pose, false)
-			# Where the hand touches, in ear-widths round the ears' middle, on
-			# his head (ears 0.32 apart, 0.2 up the head).
-			var touch: Vector3 = skull.inverse() * (hand_mid - ear_mid) / ear_width
-			var target: Vector3 = (j.head as Node3D).global_transform * (Vector3(0, 0.2, 0) + touch * 0.32)
-			var shoulder: Vector3 = j[s + "s"].global_position
-			var elbow: Vector3 = j[s + "e"].global_position
-			var hand: Vector3 = (j[s + "e"] as Node3D).global_transform * Vector3(0, -0.26, 0)
-			target = hand.lerp(target, weight)
-			var upper := (elbow - shoulder).length()
-			var lower := (hand - elbow).length()
-			var to := target - shoulder
-			var reach := clampf(to.length(), absf(upper - lower) + 0.01, upper + lower - 0.01)
-			var aim := to.normalized()
-			var pole := (elbow - shoulder) - aim * (elbow - shoulder).dot(aim)
-			pole = pole.normalized() if pole.length() > 0.001 else Vector3.DOWN
-			var angle := acos(clampf((upper * upper + reach * reach - lower * lower) / (2.0 * upper * reach), -1.0, 1.0))
-			var new_elbow := shoulder + aim * upper * cos(angle) + pole * upper * sin(angle)
-			var arm := _limb((j.chest as Node3D).global_basis.orthonormalized(), shoulder, new_elbow, shoulder + aim * reach, -1.0, pose[s + "s"])
-			pose[s + "s"] = arm[0]
-			pose[s + "e"] = Vector3(arm[1], 0, 0)
+			# Where the hand touches, in ear-widths round the ears' middle.
+			pose[s + "hand"] = skull.inverse() * (hand_mid - ear_mid) / ear_width
+			pose[s + "hand_w"] = Vector3(1.0 - smoothstep(FACE_REACH, FACE_LEAVE, near), 0, 0)
+	# Off the face, where the hand would touch means nothing: it holds the
+	# nearest touch (no keys for it), and a hand that never touches has none.
+	for s in ["lhand", "rhand"]:
+		var touching: Array = []
+		for i in poses.size():
+			if poses[i][s + "_w"].x > 0.0:
+				touching.append(i)
+		for i in poses.size():
+			if touching.is_empty():
+				poses[i].erase(s)
+				poses[i].erase(s + "_w")
+			elif poses[i][s + "_w"].x <= 0.0:
+				var nearest: int = touching[0]
+				for k: int in touching:
+					if absi(k - i) < absi(nearest - i):
+						nearest = k
+				poses[i][s] = poses[nearest][s]
 
 
 ## A two-bone limb (shoulder or hip) in its parent's frame: [rotation of the
@@ -304,13 +308,20 @@ static func _limb(parent: Basis, a: Vector3, b: Vector3, c: Vector3, bend: float
 	var lower := (to_local * (c - b)).normalized()
 	var y := -upper
 	var across := lower - upper * lower.dot(upper)
-	var z := Vector3.ZERO
-	if across.length() > 0.2:
-		z = across.normalized() * bend
-	elif before is Vector3:
-		z = Basis.from_euler(before).z
-	else:
-		z = Vector3(0, 0, 1)
+	# The twist: the way the middle joint bends, trusted as the limb bends;
+	# nearly straight, that's a guess that can flip half way round in a frame
+	# (2026-10-30, the Griddy's arm swing), so it eases over to the twist the
+	# limb had a frame before.
+	var held := Basis.from_euler(before).z if before is Vector3 else Vector3(0, 0, 1)
+	held = held - y * held.dot(y)
+	var trust := smoothstep(0.12, 0.45, across.length())
+	var z := held.normalized() * (1.0 - trust)
+	if trust > 0.0:
+		var bent := across.normalized() * bend
+		# Of the two, the side nearer the held twist when the bend is slight.
+		if held.length() > 0.01 and bent.dot(held) < 0.0 and trust < 1.0:
+			trust *= trust
+		z += bent * trust
 	z = (z - y * z.dot(y)).normalized()
 	if z.length() < 0.5:
 		z = Vector3(0, 0, 1) - y * y.z
@@ -338,33 +349,80 @@ static func _level_feet(poses: Array) -> void:
 
 
 ## The ears and nose don't say reliably where level is (the Griddy clip,
-## 2026-10-30, came out chin up 18 degrees), so the head's typical tip over
-## the clip, against the floor, counts as looking ahead; nods and tilts that
-## come and go stay. Taken out half at the neck, half at the head.
+## 2026-10-30, came out chin up 18 degrees, turned and tilted to one side), so
+## the head's typical tip against the floor counts as looking ahead, and its
+## typical turn and tilt on the shoulders as square. What comes and goes
+## stays, calmed to HEAD_CALM (the face is small in the picture, so its
+## tracking jitters). Split half at the neck, half at the head.
+const HEAD_CALM := 0.6
+
+
 static func _level_head(poses: Array) -> void:
 	var tips: Array = []
+	var turns: Array = []
+	var tilts: Array = []
 	for pose: Dictionary in poses:
-		tips.append(pose.hips.x + pose.torso.x + pose.chest.x + pose.neck.x + pose.head.x)
-	var level := _median(tips) * 0.5
+		tips.append(_body_tip(pose) + pose.neck.x + pose.head.x)
+		turns.append(pose.neck.y + pose.head.y)
+		tilts.append(pose.neck.z + pose.head.z)
+	var typical := Vector3(_median(tips), _median(turns), _median(tilts))
 	for pose: Dictionary in poses:
-		pose.neck = pose.neck - Vector3(level, 0, 0)
-		pose.head = pose.head - Vector3(level, 0, 0)
+		var own := Vector3(_body_tip(pose) + pose.neck.x + pose.head.x, pose.neck.y + pose.head.y, pose.neck.z + pose.head.z)
+		var look := (own - typical) * HEAD_CALM
+		# Back from the floor to the shoulders.
+		look.x -= _body_tip(pose)
+		pose.neck = look * 0.5
+		pose.head = look * 0.5
 
 
-## Keeps each angle continuous frame to frame (no jump from 179 to -179).
+## How far the body under the neck tips forward or back (radians).
+static func _body_tip(pose: Dictionary) -> float:
+	return pose.hips.x + pose.torso.x + pose.chest.x
+
+
+## The Griddy's heel taps kick the feet toward the camera, along its shaky
+## depth, so the tracker sees them small (the user, 2026-10-30: "the feet and
+## knees don't move enough"). Each leg's forward swing, knee bend and toe lift
+## move gain times as far from their typical angle.
+static func _boost_legs(poses: Array, gain: float) -> void:
+	if is_equal_approx(gain, 1.0):
+		return
+	for joint in ["lh", "lk", "lf", "rh", "rk", "rf"]:
+		var typical := _median(poses.map(func(p: Dictionary) -> float: return p[joint].x))
+		for pose: Dictionary in poses:
+			var v: Vector3 = pose[joint]
+			v.x = typical + (v.x - typical) * gain
+			if joint.ends_with("k"):
+				v.x = minf(v.x, 0.0)
+			pose[joint] = v
+
+
+## A turn has two sets of angles (x, y, z and 180 - x, y + 180, z + 180);
+## each frame keeps the one nearer the frame before, so a key-to-key blend
+## never spins the long way round.
 static func _unwrap(poses: Array) -> void:
 	for i in range(1, poses.size()):
 		for joint in poses[i]:
-			if joint == "pos":
+			if not joint in Emotes.JOINTS:
 				continue
 			var v: Vector3 = poses[i][joint]
 			var before: Vector3 = poses[i - 1][joint]
+			var other := Vector3(PI - v.x, v.y + PI, v.z + PI)
+			if _wrapped_gap(other, before) < _wrapped_gap(v, before):
+				v = other
 			for c in 3:
 				while v[c] - before[c] > PI:
 					v[c] -= TAU
 				while v[c] - before[c] < -PI:
 					v[c] += TAU
 			poses[i][joint] = v
+
+
+static func _wrapped_gap(a: Vector3, b: Vector3) -> float:
+	var gap := 0.0
+	for c in 3:
+		gap += absf(wrapf(a[c] - b[c], -PI, PI))
+	return gap
 
 
 ## The hips' offset. The tracker gives every joint round the hips, so where
@@ -421,16 +479,30 @@ static func _place_hips(poses: Array, frames: Array, track: Dictionary, body: Pl
 					start_x = feet_x
 				offset.x += (feet_x - start_x) * aspect * meters[i] * to_rig * (1.0 if track.get("mirror", false) else -1.0)
 		pose.pos = offset
+	# Side to side and front to back, steadied: the feet's small slips in the
+	# tracking swayed the whole body (2026-10-30).
+	var steady: Array = []
+	for i in poses.size():
+		var sum := Vector2.ZERO
+		var weight := 0.0
+		for k in range(maxi(i - 6, 0), mini(i + 6, poses.size() - 1) + 1):
+			var w := exp(-0.5 * pow((k - i) / 3.0, 2.0))
+			sum += Vector2(poses[k].pos.x, poses[k].pos.z) * w
+			weight += w
+		steady.append(sum / weight)
+	for i in poses.size():
+		poses[i].pos = Vector3(steady[i].x, poses[i].pos.y, steady[i].y)
 	body._apply({})
 
 
 ## Where the body stands, in its own space: between the ankles, leaning to
-## the lower one (the one taking the weight), at the lower one's height.
+## the lower one (the one taking the weight) once it's clearly lower, at the
+## lower one's height.
 static func _stance(body: PlayerBody) -> Vector3:
 	var l := body.to_local((body._joints.get("lf", body._joints.lk) as Node3D).global_position)
 	var r := body.to_local((body._joints.get("rf", body._joints.rk) as Node3D).global_position)
-	var x := _weighted(l.x, r.x, l.y, r.y, 0.03)
-	var z := _weighted(l.z, r.z, l.y, r.y, 0.03)
+	var x := _weighted(l.x, r.x, l.y, r.y, 0.1)
+	var z := _weighted(l.z, r.z, l.y, r.y, 0.1)
 	return Vector3(x, minf(l.y, r.y), z)
 
 
@@ -466,7 +538,7 @@ static func _split(poses: Array, times: Array, a: int, b: int, tolerance: float,
 		for joint in poses[i]:
 			var guess: Vector3 = (poses[a][joint] as Vector3).lerp(poses[b][joint], u)
 			var miss: Vector3 = (poses[i][joint] - guess).abs()
-			var scale := 100.0 if joint == "pos" else 180.0 / PI
+			var scale := 100.0 if joint == "pos" or joint.contains("hand") else 180.0 / PI
 			error = maxf(error, maxf(miss.x, maxf(miss.y, miss.z)) * scale)
 		if error > worst_error:
 			worst_error = error

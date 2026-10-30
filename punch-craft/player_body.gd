@@ -118,6 +118,7 @@ func _process(delta: float) -> void:
 		var to: Vector3 = target.get(joint, Emotes.REST.get(joint, Vector3.ZERO))
 		_set_joint(joint, (_from[joint] as Vector3).lerp(to, w))
 	_plant_feet()
+	_reach_hands(target, w)
 	if _clip.is_empty() and w >= 1.0:
 		set_process(false)
 
@@ -128,6 +129,7 @@ func _apply(pose: Dictionary, plant := true) -> void:
 	for joint in Emotes.JOINTS + ["pos"]:
 		_set_joint(joint, pose.get(joint, Emotes.REST.get(joint, Vector3.ZERO)))
 	_plant_feet(plant)
+	_reach_hands(pose)
 
 
 func _set_joint(joint: String, value: Vector3) -> void:
@@ -163,6 +165,53 @@ func _plant_feet(plant := true) -> void:
 		if _joints.has(side + "f"):
 			var tilt := Vector3(body.x + hip.x + knee.x, 0, body.z + hip.z + knee.z)
 			_joints[side + "f"].rotation = _values.get(side + "f", Vector3.ZERO) - tilt
+
+
+## Hands on the face (Emotes "lhand" / "rhand"): the arm bends to put the
+## middle of the fist on that spot of this fighter's face, blended in by the
+## touch's weight (and strength, easing a dance in).
+func _reach_hands(pose: Dictionary, strength := 1.0) -> void:
+	for s in ["l", "r"]:
+		var weight: float = (pose.get(s + "hand_w", Vector3.ZERO) as Vector3).x * strength
+		if weight <= 0.001 or not pose.has(s + "hand"):
+			continue
+		var shoulder: Node3D = _joints[s + "s"]
+		var elbow: Node3D = _joints[s + "e"]
+		var head: Node3D = _joints.head
+		var at := shoulder.global_position
+		var bend := elbow.global_position
+		var fist := elbow.global_transform * Vector3(0, -_fist_reach(), 0)
+		var spot := head.global_transform * (Vector3(0, 0.2, 0) + (pose[s + "hand"] as Vector3) * _ear_width())
+		var target := fist.lerp(spot, clampf(weight, 0.0, 1.0))
+		var upper := (bend - at).length()
+		var lower := (fist - bend).length()
+		var to := target - at
+		var reach := clampf(to.length(), absf(upper - lower) + 0.01, upper + lower - 0.01)
+		var aim := to.normalized()
+		# The elbow stays on the side it was on.
+		var pole := (bend - at) - aim * (bend - at).dot(aim)
+		pole = pole.normalized() if pole.length() > 0.001 else Vector3.DOWN
+		var angle := acos(clampf((upper * upper + reach * reach - lower * lower) / (2.0 * upper * reach), -1.0, 1.0))
+		var new_bend := at + aim * upper * cos(angle) + pole * upper * sin(angle)
+		var up := -(new_bend - at).normalized()
+		var forearm := (at + aim * reach - new_bend).normalized()
+		# The elbow bends the forearm toward the upper arm's -Z.
+		var across := forearm + up * forearm.dot(up)
+		var back := -across.normalized() if across.length() > 0.01 else shoulder.global_basis.orthonormalized().z
+		back = (back - up * back.dot(up)).normalized()
+		var parent := (shoulder.get_parent() as Node3D).global_basis.orthonormalized()
+		shoulder.rotation = (parent.inverse() * Basis(up.cross(back), up, back)).get_euler()
+		elbow.rotation = Vector3(acos(clampf(-up.dot(forearm), -1.0, 1.0)), 0, 0)
+
+
+## The head's width across the ears, in its own units (hands on the face are
+## measured in it), and how far under the elbow the middle of the fist is.
+func _ear_width() -> float:
+	return 0.32
+
+
+func _fist_reach() -> float:
+	return 0.34
 
 
 func _hip_height() -> float:

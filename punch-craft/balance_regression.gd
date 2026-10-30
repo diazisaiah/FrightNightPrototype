@@ -753,8 +753,8 @@ func _test_emotes_and_hats() -> void:
 			_check(float(key.t) >= 0.0 and float(key.t) < float(data.length), "%s keys sit inside the dance" % id)
 			_check(String(key.get("ease", "smooth")) in Emotes.EASES, "%s eases are real" % id)
 			for joint in key.pose:
-				_check(joint == "pos" or joint in Emotes.JOINTS, "%s moves a real joint (not %s)" % [id, joint])
-				_check(key.pose[joint].size() == 3, "%s %s is x, y, z" % [id, joint])
+				_check(joint == "pos" or joint in Emotes.JOINTS or joint in Emotes.HANDS, "%s moves a real joint (not %s)" % [id, joint])
+				_check(key.pose[joint].size() == (4 if joint in Emotes.HANDS else 3), "%s %s is x, y, z (and a hand's weight)" % [id, joint])
 	# A loop comes back round to its start, and the smooth curve never swings
 	# past its keys.
 	var floss := Emotes.clip("floss")

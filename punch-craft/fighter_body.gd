@@ -310,6 +310,15 @@ func _bake_cells(node: Node3D, grid: Dictionary, cells: Array, offset: Vector3) 
 	_baked.append([get_path_to(node), multimesh])
 
 
+func _ear_width() -> float:
+	return 2.0 * (0.15 * _b("face") + 0.011) if _revamp else super._ear_width()
+
+
+## The Mauler's gloves hang lower than everyone's fists.
+func _fist_reach() -> float:
+	return 0.39 if fighter == "berserker" else 0.34
+
+
 func _tiny() -> bool:
 	return voxel_scale == "tiny"
 
@@ -556,9 +565,9 @@ func _answer_shoe(foot: Node3D, side: float) -> void:
 	# A white sole, the black upper and toe box, a padded collar, laces, and
 	# a white stripe along the outside.
 	_block(knee, Vector3(-w - 0.006, -0.46, -0.178), Vector3(w + 0.006, -0.43, 0.086), sole)
-	_block(knee, Vector3(-w, -0.44, -0.16), Vector3(w, -0.37, 0.08), shoe, 0.02)
+	_upper(knee, w, shoe)
 	_block(knee, Vector3(-w + 0.004, -0.44, -0.17), Vector3(w - 0.004, -0.395, -0.09), shoe, 0.02)
-	_taper(knee, -0.38, -0.33, Vector2(w, w), Vector2(w - 0.004, w - 0.004), shoe, 0.02, Vector3(0, 0, 0.012))
+	_collar(knee.get_parent().get_parent(), w, -0.33, shoe)
 	var laces := [-0.418, -0.386, -0.354] if _tiny() else [-0.41]
 	for y: float in laces:
 		_block(knee, Vector3(-0.03, y, -0.15), Vector3(0.03, y + _v, -0.11), trim)
@@ -943,11 +952,31 @@ func _shoe_on(knee: Node3D, side: float, upper: Color, sole: Color, toe: Color, 
 	foot.add_child(shoe)
 	var w := 0.066 * maxf(_r("calf"), 1.0)
 	_block(shoe, Vector3(-w - 0.006, -0.46, -0.178), Vector3(w + 0.006, -0.43, 0.086), sole)
-	_block(shoe, Vector3(-w, -0.44, -0.16), Vector3(w, -0.37, 0.08), upper, 0.02)
+	_upper(shoe, w, upper)
 	_block(shoe, Vector3(-w + 0.004, -0.44, -0.17), Vector3(w - 0.004, -0.395, -0.09), toe, 0.02)
-	_taper(shoe, -0.38, top, Vector2(w, w), Vector2(w - 0.004, w - 0.004), shaft if shaft != null else upper, 0.02, Vector3(0, 0, 0.012))
+	_collar(knee, w, top, shaft if shaft != null else upper)
 	_block(shoe, Vector3(-0.03, -0.41, -0.15), Vector3(0.03, -0.41 + _v, -0.11), laces)
 	_side_block(shoe, side, w - 0.004, w + _v * 0.6, -0.43, -0.43 + _line, -0.14, 0.06, stripe)
+
+
+## The shoe's upper (on the foot), leaving out the collar above the ankle.
+func _upper(shoe: Node3D, w: float, color: Variant) -> void:
+	var lo := Vector3(-w, -0.44, -0.16)
+	var hi := Vector3(w, -0.37, 0.08)
+	_fill(shoe, lo, hi, color, func(p: Vector3) -> bool:
+		return _in_rounded(p, lo, hi, 0.02) and not (p.y > -ANKLE and _in_collar(p, w)))
+
+
+## The collar or boot shaft, from the ankle up to top, built on the shin (not
+## the foot): when the ankle bends, the foot turns under it and the shaft
+## stays round the leg (2026-10-30: the Mauler's high tops swung off his
+## ankles on the Griddy's heel taps).
+func _collar(knee: Node3D, w: float, top: float, color: Variant) -> void:
+	_taper(knee, -ANKLE, top, Vector2(w, w), Vector2(w - 0.004, w - 0.004), color, 0.02, Vector3(0, 0, 0.012))
+
+
+func _in_collar(p: Vector3, w: float) -> bool:
+	return absf(p.x) <= w and absf(p.z - 0.012) <= w
 
 
 ## A patch box (in a leg's own space, x measured outward) for painting.

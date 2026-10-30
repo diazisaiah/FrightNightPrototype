@@ -31,6 +31,12 @@ class_name Emotes
 ##   ankles lf/rf: measured from flat on the floor, whatever the leg does:
 ##     +x lifts the toes (heel tap), -x points them (up on the toes), y turns
 ##     the foot out or in.
+## Hands on the face: "lhand" / "rhand" [x, y, z, weight] is where that
+## hand touches the head, in ear-widths (x 100) round the ears' middle (x to
+## the fighter's right, y up, z back), weight 0-100. Each fighter's arm
+## reaches that spot on his own face as he plays it (PlayerBody._reach_hands),
+## whatever the size of his head, arms or gloves (2026-10-30: the Griddy's
+## goggles; angles alone put the Mauler's gloves over his head).
 ## mirror() flips a pose left to right.
 
 const DIR := "res://emotes/"
@@ -40,6 +46,7 @@ const REST := {
 	"rs": Vector3(0.05, 0, 0.12), "re": Vector3(0.25, 0, 0),
 }
 const EASES := ["smooth", "ease", "snap", "linear", "hold"]
+const HANDS := ["lhand", "rhand"]
 ## Wheel order (clockwise from the top).
 const ORDER := ["default", "dab", "nae_nae", "floss", "take_the_l", "griddy", "horse_ride", "running_man", "bros_shuffle", "boo_yah", "intense_yelling", "overexerted", "plumber_jump"]
 
@@ -80,7 +87,9 @@ static func parse(data: Dictionary) -> Dictionary:
 	var keys: Array = data.get("keys", []).duplicate()
 	keys.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a.t) < float(b.t))
 	var tracks := {}
-	for joint in JOINTS + ["pos"]:
+	# A hand's touch plays as two tracks: where (lhand) and how much (lhand_w).
+	for track: String in JOINTS + ["pos"] + HANDS + ["lhand_w", "rhand_w"]:
+		var joint := track.trim_suffix("_w")
 		var times: Array = []
 		var values: Array = []
 		var eases: Array = []
@@ -90,14 +99,17 @@ static func parse(data: Dictionary) -> Dictionary:
 				continue
 			var a: Array = pose[joint]
 			var v := Vector3(a[0], a[1], a[2])
-			values.append(v / 100.0 if joint == "pos" else v * (PI / 180.0))
+			if track.ends_with("_w"):
+				values.append(Vector3(float(a[3]) / 100.0 if a.size() > 3 else 1.0, 0, 0))
+			else:
+				values.append(v / 100.0 if joint == "pos" or joint in HANDS else v * (PI / 180.0))
 			times.append(float(key.t))
 			eases.append(maxi(EASES.find(String(key.get("ease", "smooth"))), 0))
 		if times.is_empty():
 			continue
 		if loop:
 			_wrap(times, values, eases, loop_start, length)
-		tracks[joint] = {"t": PackedFloat32Array(times), "v": values, "e": eases, "m": _slopes(times, values)}
+		tracks[track] = {"t": PackedFloat32Array(times), "v": values, "e": eases, "m": _slopes(times, values)}
 	return {"length": length, "loop": loop, "loop_start": loop_start, "plant": bool(data.get("plant", true)), "tracks": tracks}
 
 
@@ -190,12 +202,14 @@ static func _track_at(track: Dictionary, t: float) -> Vector3:
 ## The pose with left and right swapped.
 static func mirror(pose: Dictionary) -> Dictionary:
 	var flipped := {}
-	for joint in pose:
+	for joint: String in pose:
 		var value: Vector3 = pose[joint]
 		var other: String = joint
-		if joint.length() == 2 and joint[0] in ["l", "r"]:
-			other = ("r" if joint[0] == "l" else "l") + joint[1]
-		if joint == "pos":
+		if (joint.length() == 2 or joint.begins_with("lhand") or joint.begins_with("rhand")) and joint[0] in ["l", "r"]:
+			other = ("r" if joint[0] == "l" else "l") + joint.substr(1)
+		if joint.ends_with("_w"):
+			flipped[other] = value
+		elif joint == "pos" or joint in HANDS:
 			flipped[other] = Vector3(-value.x, value.y, value.z)
 		else:
 			flipped[other] = Vector3(value.x, -value.y, -value.z)

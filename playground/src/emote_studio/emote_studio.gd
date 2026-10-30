@@ -86,6 +86,7 @@ var _import_detail: HSlider
 var _import_travel: CheckBox
 var _import_depth: HSlider
 var _import_square: CheckBox
+var _import_legs: HSlider
 var _joint_buttons := {}
 var _joint_title: Label
 var _sliders: Array = []
@@ -348,10 +349,10 @@ static func _serialize(data: Dictionary) -> String:
 		if String(key.get("ease", "smooth")) != "smooth":
 			parts.append("\"ease\": " + JSON.stringify(key.ease))
 		var joints: Array = []
-		for joint in Emotes.JOINTS + ["pos"]:
+		for joint in Emotes.JOINTS + ["pos"] + Emotes.HANDS:
 			if key.pose.has(joint):
 				var v: Array = key.pose[joint]
-				joints.append("\"%s\": [%s, %s, %s]" % [joint, _num(v[0]), _num(v[1]), _num(v[2])])
+				joints.append("\"%s\": [%s]" % [joint, ", ".join(v.map(func(n: Variant) -> String: return _num(float(n))))])
 		parts.append("\"pose\": {" + ", ".join(joints) + "}")
 		keys.append("\t\t{" + ", ".join(parts) + "}")
 	lines.append(",\n".join(keys))
@@ -376,7 +377,13 @@ func _key_at(t: float) -> int:
 func _file_pose(t: float) -> Dictionary:
 	var pose := {}
 	var sampled := Emotes.sample(_clip, t) if not _clip.is_empty() else {}
-	for joint in sampled:
+	for joint: String in sampled:
+		if joint.ends_with("_w"):
+			continue
+		if joint in Emotes.HANDS:
+			var v: Vector3 = sampled[joint] * 100.0
+			pose[joint] = [snappedf(v.x, 1.0), snappedf(v.y, 1.0), snappedf(v.z, 1.0), snappedf(sampled.get(joint + "_w", Vector3.ONE).x * 100.0, 1.0)]
+			continue
 		pose[joint] = _to_file(joint, sampled[joint])
 	return pose
 
@@ -563,7 +570,8 @@ func _import(file: String) -> void:
 	var options := {
 		"smooth": _import_smooth.value if _import_smooth else 1.5,
 		"tolerance": _import_detail.value if _import_detail else 6.0,
-		"travel": _import_travel.button_pressed if _import_travel else true,
+		"travel": _import_travel.button_pressed if _import_travel else false,
+		"legs": _import_legs.value if _import_legs else EmoteRetarget.LEG_GAIN,
 		"depth": _import_depth.value if _import_depth else EmoteRetarget.DEPTH,
 		"square": _import_square.button_pressed if _import_square else true,
 	}
@@ -761,27 +769,32 @@ func _delete_key() -> void:
 func _mirror_pose() -> void:
 	_remember()
 	var key := _key_here()
-	var pose := {}
-	for joint in key.pose:
-		pose[joint] = _from_file(joint, key.pose[joint])
-	var flipped := Emotes.mirror(pose)
-	key.pose = {}
-	for joint in flipped:
-		key.pose[joint] = _to_file(joint, flipped[joint])
+	key.pose = _mirror_file_pose(key.pose)
 	_changed()
 
 
 func _mirror_dance() -> void:
 	_remember()
 	for key: Dictionary in _data["keys"]:
-		var pose := {}
-		for joint in key.pose:
-			pose[joint] = _from_file(joint, key.pose[joint])
-		var flipped := Emotes.mirror(pose)
-		key.pose = {}
-		for joint in flipped:
-			key.pose[joint] = _to_file(joint, flipped[joint])
+		key.pose = _mirror_file_pose(key.pose)
 	_changed()
+
+
+## A key's pose (as the file writes it) left to right.
+static func _mirror_file_pose(pose: Dictionary) -> Dictionary:
+	var out := {}
+	for joint: String in pose:
+		var a: Array = pose[joint]
+		var other := joint
+		if joint[0] in ["l", "r"] and (joint.length() == 2 or joint in Emotes.HANDS):
+			other = ("r" if joint[0] == "l" else "l") + joint.substr(1)
+		if joint == "pos" or joint in Emotes.HANDS:
+			var flipped := a.duplicate()
+			flipped[0] = -float(a[0])
+			out[other] = flipped
+		else:
+			out[other] = [a[0], -float(a[1]), -float(a[2])]
+	return out
 
 
 ## Changes the dance's length; stretch: the keys (and the source clip) move
@@ -913,13 +926,15 @@ func _left_panel() -> Control:
 	_import_mirror = _check("Mirrored (selfie) clip", func(_on: bool) -> void: pass)
 	box.add_child(_import_mirror)
 	_import_travel = _check("Keep travel across the floor", func(_on: bool) -> void: pass)
-	_import_travel.button_pressed = true
+	_import_travel.button_pressed = false
 	box.add_child(_import_travel)
 	_import_square = _check("Square to the camera (takes out its angle)", func(_on: bool) -> void: pass)
 	_import_square.button_pressed = true
 	box.add_child(_import_square)
 	_import_depth = _hslider("Depth trust (the tracker's shaky axis)", 0.0, 1.0, 0.05, EmoteRetarget.DEPTH)
 	box.add_child(_import_depth.get_parent())
+	_import_legs = _hslider("Leg moves bigger by", 1.0, 2.5, 0.1, EmoteRetarget.LEG_GAIN)
+	box.add_child(_import_legs.get_parent())
 	_import_smooth = _hslider("Smoothing", 0.0, 4.0, 0.25, 1.5)
 	box.add_child(_import_smooth.get_parent())
 	_import_detail = _hslider("Fewer keys (degrees off allowed)", 1.0, 20.0, 0.5, 6.0)
@@ -1234,6 +1249,37 @@ func _shots() -> void:
 			for j in ["pos", "hips", "lh", "lk", "lf", "rh", "rk", "rf"]:
 				var v: Vector3 = pose.get(j, Vector3.ZERO)
 				line += "  %s %s" % [j, (v * 100.0).round() if j == "pos" else (v * 180.0 / PI).round()]
+			print(line)
+	# --glitch: the fastest joint turns (degrees per 1/60 s), where a swing
+	# flips or pops.
+	if "--glitch" in OS.get_cmdline_user_args():
+		var speeds: Array = []
+		var before := {}
+		for i in int(float(_data.length) * 60.0):
+			var pose := Emotes.sample(_clip, i / 60.0)
+			for joint in pose:
+				if joint == "pos":
+					continue
+				var q := Quaternion.from_euler(pose[joint])
+				if before.has(joint):
+					speeds.append([rad_to_deg((before[joint] as Quaternion).angle_to(q)), i / 60.0, joint])
+				before[joint] = q
+		speeds.sort_custom(func(a: Array, b: Array) -> bool: return a[0] > b[0])
+		for k in 15:
+			print("glitch %.1f deg at %.2fs %s" % speeds[k])
+	# --reach: how far each fist on the face misses its spot (cm).
+	if "--reach" in OS.get_cmdline_user_args():
+		for i in int(float(_data.length) * 10.0):
+			var pose := Emotes.sample(_clip, i / 10.0)
+			_body._apply(pose, bool(_data.get("plant", true)))
+			var line := "reach %.1f" % (i / 10.0)
+			for s in ["l", "r"]:
+				if not pose.has(s + "hand"):
+					continue
+				var head: Node3D = _body._joints.head
+				var spot := head.global_transform * (Vector3(0, 0.2, 0) + (pose[s + "hand"] as Vector3) * _body._ear_width())
+				var fist := (_body._joints[s + "e"] as Node3D).global_transform * Vector3(0, -_body._fist_reach(), 0)
+				line += "  %s w %.2f miss %.1f" % [s, pose[s + "hand_w"].x, (spot - fist).length() * 100.0]
 			print(line)
 	# --clean: just the fighter (and the tracked skeleton), front on.
 	if "--clean" in OS.get_cmdline_user_args():

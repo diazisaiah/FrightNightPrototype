@@ -1494,6 +1494,9 @@ Emotes are redone to match real sources (clips, GIFs, stills, written breakdowns
 
 **Redone from sources:**
 - **Griddy (2026-10-30):** tracked from the user's clip of the game emote (fingers ignored). Crouched heel-tap footwork with pumping arms, a wide-arm lean, the forward lean, then the goggles; 3.96s loop, keys straight from the import.
+  - Second pass (the user's notes): the head was looking up and to the side, the body swayed side to side, the feet and knees moved too little, the Mauler's ankles poked out of his high tops, and one arm swing glitched. The import now levels the head's typical turn and tilt as well as its tip and calms its motion (HEAD_CALM 0.6); the body stands between both feet (only shifting onto one clearly lifted off), is steadied side to side and doesn't follow travel unless asked; the legs' moves play 1.6x as big (LEG_GAIN, a slider); a nearly straight arm keeps the twist it had instead of flipping half way round in a frame (the glitch: 73 degrees in 1/60s), and each turn keeps the set of angles nearest the frame before.
+  - **Hands on the face** go in the dance file as where they touch the head (`lhand` / `rhand`: ear-widths round the ears' middle, and a weight), and each fighter's arm reaches that spot on his own face as he plays it (`PlayerBody._reach_hands`), whatever his head, arms or gloves. Before, the goggles stopped at the Answer's cheeks and went over the Mauler's head.
+  - **Boot shafts and shoe collars ride the shin** (`FighterBody._collar`), so a bent ankle turns the shoe under them instead of swinging the shaft off the leg.
 
 **Tightened 2026-10-17:** the dances were stiff from the front, because knee bends and hip dips happen front to back, and the feet sank into the floor.
 - `PlayerBody._plant_feet` now keeps the feet on the canvas: dropping the hips bends the knees, and swaying them sideways leans the legs.
