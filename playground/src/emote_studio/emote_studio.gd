@@ -327,6 +327,11 @@ func _undo_step(back: bool) -> void:
 
 
 func _save() -> void:
+	# A key at the very end would sit on the loop's first key (2026-10-30: the
+	# Dab and Nae Nae closed their loops with a copy of it); the end flows into
+	# the first key by itself.
+	var length := float(_data.length)
+	_data["keys"] = _data["keys"].filter(func(key: Dictionary) -> bool: return float(key.t) < length - 0.0005)
 	var text := _serialize(_data)
 	for dir in [_game_dir(), ProjectSettings.globalize_path("res://emotes")]:
 		if not DirAccess.dir_exists_absolute(dir):
