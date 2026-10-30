@@ -39,6 +39,7 @@ func _run() -> void:
 	await _test_teleport_walls()
 	await _test_head_stomp()
 	await _test_dash_punch_cooldowns()
+	await _test_combo_setups()
 	await _test_dead_weight()
 	await _test_tutorial_fights()
 	await _test_perch_and_blood()
@@ -472,6 +473,48 @@ func _test_dash_punch_cooldowns() -> void:
 	_check(player._dash_punch_style("jab", false) == "spear", "Once it's back, a dash jab spears again")
 	await _free_rig(holder)
 	print("Card runtime: dash punch cooldowns OK")
+
+
+## Set-ups (2026-10-30): real boxing combos aren't SLOPPY. Each sequence is
+## [move, hand] steps ("slip_right", "roll_left" for head movement); every
+## hook and uppercut in it must come out set up, and the combo must survive.
+func _test_combo_setups() -> void:
+	var rig := await _make_rig("counter_master")
+	var holder: Node3D = rig[0]
+	var player: Player = rig[1]
+	var target: Enemy = (rig[2] as Array)[0]
+	target.max_hp = 1e9
+	target.hp = 1e9
+	var combos := [
+		[["jab", "left"], ["cross", "right"], ["hook", "left"], ["roll_left", ""], ["hook", "left"]],
+		[["jab", "left"], ["cross", "right"], ["slip_right", ""], ["uppercut", "right"]],
+		[["jab", "left"], ["hook", "left"]],
+		[["jab", "left"], ["cross", "right"], ["hook", "left"], ["hook", "right"]],
+		[["jab", "left"], ["uppercut", "right"], ["uppercut", "left"]],
+		[["slip_left", ""], ["hook", "left"]],
+	]
+	for combo in combos:
+		player._set_combo(0)
+		player._defense_cooldown = 0.0
+		var landed := 0
+		for step in combo:
+			if step[1] == "":
+				player._defense_cooldown = 0.0
+				player._try_defense(step[0])
+				continue
+			player._land_punch(step[0], step[1], false, false, target)
+			landed += 1
+			if Player.PUNCHES[step[0]].heavy:
+				_check(player._last_set_up, "%s %s is set up in %s" % [step[1], step[0], combo])
+		_check(player.combo == landed, "The combo survives %s (%d of %d)" % [combo, player.combo, landed])
+	# Still SLOPPY: a hook thrown cold, and an uppercut after a cold hook.
+	player._set_combo(0)
+	player._land_punch("hook", "left", false, false, target)
+	_check(not player._last_set_up, "A hook thrown cold isn't set up")
+	player._land_punch("uppercut", "right", false, false, target)
+	_check(not player._last_set_up, "An uppercut after a cold hook isn't set up")
+	await _free_rig(holder)
+	print("Card runtime: combo set-ups OK")
 
 
 ## Dead Weight (2026-10-29): a Doom-marked monster deals 25 / 30 / 35% less

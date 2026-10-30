@@ -98,6 +98,9 @@ const CHAIN_LIGHTNING_EVERY := 5
 ## that they keep it alive but it won't grow until a set-up heavy, a counter,
 ## a dash jab or an air punch mixes it up.
 const STRAIGHT_RUN_LIMIT := 4
+## A slip or roll loads that side for this long: a hook or uppercut with that
+## hand is set up (slip right, right uppercut; roll left, left hook).
+const HEAD_MOVE_SETUP := 1.2
 ## Max speed and time limit for gliding back to the spot a back step started from.
 const BACK_STEP_RETURN_SPEED := 12.0
 const BACK_STEP_RETURN_LIMIT := 0.35
@@ -256,6 +259,9 @@ var _sloppy_run := 0
 var _sloppy_tip_time := -100.0
 ## The last punch was a set-up heavy (a set-up hook sets up an uppercut).
 var _last_set_up := false
+## The side the last slip or roll moved to, and when (seconds).
+var _moved_side := ""
+var _moved_at := -10.0
 ## Jabs in a row from the same hand (a double jab keeps the combo).
 var _jab_run := 0
 ## Who the last punch landed on: switching to a new enemy can start on
@@ -1234,6 +1240,13 @@ func _try_defense(move: String) -> void:
 	_defense_timer = window
 	_defense_window = window
 	_defense_cooldown = window + defense.recovery * cards.recovery_scale()
+	# Head movement is part of a combo: it loads that side, and it keeps the
+	# combo alive while you move.
+	if move.begins_with("slip") or move.begins_with("roll"):
+		_moved_side = defense.side
+		_moved_at = Time.get_ticks_msec() / 1000.0
+		if combo > 0:
+			_combo_timer = maxf(_combo_timer, window + HEAD_MOVE_SETUP)
 	_animate_defense(move)
 	Sfx.play("whoosh", -6.0, 0.8 if move.begins_with("slip") else 0.6)
 
@@ -1472,14 +1485,21 @@ func _land_punch(type: String, hand: String, _dashing := false, airborne := fals
 		return
 
 	var punch: Dictionary = PUNCHES[type]
-	# Heavy punches only get their multiplier and stagger when they follow a
-	# jab or cross from the other hand (jab -> right uppercut, jab-cross-hook...),
-	# and a set-up hook sets up an uppercut from the other hand (jab, cross,
-	# hook, uppercut). The Berserker's heavy punches don't need a setup.
+	# A hook or uppercut gets its multiplier and stagger when it's set up
+	# (2026-10-30, reworked to follow real combos, and more forgiving):
+	# - right after a jab or cross, either hand (jab, left hook);
+	# - right after a set-up hook or uppercut, either hand (two hooks in a row);
+	# - with the hand on the side you just slipped or rolled to (slip right,
+	#   right uppercut; roll left, left hook), even to start.
+	# The Berserker's heavy punches don't need a setup.
+	var now_s := Time.get_ticks_msec() / 1000.0
+	var moved := _moved_side != "" and now_s - _moved_at < HEAD_MOVE_SETUP
+	var loaded := moved and _moved_side == hand
 	var after_straight := _last_type in ["jab", "cross"]
-	var after_hook := type == "uppercut" and _last_type == "hook" and _last_set_up
+	var after_heavy := _last_type in ["hook", "uppercut"] and _last_set_up
 	var set_up: bool = punch.heavy and (GameState.is_player_class("berserker") \
-			or (combo > 0 and hand != _last_hand and (after_straight or after_hook)))
+			or (combo > 0 and (after_straight or after_heavy)) or loaded)
+	_moved_side = ""
 	# A counter only counts with the hand on the side you dodged to.
 	var counter := is_counter_ready() and (_counter_side == "any" or _counter_side == hand)
 	var clean := counter and _clean_counter
@@ -1492,15 +1512,16 @@ func _land_punch(type: String, hand: String, _dashing := false, airborne := fals
 	var target_was_fresh := target.hp >= target.max_hp
 
 	# Alternating hands builds the combo; the same hand twice starts it over,
-	# except a double jab (jab, jab), after which the other hand must come
-	# next. Triple Jab (Blur skill) allows a third jab. Moving on to a new
-	# enemy can start on either hand.
+	# except a double jab (jab, jab), a set-up hook or uppercut (jab, left
+	# hook; hook, hook), or a slip or roll in between (left hook, roll left,
+	# left hook). Moving on to a new enemy can start on either hand.
 	var new_target := target.get_instance_id() != _last_target_id
 	_last_target_id = target.get_instance_id()
 	var jab_repeat := type == "jab" and _last_type == "jab" and hand == _last_hand and not new_target
 	_jab_run = _jab_run + 1 if jab_repeat else (1 if type == "jab" else 0)
 	var jabs_allowed := 2
-	if hand == _last_hand and not new_target and not (jab_repeat and _jab_run <= jabs_allowed) and unbroken_time <= 0.0:
+	var same_hand_ok := (jab_repeat and _jab_run <= jabs_allowed) or set_up or moved
+	if hand == _last_hand and not new_target and not same_hand_ok and unbroken_time <= 0.0:
 		combo = 0
 	_last_hand = hand
 	_last_type = type
@@ -1605,7 +1626,7 @@ func _land_punch(type: String, hand: String, _dashing := false, airborne := fals
 		if _sloppy_run >= SLOPPY_TIP_AFTER and now - _sloppy_tip_time > SLOPPY_TIP_EVERY:
 			_sloppy_tip_time = now
 			_sloppy_run = 0
-			class_event.emit("SET IT UP  -  %s or %s first, then the hook or uppercut" % [Controls.text("jab"), Controls.text("cross")])
+			class_event.emit("SET IT UP  -  a jab, a cross, or a slip or roll to that side first")
 	elif punch.heavy:
 		_sloppy_run = 0
 	# Critical hits (Lucky Shot, Dirty Shot; Glass Breaker hits harder).

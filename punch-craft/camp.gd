@@ -1337,7 +1337,6 @@ func _armory_card(item: Dictionary) -> Control:
 # --- Hat Rack ----------------------------------------------------------------------
 
 var _hat_title: Label
-var _hat_yonkers: Label
 var _hat_grid: GridContainer
 
 
@@ -1558,8 +1557,6 @@ func _build_hat_rack() -> Control:
 	_hat_title = UiTheme.title_label("HAT RACK", 26, UiTheme.GOLD)
 	_hat_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(_hat_title)
-	_hat_yonkers = UiTheme.title_label("", 22, Items.RARITIES.legendary.color)
-	header.add_child(_hat_yonkers)
 	var tip := _label("Click a hat to wear it. Hold %s in a fight to emote and see it." % Controls.key_name("emote"), 13, UiTheme.MUTED)
 	column.add_child(tip)
 	Controls.watch(tip, func() -> void:
@@ -1588,9 +1585,6 @@ func _refresh_hat_rack() -> void:
 			owned += 1
 		_hat_grid.add_child(_hat_card(id))
 	_hat_title.text = "HAT RACK   %d / %d" % [owned, Hats.CATALOG.size()]
-	var yonkers := Hats.LEGENDARIES.filter(func(id: String) -> bool: return GameState.hats.has(id)).size()
-	_hat_yonkers.text = "YONKERS  %d / 4" % yonkers
-	_hat_yonkers.visible = yonkers > 0
 
 
 func _hat_card(id: String) -> Control:

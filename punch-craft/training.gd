@@ -38,7 +38,7 @@ const STEPS_START := [
 		"text": "Walk up and hit the dummy.",
 		"keys": [["<jab>", "Jab"], ["<cross>", "Cross"]]},
 	{"title": "SET IT UP", "goals": {"setup": 2}, "dummy": "passive", "costs": true,
-		"text": "Hooks and uppercuts hit hard right after a jab or cross. Thrown cold they're SLOPPY. Every punch costs knuckle HP.",
+		"text": "Hooks and uppercuts hit hard after a jab, a cross, or a slip or roll to that side. Thrown cold they're SLOPPY. Every punch costs knuckle HP.",
 		"keys": [["<jab> / <cross>", "Set up"], ["<hook>", "Hook"], ["<uppercut>", "Uppercut"]]},
 	{"title": "COMBOS", "goals": {"drill": 2}, "dummy": "passive", "costs": true,
 		"text": "Throw each combo in order.",

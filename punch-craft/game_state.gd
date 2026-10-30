@@ -144,7 +144,7 @@ const UPGRADES := {
 	# figures (price_at).
 	"wrapped_knuckles": {
 		"name": "Taped Up", "icon": "wraps", "pos": Vector2(0, 0), "requires": [], "ring": 1,
-		"desc": "Tape and cloth. Every road out of here starts with your hands.",
+		"desc": "Wrap your hands. Everything else on this web grows out from here.",
 		"max_level": 1, "cost": 60, "cost_growth": 1, "effects": {"damage": 1, "max_knuckles": 5},
 	},
 	"dmg_1": {
@@ -349,17 +349,17 @@ const UPGRADES := {
 	},
 	"coffin_crown": {
 		"name": "The Coffin Crown", "icon": "crown", "pos": Vector2(0, 0), "requires": ["plague_censer"], "center": true, "ring": 6,
-		"desc": "Trophy: heavy is the head. Raw power for the endless dark.",
+		"desc": "Trophy: the Coffin King's crown. Raw power for the endless floors.",
 		"max_level": 5, "cost": 800000, "cost_growth": 1.3, "effects": {"damage": 5, "max_knuckles": 40, "defense": 3},
 	},
 	"cornerman": {
 		"name": "Cornerman", "icon": "medkit", "pos": Vector2(-1.06, 1.06), "requires": ["hp_1"], "ring": 1,
-		"desc": "Recover a little every tenth of the bout.",
+		"desc": "Heal a little each time the bout bar passes a tenth.",
 		"max_level": 3, "cost": 130, "cost_growth": 1.3, "effects": {"wave_heal": 1},
 	},
 	"ice_bath": {
 		"name": "Ice Bath", "icon": "bucket", "pos": Vector2(-2.17, 1.25), "requires": ["hp_2"], "ring": 2,
-		"desc": "Recover a little every tenth of the bout.",
+		"desc": "Heal a little each time the bout bar passes a tenth.",
 		"max_level": 2, "cost": 550, "cost_growth": 1.3, "effects": {"wave_heal": 1},
 	},
 	"second_wind": {
@@ -369,12 +369,12 @@ const UPGRADES := {
 	},
 	"iron_will": {
 		"name": "Chin Check", "icon": "anchor", "pos": Vector2(-2.17, -1.25), "requires": ["hp_2"], "ring": 2,
-		"desc": "Shake off clean hits faster.",
+		"desc": "Recover faster when a hit lands on you.",
 		"max_level": 2, "cost": 550, "cost_growth": 1.3, "effects": {"flinch_reduction": 0.15},
 	},
 	"calloused": {
 		"name": "Calloused", "icon": "tape", "pos": Vector2(-3.03, -1.75), "requires": ["hp_3"], "ring": 3,
-		"desc": "Some punches don't hurt your hands at all.",
+		"desc": "Now and then a punch costs no knuckle HP.",
 		"max_level": 3, "cost": 2000, "cost_growth": 1.3, "effects": {"free_punch_chance": 0.05},
 	},
 	"light_feet": {
@@ -394,7 +394,7 @@ const UPGRADES := {
 	},
 	"bounty": {
 		"name": "Crowd Pleaser", "icon": "wanted", "pos": Vector2(-1.75, -3.03), "requires": ["gold_3"], "ring": 3,
-		"desc": "Bigger milestone bonuses in the Arena.",
+		"desc": "More coins each time the Arena bout bar passes a tenth.",
 		"max_level": 2, "cost": 2000, "cost_growth": 1.3, "effects": {"wave_bonus": 0.25},
 	},
 	"sparring_partner": {
@@ -511,7 +511,7 @@ const UPGRADES := {
 	},
 	"unflinching": {
 		"name": "Unflinching", "icon": "muscle", "pos": Vector2(-3.89, 3.89), "requires": ["scar_tissue"], "ring": 5,
-		"desc": "Hits knock you off balance less.",
+		"desc": "Recover faster when a hit lands on you.",
 		"max_level": 2, "cost": 36000, "cost_growth": 1.3, "effects": {"flinch_reduction": 0.15},
 	},
 	"granite_chin": {
@@ -526,7 +526,7 @@ const UPGRADES := {
 	},
 	"kings_purse": {
 		"name": "King's Purse", "icon": "crown", "pos": Vector2(-4.6, -4.6), "requires": ["gold_teeth"], "ring": 6,
-		"desc": "Bigger wave bonuses.",
+		"desc": "More coins each time the Arena bout bar passes a tenth.",
 		"max_level": 2, "cost": 150000, "cost_growth": 1.3, "effects": {"wave_bonus": 0.25},
 	},
 	"old_master": {
@@ -893,7 +893,7 @@ const UPGRADES := {
 	},
 	"sigil_doom": {
 		"name": "Death Mark", "icon": "skull", "pos": Vector2(-9, 0), "requires": [], "ring": 4, "medallion": true, "endless": 4,
-		"desc": "Awakens DOOM: heavies and counters mark a monster to take a share of it again.",
+		"desc": "Awakens DOOM: heavies and counters mark a monster. When the mark bursts, it takes a share of the damage you dealt it again.",
 		"max_level": 1, "cost": 18753, "cost_growth": 1.0, "effects": {"doom": 0.3},
 	},
 	"dread": {

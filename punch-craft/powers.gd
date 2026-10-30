@@ -48,9 +48,10 @@ static func went_off(root: String, target: Enemy) -> void:
 	_callout(root, target)
 
 
-## The word over the target when a power goes off (so you know what just
-## happened), and a ring at its feet, in the power's color.
-const CALLOUTS := {"sigil_fire": "IGNITE!", "sigil_frost": "FREEZE!", "sigil_storm": "CHAIN!", "sigil_blood": "DRAIN!", "sigil_doom": "DOOMED!"}
+## A ring at the target's feet in the power's color when a power goes off
+## (2026-10-30: the word over its head is gone; the power's own effect, the
+## flames, the skull, the frost, says what happened).
+const CALLOUTS := {"sigil_fire": true, "sigil_frost": true, "sigil_storm": true, "sigil_blood": true, "sigil_doom": true}
 
 
 static func _callout(root: String, target: Enemy) -> void:
@@ -58,8 +59,6 @@ static func _callout(root: String, target: Enemy) -> void:
 		return
 	var color: Color = SkillTreeView.BRANCHES[root].color
 	var world := target.get_parent()
-	var head := target.global_position + Vector3(0, 2.4 * target._body.scale.y + 0.3, 0)
-	DamagePopup.spawn(world, CALLOUTS[root], color.lightened(0.25), 64, head)
 	HitFx.ring(world, target.global_position + Vector3(0, 0.15, 0), Color(color, 0.8), 2.2)
 
 

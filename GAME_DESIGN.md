@@ -2235,3 +2235,14 @@ All six fighters' third-person bodies are rebuilt in large, clean cubes (`Fighte
 
 - **Floating text:** punches no longer say their own name (no "HOOK!", "UPPERCUT!", "LUNGE!", "SPEAR JAB!"). A crit is a red number with a "!" ("152.3!"). Damage from a power, ultimate or card is just its number in that source's color (`Enemy.source_color`; Doom purple, fire orange, and so on), and damage over time drops its word too. Words stay for your own moments: counters, finishers, weak spots, SLOPPY, and the knockout lines (GOODNIGHT!).
 - **Text:** taglines, contender bios, taunts, defeat lines, loading lines, skin blurbs and class traits rewritten plainer and less punny ("Ding ding, meat" is gone). Stale text fixed: the tutorial prompt (real fights now, not just a dummy), the Crypt unlock note (finds must be gilded) and the ultimates' one-liners on the title screen.
+
+## Set-ups follow real combos (2026-10-30)
+
+A hook or uppercut is set up (its full hit and stagger, not SLOPPY) when it comes:
+- right after a jab or cross, with either hand (jab, left hook);
+- right after a set-up hook or uppercut, either hand (two hooks or two uppercuts in a row);
+- with the hand on the side you just slipped or rolled to, within 1.2s (slip right, right uppercut; roll left, left hook), even to open.
+
+Head movement keeps a combo alive (a slip or roll refreshes its timer), and the same hand twice no longer breaks the combo after a set-up heavy or a slip or roll in between. So jab, cross, left hook, roll left, left hook and jab, cross, slip right, right uppercut are full combos. A hook thrown cold, and an uppercut after a cold hook, are still SLOPPY. Tested in `card_runtime_regression` (`_test_combo_setups`).
+
+Also: the Hat Rack's Yonkers counter is gone; the words over a monster when a power goes off (IGNITE!, DOOMED!, MARKED, CHILLED...) are gone, the effects show it; unclear hat and upgrade text rewritten (the Witch's Hat, Cornerman, Chin Check, Calloused, Crowd Pleaser, Death Mark), and two hat lines that quoted a film and a song are reworded.

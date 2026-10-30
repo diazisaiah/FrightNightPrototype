@@ -586,7 +586,7 @@ func chill(duration: float, amount: float, quiet := false) -> void:
 	_set_frozen_look(true)
 	if quiet:
 		return
-	DamagePopup.spawn(get_parent(), "CHILLED", FROST_COLOR, 36, global_position + Vector3(0, 2.0, 0))
+	# (No word: the frost sheen and the burst say it.)
 	HitFx.burst(get_parent(), global_position + Vector3(0, 1.2, 0), Vector3.UP, FROST_COLOR, 10, 2.0, true, 0.05)
 
 
@@ -597,8 +597,8 @@ func doom(seconds: float) -> void:
 	if _dead:
 		return
 	if _doom_time <= 0.0:
+		# (No word: the skull says it.)
 		_doom_store = 0.0
-		DamagePopup.spawn(get_parent(), "MARKED", Powers.DOOM_COLOR, 38, global_position + Vector3(0, top_height() + 0.3, 0))
 	_doom_time = maxf(_doom_time, seconds)
 	var weakened := Powers.dead_weight() > 0.0
 	if weakened != _weakened:
