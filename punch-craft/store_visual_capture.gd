@@ -420,14 +420,17 @@ func _capture_knockouts() -> void:
 ## gloves, counters with the hand that glows, set-up combos when it's open,
 ## then a knockout.
 func _capture_duel() -> void:
-	_max_build("counter_master")
+	# The Blur (The Answer's Perfect Counter ends it in one).
+	_max_build("combo_master")
 	var world := await _arena(2)
 	var player: Player = world.get_node("Player")
-	world.call("_spawn_enemy", {"kind": "brawler", "armored": false}, Vector3(0, 0.1, -2.8))
+	world.call("_spawn_enemy", {"kind": "brawler", "armored": false}, Vector3(0, 0.1, -2.2))
 	await _frames(2)
 	var brawler: Boxer = world.get_node("Enemies").get_child(-1)
 	brawler.max_hp *= 4.0
 	brawler.hp = brawler.max_hp
+	# It can't go down until the finish.
+	brawler.hp_floor = brawler.max_hp * 0.2
 	await _frames(40)
 	_hide_center_messages(world)
 	var combo := [["jab", "left"], ["cross", "right"], ["hook", "left"], ["uppercut", "right"]]
@@ -441,6 +444,9 @@ func _capture_duel() -> void:
 				enemy.queue_free()
 		if brawler.is_dead():
 			break
+		# It lasts the whole exchange.
+		if brawler.hp < brawler.max_hp * 0.4:
+			brawler.hp = brawler.max_hp
 		player.look_at(Vector3(brawler.global_position.x, player.global_position.y, brawler.global_position.z))
 		var attack := brawler.incoming_attack()
 		var eta := brawler.attack_eta()
@@ -466,6 +472,7 @@ func _capture_duel() -> void:
 			step = (step + 1) % combo.size()
 		await get_tree().process_frame
 	# The finish: a knockout that sends it flying.
+	brawler.hp_floor = 0.0
 	brawler.hp = 1.0
 	player.call("_punch", "uppercut", "right")
 	await _frames(14)
