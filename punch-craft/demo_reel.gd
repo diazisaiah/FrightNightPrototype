@@ -226,7 +226,7 @@ func _signature(id: int) -> void:
 		"elementalist":
 			for _round in 2:
 				await _punch("jab", "left", 8.0, "")
-				await _punch("hook", "right", 16.0, "HOOK!")
+				await _punch("hook", "right", 16.0)
 				var at := _dummy.global_position + Vector3(0, 1.2, 0)
 				HitFx.burst(_world, at, Vector3.UP, Color(1.0, 0.45, 0.1), 30, 5.0, true, 0.08)
 				HitFx.burst(_world, at, Vector3.UP, Color(0.55, 0.85, 1.0), 24, 3.5, true, 0.06)
@@ -243,7 +243,7 @@ func _signature(id: int) -> void:
 				_popup(_dummy, "FUGGEDABOUDIT!", GameState.fighter_color("wise_guy"))
 				Sfx.play("block", -10.0, 1.25)
 				await _punch("cross", "right", 12.0, "")
-				await _punch("hook", "left", 18.0, "HOOK!")
+				await _punch("hook", "left", 18.0)
 				await _wait(0.6)
 				if id != _run_id:
 					return
@@ -254,7 +254,7 @@ func _signature(id: int) -> void:
 				_popup(_dummy, "GRUDGE", Color(1.0, 0.15, 0.1))
 				Sfx.play("hurt", -10.0, 0.8)
 				await _punch("hook", "right", 24.0, "GRUDGE!")
-				await _punch("uppercut", "left", 22.0, "UPPERCUT!")
+				await _punch("uppercut", "left", 22.0)
 				await _wait(0.6)
 				if id != _run_id:
 					return
@@ -289,7 +289,7 @@ func _signature(id: int) -> void:
 				tween.tween_property(_camera, "position", EYE, 0.7).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 				await tween.finished
 				_fists.move_amount = 0.0
-				await _punch("cross", "right", 26.0, "HAYMAKER!", 0.1, 0.3, true)
+				await _punch("cross", "right", 26.0, "", 0.1, 0.3, true)
 				await _wait(1.1)
 				if id != _run_id:
 					return
@@ -337,7 +337,7 @@ func _ultimate(id: int) -> void:
 			_fists.play_punch("uppercut", "right", 0.12, 0.5)
 			await _wait(0.12)
 			var at := _dummy.global_position + Vector3(0, 1.3, 0)
-			_dummy.take_hit(140.0, at, Vector3(0, 0, -2), true, "INFERNO UPPERCUT!")
+			_dummy.take_hit(140.0, at, Vector3(0, 0, -2), true, "SCORCHED")
 			_hide_label(_dummy)
 			HitFx.burst(_world, at, Vector3.UP, Color(1.0, 0.3, 0.05), 40, 8.0, true, 0.06)
 			HitFx.burst(_world, at, Vector3.UP, Color(1.0, 0.6, 0.15), 24, 6.0, true, 0.035)
@@ -395,7 +395,7 @@ func _ultimate(id: int) -> void:
 				_camera.look_at(target.global_position + Vector3(0, 1.3, 0))
 				var last := i == targets.size() - 1
 				await _punch_at(target, "hook" if last else ("jab" if i % 2 == 0 else "cross"), "left" if i % 2 == 0 else "right",
-						60.0 if last else 25.0, "HAYMAKER!" if last else "HIGHLIGHT!")
+						60.0 if last else 25.0)
 				if id != _run_id:
 					return
 				await _wait(0.15)

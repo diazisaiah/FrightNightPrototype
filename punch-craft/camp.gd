@@ -88,7 +88,7 @@ func _camp_tips() -> void:
 	first.finished.connect(func() -> void:
 		_show_cosmetic("Hats")
 		Tutorial.open(self, "hat_rack_tour", "THE HAT RACK",
-				"Every hat gives a small boost that's yours for good, worn or not, so collect them all!\n\nClick a hat to wear it, and hold %s in a fight to emote and show it off." % Controls.key_name("emote"),
+				"Every hat gives a small boost that's yours for good, worn or not.\n\nClick a hat to wear it, and hold %s in a fight to emote and show it off." % Controls.key_name("emote"),
 				_hat_grid, Callable(), false, true))
 
 
@@ -142,7 +142,7 @@ func _play_crypt_reveal() -> void:
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_constant_override("outline_size", 14)
 	words.add_child(title)
-	var line := UiTheme.title_label("The Bellman's last toll cracked the graveyard open. What you find down there, you keep.", 22, UiTheme.TEXT)
+	var line := UiTheme.title_label("Beating the Bellman opened the Crypt. Gear you find down there is yours if you gild it before you leave.", 22, UiTheme.TEXT)
 	line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	words.add_child(line)
 	words.modulate.a = 0.0
@@ -548,7 +548,7 @@ func _buy_selected(kind: String) -> void:
 func _power_tip(kind: String) -> void:
 	var buy: Button = _details[kind].buy
 	var power_name: String = _trees[kind].branch_name(_trees[kind].selected_id).capitalize()
-	Tutorial.open(self, "power_select", "YOU UNLOCKED A POWER!",
+	Tutorial.open(self, "power_select", "NEW POWER",
 			"Powers are big upgrades you make stronger as you climb. You can only have one selected at a time, so pick the one you want working.\n\nSelect %s here." % power_name,
 			buy, func() -> bool: return GameState.power_pick != "", false, true)
 

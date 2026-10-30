@@ -1538,22 +1538,17 @@ func _land_punch(type: String, hand: String, _dashing := false, airborne := fals
 	if dash_jab:
 		raw_damage *= 1.0 + GameState.get_effect("lunging_jab")
 
+	# (2026-10-30: a set-up punch no longer says its own name, "HOOK!"; the
+	# Stray's dash moves don't either. Words are for counters and the like.)
 	var caption := ""
-	if set_up:
-		caption = type.to_upper() + "!"
 	if GameState.has_passive("dash_punches"):
 		var jump_threshold := FINISHER_HP_FRACTION
 		if _dash_style == "spear":
 			raw_damage *= SPEAR_JAB_MULTIPLIER + 0.08 * _pp()
-			caption = "SPEAR JAB!"
 		elif _dash_style == "haymaker":
 			raw_damage *= HAYMAKER_MULTIPLIER + 0.08 * _pp()
-			caption = "HAYMAKER!"
 		elif airborne and target.hp < target.max_hp * jump_threshold:
 			raw_damage *= FINISHER_MULTIPLIER
-			caption = "JUMP PUNCH!"
-	if dash_jab and (GameState.has_effect("lunging_jab") or GameState.has_effect("spear_jab")):
-		caption = "LUNGE!"
 	if counter:
 		caption = "CLEAN COUNTER!" if clean else "COUNTER!"
 	# Executioner: a counter finishes off a weakened non-boss enemy.

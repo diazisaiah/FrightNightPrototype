@@ -33,6 +33,8 @@ const RECOIL_RECOVERY := 1.2
 const SPARK_COLOR := Color(1.0, 0.7, 0.3)
 const HEAD_MULTIPLIER := 1.3
 const HEAD_COLOR := Color(1.0, 0.85, 0.2)
+## A critical hit's number: red, with a "!" (2026-10-30: was "CRIT!").
+const CRIT_COLOR := Color(1.0, 0.22, 0.16)
 const BODY_COLOR := Color(0.65, 0.85, 1.0)
 ## Elite enemies (Crypt): tougher, richer, with a trait and a glowing aura.
 const ELITE_HP := 2.0
@@ -418,8 +420,23 @@ func take_hit(raw_damage: float, hit_point: Vector3, push: Vector3, stagger: boo
 	var toward_player := -push
 	if damage > 0.0:
 		var size := 48 + mini(int(damage * 2), 48) + (8 if head_shot else 0)
-		var text := "%.1f" % damage if caption == "" else "%s\n%.1f" % [caption, damage]
-		var color := (HEAD_COLOR if head_shot else BODY_COLOR) if caption == "" else Color(1, 0.55, 0.15)
+		# A crit is a red number with a "!"; damage from a power, ultimate or
+		# card is just its number in that source's color; words are kept for
+		# the moments that are yours (counters, finishers, weak spots).
+		var lines := Array(caption.split("\n", false))
+		var crit := lines.has("CRIT!")
+		lines.erase("CRIT!")
+		var source: Variant = source_color(lines[0]) if lines.size() == 1 else null
+		var number := ("%.1f!" if crit else "%.1f") % damage
+		var text := number if lines.is_empty() or source != null else "%s\n%s" % ["\n".join(lines), number]
+		var color: Color = HEAD_COLOR if head_shot else BODY_COLOR
+		if crit:
+			color = CRIT_COLOR
+			size += 10
+		elif source != null:
+			color = source
+		elif not lines.is_empty():
+			color = Color(1, 0.55, 0.15)
 		DamagePopup.spawn(parent, text, color, size, hit_point)
 		HitFx.burst(parent, hit_point, toward_player + Vector3.UP, hit_color, mini(10 + int(damage), 36), 5.0, false, 0.07)
 		# A flash of light at the impact; heavy hits and counters ring out.
@@ -653,14 +670,45 @@ func _update_statuses(delta: float) -> void:
 			_poison_stacks = 0
 
 
+## The color a damage source's number shows in (null: say it in words).
+## Powers in their branch's color, ultimates in theirs, a fighter's own bonus
+## hits in the fighter's.
+static func source_color(caption: String) -> Variant:
+	var branch := ""
+	match caption:
+		"DOOM": branch = "sigil_doom"
+		"QUAKE": branch = "sigil_quake"
+		"GALE", "CYCLONE": branch = "sigil_gale"
+		"PYRE", "FIREBALL", "IGNITE": branch = "sigil_fire"
+		"ICICLE", "SHATTER": branch = "sigil_frost"
+		"SHOCK", "THUNDER", "OVERFLOW": branch = "sigil_storm"
+		"BARBS", "SHRAPNEL", "THORNS": branch = "sigil_iron"
+		"BLEED": branch = "sigil_blood"
+	if branch != "":
+		# Lightened so the dark ones (Doom) read at night.
+		return (SkillTreeView.BRANCHES[branch].color as Color).lightened(0.3)
+	match caption:
+		"SCORCHED", "BRIMSTONE", "BRIMSTONE!", "FLAME BURST":
+			return Color(1.0, 0.5, 0.15)
+		"TIME BREAK", "ECHO", "AFTERIMAGE", "FLURRY", "x2":
+			return Color(0.72, 0.5, 1.0)
+		"SPEAR", "BOWLED", "KNOCKED BACK":
+			return Color(0.45, 1.0, 0.55)
+		"SLUGGED", "CRACK", "STRIKE!":
+			return Color(1.0, 0.8, 0.3)
+		"FOLLOW THROUGH", "RETURN TO SENDER", "SIGIL WEAVE", "SWING", "AVALANCHE":
+			return Color(1.0, 0.62, 0.3)
+	return null
+
+
 ## Damage over time and the like: ignores armor, no stagger.
 func _status_damage(amount: float, color: Color, caption := "") -> void:
 	if _dead or amount <= 0.0 or hits_to_ko > 0:
 		return
 	hp = maxf(hp - amount, hp_floor)
 	var chest := global_position + Vector3(0, 1.3, 0)
-	var text := "%.1f" % amount if caption == "" else "%s\n%.1f" % [caption, amount]
-	DamagePopup.spawn(get_parent(), text, color, 34, chest)
+	# (The color says what it is; no word.)
+	DamagePopup.spawn(get_parent(), "%.1f" % amount, color, 34, chest)
 	HitFx.burst(get_parent(), chest, Vector3.UP, color, 6, 1.5, true, 0.05)
 	if hp <= 0.0:
 		_die(Vector3.ZERO)

@@ -16,7 +16,7 @@ const BLOOD := Color(0.82, 0.1, 0.07)
 const STONE := Color(0.36, 0.36, 0.4)
 const TITLE_TEXT := "FRIGHT NIGHT"
 const TITLE_SIZE := 118
-const SUBTITLE := "THE DEAD DON'T STAY DOWN.  NEITHER DO YOU."
+const SUBTITLE := "BARE-KNUCKLE BOXING IN THE GRAVEYARD"
 const LIGHTNING_GAP := Vector2(9.0, 18.0)
 const RING_CENTER := Vector3(1.6, 0, -9.0)
 const RING_HALF := 3.4
@@ -1239,7 +1239,7 @@ func _build_tutorial_offer() -> void:
 	column.add_theme_constant_override("separation", 14)
 	panel.add_child(column)
 	column.add_child(UiTheme.heading("LEARN TO FIGHT THE DEAD?", 40, BLOOD.lightened(0.25)))
-	var text := _card_label("Five minutes against a training dummy.", 18, UiTheme.TEXT)
+	var text := _card_label("The basics on a dummy, then a few real monsters.", 18, UiTheme.TEXT)
 	text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	text.custom_minimum_size.x = 540
 	column.add_child(text)

@@ -27,20 +27,20 @@ var _last_pick := {}
 
 ## A line under each fighter's name. Tony's comes from his mouth (Insults).
 const FIGHTER_LINES := {
-	"berserker": ["Keep swinging.", "Break bones.", "Launch them to hell.", "Hit me. I dare you."],
-	"counter_master": ["Read their move.", "Turn their strength against them.", "One hit. Game over.", "Patience is a punch."],
-	"combo_master": ["Faster than the eye.", "One, two, ten.", "Time stops. Fists don't."],
-	"free_runner": ["Off the ropes, into your face.", "Catch me if you can.", "Already gone."],
-	"elementalist": ["Why cast it when you can punch it?", "Fire in one hand. Ice in the other.", "Old, not slow."],
+	"berserker": ["Hit me first. See what happens.", "I don't block. Never needed to.", "Hooks and uppercuts. That's the whole plan."],
+	"counter_master": ["Let them swing first.", "Every miss is an opening.", "Slip it, then make them pay."],
+	"combo_master": ["Don't count the punches. I lose track too.", "Freezing time is cheating. I do it anyway.", "Jab, jab, cross, and the rest you won't see."],
+	"free_runner": ["If I'm standing still, something's wrong.", "Bounce off a head, keep moving.", "Dash in, hit, gone."],
+	"elementalist": ["Spells take too long. Fists don't.", "I'm old. I'm not slow.", "Fire's in the left hand. Usually."],
 }
 
 
 ## Full-screen scenes: [texture, accent, header, name, tagline, line].
 const SCENES := {
 	"fighters": ["res://art/loading/fighters.png", Color(1.0, 0.45, 0.12), "FRIGHT NIGHT", "THE GRAVEYARD BOUTS",
-		"Four fighters. One long night.", "The dead keep coming. Keep punching."],
+		"Knock them out before they get back up.", "Hooks and uppercuts hit harder after a jab or cross."],
 	"league": ["res://art/dead_league/dead_league_key_art.png", Color(0.95, 0.75, 0.25), "THE DEAD LEAGUE", "FIVE CONTENDERS",
-		"Break the seals.", "Beat them all and the Coffin King is waiting."],
+		"Each win breaks a seal on your upgrades.", "Beat all five to reach the Coffin King."],
 }
 const TRUE_KING_PORTRAIT := "res://art/dead_league/portrait_true.png"
 
@@ -157,7 +157,7 @@ func _scene_card(id: String) -> Dictionary:
 
 func _true_king_card() -> Dictionary:
 	return {"texture": TRUE_KING_PORTRAIT, "accent": DeadLeagueBoss.INSANO_COLOR, "header": "THE DEAD LEAGUE",
-		"name": "THE TRUE COFFIN KING", "tagline": "Insano Style.",
+		"name": "THE TRUE COFFIN KING", "tagline": "Five rounds. He brings friends.",
 		"line": "“%s”" % (load("res://dead_league_arena.gd").TRUE_TAUNTS as Array).pick_random()}
 
 

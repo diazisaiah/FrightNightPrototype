@@ -2230,3 +2230,8 @@ All six fighters' third-person bodies are rebuilt in large, clean cubes (`Fighte
 - **Rules:** flat, deliberate colors (no random speckle), no overlapping parts, one-cube trim lines, wraps painted on the forearm, a straight lead foot and a rear foot turned out.
 - **Hats:** hair in zones split at the hat line; caps and crowns hide what's above it, masks and wigs all of it. The Blur and Tony swap to a short cut under a cap or crown; the Stray keeps his headband (tied round the outside of a mask).
 - **Character art:** the select cards, versus panels and fighter loading cards are in-engine renders of the new bodies in signature poses (`key_art.tscn -- --select`): the Mauler's gloves knocking, the Answer reading you, the Blur's echo-fist flurry, the Stray's crouch, the Catalyst's fireball, Tony's "come on".
+
+## Wording pass (2026-10-30)
+
+- **Floating text:** punches no longer say their own name (no "HOOK!", "UPPERCUT!", "LUNGE!", "SPEAR JAB!"). A crit is a red number with a "!" ("152.3!"). Damage from a power, ultimate or card is just its number in that source's color (`Enemy.source_color`; Doom purple, fire orange, and so on), and damage over time drops its word too. Words stay for your own moments: counters, finishers, weak spots, SLOPPY, and the knockout lines (GOODNIGHT!).
+- **Text:** taglines, contender bios, taunts, defeat lines, loading lines, skin blurbs and class traits rewritten plainer and less punny ("Ding ding, meat" is gone). Stale text fixed: the tutorial prompt (real fights now, not just a dummy), the Crypt unlock note (finds must be gilded) and the ultimates' one-liners on the title screen.

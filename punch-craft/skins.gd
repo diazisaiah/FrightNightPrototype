@@ -9,13 +9,13 @@ class_name Skins
 const PRICE := 20
 
 const CATALOG := {
-	"obsidian_furnace": {"fighter": "berserker", "name": "Obsidian Furnace", "desc": "Forged under the ring. Still hot."},
-	"white_noise": {"fighter": "counter_master", "name": "White Noise", "desc": "Nothing to read. Everything to answer."},
-	"hyperlight": {"fighter": "combo_master", "name": "Hyperlight", "desc": "Too fast to see. Too bright to miss."},
-	"rooftop_ghost": {"fighter": "free_runner", "name": "Rooftop Ghost", "desc": "Seen on the skyline. Never caught."},
+	"obsidian_furnace": {"fighter": "berserker", "name": "Obsidian Furnace", "desc": "Black and red, like the inside of a furnace."},
+	"white_noise": {"fighter": "counter_master", "name": "White Noise", "desc": "All white. Easy to spot, hard to hit."},
+	"hyperlight": {"fighter": "combo_master", "name": "Hyperlight", "desc": "Lit up, so at least you see him coming."},
+	"rooftop_ghost": {"fighter": "free_runner", "name": "Rooftop Ghost", "desc": "What he wears running rooftops at night."},
 	"sunday_best": {"fighter": "wise_guy", "name": "Sunday Best", "desc": "The good tracksuit."},
 	"verdant_sigil": {"fighter": "elementalist", "name": "Verdant Sigil", "desc": "Old green magic, gold at the hem."},
-	"plumber_overalls": {"fighter": "wise_guy", "name": "Plumber Overalls", "desc": "Flannel, denim, work boots. Fixes pipes. Breaks faces."},
+	"plumber_overalls": {"fighter": "wise_guy", "name": "Plumber Overalls", "desc": "Flannel, denim and work boots. He's here about the pipes."},
 }
 ## Skins only a feat gives (never sold): the overalls for all five plumber caps.
 const EARN_ONLY := ["plumber_overalls"]

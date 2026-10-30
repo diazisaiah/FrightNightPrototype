@@ -45,12 +45,12 @@ const NAMES := {
 }
 ## One line each, for the class picker.
 const DESCRIPTIONS := {
-	"berserker": "With a full meter, leap at the nearest enemy with a flaming uppercut that launches it and sets it alight.",
-	"combo_master": "Stop time. Move freely and throw the punches shown as fast as you can: each one lands, grows your combo and buys a little more time.",
-	"counter_master": "Riposte Stance: for 4 seconds every attack is slipped for you and answered with a counter hook.",
-	"free_runner": "Streak like lightning from enemy to enemy in view, punching each, and finish with a leaping haymaker.",
-	"wise_guy": "Insult the monster you're looking at. It comes only for you, hits 50% harder and takes double damage from you. Refills fast.",
-	"elementalist": "For 10 seconds every punch can throw a fireball, an icicle, lightning or a blood heal.",
+	"berserker": "Leap at the nearest monster with a flaming uppercut that launches it and sets it alight.",
+	"combo_master": "Time stops. Your punches land when it resumes, all at once. Alternate hands to buy back time.",
+	"counter_master": "For a few seconds every attack is slipped for you and answered with a counter hook.",
+	"free_runner": "Dash from monster to monster in view, punching each, and finish with a leaping haymaker.",
+	"wise_guy": "Insult the monster you're looking at: it comes only for you, hits harder and takes double from you.",
+	"elementalist": "For 10s every punch can throw a fireball, an icicle, lightning or a blood heal.",
 }
 ## The equipped ultimate's name (Abilities), for the HUD.
 static func equipped_name() -> String:
@@ -1211,7 +1211,7 @@ func _start_reel() -> void:
 			continue
 		player._free_punch = true
 		if last:
-			player._land_punch(type, hand, false, false, target, REEL_FINISHER * (1.0 + 0.3 * _power()), "HAYMAKER!")
+			player._land_punch(type, hand, false, false, target, REEL_FINISHER * (1.0 + 0.3 * _power()))
 			if is_instance_valid(target) and not target.is_dead():
 				target.knock_down(1.2, target.global_position - player.global_position, true)
 			player._shake = maxf(player._shake, 0.1)

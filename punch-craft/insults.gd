@@ -9,7 +9,6 @@ const TAME := [
 	"You big dummy!",
 	"Go eat a crayon, ya doofus!",
 	"Your mother's a very nice lady and I respect her!",
-	"Ooh, I'm so scared. Not!",
 	"Hey! I'm walkin' here! Well, punchin'!",
 	"You smell like a wet sock, buddy.",
 	"Nice face. Did ya get a discount on it?",
@@ -22,7 +21,6 @@ const TAME := [
 	"Hey, nerd! Yeah, you!",
 	"Your breath could knock out a hot dog cart!",
 	"Ya mook! That's a word! Look it up!",
-	"Bada bing, bada boo-boo face!",
 	"Fuhgeddaboudit, ya big baby!",
 	"Is that your head or did a pumpkin fall on ya?",
 ]

@@ -14,40 +14,40 @@ const BOSS_COUNT := 5
 const BOSSES := [
 	{
 		"id": "bellman", "number": 1, "name": "THE BELLMAN",
-		"tagline": "Every toll is a warning.",
-		"bio": "A patient power fighter. Read the bell, dodge the finish, punish the silence.",
+		"tagline": "Rings his bell before the big one.",
+		"bio": "Slow and heavy. He rings the bell before his big punch: wait for it, dodge it, then hit him while he's open.",
 		"pattern": "Heavy straights, hooks, delayed slams. Leaps on you from above",
 		"accent": Color(0.95, 0.22, 0.12), "hp": 52.0, "damage": 4.6,
 		"speed": 0.95, "windup": 1.08, "idle": 0.6, "evade": 0.12, "open": 1.0,
 	},
 	{
 		"id": "headless", "number": 2, "name": "THE HEADLESS",
-		"tagline": "No eyes. No tells. Watch the flame.",
-		"bio": "A relentless knight whose ghost-flame shoulders reveal which side is coming.",
+		"tagline": "No face to read. Watch the shoulders.",
+		"bio": "A knight that never lets up. The ghost-fire on its shoulders flares on the side the punch is coming from.",
 		"pattern": "Fast straights, sudden hooks, ghost charges. Throws its skull: punch it down",
 		"accent": Color(0.25, 0.72, 1.0), "hp": 64.0, "damage": 5.2,
 		"speed": 1.08, "windup": 0.94, "idle": 0.46, "evade": 0.2, "open": 0.9,
 	},
 	{
 		"id": "southpaw", "number": 3, "name": "SISTER SOUTHPAW",
-		"tagline": "Confession comes from the left.",
-		"bio": "A tempo fighter who changes rhythm mid-combination and lives on the outside angle.",
+		"tagline": "Leads with the left.",
+		"bio": "Changes rhythm in the middle of a combo and keeps circling to your outside. Don't dodge early.",
 		"pattern": "Slips and snaps back a right jab. Pivots behind you mid-combo. Judgment circles",
 		"accent": Color(0.68, 0.35, 1.0), "hp": 80.0, "damage": 5.9,
 		"speed": 1.12, "windup": 0.84, "idle": 0.36, "evade": 0.4, "open": 0.8,
 	},
 	{
 		"id": "plague_doctor", "number": 4, "name": "THE PLAGUE DOCTOR",
-		"tagline": "The cure is a counterpunch.",
-		"bio": "A clinical trap-setter. Short combinations bait an early dodge before the real dose.",
+		"tagline": "Fakes it, then means it.",
+		"bio": "Throws short combos to bait an early dodge, then the real one. Be patient.",
 		"pattern": "Long stuttered strings that heal him. Adrenaline sends him on a rampage",
 		"accent": Color(0.35, 0.95, 0.48), "hp": 104.0, "damage": 6.9,
 		"speed": 1.1, "windup": 0.72, "idle": 0.26, "evade": 0.36, "open": 0.7,
 	},
 	{
 		"id": "coffin_king", "number": 5, "name": "THE COFFIN KING",
-		"tagline": "Three rounds. One throne.",
-		"bio": "The champion combines every lesson in the League and becomes merciless when hurt.",
+		"tagline": "Runs the League.",
+		"bio": "Does a bit of everything the other four do, and gets faster the more you hurt him.",
 		"pattern": "Long strings, crushing slams, every special. Faster the more he's hurt",
 		"accent": Color(1.0, 0.7, 0.18), "hp": 134.0, "damage": 8.1,
 		"speed": 1.18, "windup": 0.64, "idle": 0.2, "evade": 0.45, "open": 0.6,
@@ -55,12 +55,12 @@ const BOSSES := [
 ]
 
 
-## Pulpy trash talk: a line before each round, and one when they go down.
+## Trash talk: a line before each round, and one when they go down.
 const TAUNTS := {
 	"bellman": [
-		"Ding ding, meat. That's the sound of your funeral.",
-		"Every bell I ring is somebody's last round.",
-		"I've been tolling since before your grandpa had knuckles.",
+		"Hear that bell? That one's for you.",
+		"A hundred years I've been ringing this thing. Nobody's made me stop.",
+		"Stand still. This'll only take one.",
 	],
 	"headless": [
 		"...",
@@ -68,27 +68,27 @@ const TAUNTS := {
 		"(The flames over its neck flicker. You get the feeling it's grinning.)",
 	],
 	"southpaw": [
-		"Forgive me, child. My left hook won't.",
-		"Confess now. It hurts less than my jab.",
-		"I took a vow of silence. Not a vow of mercy.",
+		"I'll pray for you after.",
+		"Lead with your right. Go on.",
+		"The nuns taught me this left hook. Hold still.",
 	],
 	"plague_doctor": [
-		"Hold still. This won't hurt a bit. That's a lie.",
-		"My diagnosis: severe face. The cure: my fist.",
+		"Open wide.",
+		"You look terrible. I can make it worse.",
 		"Take two uppercuts and don't call me in the morning.",
 	],
 	"coffin_king": [
-		"Another soul for the collection. Kneel, and I'll make it quick.",
-		"I've buried a thousand champions. You'll fit nicely between two of them.",
-		"Every coffin in this graveyard was built for someone like you.",
+		"Kneel and I'll make it quick.",
+		"Every coffin out there has a name on it. I picked one for you.",
+		"I've buried better fighters than you this week.",
 	],
 }
 const DEFEAT_LINES := {
-	"bellman": "The bell cracks. For the first time in a hundred years, it's quiet.",
+	"bellman": "The bell cracks down the middle. It's finally quiet.",
 	"headless": "The skull tumbles out of its flames, and somehow it looks impressed.",
-	"southpaw": "\"Go with God,\" she wheezes. \"He's got a better left than me.\"",
+	"southpaw": "\"Fine,\" she says from the canvas. \"You can have that one.\"",
 	"plague_doctor": "\"Remarkable,\" he coughs through the beak. \"Terminal, but remarkable.\"",
-	"coffin_king": "The crown rolls to your feet. A thousand souls sigh at once, and one of them is yours.",
+	"coffin_king": "The crown rolls off his skull and stops at your feet.",
 }
 
 

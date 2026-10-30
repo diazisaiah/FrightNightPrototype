@@ -378,7 +378,7 @@ func _pick_kind() -> String:
 		if not _seen_types.has(kind):
 			_seen_types[kind] = true
 			if _night_kills > 0:
-				_hud.add_feed("A %s joins the night..." % info.name, Color(0.8, 0.55, 1.0))
+				_hud.add_feed("A %s joins the fight." % info.name, Color(0.8, 0.55, 1.0))
 			return kind
 		var limit: int = info.max[1] if progress >= LATE_NIGHT else info.max[0]
 		if _alive_by_kind.get(kind, 0) < limit:
@@ -559,7 +559,7 @@ func _on_endless_ko(enemy: Enemy) -> void:
 	if _night_kills % ENDLESS_WAVE == 0:
 		_wave += 1
 		_hud.announce("WAVE %d" % (_wave + 1))
-		_hud.announce_small("They get tougher. A mini-boss steps in!", Color(1.0, 0.6, 0.3))
+		_hud.announce_small("They're getting tougher. A mini-boss steps in.", Color(1.0, 0.6, 0.3))
 		Sfx.play("wave", -2.0)
 		_player.heal(GameState.heal_amount("wave_heal", _player.max_knuckles))
 		_spawn_mini_boss()

@@ -35,8 +35,8 @@ const CLASSES := {
 	"berserker": {
 		"name": "Berserker", "icon": "hammer",
 		"fighter": "The Mauler", "color": Color(1.0, 0.42, 0.12),
-		"tagline": "Takes the hit. Gives it back.",
-		"traits": [["skull", "Grudge", "Hit him once. Regret it."], ["burst", "Massive Damage", "Break bones."], ["flame", "Inferno Uppercut", "Launch them to hell."]],
+		"tagline": "Takes a hit to give a bigger one.",
+		"traits": [["skull", "Grudge", "Hits back harder."], ["burst", "Massive Damage", "Big, slow punches."], ["flame", "Inferno Uppercut", "A flaming uppercut."]],
 		"bars": {"Power": 95, "Defense": 80, "Speed": 40, "Combo": 35, "Counter": 55},
 		"desc": "Big damage, tough knuckles. Holds a grudge: whatever hits him is marked, and his next punch on it hits triple and staggers. Hooks and uppercuts need no setup. Combos grow slower.",
 		"mods": {"damage": 1.3, "knuckles": 1.25, "defense": 3.0, "combo_step": 0.6},
@@ -44,8 +44,8 @@ const CLASSES := {
 	"counter_master": {
 		"name": "Counter Master", "icon": "target",
 		"fighter": "The Answer", "color": Color(0.31, 0.83, 1.0),
-		"tagline": "Every attack is a question.",
-		"traits": [["shield", "Perfect Defense", "Read their move."], ["target", "Counter Focus", "Turn their strength against them."], ["star", "Perfect Counter", "Counter for x2.5."]],
+		"tagline": "Waits for you to swing.",
+		"traits": [["shield", "Perfect Defense", "Wider dodge windows."], ["target", "Counter Focus", "Counters hit x3."], ["star", "Perfect Counter", "Right hand, right time: x2.5."]],
 		"bars": {"Power": 55, "Defense": 70, "Speed": 60, "Combo": 45, "Counter": 100},
 		"desc": "Less damage and knuckles. Counters deal x3, dodge windows are wider, and counters have a 50% chance to cost no knuckle HP. Perfect counter: dodge, then a hook or uppercut with the matching hand deals x2.5 more (12s cooldown).",
 		"mods": {"damage": 0.85, "knuckles": 0.9, "counter": 3.0, "dodge_window": 1.4},
@@ -53,8 +53,8 @@ const CLASSES := {
 	"combo_master": {
 		"name": "Combo Master", "icon": "bolt",
 		"fighter": "The Blur", "color": Color(0.58, 0.4, 1.0),
-		"tagline": "Fifty hits before they blink.",
-		"traits": [["swoosh", "Rapid Combos", "Keep them guessing."], ["bolt", "Fast Hands", "Speed is survival."], ["clock", "Temporal Break", "Time stops for you."]],
+		"tagline": "Too many punches to count.",
+		"traits": [["swoosh", "Rapid Combos", "Combos grow faster."], ["bolt", "Fast Hands", "Quicker punches."], ["clock", "Temporal Break", "Stops time."]],
 		"bars": {"Power": 45, "Defense": 50, "Speed": 95, "Combo": 100, "Counter": 50},
 		"desc": "Faster punches, less damage. Combos grow faster and last longer. Every 5th hit in a combo stuns nearby enemies and freezes the combo timer for 1s.",
 		"mods": {"damage": 0.75, "punch_speed": 1.35, "combo_step": 1.5, "combo_window": 1.0},
@@ -62,8 +62,8 @@ const CLASSES := {
 	"free_runner": {
 		"name": "Free Runner", "icon": "boot",
 		"fighter": "The Stray", "color": Color(0.25, 0.9, 0.42),
-		"tagline": "Never where they swing.",
-		"traits": [["boot", "Agile Movement", "Never stay still."], ["swoosh", "Dash Punches", "Spear through. Blast back."], ["chain", "Highlight Reel", "Keep it going."]],
+		"tagline": "Never where you aimed.",
+		"traits": [["boot", "Agile Movement", "Faster sprint."], ["swoosh", "Dash Punches", "Dash in punching."], ["chain", "Highlight Reel", "Dash through a crowd."]],
 		"bars": {"Power": 60, "Defense": 50, "Speed": 100, "Combo": 60, "Counter": 50},
 		"desc": "Faster sprint, normal stats. Dash forward and punch: a left Spear Jab hits everything in a straight line, a right Haymaker blasts enemies back. Jump punches deal x2 to enemies under 30% HP.",
 		"mods": {"sprint": 1.35},
