@@ -6,6 +6,9 @@ extends Node
 ## console. Uses its own save and settings, so a player's progress is safe.
 ## ?bench=fx instead fires each ultimate and power in a crowd (FX_ULTS,
 ## FX_POWERS) and prints the same numbers for each.
+## Desktop (2026-10-30): set FRIGHT_NIGHT_BENCH=1 (or =fx) with
+## FRIGHT_NIGHT_FORCE_WEB_PROFILE=1 for the same run, plus the script and
+## physics time a frame (what a browser's single thread pays most for).
 
 const SCENES := ["res://world.tscn", "res://dungeon.tscn", "res://camp.tscn", "res://dead_league_arena.tscn", "res://title.tscn"]
 const SETTLE := 2.0
@@ -23,9 +26,13 @@ static var fx := false
 
 ## Starts the bench if the page URL asks for it (title screen, web only).
 static func start_if_requested(tree: SceneTree) -> bool:
-	if running or not OS.has_feature("web"):
+	if running:
 		return false
-	var query = JavaScriptBridge.eval("window.location.search", true)
+	var query = OS.get_environment("FRIGHT_NIGHT_BENCH")
+	if query != "":
+		query = "bench=" + query if query != "1" else "bench"
+	elif OS.has_feature("web"):
+		query = JavaScriptBridge.eval("window.location.search", true)
 	if not (query is String and (query as String).contains("bench")):
 		return false
 	running = true
@@ -40,6 +47,12 @@ static func start_if_requested(tree: SceneTree) -> bool:
 
 
 func _ready() -> void:
+	for last in [false, true]:
+		get_tree().root.add_child.call_deferred(BenchProbe.new(last))
+	# Desktop: uncapped, so the numbers are the real cost.
+	if not OS.has_feature("web"):
+		DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
+		Engine.max_fps = 0
 	_run.call_deferred()
 
 
@@ -52,6 +65,7 @@ func _run() -> void:
 	if fx:
 		await _fx_pass()
 		print("BENCH done")
+		_quit()
 		return
 	# Pass 1: the browser optimizations off (full resolution, every light on).
 	# Pass 2: on (auto resolution, nearest lights only).
@@ -66,6 +80,12 @@ func _run() -> void:
 		print("BENCH --- optimizations %s ---" % ("ON" if optimized else "OFF"))
 		await _pass()
 	print("BENCH done")
+	_quit()
+
+
+func _quit() -> void:
+	if not OS.has_feature("web"):
+		get_tree().quit()
 
 
 func _pass() -> void:
@@ -159,6 +179,16 @@ func _measure(label: String) -> void:
 	var frames := 0
 	var worst := 0
 	var draws := 0.0
+	var script := 0.0
+	var physics := 0.0
+	var render_cpu := 0.0
+	var ticks := 0
+	BenchProbe.process_us = 0
+	BenchProbe.physics_us = 0
+	var physics_frames := Engine.get_physics_frames()
+	var gpu := 0.0
+	var rid := get_viewport().get_viewport_rid()
+	RenderingServer.viewport_set_measure_render_time(rid, true)
 	while Time.get_ticks_usec() - start < int(MEASURE * 1000000.0):
 		await get_tree().process_frame
 		# A hidden browser tab pauses the game (focus out).
@@ -169,9 +199,21 @@ func _measure(label: String) -> void:
 		worst = maxi(worst, now - last)
 		last = now
 		draws += Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)
+		script += Performance.get_monitor(Performance.TIME_PROCESS)
+		physics += Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS)
+		render_cpu += RenderingServer.viewport_get_measured_render_time_cpu(rid) + RenderingServer.get_frame_setup_time_cpu()
+		gpu += RenderingServer.viewport_get_measured_render_time_gpu(rid)
 	var seconds := (Time.get_ticks_usec() - start) / 1000000.0
+	var n := maxf(frames, 1)
+	ticks = maxi(Engine.get_physics_frames() - physics_frames, 1)
+	# Frame = the whole frame; render = the renderer's CPU work; gpu = drawing.
+	# What's left of the frame beyond render is mostly scripts and physics.
+	# scripts / phys scripts: the game's own _process and _physics_process a
+	# frame (BenchProbe); physics: the whole physics step a frame.
+	var cpu := "  frame %4.1fms  scripts %4.1fms  phys-scripts %4.1fms  physics %4.1fms  render %4.1fms" % [
+		seconds * 1000.0 / n, BenchProbe.process_us / 1000.0 / n, BenchProbe.physics_us / 1000.0 / n, physics / n * 1000.0 * ticks / n, render_cpu / n]
 	if fx:
-		print("BENCH %-18s fps %5.1f  worst %5.1fms  draws %4d  nodes %d" % [label, frames / seconds, worst / 1000.0, draws / maxf(frames, 1), get_tree().get_node_count()])
+		print("BENCH %-18s fps %5.1f  worst %5.1fms  draws %4d  nodes %d%s" % [label, frames / seconds, worst / 1000.0, draws / maxf(frames, 1), get_tree().get_node_count(), cpu])
 		return
-	print("BENCH %-18s fps %5.1f  worst %5.1fms  draws %4d  scale %.2f" % [
-		label, frames / seconds, worst / 1000.0, draws / maxf(frames, 1), Settings.render_scale()])
+	print("BENCH %-18s fps %5.1f  worst %5.1fms  draws %4d  scale %.2f%s" % [
+		label, frames / seconds, worst / 1000.0, draws / maxf(frames, 1), Settings.render_scale(), cpu])
