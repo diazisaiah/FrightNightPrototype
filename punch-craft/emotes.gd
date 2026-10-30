@@ -40,7 +40,7 @@ class_name Emotes
 ## mirror() flips a pose left to right.
 
 const DIR := "res://emotes/"
-const JOINTS := ["hips", "torso", "chest", "neck", "head", "ls", "le", "rs", "re", "lh", "lk", "lf", "rh", "rk", "rf"]
+const JOINTS := ["hips", "torso", "chest", "neck", "head", "ls", "le", "rs", "re", "lh", "lk", "lf", "rh", "rk", "rf", "lw", "rw"]
 const REST := {
 	"ls": Vector3(0.05, 0, -0.12), "le": Vector3(0.25, 0, 0),
 	"rs": Vector3(0.05, 0, 0.12), "re": Vector3(0.25, 0, 0),

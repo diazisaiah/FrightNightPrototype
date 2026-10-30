@@ -26,12 +26,12 @@ const FIGHTER_NAMES := {"berserker": "The Mauler", "counter_master": "The Answer
 ## The joint list, in groups.
 const GROUPS := [
 	["Body", ["pos", "hips", "torso", "chest", "neck", "head"]],
-	["Left arm", ["ls", "le"]], ["Right arm", ["rs", "re"]],
+	["Left arm", ["ls", "le", "lw"]], ["Right arm", ["rs", "re", "rw"]],
 	["Left leg", ["lh", "lk", "lf"]], ["Right leg", ["rh", "rk", "rf"]],
 ]
 const JOINT_NAMES := {"pos": "Hips (move)", "hips": "Hips (turn)", "torso": "Waist", "chest": "Chest", "neck": "Neck",
 	"head": "Head", "ls": "L shoulder", "le": "L elbow", "rs": "R shoulder", "re": "R elbow", "lh": "L hip",
-	"lk": "L knee", "lf": "L ankle", "rh": "R hip", "rk": "R knee", "rf": "R ankle"}
+	"lk": "L knee", "lf": "L ankle", "rh": "R hip", "rk": "R knee", "rf": "R ankle", "lw": "L wrist", "rw": "R wrist"}
 ## Limbs aimed by dragging (their bone points at the mouse), and hinges.
 const AIMED := ["ls", "rs", "lh", "rh"]
 const HINGES := ["le", "re", "lk", "rk"]
@@ -101,6 +101,8 @@ var _ref_atlas: AtlasTexture
 var _ghost_mesh: ImmediateMesh
 var _marker: MeshInstance3D
 var _syncing := false
+## The dance's own effects (EmoteFx), in a render.
+var _dance_fx: EmoteFx
 
 
 func _ready() -> void:
@@ -1313,14 +1315,17 @@ func _shots() -> void:
 
 ## --fx=yell: the Intense Yelling aura round the fighter (--fxtime= seconds into the yell).
 func _add_yell_fx() -> void:
-	if _arg("fx", "") != "yell":
-		return
 	var holder := Node3D.new()
 	add_child(holder)
 	holder.global_position = _body.global_position
-	var fx := PowerUpFx.new()
-	fx._time = float(_arg("fxtime", "8"))
-	holder.add_child(fx)
+	if _arg("fx", "") == "yell":
+		var fx := PowerUpFx.new()
+		fx._time = float(_arg("fxtime", "8"))
+		holder.add_child(fx)
+	elif not _data.get("fx", []).is_empty() and not "--nofx" in OS.get_cmdline_user_args():
+		_dance_fx = EmoteFx.new().setup(_id)
+		holder.add_child(_dance_fx)
+		_dance_fx.set_process(false)
 
 
 ## A test clip: the dance, front on, no panels, a PNG per 1/30s.
@@ -1340,6 +1345,8 @@ func _render_clip() -> void:
 	for i in int(seconds * FPS):
 		_time = fmod(i / FPS, float(_data.length))
 		_pose_body()
+		if _dance_fx:
+			_dance_fx.advance(1.0 / FPS)
 		await RenderingServer.frame_post_draw
 		get_viewport().get_texture().get_image().save_png(dir + "f%04d.png" % i)
 	print("rendered ", ProjectSettings.globalize_path(dir))

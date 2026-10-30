@@ -1107,7 +1107,7 @@ Saved as `drills: {drill: {best, day}}`; the day is your own clock's date.
 | Hat Trick | Pop your first hat | Dab |
 | Grave Diver | Clear a Crypt floor | Griddy |
 | Seal Breaker | Beat a Dead League contender | Floss |
-| Flurry | Land a 25-hit combo | Running Man |
+| Flurry | Land a 25-hit combo | Earl Run |
 | Drill Sergeant | Finish a daily drill | Nae Nae |
 | Veteran Slayer | Knock out a veteran | Take the L |
 | No End in Sight | 100 knockouts in one endless bout (was 50 in the Endless Arena) | Horse Ride |
@@ -1465,7 +1465,7 @@ Hold **Emote** (G; View / Create on a controller, plus D-pad down in Weenie Hut 
 - Take the L
 - Griddy (heel taps, then the goggles)
 - Horse Ride (reins hop, then the lasso)
-- Running Man
+- Earl Run
 - Bros. Shuffle (the Mario & Luigi dance: fists bouncing at the chest, knock-kneed sway, alternating fist pumps)
 - Boo-Yah (Vector's "Oh yeah!" from Despicable Me, added 2026-10-24): whip round into a T-pose and sway; lean back, hips thrust, hands wiggling low; claws up by the face; both fists pumping overhead; a double biceps flex; smug hip swivels, fists at the hips. Earned by Untouchable.
 
@@ -1497,6 +1497,17 @@ Emotes are redone to match real sources (clips, GIFs, stills, written breakdowns
   - Second pass (the user's notes): the head was looking up and to the side, the body swayed side to side, the feet and knees moved too little, the Mauler's ankles poked out of his high tops, and one arm swing glitched. The import now levels the head's typical turn and tilt as well as its tip and calms its motion (HEAD_CALM 0.6); the body stands between both feet (only shifting onto one clearly lifted off), is steadied side to side and doesn't follow travel unless asked; the legs' moves play 1.6x as big (LEG_GAIN, a slider); a nearly straight arm keeps the twist it had instead of flipping half way round in a frame (the glitch: 73 degrees in 1/60s), and each turn keeps the set of angles nearest the frame before.
   - **Hands on the face** go in the dance file as where they touch the head (`lhand` / `rhand`: ear-widths round the ears' middle, and a weight), and each fighter's arm reaches that spot on his own face as he plays it (`PlayerBody._reach_hands`), whatever his head, arms or gloves. Before, the goggles stopped at the Answer's cheeks and went over the Mauler's head.
   - **Boot shafts and shoe collars ride the shin** (`FighterBody._collar`), so a bent ankle turns the shoe under them instead of swinging the shaft off the leg.
+
+- **Redone from the user's clips (2026-10-30), hand-keyed from the clip's timing** (the raw tracker import was too noisy on loose clothing and blur; the Studio import stays for cleaner clips). Each is a generated file with its feet kept on the floor (hips ride exactly as high as the lower leg allows):
+  - **Boo-Yah:** T-pose, drop with arms bent at the hips, slow rise, then 5 sides of coil (butt back, chest forward, knees bent, arms forward at 90 degrees) / thrust (hips forward, chest back, arms back) / hop to the other side, 90 degrees of turn; 9.2s.
+  - **Nae Nae is now Watch Me** (id stays `nae_nae`): leg raise and arm wind-up, stomp, arm whip straight out in front, backward walk in a deep wide squat with hip shifts (feet locked while the hips slide) and an overhead wave with the elbow bent, then mirrored; 9.15s.
+  - **Dab:** loose stance, then feet together and knees bent (48 degrees) as the arms go to the side, the bent arm beside the face (not over it), a 0.6s hold each side; 2.4s.
+  - **Intense Yelling / Overexerted:** a wide horse stance (hips back, chest forward, head level, elbows bent about 78 degrees, fists forward). The aura is only thin rising sparks and a soft light (the solid glowing shell covered the player and is gone); lightning every 1.6-3.4s and 12 dB quieter.
+  - **Running Man is now Earl Run** (id stays `running_man`; a nod to the Cloudy With a Chance of Meatballs officer). Not redone yet.
+  - **Tree Dance (new, not in the store yet):** cactus arms and straight legs, roll the arms forward and cross them coming down, touch the hips, cross out front, sweep up, clap in front, drop into a wide squat, then six hip thrusts alternating one hand up (wrist flicks back) and one down (wrist flops forward) with the head toward the raised hand; 6.7s.
+  - **Warm Up (new, not in the store yet):** one-foot hops (two a side, 0.68s each) with the arms long and loose, flopping out from and back in to the body, the neck tilting every second hop; a low coil, a jump and a hard landing into a boxing stance (left foot forward, fists by the chin); dust on every landing and a slight aura on the stance; 7.1s.
+  - **Wrist joints** (`lw` / `rw`, pitch only): every fighter's hand now hangs on a wrist pivot (`PlayerBody._hand_frame`), so a hand can flop forward and back. Also in the Studio's joint list.
+  - **Emote effects** (`punch-craft/emote_fx.gd`): a dance file may carry an `fx` list of `{"t", "do": "dust" | "aura", ...}`; `Player.start_emote` plays it while the dance runs, and the Studio's render shows it.
 
 **Tightened 2026-10-17:** the dances were stiff from the front, because knee bends and hip dips happen front to back, and the feet sank into the floor.
 - `PlayerBody._plant_feet` now keeps the feet on the canvas: dropping the hips bends the knees, and swaying them sideways leans the legs.

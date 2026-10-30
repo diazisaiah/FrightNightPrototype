@@ -605,7 +605,8 @@ func _answer_arm(shoulder: Node3D, elbow: Node3D, side: float) -> void:
 	_answer_fist(elbow, side)
 
 
-func _answer_fist(elbow: Node3D, side: float) -> void:
+func _answer_fist(forearm: Node3D, side: float) -> void:
+	var elbow := _hand_frame(forearm, side, -0.22)
 	var glove := _p("glove")
 	# A square black glove: the knuckle row lit along the top, the thumb
 	# across the front, the fingers split by shadow (tiny cubes only).
@@ -927,7 +928,8 @@ func _arm_shape(shoulder: Node3D, elbow: Node3D, side: float, forearm: Callable,
 
 ## A square fist, its knuckle row lit, the thumb across the front; cuff
 ## colors the wrist row, fingers (fingerless gloves) the curled fingers.
-func _fist(elbow: Node3D, side: float, glove: Color, cuff: Variant = null, fingers: Variant = null, big := 1.3) -> void:
+func _fist(forearm: Node3D, side: float, glove: Color, cuff: Variant = null, fingers: Variant = null, big := 1.3) -> void:
+	var elbow := _hand_frame(forearm, side, WRIST)
 	var front := -0.062 * big
 	var paint := func(p: Vector3) -> Color:
 		if cuff != null and p.y > WRIST - _v:
@@ -1055,10 +1057,11 @@ func _mauler_arm(shoulder: Node3D, elbow: Node3D, side: float) -> void:
 	var glove := func(p: Vector3) -> Color:
 		return _p("tape") if p.y > WRIST - 0.036 else red
 	var d := WRIST + 0.2
-	_block(elbow, Vector3(-0.126, -0.48 + d, -0.15), Vector3(0.126, WRIST, 0.108), glove)
-	_block(elbow, Vector3(-0.108, -0.46 + d, -0.186), Vector3(0.108, -0.29 + d, -0.15), red.lightened(0.07))
-	_side_block(elbow, -side, 0.126, 0.162, -0.4 + d, -0.28 + d, -0.11, 0.0, red)
-	_block(elbow, Vector3(-0.018, -0.3 + d, 0.108), Vector3(0.018, WRIST - 0.036, 0.144), _p("laces"))
+	var hand := _hand_frame(elbow, side, WRIST)
+	_block(hand, Vector3(-0.126, -0.48 + d, -0.15), Vector3(0.126, WRIST, 0.108), glove)
+	_block(hand, Vector3(-0.108, -0.46 + d, -0.186), Vector3(0.108, -0.29 + d, -0.15), red.lightened(0.07))
+	_side_block(hand, -side, 0.126, 0.162, -0.4 + d, -0.28 + d, -0.11, 0.0, red)
+	_block(hand, Vector3(-0.018, -0.3 + d, 0.108), Vector3(0.018, WRIST - 0.036, 0.144), _p("laces"))
 
 
 ## A heavy brow, small hard eyes, a frown.

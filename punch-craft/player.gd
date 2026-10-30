@@ -1030,6 +1030,8 @@ func start_emote(id: String) -> void:
 		_emote_fx = PowerUpFx.new()
 	elif id == "overexerted":
 		_emote_fx = PoopFx.new()
+	elif not Emotes.raw(id).get("fx", []).is_empty():
+		_emote_fx = EmoteFx.new().setup(id)
 	if _emote_fx:
 		add_child(_emote_fx)
 	_pad_sprint = false

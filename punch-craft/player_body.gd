@@ -791,7 +791,18 @@ func _arm(shoulder: Node3D, elbow: Node3D, side: float) -> void:
 	_blob(elbow, Vector3(0, 0.0, 0.01), Vector3(0.048, 0.045, 0.048) * f, skin)
 	_limb(elbow, Vector3(0, -0.01, 0), Vector3(0, -0.2, 0), Vector2(0.056, 0.054) * f, Vector2(0.04, 0.036) * f, skin, 0.15, 0.25)
 	_dress_arm(shoulder, elbow, side)
-	_hand(elbow, side)
+	_hand(_hand_frame(elbow, side), side)
+
+
+## The wrist ("lw" / "rw", a joint the dances bend): the hand's cubes hang on it,
+## placed in elbow space as ever. at: how far down the forearm it sits.
+func _hand_frame(elbow: Node3D, side: float, at := -0.2) -> Node3D:
+	var wrist := _pivot(("l" if side < 0 else "r") + "w", elbow, Vector3(0, at, 0))
+	var frame := Node3D.new()
+	frame.name = "hand"
+	frame.position = Vector3(0, -at, 0)
+	wrist.add_child(frame)
+	return frame
 
 
 func _shoe(knee: Node3D, side: float) -> void:
