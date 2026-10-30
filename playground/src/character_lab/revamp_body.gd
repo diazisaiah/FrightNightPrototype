@@ -80,6 +80,9 @@ var _crown_hides: Array = []
 ## Where the top of the hair splits for a crown (above it goes under the
 ## crown); past the hair, no split.
 var _crown_cut := 9.0
+## Big hair that swaps to a short cut (the "short" zone) under a cap or
+## crown, instead of being cut down or squeezed (the Blur).
+var _short_under_hats := false
 ## The Stray's headband (off under any hat).
 var _headband: Node3D
 static var _cubes := {}
@@ -122,10 +125,17 @@ func wear_hat(id: String) -> void:
 	_hat = null
 	var bare := id == "" or not Hats.CATALOG.has(id)
 	var fit: Dictionary = {} if bare else HAT_FIT[hat_kind(id)]
+	var short: bool = _short_under_hats and not bare and hat_kind(id) in ["cap", "crown"]
 	for zone in _zones:
+		if zone == "short" or short:
+			(_zones[zone] as Node3D).visible = short and zone == "short"
+			continue
 		(_zones[zone] as Node3D).visible = bare or not (_zone_hidden(zone, fit.hide) or (hat_kind(id) == "crown" and _zone_hidden(zone, _crown_hides)))
+	# The Stray keeps his headband under any hat; over a mask it goes round
+	# the outside of the mask.
+	var mask := not bare and hat_kind(id) == "mask"
 	if _headband:
-		_headband.visible = bare
+		_headband.visible = not mask
 	if bare:
 		return
 	# Crowns sit on the hair (whatever its size); the rest fit the skull.
@@ -141,8 +151,24 @@ func wear_hat(id: String) -> void:
 	var spin := _hat.get_node_or_null("Hat/Spin")
 	if spin:
 		spin.create_tween().set_loops().tween_property(spin, "rotation:y", TAU, 0.6).from(0.0)
+	if mask and _headband:
+		_mask_band(_hat.get_node("Hat"), u)
 	if Hats.info(id).rarity == "legendary":
 		Hats.sparkles(_hat, Hats.color(id), 0.25)
+
+
+## The Stray's headband tied round the outside of a mask (in the hat's own
+## units, wide enough for every mask), knotted behind, tails trailing.
+func _mask_band(hat: Node3D, u: float) -> void:
+	var red := _p("band")
+	var y := -0.1
+	Hats._b(hat, u, Vector3(1.32, 0.13, 0.07), Vector3(0, y, -0.62), red)
+	Hats._b(hat, u, Vector3(1.32, 0.13, 0.07), Vector3(0, y, 0.66), red)
+	for side in [-1.0, 1.0]:
+		Hats._b(hat, u, Vector3(0.07, 0.13, 1.35), Vector3(0.66 * side, y, 0.02), red)
+	Hats._b(hat, u, Vector3(0.18, 0.17, 0.1), Vector3(-0.1, y, 0.72), red.darkened(0.15))
+	Hats._b(hat, u, Vector3(0.14, 0.04, 0.7), Vector3(-0.35, y - 0.15, 1.0), red, Vector3(0.35, -0.6, 0))
+	Hats._b(hat, u, Vector3(0.12, 0.04, 0.55), Vector3(-0.15, y - 0.35, 0.95), red.darkened(0.12), Vector3(0.8, -0.3, 0))
 
 
 # --- Building -----------------------------------------------------------------------
@@ -1066,11 +1092,11 @@ func _blur_hair(head: Node3D) -> void:
 	var fw := 0.15 * _b("face")
 	var w := fw + 0.07
 	var curl := 0.1
-	# A crown sits down in the curls, the ones above it under it.
-	_crown_cut = 0.47
-	_crown_at = 0.46 + 0.125
-	_crown_half = w
-	_crown_hides = ["top_high"]
+	# Under a cap or crown the curls give way to a short cut (below); the
+	# crown sits on it like the Answer's.
+	_short_under_hats = true
+	_crown_at = 0.52
+	_crown_half = fw + 0.03
 	var top := _zone(head, "top")
 	_lock(top, Vector3(-w, 0.3, -0.16), Vector3(w, 0.58, 0.25), hair, 0.07)
 	# Square curls round the mass, every other one stepped up, each ring
@@ -1099,6 +1125,15 @@ func _blur_hair(head: Node3D) -> void:
 		_side_lock(puff, side, fw - 0.02, w, 0.2, 0.42, -0.1, 0.2, hair, 0.02)
 	_lock(_zone(head, "back"), Vector3(-fw - 0.02, 0.12, 0.08), Vector3(fw + 0.02, 0.42, 0.21), hair)
 	_lock(puff, Vector3(-w + 0.02, 0.15, 0.08), Vector3(w - 0.02, 0.42, 0.26), hair, 0.04)
+	# The short cut: a close crop with a squared top, tidy at the sides and
+	# back, a short fringe.
+	var short := _zone(head, "short")
+	var c := fw + 0.025
+	_lock(short, Vector3(-c, 0.3, -0.17), Vector3(c, 0.42, 0.18), hair, 0.02)
+	for side in [-1.0, 1.0]:
+		_side_lock(short, side, fw - 0.02, c, 0.22, 0.36, -0.1, 0.15, hair)
+	_lock(short, Vector3(-c, 0.14, 0.06), Vector3(c, 0.36, 0.19), hair)
+	_lock(short, Vector3(-0.15, 0.3, -0.19), Vector3(0.15, 0.4, -0.13), hair)
 
 
 # --- The Stray -----------------------------------------------------------------------
