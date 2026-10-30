@@ -1114,6 +1114,8 @@ Saved as `drills: {drill: {best, day}}`; the day is your own clock's date.
 | Legend | Find a legendary hat | Bros. Shuffle |
 | Untouchable | Beat a Dead League contender without getting hit | Boo-Yah |
 
+**Soul Shop only (no achievement):** Tree Dance and Warm Up (`Achievements.STORE_ONLY`), 8 Souls like the other emotes; they sit after Boo-Yah on the wheel.
+
 Older saves get what they'd already earned, quietly, when camp loads. The list and which emote each gives are expected to change as emotes are added.
 
 **Endless bouts (2026-10-25: every division's third bout is endless).** The one Endless Arena after the Crown Division became the Crown's third bout, and every other division's third bout works the same way, in that division's own place with its own monsters. It's the ENDLESS card in the bout picker (with your best). Finishing bout 2 and choosing Next bout goes straight into it.
@@ -1504,8 +1506,8 @@ Emotes are redone to match real sources (clips, GIFs, stills, written breakdowns
   - **Dab:** loose stance, then feet together and knees bent (48 degrees) as the arms go to the side, the bent arm beside the face (not over it), a 0.6s hold each side; 2.4s.
   - **Intense Yelling / Overexerted:** a wide horse stance (hips back, chest forward, head level, elbows bent about 78 degrees, fists forward). The aura is only thin rising sparks and a soft light (the solid glowing shell covered the player and is gone); lightning every 1.6-3.4s and 12 dB quieter.
   - **Running Man is now Earl Run** (id stays `running_man`; a nod to the Cloudy With a Chance of Meatballs officer). Not redone yet.
-  - **Tree Dance (new, not in the store yet):** cactus arms and straight legs, roll the arms forward and cross them coming down, touch the hips, cross out front, sweep up, clap in front, drop into a wide squat, then six hip thrusts alternating one hand up (wrist flicks back) and one down (wrist flops forward) with the head toward the raised hand; 6.7s.
-  - **Warm Up (new, not in the store yet):** one-foot hops (two a side, 0.68s each) with the arms long and loose, flopping out from and back in to the body, the neck tilting every second hop; a low coil, a jump and a hard landing into a boxing stance (left foot forward, fists by the chin); dust on every landing and a slight aura on the stance; 7.1s.
+  - **Tree Dance (new, Soul Shop only):** cactus arms and straight legs, roll the arms forward and cross them coming down, touch the hips, cross out front, sweep up, clap in front, drop into a wide squat, then six hip thrusts alternating one hand up (wrist flicks back) and one down (wrist flops forward) with the head toward the raised hand; 6.7s.
+  - **Warm Up (new, Soul Shop only):** one-foot hops (two a side, 0.68s each) with the arms long and loose, flopping out from and back in to the body, the neck tilting every second hop; a low coil, a jump and a hard landing into a boxing stance (left foot forward, fists by the chin); dust on every landing and a slight aura on the stance; 7.1s.
   - **Wrist joints** (`lw` / `rw`, pitch only): every fighter's hand now hangs on a wrist pivot (`PlayerBody._hand_frame`), so a hand can flop forward and back. Also in the Studio's joint list.
   - **Emote effects** (`punch-craft/emote_fx.gd`): a dance file may carry an `fx` list of `{"t", "do": "dust" | "aura", ...}`; `Player.start_emote` plays it while the dance runs, and the Studio's render shows it.
 

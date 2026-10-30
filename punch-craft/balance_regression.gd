@@ -934,7 +934,9 @@ func _test_one_power() -> void:
 			continue  # True Ending? teaches no dance.
 		_check(emote in Emotes.ORDER and not taught.has(emote), "Each achievement teaches its own real dance (%s)" % id)
 		taught[emote] = true
-	_check(taught.size() + Achievements.FREE_EMOTES.size() == Emotes.ORDER.size(), "Every dance can be earned")
+	for id in Achievements.STORE_ONLY:
+		_check(id in Emotes.ORDER and not taught.has(id), "%s is sold in the Soul Shop and taught by no achievement" % id)
+	_check(taught.size() + Achievements.FREE_EMOTES.size() + Achievements.STORE_ONLY.size() == Emotes.ORDER.size(), "Every dance can be earned or bought")
 	GameState._reset_fields()
 	# The plumber quest: all five plumber caps give Tony's overalls and the jump.
 	for cap in Hats.PLUMBER_CAPS.slice(0, 4):

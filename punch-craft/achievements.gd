@@ -28,6 +28,8 @@ const EARN_ONLY := ["intense_yelling", "overexerted", "plumber_jump"]
 ## Knockouts in one endless bout for No End in Sight (every division's third
 ## bout is endless now, so 50 would come with simply winning one).
 const ENDLESS_KOS := 100
+## Dances no achievement teaches: the Soul Shop sells them.
+const STORE_ONLY := ["tree_dance", "warm_up"]
 ## Dances everyone has.
 const FREE_EMOTES := ["default"]
 

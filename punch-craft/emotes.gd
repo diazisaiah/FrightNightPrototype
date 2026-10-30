@@ -48,7 +48,7 @@ const REST := {
 const EASES := ["smooth", "ease", "snap", "linear", "hold"]
 const HANDS := ["lhand", "rhand"]
 ## Wheel order (clockwise from the top).
-const ORDER := ["default", "dab", "nae_nae", "floss", "take_the_l", "griddy", "horse_ride", "running_man", "bros_shuffle", "boo_yah", "intense_yelling", "overexerted", "plumber_jump"]
+const ORDER := ["default", "dab", "nae_nae", "floss", "take_the_l", "griddy", "horse_ride", "running_man", "bros_shuffle", "boo_yah", "tree_dance", "warm_up", "intense_yelling", "overexerted", "plumber_jump"]
 
 static var _clips := {}
 
