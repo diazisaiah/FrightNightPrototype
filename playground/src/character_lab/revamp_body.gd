@@ -33,8 +33,9 @@ const HAT_FIT := {
 	"cap": {"seat": 0.315, "size": 0.96, "hide": ["top", "front"]},
 	# On top of the hair, all of it showing.
 	"crown": {"seat": 0.395, "size": 1.05, "hide": []},
-	# Helmets and masks over the whole head.
-	"mask": {"seat": 0.3, "size": 0.87, "hide": ["top", "front", "sides", "back"]},
+	# Helmets and masks round the whole head, the face's raised cubes (brow,
+	# nose) inside the front plate.
+	"mask": {"seat": 0.33, "size": 1.22, "hide": ["top", "front", "sides", "back"]},
 	# Wigs and bald caps replace the hair.
 	"wig": {"seat": 0.33, "size": 0.87, "hide": ["top", "front", "sides", "back"]},
 }
@@ -68,6 +69,11 @@ var _zones := {}
 ## The top of the hair and its half width (crowns sit on it).
 var _crown_at := 0.52
 var _crown_half := 0.17
+## Hair zones a crown hides: big hair (the Blur's curls, the Stray's locs)
+## goes under it, so the crown sits down on the head like everyone's.
+var _crown_hides: Array = []
+## The Stray's headband (off under any hat).
+var _headband: Node3D
 static var _cubes := {}
 
 
@@ -103,7 +109,9 @@ func wear_hat(id: String) -> void:
 	var bare := id == "" or not Hats.CATALOG.has(id)
 	var fit: Dictionary = {} if bare else HAT_FIT[hat_kind(id)]
 	for zone in _zones:
-		(_zones[zone] as Node3D).visible = bare or not zone in fit.hide
+		(_zones[zone] as Node3D).visible = bare or not (zone in fit.hide or (hat_kind(id) == "crown" and zone in _crown_hides))
+	if _headband:
+		_headband.visible = bare
 	if bare:
 		return
 	# Crowns sit on the hair (whatever its size); the rest fit the skull.
@@ -1008,8 +1016,9 @@ func _blur_hair(head: Node3D) -> void:
 	var fw := 0.15 * _b("face")
 	var w := fw + 0.07
 	var curl := 0.1
-	_crown_at = 0.66
-	_crown_half = w + curl * 0.5
+	_crown_at = 0.495
+	_crown_half = w
+	_crown_hides = ["top"]
 	var top := _zone(head, "top")
 	_lock(top, Vector3(-w, 0.3, -0.16), Vector3(w, 0.58, 0.25), hair, 0.07)
 	# Square curls round the mass, every other one stepped up, each ring
@@ -1125,8 +1134,9 @@ func _stray_hair(head: Node3D) -> void:
 	var hair := _color("hair")
 	var fw := 0.15 * _b("face")
 	var w := fw + 0.03
-	_crown_at = 0.62
-	_crown_half = w + 0.05
+	_crown_at = 0.475
+	_crown_half = w
+	_crown_hides = ["top"]
 	var top := _zone(head, "top")
 	_lock(top, Vector3(-w, 0.324, -0.17), Vector3(w, 0.42, 0.19), hair, 0.02)
 	var heights := [
@@ -1154,13 +1164,16 @@ func _stray_hair(head: Node3D) -> void:
 	_lock(back, Vector3(-w, 0.324, 0.1), Vector3(w, 0.42, 0.2), hair)
 	for x: float in [-0.13, -0.05, 0.03, 0.11]:
 		_lock(back, Vector3(x - 0.03, 0.08 + (0.04 if x > 0.0 else 0.0), 0.13), Vector3(x + 0.03, 0.252, 0.2), hair)
-	# The headband: on the head itself, so it stays under any hat.
+	# The headband, knot and tails: their own part, off under any hat.
 	var red := _p("band")
-	_fill(head, Vector3(-0.25, 0.24, -0.25), Vector3(0.25, 0.34, 0.25), red, func(p: Vector3) -> bool:
+	_headband = Node3D.new()
+	_headband.name = "Headband"
+	head.add_child(_headband)
+	_fill(_headband, Vector3(-0.25, 0.24, -0.25), Vector3(0.25, 0.34, 0.25), red, func(p: Vector3) -> bool:
 		return _in_band(p) and not _in_skull_only(p))
-	_block(head, Vector3(-0.08, 0.25, 0.17), Vector3(0.0, 0.33, 0.22), red.darkened(0.15))
-	_strip(head, Vector3(-0.04, 0.29, 0.21), Vector3(-0.32, 0.16, 0.5), 0.06, _v, red)
-	_strip(head, Vector3(-0.01, 0.27, 0.21), Vector3(-0.17, 0.02, 0.46), 0.05, _v, red.darkened(0.12))
+	_block(_headband, Vector3(-0.08, 0.25, 0.17), Vector3(0.0, 0.33, 0.22), red.darkened(0.15))
+	_strip(_headband, Vector3(-0.04, 0.29, 0.21), Vector3(-0.32, 0.16, 0.5), 0.06, _v, red)
+	_strip(_headband, Vector3(-0.01, 0.27, 0.21), Vector3(-0.17, 0.02, 0.46), 0.05, _v, red.darkened(0.12))
 
 
 ## The skull and jaw alone (not the band).
