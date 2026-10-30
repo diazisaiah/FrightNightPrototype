@@ -1457,7 +1457,7 @@ Maxing the Coffin Crown went from about 19M to about 7.3M.
 
 Hold **Emote** (G; View / Create on a controller, plus D-pad down in Weenie Hut Junior Mode, where it's free; in Pro Gamer Mode it's the back step) for the emote wheel, steer with the mouse or right stick, and let go on a dance. The camera pulls out to third person (about 0.35s, Destiny style) around your fighter. The mouse or right stick orbits the camera. Moving, punching, dodging, jumping, the ultimate or getting hit ends the dance and glides the camera back. Emoting works mid-fight; you're open while you dance. A quick tap repeats your last dance (or stops one). On a controller, a tap opens the map where there is one (the Crypt, the tutorial's dummy cycling), since the map gave up its own button.
 
-**Dances** (`emotes.gd`, keyframed poses eased in a loop, mirrored with `Emotes.mirror`):
+**Dances** (one file each in `punch-craft/emotes/`, played by `emotes.gd`; see Emote pipeline below):
 - The Default
 - Dab
 - Nae Nae
@@ -1468,6 +1468,28 @@ Hold **Emote** (G; View / Create on a controller, plus D-pad down in Weenie Hut 
 - Running Man
 - Bros. Shuffle (the Mario & Luigi dance: fists bouncing at the chest, knock-kneed sway, alternating fist pumps)
 - Boo-Yah (Vector's "Oh yeah!" from Despicable Me, added 2026-10-24): whip round into a T-pose and sway; lean back, hips thrust, hands wiggling low; claws up by the face; both fists pumping overhead; a double biceps flex; smug hip swivels, fists at the hips. Earned by Untouchable.
+
+### Emote pipeline [Built 2026-10-30]
+
+Emotes are redone to match real sources (clips, GIFs, stills, written breakdowns), so making one has to be accurate and quick.
+
+**Dance files** (`punch-craft/emotes/<id>.json`, exported with the game):
+- A dance is keys on a timeline: `t` in seconds, a pose of joint rotations in degrees, and the hips' offset (`pos`) in cm.
+- A key can name only some joints. Each joint flows through the keys that name it.
+- Ease per key: smooth (the default: flows through the keys without swinging past them), ease (stops on the key), snap (fast out, settles in), linear, hold.
+- `length`, `loop`, `loop_start` (an intro that plays once), `plant` (hand-made: the hips drop on bent knees with the feet kept down; tracked: the legs as keyed).
+- `source` and `ref` point the Studio back at the tracked clip; the game ignores them.
+- The 13 old dances (plus the secret ending's swing and uppercut) were moved over as they were, now on smooth curves instead of stop-start eases.
+
+**More joints** (`FighterBody`): a chest over the waist (body rolls), a neck under the head (head bobs), and ankles measured from flat on the floor, so feet stay flat however the knees bend unless a dance tips them.
+
+**Emote Tracker** (`emote_lab/`, run `Emote Tracker.bat`): a browser page. Drop in a video (trim it to one loop), a GIF, or stills. Pose tracking (MediaPipe) finds the dancer's 33 joints in 3D every frame. Saves `<id>.track.json` into `emote_lab/sources/` (local only, not committed) with the notes, links and a strip of reference frames.
+
+**Emote Studio** (playground: Character Lab, Emote Studio):
+- **Import** a tracked clip onto the rig (`EmoteRetarget`): smoothed, each joint's rotation worked out frame by frame, the weight foot kept planted (hips drop and sway over it), lifted for jumps, moved for travel, then cut down to the keys the motion needs (a slider sets how close).
+- **Edit:** the source frame beside the fighter and the tracked skeleton over him, synced to the timeline. Click a joint on the body and drag it (limbs point where you drag), or use its sliders. Editing between keys makes a key. Move keys on the timeline, drag the end to change the length, Faster / Slower stretch the whole dance, a beat grid snaps keys to the music, mirror a pose or the whole dance, copy and paste poses, undo.
+- **Save** writes the game's file.
+- Checked by a round trip (`-- --selftest`): five game dances written out as tracking and imported back land within about 2 cm.
 
 **Tightened 2026-10-17:** the dances were stiff from the front, because knee bends and hip dips happen front to back, and the feet sank into the floor.
 - `PlayerBody._plant_feet` now keeps the feet on the canvas: dropping the hips bends the knees, and swaying them sideways leans the legs.
@@ -1884,7 +1906,7 @@ A planning list, not a work order: nothing here gets built until the user picks 
 1. **The Catalyst's runes [Planned]:** runes around him by passive: one big rune for the single power, two medium for two powers, four for Prism's four. Each glows its power's color.
 2. **Flame Burst ultimate [Planned]:** a very dramatic, big AoE explosion that sends regular enemies flying.
 3. **Tony's family [Planned]:** better fighting rigs and skull-cracking hits. Fix Tony's bald spot.
-4. **Emotes [Planned]:** redo every emote to look good; add new ones.
+4. **Emotes [In progress]:** the pipeline is built (Emote pipeline, 2026-10-30); next, redo every emote from the user's sources and add new ones.
 5. **No stun-locks, anywhere [Planned]:** audit that no fighter, power or card can stun-lock bosses or monsters (stuns, staggers, freezes, knockdowns, card effects), with tests.
 6. **Balance check per fighter [Planned].**
 7. **Playground [Planned]:** easier controls, a skin picker, and set upgrade tiers to test at different power levels.

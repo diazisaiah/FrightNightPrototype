@@ -1015,7 +1015,7 @@ func _tap_map() -> bool:
 
 ## Starts a dance (an Emotes id) and pulls the camera out.
 func start_emote(id: String) -> void:
-	if not active or ult.busy() or not Emotes.NAMES.has(id) or not Achievements.emote_unlocked(id):
+	if not active or ult.busy() or not id in Emotes.ORDER or not Achievements.emote_unlocked(id):
 		return
 	if _emote_out <= 0.0:
 		_emote_orbit = Vector2(PI * 0.78, 0.18)

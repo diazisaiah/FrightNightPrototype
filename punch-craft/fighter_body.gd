@@ -3,7 +3,7 @@ extends PlayerBody
 ## The fighters' bodies (2026-10-30): all six rebuilt clean in large cubes
 ## (the revamp, prototyped in the playground 2026-10-29), on PlayerBody's
 ## pivots (hips, torso, head, shoulders, elbows, hips, knees, plus ankles
-## lf / rf), poses, emotes, skins and hats. PlayerBody's own small-cube
+## lf / rf, and the chest and neck for emotes), poses, emotes, skins and hats. PlayerBody's own small-cube
 ## sculpture is only a fallback now. Each fighter has its own overall size
 ## (SIZE), its cubes the same size in the world as everyone else's.
 ##
@@ -52,6 +52,11 @@ const DRESS := {
 ## The revamp's own changes to a fighter's build (BUILDS): the Blur's jaw
 ## fuller and his head a touch bigger (it read tiny and pinched).
 const BUILD_TWEAKS := {"combo_master": {"jaw": 0.65, "face": 1.0}}
+## The chest and neck pivots' heights on the torso (2026-10-30, for emotes:
+## body rolls bend at the chest, head bobs at the neck). The trunk is drawn
+## whole on the torso; its cubes from CHEST_Y up ride the chest once baked.
+const CHEST_Y := 0.22
+const NECK_Y := 0.52
 ## Overall size (PlayerBody's is 0.92 for all): the Mauler big and tall, the
 ## Blur small and lean.
 const SIZE := {"berserker": 1.06, "counter_master": 0.92, "combo_master": 0.83, "free_runner": 0.93,
@@ -196,18 +201,20 @@ func _build() -> void:
 	var hips := _pivot("hips", self, Vector3(0, _hip_height(), 0))
 	var torso := _pivot("torso", hips, Vector3(0, 0.1, 0))
 	call(dress[0], hips, torso)
+	var chest := _pivot("chest", torso, Vector3(0, CHEST_Y, 0))
+	var neck := _pivot("neck", chest, Vector3(0, NECK_Y - CHEST_Y, 0))
 	for side in [-1.0, 1.0]:
 		var key := "l" if side < 0 else "r"
 		var hip := _pivot(key + "h", hips, Vector3(0.1 * b * side, 0.0, 0))
 		var knee := _pivot(key + "k", hip, Vector3(0, -0.44, 0))
 		call(dress[1], hip, knee, side)
-	var head := _pivot("head", torso, Vector3(0, 0.57, 0))
+	var head := _pivot("head", neck, Vector3(0, 0.57 - NECK_Y, 0))
 	_skull(head)
 	call(dress[2], head)
 	call(dress[3], head)
 	for side in [-1.0, 1.0]:
 		var key := "l" if side < 0 else "r"
-		var shoulder := _pivot(key + "s", torso, Vector3((0.22 * b + 0.07) * side, 0.49, 0))
+		var shoulder := _pivot(key + "s", chest, Vector3((0.22 * b + 0.07) * side, 0.49 - CHEST_Y, 0))
 		var elbow := _pivot(key + "e", shoulder, Vector3(0, -0.29, 0))
 		call(dress[4], shoulder, elbow, side)
 	for node in _parts:
@@ -276,18 +283,31 @@ func _run_bake(op: Array, start: int) -> bool:
 		material.roughness = 0.85
 		cube.material = material
 		_cubes[_v] = cube
+	if node == _joints.get("torso") and _joints.has("chest"):
+		var chest: Node3D = _joints.chest
+		var waist: Array = []
+		var ribs: Array = []
+		for cell: Vector3i in cells:
+			(ribs if (cell.y + 0.5) * _v >= chest.position.y else waist).append(cell)
+		_bake_cells(node, grid, waist, Vector3.ZERO)
+		_bake_cells(chest, grid, ribs, -chest.position)
+	else:
+		_bake_cells(node, grid, cells, Vector3.ZERO)
+	_grids.erase(node)
+	return true
+
+
+func _bake_cells(node: Node3D, grid: Dictionary, cells: Array, offset: Vector3) -> void:
 	var multimesh := MultiMesh.new()
 	multimesh.transform_format = MultiMesh.TRANSFORM_3D
 	multimesh.use_colors = true
 	multimesh.mesh = _cubes[_v]
 	multimesh.instance_count = cells.size()
 	for k in cells.size():
-		multimesh.set_instance_transform(k, Transform3D(Basis.IDENTITY, (Vector3(cells[k]) + Vector3(0.5, 0.5, 0.5)) * _v))
+		multimesh.set_instance_transform(k, Transform3D(Basis.IDENTITY, (Vector3(cells[k]) + Vector3(0.5, 0.5, 0.5)) * _v + offset))
 		multimesh.set_instance_color(k, grid[cells[k]])
 	_attach(node, multimesh)
 	_baked.append([get_path_to(node), multimesh])
-	_grids.erase(node)
-	return true
 
 
 func _tiny() -> bool:

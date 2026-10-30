@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Emote Tracker</title>
+<!--
+  Fright Night Emote Tracker (2026-10-30). Drop in a clip, GIF or stills of a
+  real dance; pose tracking (MediaPipe Pose Landmarker, in the browser) pulls
+  the dancer's 3D joints out of every frame. Save the result as
+  <id>.track.json into emote_lab/sources/; the playground's Emote Studio
+  imports it onto the fighter's rig, simplifies it to keys, and you clean it up
+  there. The file also carries a strip of reference frames for the Studio.
+  Serve this folder (Emote Lab.bat) - the tracker can't load from file://.
+-->
+<style>
+:root {
+  --bg: #0d0a14; --panel: #17121f; --panel2: #201929; --line: #34293f;
+  --text: #ece6f2; --muted: #9a8fa8; --gold: #f2c14e; --red: #e5484d; --good: #6fd08c; --cyan: #5ad1e6;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.4 system-ui, sans-serif; }
+header { border-bottom: 1px solid var(--line); padding: 14px 16px 10px; }
+h1 { margin: 0 0 2px; font-size: 22px; letter-spacing: 2px; color: var(--gold); }
+.sub { color: var(--muted); font-size: 13px; }
+main { padding: 16px; max-width: 1280px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; }
+@media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+.panel h2 { margin: 0 0 8px; font-size: 13px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); }
+#drop { border: 2px dashed var(--line); border-radius: 12px; padding: 28px; text-align: center; color: var(--muted); cursor: pointer; }
+#drop.over { border-color: var(--gold); color: var(--gold); }
+.stage { position: relative; background: #000; border-radius: 10px; overflow: hidden; margin-top: 12px; display: none; }
+.stage video, .stage canvas.src { display: block; width: 100%; height: auto; }
+.stage canvas.overlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.row { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; margin-top: 10px; }
+label.ctl { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 13px; }
+input[type=number], input[type=text] { background: var(--panel2); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; width: 80px; }
+input[type=text] { width: 100%; }
+textarea { width: 100%; min-height: 110px; background: var(--panel2); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 8px; font: inherit; font-size: 13px; resize: vertical; }
+input[type=checkbox], input[type=range] { accent-color: var(--gold); }
+button { background: var(--panel2); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 7px 14px; cursor: pointer; font-weight: 600; }
+button:hover:not(:disabled) { border-color: var(--gold); }
+button.go { background: var(--gold); color: #1a1208; border-color: var(--gold); }
+button:disabled { opacity: 0.45; cursor: default; }
+.mono { font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
+#status { margin-top: 8px; color: var(--muted); font-size: 13px; min-height: 20px; }
+#status.bad { color: var(--red); }
+#status.ok { color: var(--good); }
+progress { width: 100%; accent-color: var(--gold); height: 10px; }
+.views { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.views canvas { width: 100%; aspect-ratio: 1; background: var(--panel2); border-radius: 8px; display: block; }
+.views .cap { font-size: 11px; color: var(--muted); text-align: center; margin-top: 2px; }
+#scrub { width: 100%; }
+.help { color: var(--muted); font-size: 12px; }
+.help b { color: var(--text); }
+</style>
+</head>
+<body>
+<header>
+  <h1>EMOTE TRACKER</h1>
+  <div class="sub">Clip in, 3D motion out. Save into <span class="mono">emote_lab/sources/</span>, then import it in the playground's Emote Studio.</div>
+</header>
+<main>
+  <section>
+    <div id="drop" class="panel">Drop a video, a GIF, or several stills here (or click to pick)
+      <input id="pick" type="file" accept="video/*,image/*" multiple hidden>
+    </div>
+    <div class="stage" id="stage">
+      <video id="video" playsinline muted controls></video>
+      <canvas class="src" id="still"></canvas>
+      <canvas class="overlay" id="overlay"></canvas>
+    </div>
+    <div class="row" id="clipRow" style="display:none">
+      <button id="setIn">Set start</button>
+      <button id="setOut">Set end</button>
+      <span class="mono" id="range">0.00s - 0.00s</span>
+      <label class="ctl">Frames/sec <input type="number" id="fps" value="30" min="5" max="60"></label>
+      <label class="ctl"><input type="checkbox" id="mirror"> Mirrored (selfie video)</label>
+    </div>
+    <div class="row">
+      <button class="go" id="track" disabled>Track</button>
+      <button id="save" disabled>Save .track.json</button>
+      <label class="ctl">Model
+        <select id="model" style="background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:6px;padding:4px">
+          <option value="heavy">Heavy (best)</option><option value="full">Full (faster)</option>
+        </select>
+      </label>
+    </div>
+    <progress id="prog" value="0" max="1" style="display:none"></progress>
+    <div id="status">Loading the tracker...</div>
+  </section>
+  <aside>
+    <div class="panel">
+      <h2>Emote</h2>
+      <label class="ctl" style="display:block">Id (file name)<input type="text" id="emoteId" placeholder="griddy"></label>
+      <div style="height:8px"></div>
+      <label class="ctl" style="display:block">Source notes: links, the moves in words, counts
+        <textarea id="notes" placeholder="https://...&#10;1-4: heel taps, arms pumping&#10;5-8: goggles, lean side to side"></textarea></label>
+    </div>
+    <div class="panel" style="margin-top:12px">
+      <h2>Tracked 3D</h2>
+      <div class="views">
+        <div><canvas id="front" width="240" height="240"></canvas><div class="cap">front</div></div>
+        <div><canvas id="side" width="240" height="240"></canvas><div class="cap">side (facing left)</div></div>
+      </div>
+      <input type="range" id="scrub" min="0" max="0" value="0" step="1" disabled>
+      <div class="mono" id="frameInfo"></div>
+    </div>
+    <div class="panel help" style="margin-top:12px">
+      <b>Best results:</b> one dancer, whole body in frame head to feet, a steady camera, facing the camera. Trim to one clean loop of the move (Set start / Set end). Stills: drop the key poses in order; each becomes one pose.
+    </div>
+  </aside>
+</main>
+<script type="module">
+import { FilesetResolver, PoseLandmarker } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs";
+
+const WASM = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm";
+const MODELS = {
+  heavy: "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_heavy/float16/1/pose_landmarker_heavy.task",
+  full: "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task",
+};
+// MediaPipe's 33 landmarks; the bones drawn between them.
+const BONES = [[11,12],[11,13],[13,15],[12,14],[14,16],[11,23],[12,24],[23,24],[23,25],[25,27],[24,26],[26,28],
+  [27,29],[29,31],[27,31],[28,30],[30,32],[28,32],[0,7],[0,8],[15,19],[16,20]];
+// Reference strip: frames at up to this rate, this tall.
+const SHEET_FPS = 12, SHEET_H = 200, SHEET_COLS = 10;
+
+const $ = (id) => document.getElementById(id);
+const video = $("video"), still = $("still"), overlay = $("overlay");
+let vision = null, landmarker = null, modelKind = "";
+let media = null;          // {kind: "video"|"gif"|"stills", name, frames?: [{bitmap, t}]}
+let clipIn = 0, clipOut = 0;
+let result = null;         // the track, once tracked
+
+function status(text, kind = "") { const s = $("status"); s.textContent = text; s.className = kind; }
+
+async function ensureModel() {
+  const kind = $("model").value;
+  if (landmarker && modelKind === kind) return;
+  status("Loading the " + kind + " pose model...");
+  vision = vision || await FilesetResolver.forVisionTasks(WASM);
+  if (landmarker) landmarker.close();
+  landmarker = await PoseLandmarker.createFromOptions(vision, {
+    baseOptions: { modelAssetPath: MODELS[kind], delegate: "GPU" },
+    runningMode: "VIDEO", numPoses: 1,
+    minPoseDetectionConfidence: 0.5, minPosePresenceConfidence: 0.5, minTrackingConfidence: 0.5,
+  });
+  modelKind = kind;
+}
+
+// --- Loading media ---------------------------------------------------------------
+$("drop").onclick = () => $("pick").click();
+$("pick").onchange = (e) => load([...e.target.files]);
+$("drop").ondragover = (e) => { e.preventDefault(); $("drop").classList.add("over"); };
+$("drop").ondragleave = () => $("drop").classList.remove("over");
+$("drop").ondrop = (e) => { e.preventDefault(); $("drop").classList.remove("over"); load([...e.dataTransfer.files]); };
+
+async function load(files) {
+  if (!files.length) return;
+  result = null; $("save").disabled = true; $("scrub").disabled = true;
+  const first = files[0];
+  if (!$("emoteId").value) $("emoteId").value = first.name.replace(/\.[^.]+$/, "").toLowerCase().replace(/[^a-z0-9]+/g, "_");
+  $("stage").style.display = "block";
+  if (first.type.startsWith("video/")) {
+    media = { kind: "video", name: first.name };
+    still.style.display = "none"; video.style.display = "block";
+    video.src = URL.createObjectURL(first);
+    await new Promise((r) => video.onloadedmetadata = r);
+    sizeOverlay(video.videoWidth, video.videoHeight);
+    clipIn = 0; clipOut = video.duration;
+    $("clipRow").style.display = "flex";
+  } else if (first.type === "image/gif" && files.length === 1 && "ImageDecoder" in window) {
+    media = { kind: "gif", name: first.name, frames: await gifFrames(first) };
+    showStills();
+    clipIn = 0; clipOut = media.frames.at(-1).t;
+    $("clipRow").style.display = "none";
+  } else {
+    const images = files.filter((f) => f.type.startsWith("image/")).sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+    media = { kind: "stills", name: images.map((f) => f.name).join(", "), frames: [] };
+    for (let i = 0; i < images.length; i++) media.frames.push({ bitmap: await createImageBitmap(images[i]), t: i * 0.5 });
+    showStills();
+    $("clipRow").style.display = "none";
+  }
+  showRange();
+  $("track").disabled = false;
+  status(media.kind === "video" ? "Trim to one clean loop, then Track." : `${media.frames.length} frame(s) ready. Track.`);
+}
+
+async function gifFrames(file) {
+  const decoder = new ImageDecoder({ data: await file.arrayBuffer(), type: "image/gif" });
+  await decoder.tracks.ready;
+  await decoder.completed;
+  const count = decoder.tracks.selectedTrack.frameCount;
+  const frames = [];
+  let t = 0;
+  for (let i = 0; i < count; i++) {
+    const { image } = await decoder.decode({ frameIndex: i });
+    frames.push({ bitmap: await createImageBitmap(image), t });
+    t += (image.duration || 100000) / 1e6;
+    image.close();
+  }
+  return frames;
+}
+
+function showStills(index = 0) {
+  video.style.display = "none"; still.style.display = "block";
+  const b = media.frames[index].bitmap;
+  still.width = b.width; still.height = b.height;
+  still.getContext("2d").drawImage(b, 0, 0);
+  sizeOverlay(b.width, b.height);
+}
+
+// The picture fits the window's height (the overlay matches it exactly).
+function sizeOverlay(w, h) {
+  overlay.width = w; overlay.height = h;
+  $("stage").style.maxWidth = Math.round(window.innerHeight * 0.62 * w / h) + "px";
+}
+function showRange() { $("range").textContent = `${clipIn.toFixed(2)}s - ${clipOut.toFixed(2)}s`; }
+$("setIn").onclick = () => { clipIn = Math.min(video.currentTime, clipOut - 0.1); showRange(); };
+$("setOut").onclick = () => { clipOut = Math.max(video.currentTime, clipIn + 0.1); showRange(); };
+
+// --- Tracking --------------------------------------------------------------------
+$("track").onclick = async () => {
+  $("track").disabled = true;
+  try {
+    await ensureModel();
+    result = await track();
+    $("save").disabled = !result.frames.some((f) => f.world);
+    $("scrub").max = result.frames.length - 1; $("scrub").value = 0; $("scrub").disabled = false;
+    showFrame(0);
+    const found = result.frames.filter((f) => f.world).length;
+    status(`Tracked ${found} of ${result.frames.length} frames.` + (found < result.frames.length ? " (Frames with no dancer found are left empty.)" : ""), found ? "ok" : "bad");
+  } catch (err) {
+    console.error(err);
+    status("Tracking failed: " + err.message, "bad");
+  }
+  $("track").disabled = false;
+  $("prog").style.display = "none";
+};
+
+function seek(t) {
+  return new Promise((resolve) => {
+    if (Math.abs(video.currentTime - t) < 1e-4) return resolve();
+    video.onseeked = () => resolve();
+    video.currentTime = t;
+  });
+}
+
+async function track() {
+  const fps = Math.max(5, Math.min(60, +$("fps").value || 30));
+  const frames = [];
+  const sheetFrames = [];
+  let stamp = performance.now();
+  const source = [];
+  if (media.kind === "video") {
+    video.pause();
+    for (let t = clipIn; t <= clipOut + 1e-6; t += 1 / fps) source.push({ t, at: t });
+  } else {
+    media.frames.forEach((f, i) => source.push({ t: f.t, index: i }));
+  }
+  $("prog").style.display = "block"; $("prog").max = source.length;
+  let lastSheet = -1;
+  for (let i = 0; i < source.length; i++) {
+    const s = source[i];
+    let image, w, h;
+    if (media.kind === "video") {
+      await seek(s.at);
+      image = video; w = video.videoWidth; h = video.videoHeight;
+    } else {
+      image = media.frames[s.index].bitmap; w = image.width; h = image.height;
+      showStills(s.index);
+    }
+    // Stills aren't a moving clip: each is found from scratch.
+    stamp += media.kind === "stills" ? 1000 : 1000 / fps;
+    const found = landmarker.detectForVideo(image, stamp);
+    const t = media.kind === "video" ? s.t - clipIn : s.t;
+    const frame = { t: +t.toFixed(4) };
+    if (found.worldLandmarks && found.worldLandmarks.length) {
+      frame.world = found.worldLandmarks[0].map((p) => [+p.x.toFixed(4), +p.y.toFixed(4), +p.z.toFixed(4), +(p.visibility ?? 1).toFixed(2)]);
+      frame.image = found.landmarks[0].map((p) => [+p.x.toFixed(4), +p.y.toFixed(4)]);
+    }
+    frames.push(frame);
+    drawOverlay(frame, w, h);
+    // A frame for the reference strip, at most SHEET_FPS.
+    if (media.kind !== "video" || t - lastSheet >= 1 / SHEET_FPS - 1e-4) {
+      lastSheet = t;
+      sheetFrames.push({ t: frame.t, bitmap: await createImageBitmap(image, { resizeHeight: SHEET_H, resizeQuality: "medium" }) });
+    }
+    $("prog").value = i + 1;
+    if (i % 4 === 0) await new Promise((r) => setTimeout(r, 0));
+  }
+  const sheet = buildSheet(sheetFrames);
+  return {
+    format: 1, tracker: "mediapipe-pose-" + modelKind,
+    source: media.name, kind: media.kind, mirror: $("mirror").checked,
+    fps: media.kind === "video" ? fps : 0, aspect: (media.kind === "video" ? video.videoWidth / video.videoHeight : media.frames[0].bitmap.width / media.frames[0].bitmap.height),
+    length: +(media.kind === "video" ? clipOut - clipIn : (source.at(-1).t + (media.kind === "gif" ? 0.1 : 0.5))).toFixed(4),
+    frames, sheet,
+  };
+}
+
+function buildSheet(list) {
+  if (!list.length) return null;
+  const w = Math.round(list[0].bitmap.width), h = SHEET_H;
+  const cols = Math.min(SHEET_COLS, list.length), rows = Math.ceil(list.length / cols);
+  const c = document.createElement("canvas");
+  c.width = cols * w; c.height = rows * h;
+  const g = c.getContext("2d");
+  list.forEach((f, i) => g.drawImage(f.bitmap, (i % cols) * w, Math.floor(i / cols) * h, w, h));
+  return { cols, rows, w, h, times: list.map((f) => f.t), jpg: c.toDataURL("image/jpeg", 0.72).split(",")[1] };
+}
+
+// --- Drawing ---------------------------------------------------------------------
+function drawOverlay(frame, w, h) {
+  sizeOverlay(w, h);
+  const g = overlay.getContext("2d");
+  g.clearRect(0, 0, w, h);
+  if (!frame.image) return;
+  g.lineWidth = Math.max(2, w / 300); g.strokeStyle = "#f2c14e"; g.fillStyle = "#5ad1e6";
+  for (const [a, b] of BONES) {
+    g.beginPath(); g.moveTo(frame.image[a][0] * w, frame.image[a][1] * h); g.lineTo(frame.image[b][0] * w, frame.image[b][1] * h); g.stroke();
+  }
+  for (const p of frame.image) { g.beginPath(); g.arc(p[0] * w, p[1] * h, g.lineWidth * 1.4, 0, 7); g.fill(); }
+}
+
+// Orthographic views of the 3D landmarks: front (x, y) and side (z, y).
+function drawWorld(canvas, frame, axis) {
+  const g = canvas.getContext("2d");
+  g.clearRect(0, 0, canvas.width, canvas.height);
+  if (!frame.world) return;
+  const s = canvas.width / 2.4, cx = canvas.width / 2, cy = canvas.height / 2;
+  const at = (p) => [cx + (axis === "front" ? p[0] : p[2]) * s, cy + p[1] * s];
+  g.strokeStyle = "#34293f"; g.beginPath(); g.moveTo(0, cy + 0.95 * s); g.lineTo(canvas.width, cy + 0.95 * s); g.stroke();
+  g.lineWidth = 3;
+  for (const [a, b] of BONES) {
+    const left = [11, 13, 15, 23, 25, 27, 29, 31, 19, 7].includes(a) && [11, 13, 15, 23, 25, 27, 29, 31, 19, 7].includes(b);
+    g.strokeStyle = left ? "#5ad1e6" : "#f2c14e";
+    const pa = at(frame.world[a]), pb = at(frame.world[b]);
+    g.beginPath(); g.moveTo(pa[0], pa[1]); g.lineTo(pb[0], pb[1]); g.stroke();
+  }
+}
+
+function showFrame(i) {
+  const frame = result.frames[i];
+  drawWorld($("front"), frame, "front");
+  drawWorld($("side"), frame, "side");
+  $("frameInfo").textContent = `frame ${i + 1}/${result.frames.length}  t=${frame.t.toFixed(2)}s` + (frame.world ? "" : "  (no dancer)");
+  if (media.kind === "video") {
+    seek(clipIn + frame.t).then(() => drawOverlay(frame, video.videoWidth, video.videoHeight));
+  } else {
+    const index = media.frames.findIndex((f) => Math.abs(f.t - frame.t) < 1e-3);
+    if (index >= 0) showStills(index);
+    drawOverlay(frame, still.width, still.height);
+  }
+}
+$("scrub").oninput = (e) => showFrame(+e.target.value);
+
+// --- Saving ----------------------------------------------------------------------
+// The track as it would be saved (for checking it from the console).
+window.emoteTrack = () => result && { id: ($("emoteId").value || "emote").trim(), notes: $("notes").value, ...result };
+$("save").onclick = async () => {
+  const id = ($("emoteId").value || "emote").trim().toLowerCase().replace(/[^a-z0-9_]+/g, "_");
+  const data = { id, notes: $("notes").value, ...result };
+  const blob = new Blob([JSON.stringify(data)], { type: "application/json" });
+  const name = id + ".track.json";
+  if (window.showSaveFilePicker) {
+    try {
+      const handle = await window.showSaveFilePicker({ suggestedName: name, types: [{ description: "Emote track", accept: { "application/json": [".json"] } }] });
+      const out = await handle.createWritable(); await out.write(blob); await out.close();
+      status(`Saved ${handle.name}. Put it in emote_lab/sources/ if it isn't there.`, "ok");
+      return;
+    } catch (err) { if (err.name === "AbortError") return; }
+  }
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = name; a.click();
+  status(`Downloaded ${name}. Move it into emote_lab/sources/.`, "ok");
+};
+
+ensureModel().then(() => status("Ready. Drop a clip.", "ok")).catch((err) => status("Couldn't load the tracker: " + err.message, "bad"));
+</script>
+</body>
+</html>

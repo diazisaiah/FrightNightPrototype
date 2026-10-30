@@ -45,17 +45,16 @@ var _hair_top: Node3D
 var _hair_low: Node3D
 var _beanie: Node3D
 
-var _keys: Array = []
-var _key := 0
-var _key_time := 0.0
+## The dance playing (Emotes.parse), how far in (seconds), and the pose it
+## eases in from.
+var _clip := {}
+var _time := 0.0
 var _from := {}
-## The pose as the dance sets it (legs get _plant_feet on top).
+## The pose as the dance sets it (legs and ankles get _plant_feet on top).
 var _values := {}
-const LEGS := ["lh", "lk", "rh", "rk"]
+const LEGS := ["lh", "lk", "rh", "rk", "lf", "rf"]
 const LEG_LENGTH := 0.89
 var _playing := ""
-## The current key's length when it isn't its own (easing into a dance).
-var _blend := -1.0
 
 
 func _init(class_id := "", skin := "auto") -> void:
@@ -87,18 +86,24 @@ func _ready() -> void:
 ## Starts a dance (an Emotes id), easing in from wherever the body is.
 func play(id: String) -> void:
 	_playing = id
-	_keys = Emotes.keys(id)
-	_key = -1
-	_next_key(BLEND_TIME)
+	play_clip(Emotes.clip(id))
+
+
+## Plays a dance already made ready (Emotes.parse; the Emote Studio previews
+## unsaved edits this way). Eases in from the pose the body is in.
+func play_clip(clip: Dictionary, from_time := 0.0) -> void:
+	_clip = clip
+	_time = from_time
+	_from = {}
+	for joint in Emotes.JOINTS + ["pos"]:
+		_from[joint] = _get_joint(joint)
 	set_process(true)
 
 
 ## Back to standing.
 func stop() -> void:
 	_playing = ""
-	_keys = [[BLEND_TIME, {}]]
-	_key = -1
-	_next_key(BLEND_TIME)
+	play_clip({})
 
 
 func playing() -> String:
@@ -106,36 +111,23 @@ func playing() -> String:
 
 
 func _process(delta: float) -> void:
-	_key_time += delta
-	var length: float = _blend if _blend > 0.0 else _keys[_key][0]
-	var t := clampf(_key_time / maxf(length, 0.001), 0.0, 1.0)
-	t = t * t * (3.0 - 2.0 * t)
-	var target: Dictionary = _keys[_key][1]
+	_time += delta
+	var target := {} if _clip.is_empty() else Emotes.sample(_clip, _time)
+	var w := smoothstep(0.0, BLEND_TIME, _time)
 	for joint in _from:
 		var to: Vector3 = target.get(joint, Emotes.REST.get(joint, Vector3.ZERO))
-		_set_joint(joint, (_from[joint] as Vector3).lerp(to, t))
+		_set_joint(joint, (_from[joint] as Vector3).lerp(to, w))
 	_plant_feet()
-	if _key_time >= length:
-		if _playing == "" and _key >= _keys.size() - 1:
-			set_process(false)
-			return
-		_next_key()
+	if _clip.is_empty() and w >= 1.0:
+		set_process(false)
 
 
-func _next_key(first_length := -1.0) -> void:
-	_from = {}
-	for joint in Emotes.JOINTS + ["pos"]:
-		_from[joint] = _get_joint(joint)
-	_key = (_key + 1) % _keys.size()
-	_key_time = 0.0
-	_blend = first_length
-
-
-## Snaps straight to a pose.
-func _apply(pose: Dictionary) -> void:
+## Snaps straight to a pose (Emotes.sample's units). plant: drop the hips on
+## bent knees (see _plant_feet) or leave the legs as they are.
+func _apply(pose: Dictionary, plant := true) -> void:
 	for joint in Emotes.JOINTS + ["pos"]:
 		_set_joint(joint, pose.get(joint, Emotes.REST.get(joint, Vector3.ZERO)))
-	_plant_feet()
+	_plant_feet(plant)
 
 
 func _set_joint(joint: String, value: Vector3) -> void:
@@ -152,14 +144,25 @@ func _get_joint(joint: String) -> Vector3:
 
 ## Keeps the feet on the canvas: when the hips drop, the knees bend; when
 ## they sway sideways, the legs lean to stay planted. Poses only say where
-## the hips go (and any kick on top).
-func _plant_feet() -> void:
+## the hips go (and any kick on top). A dance with its legs keyed exactly
+## (Emotes "plant": false) skips that. Either way the ankles are measured from
+## flat on the floor, so a foot stays flat however the leg bends unless the
+## dance tips it.
+func _plant_feet(plant := true) -> void:
+	if not _clip.is_empty():
+		plant = _clip.plant
 	var pos: Vector3 = _values.get("pos", Vector3.ZERO)
-	var bend := acos(clampf(1.0 - maxf(-pos.y, 0.0) / LEG_LENGTH, -1.0, 1.0))
-	var lean := -asin(clampf(pos.x / LEG_LENGTH, -1.0, 1.0))
+	var bend := acos(clampf(1.0 - maxf(-pos.y, 0.0) / LEG_LENGTH, -1.0, 1.0)) if plant else 0.0
+	var lean := -asin(clampf(pos.x / LEG_LENGTH, -1.0, 1.0)) if plant else 0.0
+	var body: Vector3 = _values.get("hips", Vector3.ZERO)
 	for side in ["l", "r"]:
-		_joints[side + "h"].rotation = _values.get(side + "h", Vector3.ZERO) + Vector3(bend, 0, lean)
-		_joints[side + "k"].rotation = _values.get(side + "k", Vector3.ZERO) + Vector3(-2.0 * bend, 0, 0)
+		var hip: Vector3 = _values.get(side + "h", Vector3.ZERO) + Vector3(bend, 0, lean)
+		var knee: Vector3 = _values.get(side + "k", Vector3.ZERO) + Vector3(-2.0 * bend, 0, 0)
+		_joints[side + "h"].rotation = hip
+		_joints[side + "k"].rotation = knee
+		if _joints.has(side + "f"):
+			var tilt := Vector3(body.x + hip.x + knee.x, 0, body.z + hip.z + knee.z)
+			_joints[side + "f"].rotation = _values.get(side + "f", Vector3.ZERO) - tilt
 
 
 func _hip_height() -> float:

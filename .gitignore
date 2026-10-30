@@ -32,3 +32,6 @@ playground/project/
 
 # Local tools (the Blender install and its art): never committed.
 tools/
+
+# Emote lab: tracked clips and reference frames of real dances (local only)
+emote_lab/sources/

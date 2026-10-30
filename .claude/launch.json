@@ -24,6 +24,18 @@
         "audio_lab"
       ],
       "port": 8070
+    },
+    {
+      "name": "emote-lab",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8090",
+        "--directory",
+        "emote_lab"
+      ],
+      "port": 8090
     }
   ]
 }

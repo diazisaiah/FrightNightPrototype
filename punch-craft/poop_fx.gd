@@ -18,9 +18,7 @@ var _dropped := false
 
 
 func _ready() -> void:
-	_cycle = 0.0
-	for key in Emotes.keys("overexerted"):
-		_cycle += float(key[0])
+	_cycle = Emotes.clip("overexerted").length
 
 
 func _process(delta: float) -> void:

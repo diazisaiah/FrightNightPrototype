@@ -33,7 +33,6 @@ var _idle_pick := ""
 var _idle_loop := false
 ## The training ring (ropes, canvas and the walls that hold the player in) and
 ## whether it's up. Off, you roam free like the enemies do.
-var _ring: Node3D
 var _ring_on := true
 var _lab: PlaygroundCharacterLab
 var _lab_status: Label
@@ -63,7 +62,6 @@ func _ready() -> void:
 	Look.tune_environment($WorldEnvironment.environment, "ring")
 	_build_torches()
 	_build_ring()
-	_ring = $Decorations.get_child($Decorations.get_child_count() - 1)
 	_player.knuckles_changed.connect(_hud.set_knuckles)
 	_player.combo_changed.connect(_hud.set_combo)
 	_hud.bind_ult(_player.ult)
@@ -371,6 +369,8 @@ func _build_character_lab_panel(box: VBoxContainer) -> void:
 		_lab.avatar.rebuild(GameState.player_class, GameState.skin())))
 	box.add_child(_button("Voxel scale comparison (side by side)", func() -> void:
 		get_tree().change_scene_to_file("res://playground/character_lab/voxel_compare.tscn")))
+	box.add_child(_button("Emote Studio (make and clean up dances)", func() -> void:
+		get_tree().change_scene_to_file("res://playground/emote_studio/emote_studio.tscn")))
 
 	var camera_row := HBoxContainer.new()
 	camera_row.add_child(_note("Distance"))

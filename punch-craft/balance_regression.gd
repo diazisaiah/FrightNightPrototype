@@ -744,14 +744,32 @@ func _test_class_balance() -> void:
 ## Emotes: every dance only moves real joints; the emote key is G / View
 ## (the controller's map tap rides on it); a worn hat must be owned and saves.
 func _test_emotes_and_hats() -> void:
-	_check(Emotes.ORDER.size() == Emotes.NAMES.size(), "Every dance is on the wheel")
-	for id in Emotes.ORDER:
-		var keys := Emotes.keys(id)
-		_check(keys.size() >= 2, "%s has a loop of poses" % id)
-		for key in keys:
-			_check(float(key[0]) > 0.0, "%s keys take time" % id)
-			for joint in key[1]:
+	for id in Emotes.ORDER + ["_swing", "_uppercut"]:
+		var data := Emotes.raw(id)
+		_check(not data.is_empty() and data.has("name"), "%s has its dance file (emotes/%s.json)" % [id, id])
+		var keys: Array = data.get("keys", [])
+		_check(keys.size() >= 2 or id.begins_with("_"), "%s has a loop of poses" % id)
+		for key: Dictionary in keys:
+			_check(float(key.t) >= 0.0 and float(key.t) < float(data.length), "%s keys sit inside the dance" % id)
+			_check(String(key.get("ease", "smooth")) in Emotes.EASES, "%s eases are real" % id)
+			for joint in key.pose:
 				_check(joint == "pos" or joint in Emotes.JOINTS, "%s moves a real joint (not %s)" % [id, joint])
+				_check(key.pose[joint].size() == 3, "%s %s is x, y, z" % [id, joint])
+	# A loop comes back round to its start, and the smooth curve never swings
+	# past its keys.
+	var floss := Emotes.clip("floss")
+	var start: Vector3 = Emotes.sample(floss, 0.0).ls
+	_check(start.is_equal_approx(Emotes.sample(floss, floss.length).ls), "A dance loops back to its first pose")
+	var top := -INF
+	for key: Dictionary in Emotes.raw("floss")["keys"]:
+		top = maxf(top, deg_to_rad(float(key.pose.ls[0])))
+	var highest := -INF
+	for i in 60:
+		highest = maxf(highest, Emotes.sample(floss, floss.length * i / 60.0).ls.x)
+	_check(highest <= top + 0.001, "The smooth curve stays between its keys")
+	var intro := Emotes.parse({"length": 2.0, "loop_start": 1.0, "keys": [{"t": 0, "pose": {"head": [10, 0, 0]}},
+			{"t": 1.0, "pose": {"head": [20, 0, 0]}}, {"t": 1.5, "pose": {"head": [40, 0, 0]}}]})
+	_check(is_equal_approx(rad_to_deg(Emotes.sample(intro, 3.0).head.x), 20.0), "An intro plays once, then the loop repeats")
 	var flipped := Emotes.mirror({"ls": Vector3(1, 0.2, 0.3), "pos": Vector3(0.1, 0, 0)})
 	_check(flipped.has("rs") and flipped.rs == Vector3(1, -0.2, -0.3) and flipped.pos == Vector3(-0.1, 0, 0), "mirror() swaps sides")
 	var old_bindings = Settings.values.get("bindings", {})
@@ -914,7 +932,7 @@ func _test_one_power() -> void:
 		var emote: String = Achievements.LIST[id].emote
 		if emote == "":
 			continue  # True Ending? teaches no dance.
-		_check(Emotes.NAMES.has(emote) and not taught.has(emote), "Each achievement teaches its own real dance (%s)" % id)
+		_check(emote in Emotes.ORDER and not taught.has(emote), "Each achievement teaches its own real dance (%s)" % id)
 		taught[emote] = true
 	_check(taught.size() + Achievements.FREE_EMOTES.size() == Emotes.ORDER.size(), "Every dance can be earned")
 	GameState._reset_fields()
