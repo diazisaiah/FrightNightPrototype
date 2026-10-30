@@ -1105,7 +1105,8 @@ func _stray_arm(shoulder: Node3D, elbow: Node3D, side: float) -> void:
 	_fist(elbow, side, _p("glove"), _p("glove_cuff"), _skin)
 
 
-## Level brows, a wide grin with teeth.
+## Level brows, a small closed mouth (a toothy grin with smile lines read
+## goofy).
 func _stray_face(head: Node3D) -> void:
 	var skin := _skin
 	var dark := Color(0.06, 0.05, 0.06)
@@ -1113,9 +1114,7 @@ func _stray_face(head: Node3D) -> void:
 	_px(head, 1, 5, 1, 5, dark)
 	_px(head, 1, 6, 3, 6, dark, 1)
 	_px(head, 0, 4, 0, 4, skin, 1)
-	_px(head, 0, 2, 0, 2, Color(0.95, 0.94, 0.9))
-	_px(head, 1, 2, 1, 2, skin.darkened(0.45))
-	_px(head, 2, 3, 2, 3, skin.darkened(0.45))
+	_px(head, 0, 2, 0, 2, skin.darkened(0.3))
 
 
 ## A bush of thick square locs standing up off the crown (a drawn height
