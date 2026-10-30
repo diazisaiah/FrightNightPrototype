@@ -115,6 +115,10 @@ func _ready() -> void:
 	var first := _arg("emote", "default")
 	_load_emote(first if FileAccess.file_exists(_game_dir().path_join(first + ".json")) else "default")
 	if _arg("import", "") != "":
+		# Import options for a headless run (the panel's own defaults otherwise).
+		_import_square.button_pressed = _arg("square", "1") == "1"
+		_import_smooth.value = float(_arg("smooth", str(_import_smooth.value)))
+		_import_detail.value = float(_arg("detail", str(_import_detail.value)))
 		_import(_arg("import", ""))
 		if "--save" in OS.get_cmdline_user_args():
 			_save()
