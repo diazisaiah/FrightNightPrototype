@@ -267,10 +267,13 @@ func _answer_torso(hips: Node3D, torso: Node3D) -> void:
 	# The sleeveless hoodie: black, two white lapel lines from the hood down to
 	# the belt, white round the armholes, the pec ledge catching the light.
 	var hoodie := func(p: Vector3) -> Color:
-		# Straight on the large scale (a slant there is all stair steps).
-		var lapel := lerpf(0.04, 0.105, clampf(p.y / 0.56, 0.0, 1.0)) if _tiny() else 0.054
-		if p.z < 0.0 and absf(absf(p.x) - lapel) <= _line * 0.5:
-			return white
+		if _tiny():
+			var lapel := lerpf(0.04, 0.105, clampf(p.y / 0.56, 0.0, 1.0))
+			if p.z < 0.0 and absf(absf(p.x) - lapel) <= _line * 0.5:
+				return white
+		# Large: the hood's two drawstrings hanging down the chest, their tips gray.
+		elif p.z < 0.0 and absf(absf(p.x) - 0.054) <= _line * 0.5 and p.y > 0.33 and p.y < 0.6:
+			return white.darkened(0.35) if p.y < 0.33 + _v else white
 		if p.y > 0.36 and absf(p.x) > _hx(p.y) - _line:
 			return white
 		return cloth
@@ -303,6 +306,8 @@ func _answer_torso(hips: Node3D, torso: Node3D) -> void:
 	# The pants' seat, then the hoodie's front hanging below the belt in two
 	# panels, split up the middle, trimmed white at the hem and the split.
 	_block(hips, Vector3(-0.19, -0.11, -0.125), Vector3(0.19, 0.12, 0.135), cloth, 0.05)
+	if not _tiny():
+		return
 	var hem := -0.28
 	var slit := func(p: Vector3) -> float:
 		return _v * 0.5 + clampf(-p.y, 0.0, 0.3) * 0.2 if _tiny() else _v
@@ -339,17 +344,17 @@ func _bolt(side: float, offset: float, y_offset: float) -> Callable:
 		return cloth
 
 
-## The large scale's bolt: one cell wide on the front face of the leg,
-## stepping outward a column every three rows across three columns, then
-## jumping back in, repeating.
+## The large scale's bolt: one cell wide down the outside of the leg,
+## stepping back a column every three rows across three columns, then
+## jumping forward again, repeating.
 func _bolt_cells(side: float, y_offset: float) -> Callable:
 	var cloth := _p("cloth")
 	var white := _p("piping")
 	return func(p: Vector3) -> Color:
-		if p.z > -0.06:
+		if p.x * side < 0.06:
 			return cloth
 		var row := floori((p.y + y_offset) / _v)
-		var col := floori(p.x * side / _v)
+		var col := floori(p.z / _v)
 		var at := posmod(-floori(row / 3.0), 3) - 1
 		# Each step's top row reaches back to the last one, so the steps join.
 		var last := posmod(-floori((row + 1) / 3.0), 3) - 1
@@ -379,7 +384,11 @@ func _answer_leg(hip: Node3D, knee: Node3D, side: float) -> void:
 		_taper(knee, bottom, top, Vector2(half + _lift, half + _lift + 0.004), Vector2(half, half + 0.004), paint, 0.04)
 	var gather: float = folds[-1][1]
 	_taper(knee, -0.3, gather, Vector2(0.074, 0.078), Vector2(0.084, 0.088), cloth, 0.03)
-	_taper(knee, -0.335, -0.285, Vector2(0.07 + _lift * 0.5, 0.074 + _lift * 0.5), Vector2(0.07 + _lift * 0.5, 0.074 + _lift * 0.5), _p("ankle"), 0.02)
+	if _tiny():
+		_taper(knee, -0.335, -0.285, Vector2(0.07 + _lift * 0.5, 0.074 + _lift * 0.5), Vector2(0.07 + _lift * 0.5, 0.074 + _lift * 0.5), _p("ankle"), 0.02)
+	else:
+		# One row, flush with the pants.
+		_taper(knee, -0.33, -0.3, Vector2(0.072, 0.072), Vector2(0.072, 0.072), _p("ankle"))
 	# The shoe on its own ankle pivot (lf / rf, new; nothing else moves it),
 	# so a stance can turn the foot without twisting the shin.
 	_answer_shoe(_pivot(("l" if side < 0 else "r") + "f", knee, Vector3(0, -ANKLE, 0)), side)
@@ -560,12 +569,14 @@ func _answer_hair(head: Node3D) -> void:
 	var z1 := 0.185
 	var cw := 2.0 * w / n
 	var cd := (z1 - z0) / n
-	_lock(top, Vector3(-w, 0.3, z0), Vector3(w, 0.39, z1), hair, 0.03)
+	# The hairline: on the large scale up at the top of the forehead.
+	var line := 0.3 if _tiny() else 0.324
+	_lock(top, Vector3(-w, line, z0), Vector3(w, 0.39, z1), hair, 0.03)
 	for row in n:
 		for col in n:
 			var x := -w + col * cw
 			var z := z0 + row * cd
-			_lock(top, Vector3(x - 0.002, 0.33, z - 0.002), Vector3(x + cw + 0.002, heights[row][col], z + cd + 0.002), hair)
+			_lock(top, Vector3(x - 0.002, maxf(0.33, line), z - 0.002), Vector3(x + cw + 0.002, heights[row][col], z + cd + 0.002), hair)
 	var bangs := _zone(head, "front")
 	if _tiny():
 		for c: Array in [[-0.11, 0.055, 0.285], [-0.055, 0.055, 0.255], [0.0, 0.055, 0.25], [0.055, 0.055, 0.265], [0.11, 0.055, 0.295]]:
@@ -577,13 +588,15 @@ func _answer_hair(head: Node3D) -> void:
 			# The tip: narrower, swept toward the fighter's left.
 			_lock(bangs, Vector3(x - half * 0.6 - 0.012, bottom, -0.185), Vector3(x + half * 0.6 - 0.012, knee + 0.01, -0.135), hair)
 	else:
-		# [x0, x1, bottom], one cell proud of the brow: short at the temples,
-		# a lock down between the brows, swept to his left.
-		for c: Array in [[-0.144, -0.072, 0.288], [-0.072, 0.036, 0.252], [-0.036, 0.036, 0.216], [0.036, 0.144, 0.252]]:
+		# [x0, x1, bottom], one cell proud of the forehead: a short fringe
+		# along the hairline, one lock dipping a row, swept to his left. Two
+		# rows of forehead show above the brows.
+		for c: Array in [[-0.144, 0.144, 0.324], [-0.072, 0.0, 0.288]]:
 			_lock(bangs, Vector3(c[0], c[2], -0.18), Vector3(c[1], 0.37, -0.12), hair)
 	var sides := _zone(head, "sides")
 	for side in [-1.0, 1.0]:
-		_side_lock(sides, side, fw - 0.02, w + 0.008, 0.3, 0.38, -0.13, 0.15, hair, 0.01)
+		var lead := -0.13 if _tiny() else -0.1
+		_side_lock(sides, side, fw - 0.02, w + 0.008, 0.3, 0.38, lead, 0.15, hair, 0.01)
 		_side_lock(sides, side, fw - 0.02, w - 0.008, 0.235, 0.31, -0.1, 0.12, hair, 0.01)
 		_side_lock(sides, side, fw - 0.012, fw + 0.014, 0.17, 0.25, -0.07, -0.025, hair)
 	var back := _zone(head, "back")
