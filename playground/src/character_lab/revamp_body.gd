@@ -127,8 +127,9 @@ func wear_hat(id: String) -> void:
 	var fit: Dictionary = {} if bare else HAT_FIT[hat_kind(id)]
 	var short: bool = _short_under_hats and not bare and hat_kind(id) in ["cap", "crown"]
 	for zone in _zones:
-		if zone == "short" or short:
-			(_zones[zone] as Node3D).visible = short and zone == "short"
+		if zone.begins_with("short") or short:
+			# A cap shows the short cut below its brim; a crown all of it.
+			(_zones[zone] as Node3D).visible = short and (zone == "short" or (zone == "short_high" and hat_kind(id) == "crown"))
 			continue
 		(_zones[zone] as Node3D).visible = bare or not (_zone_hidden(zone, fit.hide) or (hat_kind(id) == "crown" and _zone_hidden(zone, _crown_hides)))
 	# The Stray keeps his headband under any hat; over a mask it goes round
@@ -692,7 +693,7 @@ func _lock(node: Node3D, from: Vector3, to: Vector3, color: Color, r := 0.0) -> 
 	var lo := from.min(to)
 	var hi := from.max(to)
 	var id: String = _zone_of.get(node, "")
-	var cut: float = HAT_CUT if id in ["front", "sides", "back"] else (_crown_cut if id == "top" else 9.0)
+	var cut: float = HAT_CUT if id in ["front", "sides", "back", "short"] else (_crown_cut if id == "top" else 9.0)
 	if cut > 5.0:
 		_fill(node, lo, hi, color, func(p: Vector3) -> bool:
 			return _in_rounded(p, lo, hi, r) and not _in_skull(p))
@@ -1128,11 +1129,12 @@ func _blur_hair(head: Node3D) -> void:
 	# The short cut: a close crop with a squared top, tidy at the sides and
 	# back, a short fringe.
 	var short := _zone(head, "short")
-	var c := fw + 0.025
+	# (A whole cube out from the skull, or it makes no cubes at all.)
+	var c := fw + _v * 1.2
 	_lock(short, Vector3(-c, 0.3, -0.17), Vector3(c, 0.42, 0.18), hair, 0.02)
 	for side in [-1.0, 1.0]:
-		_side_lock(short, side, fw - 0.02, c, 0.22, 0.36, -0.1, 0.15, hair)
-	_lock(short, Vector3(-c, 0.14, 0.06), Vector3(c, 0.36, 0.19), hair)
+		_side_lock(short, side, fw - 0.02, c, 0.2, 0.36, -0.1, 0.15, hair)
+	_lock(short, Vector3(-c, 0.14, 0.06), Vector3(c, 0.36, 0.155 + _v * 1.2), hair)
 	_lock(short, Vector3(-0.15, 0.3, -0.19), Vector3(0.15, 0.4, -0.13), hair)
 
 
