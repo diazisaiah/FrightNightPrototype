@@ -9,8 +9,9 @@ extends Node3D
 const AvatarScript = preload("res://playground/character_lab/fighter_avatar.gd")
 const RevampBody = preload("res://playground/character_lab/revamp_body.gd")
 const FIGHTER := "counter_master"
-## Shown by default (2026-10-29: the user picked the large scale).
-const VARIANTS := ["large"]
+## Shown by default (2026-10-29: the user liked the large design but not
+## how toy-like it reads; medium is in between).
+const VARIANTS := ["medium", "large"]
 const VIEWS := {"Front": 0.0, "Three-quarter": -0.7, "Side": -PI / 2.0, "Back": PI}
 const HATS := {"No hat": "", "Cap": "pocket_trainer_cap", "Crown": "paper_crown", "Mask": "iron_mask", "Wig": "wig_black"}
 const SPACING := 1.35
@@ -292,8 +293,9 @@ func _capture_all() -> void:
 	await _snap("voxel_compare_feet.png")
 	# Close on the head and hands.
 	_view = "Three-quarter"
-	_camera.position = Vector3(0, 1.6, -1.6)
-	_camera.look_at(Vector3(0, 1.45, 0), Vector3.UP)
+	var subject: Vector3 = _avatars[0].position
+	_camera.position = subject + Vector3(0, 1.6, -1.6)
+	_camera.look_at(subject + Vector3(0, 1.45, 0), Vector3.UP)
 	await _snap("voxel_compare_close.png")
 	_frame_camera()
 	_show_current = true

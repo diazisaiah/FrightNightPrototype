@@ -9,13 +9,18 @@ extends PlayerBody
 ## - No per-voxel jitter, mottling, crease speckle or random wear. Every cell
 ##   is a base, shadow or highlight color placed on purpose.
 ## - Detail is sized in lines (trim, piping, wrap bands): two voxels on the
-##   tiny scale, one on the large, so both read as the same design.
+##   tiny scale, one on the medium and large, so all read as the same design.
+##   Medium and large share the simplified design; the face, fringe and hair
+##   clumps are drawn for each grid.
 ## - Overlays (belt, wraps, cuffs, hood trim) stand proud by a whole voxel.
 ## - Hair is built in named zones (top, front, sides, back), and a hat's fit
 ##   profile says where it sits and which zones it hides.
 
 const SCALES := {
 	"tiny": {"voxel": 0.016, "line": 0.032, "lift": 0.016, "name": "Tiny Cube Revamp"},
+	# Between the two (2026-10-29: large read too toy-like): the large design
+	# at two thirds the cube, about 8k cubes.
+	"medium": {"voxel": 0.024, "line": 0.024, "lift": 0.024, "name": "Medium Cube Revamp"},
 	"large": {"voxel": 0.036, "line": 0.036, "lift": 0.036, "name": "Large Cube Revamp"},
 }
 ## How a hat sits on the head: seat (height on the head pivot), size (times
@@ -38,7 +43,7 @@ const HAT_KIND := {
 	"golden_quills": "wig", "gale_flattop": "wig", "blood_hairline": "wig", "bald_cap": "wig",
 }
 
-## "tiny" or "large"; set before the body enters the tree.
+## "tiny", "medium" or "large"; set before the body enters the tree.
 var voxel_scale := "tiny"
 var _v := VOXEL
 var _line := 0.032
@@ -208,7 +213,12 @@ func _run_bake(op: Array, start: int) -> bool:
 
 
 func _tiny() -> bool:
-	return voxel_scale != "large"
+	return voxel_scale == "tiny"
+
+
+## The value for this scale.
+func _pick(tiny: Variant, medium: Variant, large: Variant) -> Variant:
+	return {"tiny": tiny, "medium": medium}.get(voxel_scale, large)
 
 
 func _hi(color: Color) -> Color:
@@ -503,6 +513,13 @@ func _answer_face(head: Node3D) -> void:
 		_px(head, 0, 7, 0, 7, _sh(skin))
 		_px(head, 0, 4, 1, 4, mouth)
 		_px(head, 6, 3, 7, 6, _sh(skin))
+	elif voxel_scale == "medium":
+		_px(head, 2, 7, 4, 8, white)
+		_px(head, 2, 7, 2, 8, dark)
+		_px(head, 1, 8, 1, 8, dark, 1)
+		_px(head, 1, 9, 4, 9, dark, 1)
+		_px(head, 0, 5, 0, 6, skin, 1)
+		_px(head, 0, 3, 0, 3, skin.darkened(0.3))
 	else:
 		_px(head, 1, 5, 2, 5, white)
 		_px(head, 1, 5, 1, 5, dark)
@@ -560,6 +577,11 @@ func _answer_hair(head: Node3D) -> void:
 		[0.42, 0.46, 0.49, 0.48, 0.46, 0.42],
 		[0.39, 0.42, 0.44, 0.43, 0.42, 0.39],
 	] if _tiny() else [
+		[0.41, 0.44, 0.45, 0.41],
+		[0.45, 0.50, 0.49, 0.45],
+		[0.45, 0.51, 0.52, 0.46],
+		[0.42, 0.46, 0.46, 0.42],
+	] if voxel_scale == "medium" else [
 		[0.42, 0.45, 0.41],
 		[0.46, 0.52, 0.47],
 		[0.42, 0.46, 0.42],
@@ -570,7 +592,7 @@ func _answer_hair(head: Node3D) -> void:
 	var cw := 2.0 * w / n
 	var cd := (z1 - z0) / n
 	# The hairline: on the large scale up at the top of the forehead.
-	var line := 0.3 if _tiny() else 0.324
+	var line: float = _pick(0.3, 0.312, 0.324)
 	_lock(top, Vector3(-w, line, z0), Vector3(w, 0.39, z1), hair, 0.03)
 	for row in n:
 		for col in n:
@@ -591,7 +613,7 @@ func _answer_hair(head: Node3D) -> void:
 		# [x0, x1, bottom], one cell proud of the forehead: a short fringe
 		# along the hairline, one lock dipping a row, swept to his left. Two
 		# rows of forehead show above the brows.
-		for c: Array in [[-0.144, 0.144, 0.324], [-0.072, 0.0, 0.288]]:
+		for c: Array in [[-0.144, 0.144, line], [-0.072, 0.0, 0.288]]:
 			_lock(bangs, Vector3(c[0], c[2], -0.18), Vector3(c[1], 0.37, -0.12), hair)
 	var sides := _zone(head, "sides")
 	for side in [-1.0, 1.0]:
@@ -605,6 +627,9 @@ func _answer_hair(head: Node3D) -> void:
 		[0.18, 0.28, [[-0.165, -0.085], [-0.085, 0.0], [0.0, 0.085], [0.085, 0.165]]],
 		[0.09, 0.19, [[-0.12, -0.04], [-0.04, 0.04], [0.04, 0.12]]],
 	] if _tiny() else [
+		[0.17, 0.28, [[-0.165, -0.055], [-0.055, 0.055], [0.055, 0.165]]],
+		[0.085, 0.18, [[-0.11, 0.0], [0.0, 0.11]]],
+	] if voxel_scale == "medium" else [
 		[0.16, 0.28, [[-0.16, 0.0], [0.0, 0.16]]],
 		[0.08, 0.17, [[-0.09, 0.09]]],
 	]

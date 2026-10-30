@@ -366,7 +366,7 @@ func _build_character_lab_panel(box: VBoxContainer) -> void:
 	# The body revamp prototype (2026-10-29, the Answer only so far): play in
 	# third person as either voxel scale, or compare them side by side.
 	box.add_child(_note("Body (revamp prototype: the Answer)"))
-	box.add_child(_options(["current", "tiny", "large"], "current", func(id: String) -> void:
+	box.add_child(_options(["current", "tiny", "medium", "large"], "current", func(id: String) -> void:
 		_lab.avatar.body_variant = "" if id == "current" else id
 		_lab.avatar.rebuild(GameState.player_class, GameState.skin())))
 	box.add_child(_button("Voxel scale comparison (side by side)", func() -> void:
