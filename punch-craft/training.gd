@@ -34,14 +34,14 @@ const STEPS_START := [
 	{"title": "MOVE", "goals": {"move": 5}, "dummy": "passive",
 		"text": "Walk around the ring.",
 		"keys": [["<move>", "Move"], ["<look>", "Look"], ["<sprint>", "Sprint"]]},
-	{"title": "JAB AND CROSS", "goals": {"jab": 2, "cross": 2}, "dummy": "passive",
-		"text": "Walk up and hit the dummy.",
+	{"title": "JAB AND CROSS", "goals": {"jab": 2, "cross": 2}, "dummy": "passive", "costs": true, "highlight": "knuckles",
+		"text": "Walk up and hit the dummy. Punching monsters isn't good for your knuckles, but it has to be done: watch your knuckle HP drop with every punch that lands. Hooks and uppercuts cost more, getting hit costs a lot more, and at zero you're knocked out. It refills between fights.",
 		"keys": [["<jab>", "Jab"], ["<cross>", "Cross"]]},
 	{"title": "SET IT UP", "goals": {"setup": 2}, "dummy": "passive", "costs": true,
 		"text": "Hooks and uppercuts hit hard after a jab, a cross, or a slip or roll to that side. Thrown cold they're SLOPPY. Every punch costs knuckle HP.",
 		"keys": [["<jab> / <cross>", "Set up"], ["<hook>", "Hook"], ["<uppercut>", "Uppercut"]]},
 	{"title": "COMBOS", "goals": {"drill": 2}, "dummy": "passive", "costs": true,
-		"text": "Throw each combo in order.",
+		"text": "Throw each combo in order. Every hit in a combo raises your damage, and counters (x2), head shots and set-up hooks and uppercuts hit harder on top.",
 		"drills": [["jab", "cross", "hook"], ["jab", "cross", "hook", "uppercut"]],
 		"keys": [["<jab>", "Jab"], ["<cross>", "Cross"], ["<hook>", "Hook"], ["<uppercut>", "Uppercut"]]},
 ]
@@ -280,6 +280,7 @@ func _start_step(index: int) -> void:
 	else:
 		_coach_text.text = step.text
 	_fill_keys(_step_keys(step), step.get("cue", ""))
+	_highlight_knuckles(step.get("highlight", "") == "knuckles")
 	_pop(_coach)
 	if step.has("ult"):
 		_player.ult.fill()
@@ -497,6 +498,8 @@ func _on_punch_connected(type: String, kind: String) -> void:
 		_add_progress("setup")
 	if _step >= 0 and _plan[_step].get("costs", false):
 		_show_cost(Player.PUNCHES[type].knuckle_cost, Player.PUNCHES[type].heavy and kind != "setup")
+		if _knuckle_glow:
+			_flash_knuckles()
 	if _step >= 0 and _plan[_step].has("drills") and not _step_done:
 		_drill_punch(type, kind)
 
@@ -573,6 +576,46 @@ func _shake_node(node: Control) -> void:
 
 
 ## A punch's knuckle cost floating off the knuckle bar (SET IT UP, COMBOS).
+## The knuckle HP bar, pointed out (the JAB AND CROSS step): a pulsing gold
+## frame round it, a "YOUR KNUCKLE HP" tag, and a red flash each time a punch
+## spends some.
+var _knuckle_glow: Control
+
+
+func _highlight_knuckles(on: bool) -> void:
+	if _knuckle_glow:
+		_knuckle_glow.queue_free()
+		_knuckle_glow = null
+	if not on:
+		return
+	var bar: Control = _hud.get_node("%KnuckleBar")
+	var rect := bar.get_global_rect().grow(6.0)
+	_knuckle_glow = Control.new()
+	_knuckle_glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_knuckle_glow.position = rect.position
+	_knuckle_glow.size = rect.size
+	_hud.add_child(_knuckle_glow)
+	var frame := Panel.new()
+	frame.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	frame.add_theme_stylebox_override("panel", UiTheme.box(Color(0, 0, 0, 0), GOAL_COLOR, 3, 8))
+	_knuckle_glow.add_child(frame)
+	var tag := UiTheme.title_label("YOUR KNUCKLE HP", 18, GOAL_COLOR)
+	tag.add_theme_constant_override("outline_size", 8)
+	# To the right of the bar, past the "-1" costs (the level sits under it).
+	tag.position = Vector2(rect.size.x + 64.0, rect.size.y * 0.5 - 13.0)
+	_knuckle_glow.add_child(tag)
+	var pulse := _knuckle_glow.create_tween().set_loops()
+	pulse.tween_property(frame, "modulate:a", 0.35, 0.55).set_trans(Tween.TRANS_SINE)
+	pulse.tween_property(frame, "modulate:a", 1.0, 0.55).set_trans(Tween.TRANS_SINE)
+
+
+func _flash_knuckles() -> void:
+	var bar: Control = _hud.get_node("%KnuckleBar")
+	bar.modulate = Color(1.6, 0.6, 0.55)
+	bar.create_tween().tween_property(bar, "modulate", Color.WHITE, 0.4)
+
+
 func _show_cost(cost: float, sloppy: bool) -> void:
 	var label := UiTheme.title_label("-%d" % roundi(cost), 26, Color(1, 0.4, 0.35) if sloppy else Color(1, 0.85, 0.75))
 	label.add_theme_constant_override("outline_size", 8)

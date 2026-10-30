@@ -2246,3 +2246,11 @@ A hook or uppercut is set up (its full hit and stagger, not SLOPPY) when it come
 Head movement keeps a combo alive (a slip or roll refreshes its timer), and the same hand twice no longer breaks the combo after a set-up heavy or a slip or roll in between. So jab, cross, left hook, roll left, left hook and jab, cross, slip right, right uppercut are full combos. A hook thrown cold, and an uppercut after a cold hook, are still SLOPPY. Tested in `card_runtime_regression` (`_test_combo_setups`).
 
 Also: the Hat Rack's Yonkers counter is gone; the words over a monster when a power goes off (IGNITE!, DOOMED!, MARKED, CHILLED...) are gone, the effects show it; unclear hat and upgrade text rewritten (the Witch's Hat, Cornerman, Chin Check, Calloused, Crowd Pleaser, Death Mark), and two hat lines that quoted a film and a song are reworded.
+
+## Hit freezes and first-use stalls (2026-10-30)
+
+An itch player called out "a half second pause on every hit". Two causes:
+- **Hit freezes** (`TimeFx.hitstop`): every landed punch froze the game 0.03-0.19s, and the Slow motion setting didn't reach them. Now they run at half length and follow the setting (0 turns them off along with the slow-mo). On a slow computer a freeze lasts at least a frame, so they read as lag.
+- **First-use stalls:** `FxWarmup` (run while the loading screen still covers a fight) now also puts a stand-in monster through a hit, a crit, a chill and a Doom mark, sets off each of your selected powers on it, and shows a knockout line, so their effects are compiled before the first punch.
+
+**Tutorial:** the JAB AND CROSS step says punching monsters isn't good for your knuckles but has to be done, points at the knuckle HP bar (a pulsing gold frame and a "YOUR KNUCKLE HP" tag), shows each punch's cost and flashes the bar as it drops. The COMBOS step says how damage grows: the combo, counters (x2), head shots and set-up hooks and uppercuts.

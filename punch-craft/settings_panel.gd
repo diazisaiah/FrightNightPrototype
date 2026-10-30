@@ -172,7 +172,7 @@ func _ready() -> void:
 
 	var display := _page(pages, "DISPLAY")
 	_slider(display, "screen_shake", "quake", "Screen shake", "Shake on big hits", 0.0, 1.0, 0.05, "%d%%", 100.0)
-	_slider(display, "slow_motion", "hourglass", "Slow motion", "Slow-mo on counters and finishers", 0.0, 1.0, 0.05, "%d%%", 100.0)
+	_slider(display, "slow_motion", "hourglass", "Slow motion", "Hit freezes and slow-mo on counters and knockouts. 0 turns both off", 0.0, 1.0, 0.05, "%d%%", 100.0)
 	_toggle(display, "fullscreen", "chevrons", "Fullscreen", "Fill the whole screen")
 	_choice(display, "render_scale", "spark", "3D resolution", "Lower runs faster")
 	_toggle(display, "post_effects", "moon", "Film effects", "Grain, vignette and color grade")

@@ -3,6 +3,9 @@ extends Node
 ## don't fight: the slowest active one wins, and each runs on real time.
 
 const HITSTOP_SCALE := 0.03
+## Hit freezes run this share of what's asked (2026-10-30: halved; on a slow
+## computer a freeze lasts at least a frame, and they read as lag).
+const HITSTOP_SHARE := 0.5
 
 var _effects: Array[Dictionary] = []
 
@@ -11,8 +14,12 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 
 
+## Settings' "Slow motion" slider scales hit freezes too (0 turns them off).
 func hitstop(duration: float) -> void:
-	_push(HITSTOP_SCALE, duration)
+	var strength: float = Settings.get_value("slow_motion")
+	if strength <= 0.0:
+		return
+	_push(HITSTOP_SCALE, duration * HITSTOP_SHARE * strength)
 
 
 ## Settings' "Slow motion" slider scales how much it slows (0 turns it off).
