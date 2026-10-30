@@ -2214,3 +2214,11 @@ Built on its own branch, **`tower-rebirth`**, and launched on itch in one go whe
 - A combined devlog, then `release.sh`.
 
 **Decisions by step:** Step 2b the ultimate counters (the table above); Step 5 the 40-point perks; Step 8 the currency name, the milestones and their thresholds; Steps 9 and 10 the monsters, mini-bosses, Wardens and their art; Step 5 the Legend art (a placeholder until then).
+
+## In-engine art (2026-10-29)
+
+Art rendered from the game's own models in the playground (`playground/src/character_lab/`), no painted images:
+- **Dead League:** the menu's key art (all five contenders in a ring in League order, posed, glowing in their colors, monsters crowding the ring), the locked shadows (each contender's real silhouette, softened) and the five portraits (loading screen and versus splash). `league_art.tscn -- --capture`.
+- **The True Coffin King's portrait** (`portrait_true.png`, Insano Style in his burning ring): a loading card that joins the rotation only once he's been beaten (the "true_king" achievement), and always shows heading into his bout.
+- **Full-screen loading scenes** (`Loading.SCENES`): the four fighters on the graveyard set, and the Dead League ring; they creep in like the portraits, the words on the left.
+- **Key art** for the store (`key_art.tscn`): the revamp fighters in action poses on the graveyard set (the Mauler's embers and fire ring, the Answer's lightning, the Blur's purple echo fists, the Stray's swirl), monsters among the graves, the spooky title. Banner 2172x724 and 1080x1440 portraits, in `store_assets/` (not committed).

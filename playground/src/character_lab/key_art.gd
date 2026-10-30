@@ -222,7 +222,7 @@ func _fighter(fighter: String, at: Vector3, turn: float, pose: Dictionary) -> vo
 		"counter_master":
 			_lightning(at, tall, color, rng)
 		"combo_master":
-			_streaks(at, turn, tall, color, rng)
+			_echo_fists(body, color)
 		"free_runner":
 			_swirl(at, tall, color)
 
@@ -279,7 +279,36 @@ func _lightning(at: Vector3, tall: float, color: Color, rng: RandomNumberGenerat
 			point = next
 
 
-## Speed streaks trailing the Blur's dash.
+## The Blur's echo fists: see-through purple afterimages of his punching
+## fist trailing back along the jab and fanned a little (hand speed, not
+## foot speed), fading as they go.
+func _echo_fists(body: Node3D, color: Color) -> void:
+	var elbow: Node3D = body._joints.le
+	var glove: Vector3 = elbow.global_transform * Vector3(0, RevampBody.WRIST - 0.075, 0)
+	var back: Vector3 = (elbow.global_transform.origin - glove).normalized()
+	var side := back.cross(Vector3.UP).normalized()
+	var up := side.cross(back).normalized()
+	var fist: Vector3 = Vector3(0.13, 0.15, 0.13) * body.scale.x * 1.05
+	# Fanned round the punch like a flurry (straight behind, they hid in his arm).
+	for i in 6:
+		var t := (i + 1) / 6.0
+		var turn := i * TAU / 6.0 + 0.4
+		var at := glove + back * (0.06 + t * 0.3) + (side * cos(turn) + up * sin(turn)) * (0.2 + 0.08 * (i % 2)) * body.scale.x
+		var ghost := StandardMaterial3D.new()
+		ghost.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		ghost.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		ghost.albedo_color = Color(color.lightened(0.2), 0.75 * (1.0 - t * 0.6))
+		ghost.emission_enabled = true
+		ghost.emission = color
+		ghost.emission_energy_multiplier = 4.0 * (1.0 - t * 0.5)
+		var echo := _cube(_world, fist * (1.0 - t * 0.25), at, ghost)
+		echo.global_basis = elbow.global_basis
+		_cast.append(echo)
+	# A bright flash where the punch lands.
+	_cast.append(_cube(_world, fist * 1.15, glove - back * 0.02, _glow(color.lerp(Color.WHITE, 0.4), 4.0)))
+
+
+## Speed streaks trailing the Blur's dash (unused: he's hand speed).
 func _streaks(at: Vector3, turn: float, tall: float, color: Color, rng: RandomNumberGenerator) -> void:
 	var ahead := Vector3(-sin(turn), 0, -cos(turn))
 	var side := ahead.cross(Vector3.UP)

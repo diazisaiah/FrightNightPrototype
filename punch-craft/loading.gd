@@ -6,6 +6,10 @@ extends CanvasLayer
 ## Coffin King only once he's been reached, Tony only once he's unlocked.
 ## Heading into a Dead League bout always shows that bout's contender. Every
 ## scene change goes through Loading.go(path).
+## 2026-10-29: the contender portraits are in-engine renders, and full-screen
+## scenes join the pool (SCENES: the four fighters, the Dead League ring),
+## creeping in like the portraits. The True Coffin King has his own card,
+## only once he's been beaten (and always heading into his bout).
 
 ## Long enough for the portrait, aura and embers to show off and the
 ## tagline to be read, even when the scene itself loads instantly.
@@ -29,6 +33,16 @@ const FIGHTER_LINES := {
 	"free_runner": ["Off the ropes, into your face.", "Catch me if you can.", "Already gone."],
 	"elementalist": ["Why cast it when you can punch it?", "Fire in one hand. Ice in the other.", "Old, not slow."],
 }
+
+
+## Full-screen scenes: [texture, accent, header, name, tagline, line].
+const SCENES := {
+	"fighters": ["res://art/loading/fighters.png", Color(1.0, 0.45, 0.12), "FRIGHT NIGHT", "THE GRAVEYARD BOUTS",
+		"Four fighters. One long night.", "The dead keep coming. Keep punching."],
+	"league": ["res://art/dead_league/dead_league_key_art.png", Color(0.95, 0.75, 0.25), "THE DEAD LEAGUE", "FIVE CONTENDERS",
+		"Break the seals.", "Beat them all and the Coffin King is waiting."],
+}
+const TRUE_KING_PORTRAIT := "res://art/dead_league/portrait_true.png"
 
 
 func _ready() -> void:
@@ -102,12 +116,20 @@ func _process(delta: float) -> void:
 ## Who shows on this load: {texture, accent, header, name, tagline, line}.
 func _pick(path: String) -> Dictionary:
 	if path.ends_with("dead_league_arena.tscn"):
+		if GameState.true_king_bout:
+			return _true_king_card()
 		return _boss_card(clampi(GameState.dead_league_bout, 0, DeadLeagueRules.BOSS_COUNT - 1))
 	var pool := _pool()
 	if pool.size() > 1:
 		pool.erase(_last_pick)
 	_last_pick = pool.pick_random()
-	return _boss_card(_last_pick.boss) if _last_pick.has("boss") else _fighter_card(_last_pick.fighter)
+	if _last_pick.has("boss"):
+		return _boss_card(_last_pick.boss)
+	if _last_pick.has("scene"):
+		return _scene_card(_last_pick.scene)
+	if _last_pick.has("true_king"):
+		return _true_king_card()
+	return _fighter_card(_last_pick.fighter)
 
 
 ## Everyone who can show up: the contenders (the last one once he's been
@@ -119,7 +141,24 @@ func _pool() -> Array:
 			pool.append({"boss": i})
 	for id in GameState.class_ids():
 		pool.append({"fighter": id})
+	for id in SCENES:
+		pool.append({"scene": id})
+	# A secret: only once he's been beaten.
+	if Achievements.has("true_king"):
+		pool.append({"true_king": true})
 	return pool
+
+
+func _scene_card(id: String) -> Dictionary:
+	var scene: Array = SCENES[id]
+	return {"scene": scene[0], "accent": scene[1], "header": scene[2], "name": scene[3], "tagline": scene[4],
+		"line": scene[5]}
+
+
+func _true_king_card() -> Dictionary:
+	return {"texture": TRUE_KING_PORTRAIT, "accent": DeadLeagueBoss.INSANO_COLOR, "header": "THE DEAD LEAGUE",
+		"name": "THE TRUE COFFIN KING", "tagline": "Insano Style.",
+		"line": "“%s”" % (load("res://dead_league_arena.gd").TRUE_TAUNTS as Array).pick_random()}
 
 
 func _boss_card(index: int) -> Dictionary:
@@ -155,6 +194,27 @@ func _build(card: Dictionary) -> void:
 	back.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_screen.add_child(back)
 
+	if card.has("scene"):
+		_scene(card)
+	else:
+		_stage(card, accent)
+
+	# Darkness from the left so the words read.
+	_words(card, accent)
+
+
+## A full-screen scene behind everything, creeping in.
+func _scene(card: Dictionary) -> void:
+	_portrait = TextureRect.new()
+	_portrait.texture = load(card.scene)
+	_portrait.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	_portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_screen.add_child(_portrait)
+
+
+func _stage(card: Dictionary, accent: Color) -> void:
 	# The portrait on the right, its aura glowing behind it.
 	var stage := Control.new()
 	stage.anchor_left = 0.4
@@ -187,7 +247,8 @@ func _build(card: Dictionary) -> void:
 	stage.add_child(_portrait)
 	stage.add_child(_embers(accent))
 
-	# Darkness from the left so the words read.
+
+func _words(card: Dictionary, accent: Color) -> void:
 	var shade := TextureRect.new()
 	var gradient := Gradient.new()
 	gradient.set_color(0, Color(0.012, 0.01, 0.02, 1.0))

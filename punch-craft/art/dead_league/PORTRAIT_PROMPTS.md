@@ -1,5 +1,7 @@
 # Dead League portrait prompts
 
+**2026-10-29:** the key art, the locked shadows and these portraits are now in-engine renders of the game's own bosses (the playground's `character_lab/league_art.tscn`, `-- --capture`; the shadows are the masks softened with a blur). `portrait_true.png` is the True Coffin King (the loading screen shows him only once he's been beaten). The prompts below are the older painted versions.
+
 One portrait per contender for the loading screen. Save each as a PNG over the placeholder of the same name in this folder:
 
 | File | Contender |
