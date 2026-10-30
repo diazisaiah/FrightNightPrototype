@@ -48,7 +48,8 @@ func _ready() -> void:
 	_title = _make_title()
 	for fighter in Banner.CAST:
 		var spec: Dictionary = Banner.CAST[fighter]
-		_fighter(fighter, spec.at * Vector3(-1, 1, 1), spec.turn, spec.pose)
+		# (Spread a little wider than the pose reference.)
+		_fighter(fighter, spec.at * Vector3(-1.15, 1, 1), spec.turn, spec.pose)
 	# The fighters in the lower two thirds, the title above them.
 	_camera.position = Vector3(0.0, 1.35, -6.9)
 	_camera.look_at(Vector3(0.0, 1.62, 0.2), Vector3.UP)
@@ -74,7 +75,7 @@ func _build_set() -> void:
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	env.fog_enabled = true
 	env.fog_light_color = Color(0.09, 0.09, 0.2)
-	env.fog_density = 0.035
+	env.fog_density = 0.025
 	env.glow_enabled = true
 	env.glow_intensity = 0.9
 	env.glow_strength = 1.1
@@ -136,9 +137,38 @@ func _build_set() -> void:
 		Scenery.dead_tree(_world, rng, 6.5).position = spot
 	for spot: Vector3 in [Vector3(-3.4, 0, 2.6), Vector3(3.4, 0, 2.6), Vector3(-6.2, 0, 5.5), Vector3(6.2, 0, 5.5)]:
 		_torch(spot)
+	_monsters()
+	var back := OmniLight3D.new()
+	back.light_color = Color(0.45, 0.55, 1.0)
+	back.light_energy = 3.0
+	back.omni_range = 12.0
+	back.position = Vector3(0, 3.5, 9.5)
+	_world.add_child(back)
 	var mist := Scenery.mist(_world, Vector3(0, 0.3, 4.0), Vector3(11, 0.35, 7), 70)
 	mist.preprocess = 16.0
 	Scenery.wisps(_world, Vector3(0, 1.5, 8.5), Vector3(5, 1.0, 2.0))
+
+
+## The game's own monsters lurking among the graves, frozen, eyes glowing.
+func _monsters() -> void:
+	# Most out to the sides (the middle is the fighters'), a few in the gaps.
+	var lurkers := [
+		["zombie", Vector3(-7.4, 0, 5.2)], ["skeleton", Vector3(-5.6, 0, 4.0)], ["bruiser", Vector3(-4.0, 0, 5.6)],
+		["wraith", Vector3(-1.4, 0, 6.6)], ["zombie", Vector3(1.4, 0, 6.2)],
+		["brawler", Vector3(3.9, 0, 4.4)], ["mage", Vector3(5.4, 0, 5.8)], ["zombie", Vector3(7.2, 0, 4.2)],
+		["skeleton", Vector3(-8.8, 0, 7.6)], ["skeleton", Vector3(8.8, 0, 7.2)], ["zombie", Vector3(-2.9, 0, 4.4)],
+		["skeleton", Vector3(2.9, 0, 4.6)],
+	]
+
+	for i in lurkers.size():
+		var monster: Enemy = load("res://%s.tscn" % lurkers[i][0]).instantiate()
+		monster.setup(null, false, {"hat": ""})
+		monster.position = lurkers[i][1]
+		monster.rotation.y = (0.25 if i % 2 == 0 else -0.25) * (1.0 + (i % 3) * 0.3)
+		monster.scale = Vector3.ONE * 1.1
+		_world.add_child(monster)
+		monster.set_physics_process(false)
+		monster.set_process(false)
 
 
 func _torch(at: Vector3) -> void:
