@@ -1298,6 +1298,7 @@ func _shots() -> void:
 		_camera.v_offset = 0.0
 		_yaw = float(_arg("yaw", "0"))
 		_place_camera()
+	_add_yell_fx()
 	for i in 10:
 		await get_tree().process_frame
 	for t in times:
@@ -1310,6 +1311,18 @@ func _shots() -> void:
 		print("shot ", ProjectSettings.globalize_path(path))
 
 
+## --fx=yell: the Intense Yelling aura round the fighter (--fxtime= seconds into the yell).
+func _add_yell_fx() -> void:
+	if _arg("fx", "") != "yell":
+		return
+	var holder := Node3D.new()
+	add_child(holder)
+	holder.global_position = _body.global_position
+	var fx := PowerUpFx.new()
+	fx._time = float(_arg("fxtime", "8"))
+	holder.add_child(fx)
+
+
 ## A test clip: the dance, front on, no panels, a PNG per 1/30s.
 func _render_clip() -> void:
 	var dir := OUT + "render_" + _id + "/"
@@ -1320,6 +1333,7 @@ func _render_clip() -> void:
 	_marker.visible = false
 	_camera.v_offset = 0.0
 	set_process(false)
+	_add_yell_fx()
 	for i in 10:
 		await get_tree().process_frame
 	var seconds := float(_arg("seconds", str(_data.length)))
