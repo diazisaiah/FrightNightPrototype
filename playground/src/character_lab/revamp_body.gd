@@ -843,6 +843,11 @@ func _waist_band(torso: Node3D, color: Color, grow: float, knot: Vector3) -> voi
 	_block(torso, knot - Vector3(0.045, 0.055, 0.03), knot + Vector3(0.045, 0.055, 0.03), color)
 
 
+## Where the forearm ends and the fist starts (elbow space) on the Mauler,
+## the Blur and the Stray: longer than the Answer's 0.2, which read short.
+const WRIST := -0.25
+
+
 ## Arms: a big square deltoid (under a cloth shoulder, trimmed, if cap is a
 ## color), the upper arm with biceps and triceps, the elbow, the forearm
 ## painted by forearm (wraps and tape are paint, not built over it).
@@ -865,7 +870,7 @@ func _arm_shape(shoulder: Node3D, elbow: Node3D, side: float, forearm: Callable,
 	_block(shoulder, Vector3(-0.054 * a, -0.23, -0.082 * a), Vector3(0.054 * a, -0.09, -0.01), skin, 0.03)
 	_block(shoulder, Vector3(-0.05 * a + 0.006 * side, -0.22, 0.01), Vector3(0.05 * a + 0.006 * side, -0.07, 0.074 * a), skin, 0.03)
 	_block(elbow, Vector3(-0.055 * f, -0.05, -0.048 * f), Vector3(0.055 * f, 0.04, 0.062 * f), skin, 0.03)
-	_taper(elbow, -0.2, 0.0, Vector2(0.056, 0.054) * f, Vector2(0.068, 0.066) * f, forearm, 0.025)
+	_taper(elbow, WRIST, 0.0, Vector2(0.056, 0.054) * f, Vector2(0.068, 0.066) * f, forearm, 0.025)
 
 
 ## A square fist, its knuckle row lit, the thumb across the front; cuff
@@ -873,15 +878,15 @@ func _arm_shape(shoulder: Node3D, elbow: Node3D, side: float, forearm: Callable,
 func _fist(elbow: Node3D, side: float, glove: Color, cuff: Variant = null, fingers: Variant = null, big := 1.3) -> void:
 	var front := -0.062 * big
 	var paint := func(p: Vector3) -> Color:
-		if cuff != null and p.y > -0.2 - _v:
+		if cuff != null and p.y > WRIST - _v:
 			return cuff
-		if fingers != null and p.z < front + _v and p.y < -0.2 - 0.04 * big:
+		if fingers != null and p.z < front + _v and p.y < WRIST - 0.04 * big:
 			return fingers
-		if p.y > -0.2 - _line and p.z < -0.02:
+		if p.y > WRIST - _line and p.z < -0.02:
 			return glove.lightened(0.08)
 		return glove
-	_block(elbow, Vector3(-0.056 * big, -0.2 - 0.13 * big, front), Vector3(0.056 * big, -0.2, 0.048 * big), paint)
-	_side_block(elbow, -side, -0.01, 0.06 * big, -0.2 - 0.12 * big, -0.2 - 0.082 * big, front - _v, front + 0.02, fingers if fingers != null else glove.lightened(0.08), 0.01)
+	_block(elbow, Vector3(-0.056 * big, WRIST - 0.13 * big, front), Vector3(0.056 * big, WRIST, 0.048 * big), paint)
+	_side_block(elbow, -side, -0.01, 0.06 * big, WRIST - 0.12 * big, WRIST - 0.082 * big, front - _v, front + 0.02, fingers if fingers != null else glove.lightened(0.08), 0.01)
 
 
 ## A shoe on its own ankle pivot (lf / rf): sole, upper and toe box, a
@@ -968,19 +973,20 @@ func _mauler_leg(hip: Node3D, knee: Node3D, side: float) -> void:
 func _mauler_arm(shoulder: Node3D, elbow: Node3D, side: float) -> void:
 	var skin := _skin
 	var tape := func(p: Vector3) -> Color:
-		if p.y > -0.1:
+		if p.y > WRIST + 0.1:
 			return skin
-		return _p("tape_dark") if posmod(floori((p.y + 0.2) / _v), 3) == 2 else _p("tape")
+		return _p("tape_dark") if posmod(floori((p.y - WRIST) / _v), 3) == 2 else _p("tape")
 	_arm_shape(shoulder, elbow, side, tape, _p("vest"), _p("trim"))
 	# The glove: a padded block, the knuckle pad standing out in front (lit),
 	# the thumb on the inside, laces on the palm, a taped cuff.
 	var red := _p("glove")
 	var glove := func(p: Vector3) -> Color:
-		return _p("tape") if p.y > -0.236 else red
-	_block(elbow, Vector3(-0.126, -0.48, -0.15), Vector3(0.126, -0.2, 0.108), glove)
-	_block(elbow, Vector3(-0.108, -0.46, -0.186), Vector3(0.108, -0.29, -0.15), red.lightened(0.07))
-	_side_block(elbow, -side, 0.126, 0.162, -0.4, -0.28, -0.11, 0.0, red)
-	_block(elbow, Vector3(-0.018, -0.3, 0.108), Vector3(0.018, -0.236, 0.144), _p("laces"))
+		return _p("tape") if p.y > WRIST - 0.036 else red
+	var d := WRIST + 0.2
+	_block(elbow, Vector3(-0.126, -0.48 + d, -0.15), Vector3(0.126, WRIST, 0.108), glove)
+	_block(elbow, Vector3(-0.108, -0.46 + d, -0.186), Vector3(0.108, -0.29 + d, -0.15), red.lightened(0.07))
+	_side_block(elbow, -side, 0.126, 0.162, -0.4 + d, -0.28 + d, -0.11, 0.0, red)
+	_block(elbow, Vector3(-0.018, -0.3 + d, 0.108), Vector3(0.018, WRIST - 0.036, 0.144), _p("laces"))
 
 
 ## A heavy brow, small hard eyes, a frown.
@@ -1068,9 +1074,9 @@ func _blur_leg(hip: Node3D, knee: Node3D, side: float) -> void:
 func _blur_arm(shoulder: Node3D, elbow: Node3D, side: float) -> void:
 	var skin := _skin
 	var wraps := func(p: Vector3) -> Color:
-		if p.y > -0.05:
+		if p.y > WRIST + 0.15:
 			return skin
-		return _p("band_a") if posmod(floori((p.y + 0.2) / _v), 3) == 1 else _p("band_b")
+		return _p("band_a") if posmod(floori((p.y - WRIST) / _v), 3) == 1 else _p("band_b")
 	_arm_shape(shoulder, elbow, side, wraps)
 	_fist(elbow, side, _p("glove"), _p("glove_cuff"), null, 1.15)
 
@@ -1202,9 +1208,9 @@ func _stray_leg(hip: Node3D, knee: Node3D, side: float) -> void:
 func _stray_arm(shoulder: Node3D, elbow: Node3D, side: float) -> void:
 	var skin := _skin
 	var rings := func(p: Vector3) -> Color:
-		if p.y > -0.04:
+		if p.y > WRIST + 0.12:
 			return skin
-		return _p("tape") if posmod(floori(p.y / _v), 2) == 0 else skin
+		return _p("tape") if posmod(floori((p.y - WRIST) / _v), 2) == 0 else skin
 	_arm_shape(shoulder, elbow, side, rings)
 	_fist(elbow, side, _p("glove"), _p("glove_cuff"))
 
