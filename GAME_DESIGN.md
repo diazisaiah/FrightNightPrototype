@@ -1850,7 +1850,7 @@ Haymaker absorbs Rib Shot (5 levels of +15% set-up heavies) and Counterpuncher a
 
 **Legendaries (won, never dropped):**
 - **Golden Fast Guy Fleece Cap:** max every power. Every power 10% stronger (stacks with their hats).
-- **Bald Hero Cap:** 250 base damage, or one punch for 15x your base damage. +10% damage, +25% crit damage.
+- **Bald Hero Cap:** one punch for 10,000+ damage (2026-10-30: was 250 base damage or one punch for 15x base, which an early perfect counter cleared in the first minute). +10% damage, +25% crit damage.
 - **Speedster Cowl:** +30% move speed and +30% punch speed. +8% move speed, +6% punch speed.
 - **Strong Guy Wig (White)** (was a dropped epic): max your dodge window (+25%), counter window (+0.5s) and combo time (+1s, a new cap on gear's combo time). Raises all three caps 5% and stretches all three windows 5%.
 
@@ -1976,7 +1976,7 @@ A planning list, not a work order: nothing here gets built until the user picks 
   - The floor burns every 2.2-3.4s (was 3-4.5) and warns 1.2s. It burns a flat 5 damage a second while you stand in it (`BURN_DPS`; a share of his punch was far too much).
 - **Reading a busy fight:** with a maxed build, the boss stayed white and the screen filled with numbers.
   - **Floating text** (`DamagePopup`, second pass):
-    - **Numbers:** every number landing within 1.8m of a live stack, within 0.5s of its last hit, adds to it, whatever its caption or color, for up to 2s. Each monster shows one growing number.
+    - **Numbers:** every number landing within 1.8m of a live stack, within 0.5s of its last hit, adds to it, whatever its caption or color, for up to 2s. Each monster shows one growing number. (Undone 2026-10-30, after the text cleanup: every hit floats its own number again.)
     - **Callouts:** a caption ("ECHO", "SPEAR") or a word ("STUNNED") goes up at most once per 0.9s near the same spot.
     - **A cap:** at most 14 labels at once (10 in browsers); past that only big ones (K.O.!, contender calls) still pop.
   - **Particles:** every hit burst throws 55% of what it did (`HitFx.SHARE`), and no more than 160 particles go out per 0.25s (90 in browsers). Past that, bursts shrink or are skipped. Burst meshes are shared by color, glow and size (each burst used to build its own material). Burning and frozen monsters' motes are halved.

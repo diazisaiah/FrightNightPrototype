@@ -3,27 +3,21 @@ class_name DamagePopup
 ##
 ## Kept readable in a busy fight (2026-10-29: echoes, powers, chains and burns
 ## buried the screen):
-## - Numbers stack: any number ("12.3", or a caption over one, "ECHO\n4.1")
-##   landing within MERGE_DISTANCE of a live stack, within MERGE_GAP of its last
-##   hit, adds to it and pops again, for up to MERGE_LIFE. One growing number a
-##   monster, whatever hit it.
+## - Every hit floats its own number (2026-10-30: they used to stack into one
+##   growing number a monster; with captions and colors cleaned up, the user
+##   wanted each number to fly on its own again).
 ## - Callouts (a number's caption, or text like "STUNNED") repeat at most once
 ##   per CALLOUT_GAP near the same spot.
 ## - At most MAX_LIVE labels at once (WEB_MAX_LIVE in browsers); past that,
 ##   only big ones (font size BIG and up: K.O.!, a contender's call) still pop.
 
-const MERGE_DISTANCE := 1.8
-const MERGE_GAP := 0.5
-const MERGE_LIFE := 2.0
 const CALLOUT_GAP := 0.9
 const CALLOUT_DISTANCE := 2.5
 const MAX_LIVE := 14
 const WEB_MAX_LIVE := 10
 const BIG := 54
 
-## Live stacks: {label, at, value, last, born}; recent callouts: {text, at,
-## time} (seconds).
-static var _stacks: Array = []
+## Recent callouts: {text, at, time} (seconds).
 static var _callouts: Array = []
 static var _live: Array = []
 
@@ -34,28 +28,14 @@ static func spawn(parent: Node, text: String, color: Color, font_size: int, at: 
 	_live = _live.filter(func(label) -> bool: return is_instance_valid(label))
 	var lines := text.split("\n")
 	var number := String(lines[lines.size() - 1])
-	# (Heals, "+12", pop on their own.)
-	var stacks := number.is_valid_float() and not number.begins_with("+")
-	var caption := "\n".join(lines.slice(0, lines.size() - 1)) if stacks else text
+	# A number with a caption over it: the caption as a callout above it.
+	var numbered := number.is_valid_float()
+	var caption := "\n".join(lines.slice(0, lines.size() - 1)) if numbered else text
 	if caption != "":
-		_callout(parent, caption, color, font_size if not stacks else maxi(28, font_size - 10), at, now, stacks)
-	if not stacks:
+		_callout(parent, caption, color, font_size if not numbered else maxi(28, font_size - 10), at, now, numbered)
+	if not numbered or _full(font_size):
 		return
-	_stacks = _stacks.filter(func(stack: Dictionary) -> bool:
-		return is_instance_valid(stack.label) and now - stack.born < MERGE_LIFE)
-	for stack in _stacks:
-		if now - stack.last < MERGE_GAP and (stack.at as Vector3).distance_to(at) < MERGE_DISTANCE:
-			stack.value += number.to_float()
-			stack.last = now
-			var label: Label3D = stack.label
-			label.text = "%.1f" % stack.value
-			label.font_size = clampi(maxi(label.font_size, font_size) + 2, 0, 96)
-			_play(label, label.global_position, label.font_size)
-			return
-	if _full(font_size):
-		return
-	var label := _make(parent, number, color, font_size, at)
-	_stacks.append({"label": label, "at": at, "value": number.to_float(), "last": now, "born": now})
+	_make(parent, number, color, font_size, at)
 
 
 ## A word over the fight, unless the same one just went up nearby.
@@ -72,7 +52,6 @@ static func _callout(parent: Node, text: String, color: Color, font_size: int, a
 
 ## Forgets every label (a scene going away, or a test starting clean).
 static func reset() -> void:
-	_stacks.clear()
 	_callouts.clear()
 	_live.clear()
 
@@ -101,22 +80,15 @@ static func _make(parent: Node, text: String, color: Color, font_size: int, at: 
 	return label
 
 
-## Pops in big, settles, drifts up and fades. Big numbers pop harder. A stack
-## that grows pops again from where it is (drifting less, so it doesn't climb).
+## Pops in big, settles, drifts up and fades. Big numbers pop harder.
 static func _play(label: Label3D, start: Vector3, font_size: int) -> void:
-	var again := label.has_meta("tween")
-	if again:
-		var old: Tween = label.get_meta("tween")
-		if old and old.is_valid():
-			old.kill()
 	label.modulate.a = 1.0
 	var punch := clampf(font_size / 60.0, 1.0, 1.7)
-	label.scale = Vector3.ONE * (1.3 if again else 1.8) * punch
-	var drift := Vector3(randf_range(-0.25, 0.25), 0.8, 0) * (0.25 if again else 1.0)
+	label.scale = Vector3.ONE * 1.8 * punch
+	var drift := Vector3(randf_range(-0.25, 0.25), 0.8, 0)
 	var tween := label.create_tween()
 	tween.tween_property(label, "scale", Vector3.ONE, 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tween.parallel().tween_property(label, "global_position", start + drift, 0.8) \
 			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tween.parallel().tween_property(label, "modulate:a", 0.0, 0.35).set_delay(0.5)
 	tween.tween_callback(label.queue_free)
-	label.set_meta("tween", tween)

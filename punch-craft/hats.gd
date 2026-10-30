@@ -48,8 +48,10 @@ const POWER_HATS := {
 	"sigil_frost": "frost_tiara", "sigil_doom": "doom_mask", "sigil_blood": "blood_hairline", "sigil_quake": "quake_headband",
 }
 ## The Bald Hero Cap: this much base damage, or one punch for this many times it.
-const BALD_DAMAGE := 250.0
-const MASSIVE_HIT := 15.0
+## One punch dealing this much damage wins the Bald Hero Cap (2026-10-30:
+## was 15x your base damage, which an early perfect counter cleared in the
+## first minute).
+const MASSIVE_HIT := 10000.0
 ## The Speedster Cowl: move and punch speed bonuses this high.
 const SPEEDSTER_MOVE := 0.3
 const SPEEDSTER_PUNCH := 0.3
@@ -140,7 +142,7 @@ const CATALOG := {
 	"golden_quills": {"name": "Golden Fast Guy Fleece Cap", "rarity": "legendary", "effects": {"all_power_boost": 0.1},
 		"desc": "Won by maxing every power. Seven shiny rocks not included."},
 	"bald_cap": {"name": "Bald Hero Cap", "rarity": "legendary", "effects": {"damage_percent": 0.1, "crit_damage": 0.25}, "bald": true,
-		"desc": "Won with huge base damage, or one absurd punch."},
+		"desc": "Won by landing one punch for 10,000+."},
 	"speed_mask": {"name": "Speedster Cowl", "rarity": "legendary", "effects": {"move_speed": 0.08, "punch_speed": 0.06},
 		"desc": "Won with big move and punch speed. Was here a second ago."},
 	# The plumber quest.
@@ -195,8 +197,6 @@ static func earned_now() -> Array:
 		ids.append("wig_white")
 	if GameState.get_effect("move_speed") >= SPEEDSTER_MOVE and GameState.get_effect("punch_speed") >= SPEEDSTER_PUNCH:
 		ids.append("speed_mask")
-	if GameState.get_damage() >= BALD_DAMAGE:
-		ids.append("bald_cap")
 	return ids
 
 

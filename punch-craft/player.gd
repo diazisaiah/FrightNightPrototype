@@ -1653,8 +1653,8 @@ func _land_punch(type: String, hand: String, _dashing := false, airborne := fals
 	var spear_line := _dash_style == "spear" and GameState.has_effect("spear_line")
 	var staggers: bool = set_up or counter or dive_kick or crush or big or _dash_style == "haymaker" or passive.stagger or card.stagger or spear_line
 	var dealt := target.take_hit(raw_damage, hit_point, push, staggers, caption, weak > 1.0, crush)
-	# One absurd punch wins the Bald Hero Cap.
-	if dealt >= Hats.MASSIVE_HIT * GameState.get_damage():
+	# One absurd punch (10,000+) wins the Bald Hero Cap.
+	if dealt >= Hats.MASSIVE_HIT:
 		Hats.award(get_tree(), "bald_cap")
 	var killed := target.is_dead()
 	if killed:
