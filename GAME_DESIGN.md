@@ -89,7 +89,7 @@ Settings → Controls has three dropdowns, so layouts can be mixed and tried bef
 | Setting | Options |
 |---|---|
 | **Hooks / uppercuts** | **Hold Shift / Ctrl + click** (classic) · **Scroll wheel**: down = hook, up = uppercut · **Mouse side buttons**: front = hook, back = uppercut |
-| **Rolls / back step** | **Ctrl + A / D / S** (classic) · **Space + A / D / S / W** (W dashes; jump moves to C) · **Double-tap A / D / S** · **Tab left roll / R right roll / Ctrl+S back step** (ultimate moves to T; map moves to M) |
+| **Rolls / back step** | **Ctrl + A / D / S** (classic) · **Space + A / D / S / W** (W dashes; jump moves to C) · **Double-tap A / D / S** · **Tab left roll / R right roll / Ctrl+S back step** (ultimate moves to T; map moves to M) · **Shift + Q / E roll, double-tap S back step** (added 2026-10-30, the user's idea: Q / E alone still slip, Space stays jump, nothing needs a modifier with a direction) |
 | **Slips** | **Q / E** · **Q / E or mouse side buttons** (back = left, front = right; not available when hooks use the side buttons) |
 
 - With hook/uppercut buttons, the punch comes from the hand that didn't throw last, so jab → scroll keeps alternating hands and the heavy-punch setup works naturally. Shift is then only sprint, so you can sprint and jab.

@@ -40,6 +40,7 @@ func _run() -> void:
 	await _test_head_stomp()
 	await _test_dash_punch_cooldowns()
 	await _test_combo_setups()
+	await _test_shift_rolls()
 	await _test_dead_weight()
 	await _test_tutorial_fights()
 	await _test_perch_and_blood()
@@ -515,6 +516,60 @@ func _test_combo_setups() -> void:
 	_check(not player._last_set_up, "An uppercut after a cold hook isn't set up")
 	await _free_rig(holder)
 	print("Card runtime: combo set-ups OK")
+
+
+## The Shift + Q / E scheme (2026-10-30): Shift + Q / E are the roll actions
+## (and still the slip keys under them, so the player must roll, not slip),
+## Q alone only slips, S double-tapped back steps.
+func _test_shift_rolls() -> void:
+	var old_assist = Settings.values.assist_mode
+	var old_dodge = Settings.values.dodge_mode
+	var old_bindings = Settings.values.get("bindings", {})
+	# (Your own key bindings would replace the scheme's keys.)
+	Settings.values.bindings = {}
+	Settings.values.assist_mode = "pro"
+	Settings.values.dodge_mode = "shift_qe"
+	Controls.apply()
+	_check(InputMap.event_is_action(_key(KEY_Q, true), "roll_left_key") and InputMap.event_is_action(_key(KEY_E, true), "roll_right_key"),
+			"Shift + Q / E are the roll keys")
+	_check(not InputMap.event_is_action(_key(KEY_Q, false), "roll_left_key") and InputMap.event_is_action(_key(KEY_Q, false), "slip_left"),
+			"Q alone only slips")
+	var rig := await _make_rig("counter_master")
+	var player: Player = rig[1]
+	var was_pad := Pad.active
+	# (Input only counts with the mouse captured or a controller in use.)
+	Pad.active = true
+	# What each press sets off: Shift + Q is both slip_left and roll_left_key.
+	for case in [[["slip_left", "roll_left_key"], "roll_left"], [["slip_right", "roll_right_key"], "roll_right"],
+			[["slip_left"], "slip_left"], [["move_back"], ""], [["move_back"], "back_step"]]:
+		if case[1] != "":
+			player._defense = ""
+			player._defense_cooldown = 0.0
+		for action: String in case[0]:
+			Input.action_press(action)
+		await get_tree().process_frame
+		for action: String in case[0]:
+			Input.action_release(action)
+		await get_tree().process_frame
+		if case[1] != "":
+			_check(player._defense == case[1], "%s does %s (did %s)" % [case[0], case[1], player._defense])
+	Pad.active = was_pad
+	Settings.values.assist_mode = old_assist
+	Settings.values.dodge_mode = old_dodge
+	Settings.values.bindings = old_bindings
+	Controls.apply()
+	await _free_rig(rig[0])
+	print("Card runtime: Shift + Q / E rolls OK")
+
+
+func _key(key: Key, shift: bool) -> InputEventKey:
+	# (As the OS sends it: the key's letter and its physical place.)
+	var event := InputEventKey.new()
+	event.keycode = key
+	event.physical_keycode = key
+	event.shift_pressed = shift
+	event.pressed = true
+	return event
 
 
 ## Dead Weight (2026-10-29): a Doom-marked monster deals 25 / 30 / 35% less

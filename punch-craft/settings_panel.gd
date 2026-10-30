@@ -27,6 +27,7 @@ const CHOICES := {
 		"space": ["Space + A / D / S / W", "Jump moves to C"],
 		"double_tap": ["Double-tap A / D / S", "Tap a direction twice"],
 		"keys": ["Tab / R", "Roll left / right, ultimate on T"],
+		"shift_qe": ["Shift + Q / E", "Roll left / right, double-tap S back step"],
 	},
 	"slip_mode": {
 		"qe": ["Q / E", "Slip left / right"],

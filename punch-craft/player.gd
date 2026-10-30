@@ -569,9 +569,10 @@ func _process(delta: float) -> void:
 	if _live_input():
 		if Pad.active and Input.is_action_just_pressed("sprint"):
 			_pad_sprint = not _pad_sprint
-		if Input.is_action_just_pressed("slip_left"):
+		# (Shift + Q / E rolls in that scheme, and Q / E alone still slip.)
+		if Input.is_action_just_pressed("slip_left") and not Input.is_action_just_pressed("roll_left_key"):
 			_dodge_key("left")
-		elif Input.is_action_just_pressed("slip_right"):
+		elif Input.is_action_just_pressed("slip_right") and not Input.is_action_just_pressed("roll_right_key"):
 			_dodge_key("right")
 		elif Input.is_action_just_pressed("jump"):
 			_jump_requested = true
@@ -1137,7 +1138,7 @@ func _check_movement_moves() -> void:
 		if Input.is_action_just_pressed(key):
 			_do_move(DEDICATED_MOVES[key])
 			return
-	if scheme != "double_tap" and Input.is_action_pressed("dodge_modifier"):
+	if not scheme in ["double_tap", "shift_qe"] and Input.is_action_pressed("dodge_modifier"):
 		var moves := CTRL_DODGES.duplicate()
 		if scheme == "space":
 			moves["move_forward"] = "forward_dash"
@@ -1153,6 +1154,8 @@ func _check_movement_moves() -> void:
 	var taps := DOUBLE_TAPS.duplicate()
 	if scheme == "double_tap":
 		taps.merge(DOUBLE_TAP_DODGES)
+	elif scheme == "shift_qe":
+		taps["move_back"] = "back_step"
 	var now := Time.get_ticks_msec() / 1000.0
 	for key in taps:
 		if not Input.is_action_just_pressed(key):

@@ -202,6 +202,16 @@ func _test_control_preset() -> void:
 	_check(_keys("dodge_modifier") == [KEY_CTRL], "The dedicated roll preset must keep Ctrl+S back step")
 	_check(Controls.text("map") == "M", "The dedicated roll preset must move the Crypt map to M")
 	_check(Controls.summary().contains("T ultimate"), "The HUD summary must show T for ultimate")
+	# Shift + Q / E rolls (2026-10-30): Q / E still slip, Space jumps, S
+	# double-taps back.
+	Settings.values.dodge_mode = "shift_qe"
+	Controls.apply()
+	var shift_q: Array = InputMap.action_get_events("roll_left_key").filter(func(e: InputEvent) -> bool:
+		return e is InputEventKey and e.physical_keycode == KEY_Q and e.shift_pressed)
+	_check(not shift_q.is_empty() and _keys("slip_left") == [KEY_Q] and _keys("jump") == [KEY_SPACE],
+			"Shift + Q rolls left, Q slips, Space jumps")
+	_check(Controls.text("roll") == "Shift+Q/Shift+E" and Controls.text("back_step") == "Double-tap S",
+			"Shift + Q / E hints (%s, %s)" % [Controls.text("roll"), Controls.text("back_step")])
 	# Controllers: a full layout, PlayStation names, and hints that follow.
 	Settings.values.assist_mode = "junior"
 	Settings.values.dodge_mode = "space"

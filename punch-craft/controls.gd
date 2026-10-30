@@ -28,6 +28,9 @@ const DODGE_MODES := {
 	"space": "Space + A / D / S / W  (jump moves to C)",
 	"double_tap": "Double-tap A / D / S",
 	"keys": "Tab left roll / R right roll  (ultimate T)",
+	# (2026-10-30, the user's idea) Rolls on the slip keys with Shift, so
+	# nothing needs a modifier with a direction and Space stays jump.
+	"shift_qe": "Shift + Q / E roll, double-tap S back step",
 }
 ## Weenie Hut Junior Mode: Q / E dodge, and the game picks the slip, roll or
 ## back step that beats the incoming attack, as long as you pick its side.
@@ -175,6 +178,10 @@ static func apply() -> void:
 				_add_key("dodge_modifier", KEY_CTRL)
 				_add_key("roll_left_key", KEY_TAB)
 				_add_key("roll_right_key", KEY_R)
+				_add_key("jump", KEY_SPACE)
+			"shift_qe":
+				_add_key("roll_left_key", KEY_Q, true)
+				_add_key("roll_right_key", KEY_E, true)
 				_add_key("jump", KEY_SPACE)
 			_:
 				_add_key("jump", KEY_SPACE)
@@ -340,7 +347,7 @@ static func input_name(event: InputEvent) -> String:
 			KEY_ESCAPE:
 				return "Esc"
 		# Physical keys are named by their US-layout place (where W A S D sit).
-		return OS.get_keycode_string(code)
+		return ("Shift+" if event.shift_pressed else "") + OS.get_keycode_string(code)
 	if event is InputEventMouseButton:
 		match event.button_index:
 			MOUSE_BUTTON_LEFT:
@@ -488,7 +495,7 @@ static func text(move: String) -> String:
 				return "%s or %s" % [left, right]
 			if _bound("back_step_key"):
 				return key_name("back_step_key")
-			if dodges() == "double_tap":
+			if dodges() in ["double_tap", "shift_qe"]:
 				return "Double-tap %s" % key_name("move_back")
 			return "%s + %s" % [key_name("dodge_modifier"), key_name("move_back")]
 		"ultimate":
@@ -590,9 +597,10 @@ static func rows() -> Array:
 	return list
 
 
-static func _add_key(action: String, key: Key) -> void:
+static func _add_key(action: String, key: Key, shift := false) -> void:
 	var event := InputEventKey.new()
 	event.physical_keycode = key
+	event.shift_pressed = shift
 	InputMap.action_add_event(action, event)
 
 
