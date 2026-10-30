@@ -1,16 +1,15 @@
 extends Node3D
-## Body revamp comparison (2026-10-29): the Answer's two revamp prototypes
-## side by side (revamp_body.gd), on the Character Lab's animation rig, under
-## the same camera, light, floor and palette. Pick a view, a pose (any of the
-## lab's 50 states, held or looping), a hat, a silhouette check, or the
-## current production body as a third for reference.
-## Run with -- --capture to save the review shots and quit.
+## Body revamp lineup (2026-10-29): the four base fighters rebuilt in large
+## cubes (revamp_body.gd) side by side, on the Character Lab's animation rig,
+## under the same camera, light and floor. Pick a view, a pose (any of the
+## lab's 50 states, held or looping), a hat, a silhouette check, or swap in
+## the current production bodies for reference.
+## Run with -- --capture (review shots) or -- --poses (five poses), then quit.
 
 const AvatarScript = preload("res://playground/character_lab/fighter_avatar.gd")
 const RevampBody = preload("res://playground/character_lab/revamp_body.gd")
-const FIGHTER := "counter_master"
-## Shown by default (2026-10-29: the user picked the large cubes).
-const VARIANTS := ["large"]
+const FIGHTERS := ["berserker", "counter_master", "combo_master", "free_runner"]
+const NAMES := {"berserker": "The Mauler", "counter_master": "The Answer", "combo_master": "The Blur", "free_runner": "The Stray"}
 ## Pose shots (-- --poses): [action, phase, body turn, camera, look-at height].
 const POSE_SHOTS := [
 	["guard", 0.5, -0.6, Vector3(0.0, 1.45, -4.5), 0.95],
@@ -21,7 +20,7 @@ const POSE_SHOTS := [
 ]
 const VIEWS := {"Front": 0.0, "Three-quarter": -0.7, "Side": -PI / 2.0, "Back": PI}
 const HATS := {"No hat": "", "Cap": "pocket_trainer_cap", "Crown": "paper_crown", "Mask": "iron_mask", "Wig": "wig_black"}
-const SPACING := 1.35
+const SPACING := 1.2
 const OUT := "user://character_lab_captures/"
 
 var _avatars: Array = []
@@ -31,8 +30,8 @@ var _hat := ""
 var _pose := "guard"
 var _playing := false
 var _turntable := false
-var _show_current := false
-var _show_tiny := false
+## "large" (the revamp) or "" (the current production bodies).
+var _variant := "large"
 var _yaw := 0.0
 var _panel: Control
 var _camera: Camera3D
@@ -110,8 +109,8 @@ func _stage() -> void:
 
 func _frame_camera() -> void:
 	var across := SPACING * (_avatars.size() - 1) if _avatars.size() > 1 else SPACING * 0.6
-	_camera.position = Vector3(0, 1.2, -3.7 - across * 0.85)
-	_camera.look_at(Vector3(0, 1.08, 0), Vector3.UP)
+	_camera.position = Vector3(0, 1.25, -3.9 - across * 0.95)
+	_camera.look_at(Vector3(0, 1.12, 0), Vector3.UP)
 
 
 func _build_avatars() -> void:
@@ -121,25 +120,21 @@ func _build_avatars() -> void:
 		label.queue_free()
 	_avatars.clear()
 	_labels.clear()
-	var variants: Array = VARIANTS.duplicate()
-	if _show_tiny:
-		variants.push_front("tiny")
-	if _show_current:
-		variants.push_front("")
-	for i in variants.size():
-		var avatar: PlaygroundFighterAvatar = AvatarScript.new(FIGHTER, "")
-		avatar.body_variant = variants[i]
+	for i in FIGHTERS.size():
+		var avatar: PlaygroundFighterAvatar = AvatarScript.new(FIGHTERS[i], "")
+		avatar.body_variant = _variant
 		# Facing the camera (at -Z), left to right in the order above.
-		avatar.position = Vector3((i - (variants.size() - 1) * 0.5) * -SPACING, 0, 0)
+		avatar.position = Vector3((i - (FIGHTERS.size() - 1) * 0.5) * -SPACING, 0, 0)
 		add_child(avatar)
 		_avatars.append(avatar)
 		var label := Label3D.new()
-		label.text = RevampBody.scale_name(variants[i]) if variants[i] != "" else "Current Body"
+		label.text = NAMES[FIGHTERS[i]] + ("" if _variant != "" else " (current)")
 		label.font_size = 48
 		label.outline_size = 14
 		label.pixel_size = 0.0022
 		label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-		label.position = avatar.position + Vector3(0, 2.14, 0)
+		var tall := _tall(avatar)
+		label.position = avatar.position + Vector3(0, 2.1 * tall + 0.12, 0)
 		add_child(label)
 		_labels.append(label)
 		var cubes := Label3D.new()
@@ -149,13 +144,18 @@ func _build_avatars() -> void:
 		cubes.pixel_size = 0.0022
 		cubes.modulate = Color(0.8, 0.82, 0.88)
 		cubes.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-		cubes.position = avatar.position + Vector3(0, 2.04, 0)
+		cubes.position = avatar.position + Vector3(0, 2.1 * tall + 0.02, 0)
 		add_child(cubes)
 		_labels.append(cubes)
 	if _camera:
 		_frame_camera()
 	_set_hat(_hat)
 	_set_pose(_pose)
+
+
+## How tall this fighter stands against the usual body (0.92).
+func _tall(avatar: PlaygroundFighterAvatar) -> float:
+	return avatar._production_body.scale.y / 0.92
 
 
 func _cube_count(avatar: PlaygroundFighterAvatar) -> int:
@@ -194,7 +194,7 @@ func _build_panel() -> void:
 	var box := VBoxContainer.new()
 	_panel.add_child(box)
 	var title := Label.new()
-	title.text = "ANSWER: VOXEL SCALE"
+	title.text = "BODY REVAMP: LARGE CUBES"
 	box.add_child(title)
 	box.add_child(_row("View", VIEWS.keys(), func(id: String) -> void:
 		_view = id
@@ -215,11 +215,8 @@ func _build_panel() -> void:
 	box.add_child(_toggle("Silhouette", func(on: bool) -> void:
 		for avatar in _avatars:
 			avatar.set_silhouette(on)))
-	box.add_child(_toggle("Show the tiny cubes too", func(on: bool) -> void:
-		_show_tiny = on
-		_build_avatars()))
-	box.add_child(_toggle("Show the current body too", func(on: bool) -> void:
-		_show_current = on
+	box.add_child(_toggle("Current bodies instead", func(on: bool) -> void:
+		_variant = "" if on else "large"
 		_build_avatars()))
 	var capture := Button.new()
 	capture.text = "Capture this view"
@@ -297,22 +294,18 @@ func _capture_all() -> void:
 	_set_pose("cross_right")
 	await _snap("voxel_compare_cross.png")
 	_set_pose("guard")
-	# The stance from above: lead foot straight, rear foot turned out.
-	_view = "Front"
-	_camera.position = Vector3(0, 3.6, -1.2)
-	_camera.look_at(Vector3(0, 0.0, 0.05), Vector3.UP)
-	await _snap("voxel_compare_feet.png")
-	# Close on the head and hands.
+	# Each fighter close, three-quarter.
 	_view = "Three-quarter"
-	var subject: Vector3 = _avatars[0].position
-	_camera.position = subject + Vector3(0, 1.6, -1.6)
-	_camera.look_at(subject + Vector3(0, 1.45, 0), Vector3.UP)
-	await _snap("voxel_compare_close.png")
+	for i in _avatars.size():
+		var subject: Vector3 = _avatars[i].position
+		var tall := _tall(_avatars[i])
+		_camera.position = subject + Vector3(-0.2, 1.55, -2.1) * tall
+		_camera.look_at(subject + Vector3(0, 1.3 * tall, 0), Vector3.UP)
+		await _snap("voxel_compare_close_%s.png" % FIGHTERS[i])
 	_frame_camera()
-	_show_current = true
 	_view = "Front"
+	_variant = ""
 	_build_avatars()
-	_set_pose("guard")
 	await _snap("voxel_compare_with_current.png")
 
 
@@ -329,7 +322,8 @@ func _capture_poses() -> void:
 		for avatar in _avatars:
 			avatar._action_time = avatar._action_duration * float(shot[1])
 			avatar._apply_pose()
-		_camera.position = subject + (shot[3] as Vector3)
+		# Pulled back to fit the whole lineup.
+		_camera.position = subject + (shot[3] as Vector3) * 1.7
 		_camera.look_at(subject + Vector3(0, shot[4], 0), Vector3.UP)
 		await _snap("pose_%d_%s.png" % [i + 1, shot[0]])
 	_frame_camera()
