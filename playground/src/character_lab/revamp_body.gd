@@ -47,6 +47,9 @@ const DRESS := {
 	"combo_master": ["_blur_torso", "_blur_leg", "_blur_face", "_blur_hair", "_blur_arm"],
 	"free_runner": ["_stray_torso", "_stray_leg", "_stray_face", "_stray_hair", "_stray_arm"],
 }
+## The revamp's own changes to a fighter's build (BUILDS): the Blur's jaw
+## fuller and his head a touch bigger (it read tiny and pinched).
+const BUILD_TWEAKS := {"combo_master": {"jaw": 0.65, "face": 1.0}}
 ## Overall size (PlayerBody's is 0.92 for all): the Mauler big and tall, the
 ## Blur small and lean.
 const SIZE := {"berserker": 1.06, "counter_master": 0.92, "combo_master": 0.83, "free_runner": 0.93}
@@ -74,9 +77,18 @@ var _crown_half := 0.17
 ## Hair zones a crown hides: big hair (the Blur's curls, the Stray's locs)
 ## goes under it, so the crown sits down on the head like everyone's.
 var _crown_hides: Array = []
+## Where the top of the hair splits for a crown (above it goes under the
+## crown); past the hair, no split.
+var _crown_cut := 9.0
 ## The Stray's headband (off under any hat).
 var _headband: Node3D
 static var _cubes := {}
+
+
+func _b(key: String) -> float:
+	if BUILD_TWEAKS.has(fighter) and BUILD_TWEAKS[fighter].has(key):
+		return BUILD_TWEAKS[fighter][key]
+	return super._b(key)
 
 
 static func hat_kind(id: String) -> String:
@@ -619,7 +631,11 @@ func _zone_high(node: Node3D) -> Node3D:
 ## Hidden under a hat that hides these zones. A hat hiding the top hides
 ## every zone's high part too.
 static func _zone_hidden(zone: String, hide: Array) -> bool:
-	return zone in hide or zone.trim_suffix("_high") in hide or (zone.ends_with("_high") and "top" in hide)
+	if zone in hide or zone.trim_suffix("_high") in hide:
+		return true
+	# The high parts and the puff (big hair's outer volume) go under any hat
+	# that covers the top.
+	return (zone.ends_with("_high") or zone == "puff") and "top" in hide
 
 
 ## Inside the skull or jaw (head pivot space).
@@ -649,14 +665,16 @@ const HAT_CUT := 0.3
 func _lock(node: Node3D, from: Vector3, to: Vector3, color: Color, r := 0.0) -> void:
 	var lo := from.min(to)
 	var hi := from.max(to)
-	if not _zone_of.has(node) or _zone_of[node] == "top":
+	var id: String = _zone_of.get(node, "")
+	var cut: float = HAT_CUT if id in ["front", "sides", "back"] else (_crown_cut if id == "top" else 9.0)
+	if cut > 5.0:
 		_fill(node, lo, hi, color, func(p: Vector3) -> bool:
 			return _in_rounded(p, lo, hi, r) and not _in_skull(p))
 		return
 	_fill(node, lo, hi, color, func(p: Vector3) -> bool:
-		return p.y < HAT_CUT and _in_rounded(p, lo, hi, r) and not _in_skull(p))
+		return p.y < cut and _in_rounded(p, lo, hi, r) and not _in_skull(p))
 	_fill(_zone_high(node), lo, hi, color, func(p: Vector3) -> bool:
-		return p.y >= HAT_CUT and _in_rounded(p, lo, hi, r) and not _in_skull(p))
+		return p.y >= cut and _in_rounded(p, lo, hi, r) and not _in_skull(p))
 
 
 func _side_lock(node: Node3D, side: float, x0: float, x1: float, y0: float, y1: float, z0: float, z1: float, color: Color, r := 0.0) -> void:
@@ -1048,9 +1066,11 @@ func _blur_hair(head: Node3D) -> void:
 	var fw := 0.15 * _b("face")
 	var w := fw + 0.07
 	var curl := 0.1
-	_crown_at = HAT_CUT + 0.125
-	_crown_half = fw + 0.03
-	_crown_hides = ["top"]
+	# A crown sits down in the curls, the ones above it under it.
+	_crown_cut = 0.47
+	_crown_at = 0.46 + 0.125
+	_crown_half = w
+	_crown_hides = ["top_high"]
 	var top := _zone(head, "top")
 	_lock(top, Vector3(-w, 0.3, -0.16), Vector3(w, 0.58, 0.25), hair, 0.07)
 	# Square curls round the mass, every other one stepped up, each ring
@@ -1070,10 +1090,15 @@ func _blur_hair(head: Node3D) -> void:
 	var bangs := _zone(head, "front")
 	for c: Array in [[-0.18, -0.072, 0.288], [-0.072, 0.036, 0.288], [0.036, 0.18, 0.324], [-0.036, 0.036, 0.252]]:
 		_lock(bangs, Vector3(c[0], c[2], -0.19), Vector3(c[1], 0.42, -0.12), hair)
+	# Snug to the head at the sides and back (what shows under a hat), the
+	# puffed-out volume over it its own zone (gone under a hat).
 	var sides := _zone(head, "sides")
+	var puff := _zone(head, "puff")
 	for side in [-1.0, 1.0]:
-		_side_lock(sides, side, fw - 0.02, w, 0.2, 0.42, -0.1, 0.2, hair, 0.02)
-	_lock(_zone(head, "back"), Vector3(-w + 0.02, 0.15, 0.08), Vector3(w - 0.02, 0.42, 0.26), hair, 0.04)
+		_side_lock(sides, side, fw - 0.02, fw + 0.05, 0.2, 0.42, -0.08, 0.18, hair)
+		_side_lock(puff, side, fw - 0.02, w, 0.2, 0.42, -0.1, 0.2, hair, 0.02)
+	_lock(_zone(head, "back"), Vector3(-fw - 0.02, 0.12, 0.08), Vector3(fw + 0.02, 0.42, 0.21), hair)
+	_lock(puff, Vector3(-w + 0.02, 0.15, 0.08), Vector3(w - 0.02, 0.42, 0.26), hair, 0.04)
 
 
 # --- The Stray -----------------------------------------------------------------------
@@ -1144,7 +1169,7 @@ func _stray_arm(shoulder: Node3D, elbow: Node3D, side: float) -> void:
 			return skin
 		return _p("tape") if posmod(floori(p.y / _v), 2) == 0 else skin
 	_arm_shape(shoulder, elbow, side, rings)
-	_fist(elbow, side, _p("glove"), _p("glove_cuff"), _skin)
+	_fist(elbow, side, _p("glove"), _p("glove_cuff"))
 
 
 ## Level brows, a small closed mouth (a toothy grin with smile lines read
@@ -1192,6 +1217,10 @@ func _stray_hair(head: Node3D) -> void:
 		for i in 3:
 			var z := -0.08 + i * 0.1
 			_side_lock(sides, side, w - 0.02, w + 0.06, 0.34 + (i % 2) * 0.03, 0.42 + (i % 2) * 0.03, z, z + 0.07, hair)
+		# Locs hanging down the side of the head, over and behind the ear
+		# (these show under a hat).
+		for z: float in [-0.09, 0.0, 0.09]:
+			_side_lock(sides, side, fw - 0.01, fw + 0.035, 0.16 + (0.03 if z == 0.0 else 0.0), 0.3, z, z + 0.06, hair)
 	var back := _zone(head, "back")
 	_lock(back, Vector3(-w, 0.324, 0.1), Vector3(w, 0.42, 0.2), hair)
 	for x: float in [-0.13, -0.05, 0.03, 0.11]:
