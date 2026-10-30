@@ -354,27 +354,27 @@ const UPGRADES := {
 	},
 	"cornerman": {
 		"name": "Cornerman", "icon": "medkit", "pos": Vector2(-1.06, 1.06), "requires": ["hp_1"], "ring": 1,
-		"desc": "Heal a little each time the bout bar passes a tenth.",
+		"desc": "Heal 1% knuckle HP per level at every bout milestone (each tenth of the bar) and every Crypt room.",
 		"max_level": 3, "cost": 130, "cost_growth": 1.3, "effects": {"wave_heal": 1},
 	},
 	"ice_bath": {
 		"name": "Ice Bath", "icon": "bucket", "pos": Vector2(-2.17, 1.25), "requires": ["hp_2"], "ring": 2,
-		"desc": "Heal a little each time the bout bar passes a tenth.",
+		"desc": "Heal 1% knuckle HP per level at every bout milestone (each tenth of the bar) and every Crypt room.",
 		"max_level": 2, "cost": 550, "cost_growth": 1.3, "effects": {"wave_heal": 1},
 	},
 	"second_wind": {
 		"name": "Second Wind", "icon": "wind", "pos": Vector2(-3.03, 1.75), "requires": ["hp_3"], "ring": 3,
-		"desc": "Heal more between waves.",
+		"desc": "Heal 1% knuckle HP per level at every bout milestone (each tenth of the bar) and every Crypt room.",
 		"max_level": 2, "cost": 2000, "cost_growth": 1.3, "effects": {"wave_heal": 1},
 	},
 	"iron_will": {
 		"name": "Chin Check", "icon": "anchor", "pos": Vector2(-2.17, -1.25), "requires": ["hp_2"], "ring": 2,
-		"desc": "Recover faster when a hit lands on you.",
+		"desc": "Getting hit stuns you 15% shorter per level.",
 		"max_level": 2, "cost": 550, "cost_growth": 1.3, "effects": {"flinch_reduction": 0.15},
 	},
 	"calloused": {
 		"name": "Calloused", "icon": "tape", "pos": Vector2(-3.03, -1.75), "requires": ["hp_3"], "ring": 3,
-		"desc": "Now and then a punch costs no knuckle HP.",
+		"desc": "5% of punches per level cost no knuckle HP.",
 		"max_level": 3, "cost": 2000, "cost_growth": 1.3, "effects": {"free_punch_chance": 0.05},
 	},
 	"light_feet": {
@@ -394,7 +394,7 @@ const UPGRADES := {
 	},
 	"bounty": {
 		"name": "Crowd Pleaser", "icon": "wanted", "pos": Vector2(-1.75, -3.03), "requires": ["gold_3"], "ring": 3,
-		"desc": "More coins each time the Arena bout bar passes a tenth.",
+		"desc": "+25% coins per level from bout milestones (each tenth of the bar).",
 		"max_level": 2, "cost": 2000, "cost_growth": 1.3, "effects": {"wave_bonus": 0.25},
 	},
 	"sparring_partner": {
@@ -506,12 +506,12 @@ const UPGRADES := {
 	},
 	"iron_lungs": {
 		"name": "Iron Lungs", "icon": "heartbeat", "pos": Vector2(-3.18, -3.18), "requires": ["hp_4"], "ring": 4,
-		"desc": "Heal more between waves.",
+		"desc": "Heal 1% knuckle HP per level at every bout milestone (each tenth of the bar) and every Crypt room.",
 		"max_level": 2, "cost": 9400, "cost_growth": 1.3, "effects": {"wave_heal": 1},
 	},
 	"unflinching": {
 		"name": "Unflinching", "icon": "muscle", "pos": Vector2(-3.89, 3.89), "requires": ["scar_tissue"], "ring": 5,
-		"desc": "Recover faster when a hit lands on you.",
+		"desc": "Getting hit stuns you 15% shorter per level.",
 		"max_level": 2, "cost": 36000, "cost_growth": 1.3, "effects": {"flinch_reduction": 0.15},
 	},
 	"granite_chin": {
@@ -521,12 +521,12 @@ const UPGRADES := {
 	},
 	"grave_wind": {
 		"name": "Grave Wind", "icon": "wind", "pos": Vector2(-4.6, 4.6), "requires": ["grave_skin"], "ring": 6,
-		"desc": "Heal more between waves.",
+		"desc": "Heal 1% knuckle HP per level at every bout milestone (each tenth of the bar) and every Crypt room.",
 		"max_level": 3, "cost": 150000, "cost_growth": 1.3, "effects": {"wave_heal": 1},
 	},
 	"kings_purse": {
 		"name": "King's Purse", "icon": "crown", "pos": Vector2(-4.6, -4.6), "requires": ["gold_teeth"], "ring": 6,
-		"desc": "More coins each time the Arena bout bar passes a tenth.",
+		"desc": "+25% coins per level from bout milestones (each tenth of the bar).",
 		"max_level": 2, "cost": 150000, "cost_growth": 1.3, "effects": {"wave_bonus": 0.25},
 	},
 	"old_master": {
@@ -956,7 +956,7 @@ const EFFECT_FORMATS := {
 	"combo_step": "+%s combo multiplier per hit",
 	"coin_bonus": "+%s%% coins from kills",
 	"heavy_bonus": "+%s%% set-up hook & uppercut damage",
-	"wave_bonus": "+%s%% Arena milestone bonus",
+	"wave_bonus": "+%s%% coins from bout milestones",
 	"heal_on_kill": "Kills restore %s%% of your knuckle HP",
 	"heavy_cost_cut": "Hooks and uppercuts cost %s less knuckle HP",
 	"boss_damage": "+%s%% damage to bosses",
@@ -968,7 +968,7 @@ const EFFECT_FORMATS := {
 	"wave_heal": "Restore %s%% knuckle HP every tenth of the bout (and every Crypt room)",
 	"finisher_bonus": "+%s%% damage to enemies under 30%% HP",
 	"dodge_window": "+%s%% dodge window",
-	"flinch_reduction": "-%s%% flinch time",
+	"flinch_reduction": "-%s%% stun when hit",
 	"graze_reduction": "-%s%% graze damage",
 	"counter_bonus": "+%s counter multiplier",
 	"counter_window": "+%ss counter window",
