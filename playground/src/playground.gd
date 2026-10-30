@@ -51,6 +51,9 @@ func _ready() -> void:
 	GameState.true_king_bout = false
 	for id in Achievements.LIST:
 		GameState.achievements[id] = true
+	# Soul Shop dances (no achievement teaches them) too.
+	for id in Emotes.ORDER:
+		GameState.emotes_bought[id] = true
 	for tip in ["hat_first", "hat_rack", "hat_rack_tour", "power_select"]:
 		GameState.tips_seen[tip] = true
 	for id in IdleAnims.SHOP:
@@ -87,6 +90,20 @@ func _ready() -> void:
 		_lab.set_mode(_resume_lab_mode)
 		_resume_lab_mode = ""
 	Sfx.play_music("camp")
+	if "--emote-check" in OS.get_cmdline_user_args():
+		_emote_check()
+
+
+## -- --emote-check: every dance plays from the playground (and its effects start), then quits.
+func _emote_check() -> void:
+	for i in 5:
+		await get_tree().process_frame
+	for id in Emotes.ORDER:
+		_player.start_emote(id)
+		for i in 3:
+			await get_tree().process_frame
+		print("EMOTE ", id, " playing=", _player.emote == id, " fx=", _player._emote_fx != null)
+	get_tree().quit()
 
 
 func _process(delta: float) -> void:
