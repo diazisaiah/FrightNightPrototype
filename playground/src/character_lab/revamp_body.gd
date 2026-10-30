@@ -1060,8 +1060,9 @@ func _stray_torso(hips: Node3D, torso: Node3D) -> void:
 	_block(torso, Vector3(-0.1, 0.3, chest), Vector3(-0.03, 0.54, chest + _v), red)
 	var front := -_hz(0.0) - 2.0 * _lift
 	_waist_band(torso, red, 2.0, Vector3(0, 0.005, front - 0.02))
+	# Two thin white strips hanging from under the knot, apart, uneven.
 	for side in [-1.0, 1.0]:
-		_side_block(torso, side, 0.01, 0.06, -0.3 + (0.04 if side > 0 else 0.0), -0.04, front - _v, front, white)
+		_side_block(torso, side, 0.036, 0.072, -0.3 + (0.07 if side > 0 else 0.0), -0.04, front - _v, front, white)
 	var w := _r("waist")
 	_block(hips, Vector3(-0.2 * w, -0.11, -0.13 * w), Vector3(0.2 * w, 0.12, 0.14 * w), gi)
 
