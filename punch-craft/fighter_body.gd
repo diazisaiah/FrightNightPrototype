@@ -36,8 +36,11 @@ const HAT_FIT := {
 	# Helmets and masks round the whole head, the face's raised cubes (brow,
 	# nose) inside the front plate.
 	"mask": {"seat": 0.33, "size": 1.22, "hide": ["top", "front", "sides", "back"]},
-	# Wigs and bald caps replace the hair.
+	# Wigs replace the hair.
 	"wig": {"seat": 0.33, "size": 0.87, "hide": ["top", "front", "sides", "back"]},
+	# Painted on the bare head (the Drawn-On Hairline, the Bald Hero Cap's
+	# shine): fit to the skull's own cubes (paint_fit), or it's inside them.
+	"paint": {"seat": 0.0, "size": 1.0, "hide": ["top", "front", "sides", "back"]},
 }
 ## The fighters rebuilt here, and what dresses each: torso, leg, face,
 ## hair, arm.
@@ -65,8 +68,9 @@ const HAT_KIND := {
 	"paper_crown": "crown", "coffin_crown": "crown", "frost_tiara": "crown", "quake_headband": "crown",
 	"storm_ears": "crown", "party_hat": "crown",
 	"iron_mask": "mask", "doom_mask": "mask", "monkey_mask": "mask", "speed_mask": "mask", "reaper_hood": "mask",
+	"pumpkin_helmet": "mask", "jack_o_lantern": "mask",
 	"wig_black": "wig", "wig_blonde": "wig", "wig_blue": "wig", "wig_white": "wig", "fast_quills": "wig",
-	"golden_quills": "wig", "gale_flattop": "wig", "blood_hairline": "wig", "bald_cap": "wig",
+	"golden_quills": "wig", "gale_flattop": "wig", "blood_hairline": "paint", "bald_cap": "paint",
 }
 
 ## "tiny", "medium" or "large"; set before the body enters the tree.
@@ -118,6 +122,20 @@ func head_profile() -> Dictionary:
 	return {"skull_top": 0.345, "hair_top": _crown_at, "brow": 0.25, "half_width": fw, "hair_half_width": _crown_half, "front": -0.15}
 
 
+## Where a painted-on hat goes: the skull's outer cubes (its cells are kept
+## when their middles are inside the skull, so the faces sit a little out
+## from it), the paint just over them. u (times Hats.SIZE, as hats are
+## built), the seat, and the sunglasses' eyes, front (clear of the raised
+## brow and nose) and arms (over the ears), in head widths.
+func paint_fit() -> Dictionary:
+	var outer := func(at: float) -> float: return (floorf(at / _v - 0.5) + 1.0) * _v
+	var width: float = outer.call(0.15 * _b("face")) * 2.0
+	var seat: float = outer.call(0.345) + 0.08 * width
+	var front: float = -outer.call(0.15) - _v
+	return {"u": width * Hats.SIZE, "seat": seat, "eyes": (0.198 - seat) / width,
+		"front": front / width - 0.03, "arms": (0.25 - seat) / width}
+
+
 func _cache_key() -> String:
 	return "revamp_%s/%s" % [voxel_scale, super._cache_key()]
 
@@ -151,10 +169,16 @@ func wear_hat(id: String) -> void:
 	var crown := hat_kind(id) == "crown"
 	var half: float = _crown_half if crown else 0.15 * _b("face") + 0.03
 	var u: float = half * 2.0 * fit.size * (Hats.FRUIT_SIZE if id == "fruit_hat" else 1.0)
+	var seat: float = _crown_at - 0.125 if crown else fit.seat
+	var head := {}
+	if hat_kind(id) == "paint":
+		head = paint_fit()
+		u = head.u
+		seat = head.seat
 	_hat = Node3D.new()
 	_hat.name = "HatSocket"
-	_hat.position = Vector3(0, _crown_at - 0.125 if crown else fit.seat, 0)
-	_hat.add_child(Hats.build(id, u))
+	_hat.position = Vector3(0, seat, 0)
+	_hat.add_child(Hats.build(id, u, head))
 	_joints.head.add_child(_hat)
 	_set_layer(_hat)
 	var spin := _hat.get_node_or_null("Hat/Spin")

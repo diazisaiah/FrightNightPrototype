@@ -109,6 +109,10 @@ const CATALOG := {
 		"desc": "Stretchy guy's. He'll want it back."},
 	"rebel_cap": {"name": "Rebellious Guy Hat", "rarity": "epic", "effects": {"punch_speed": 0.04, "damage_percent": 0.03},
 		"desc": "Good grief."},
+	"pumpkin_helmet": {"name": "Pumpkin Helmet", "rarity": "rare", "effects": {"knuckles_percent": 0.03, "damage_percent": 0.02},
+		"desc": "Happy Halloween 2026!"},
+	"jack_o_lantern": {"name": "Jack-o'-Lantern", "rarity": "epic", "effects": {"knuckles_percent": 0.04, "damage_percent": 0.03},
+		"desc": "Happy Halloween 2026!"},
 	"monkey_mask": {"name": "Big Monkey Mask", "rarity": "epic", "effects": {"damage_percent": 0.03, "dodge_window": 0.03},
 		"desc": "Ook. The dead find it deeply unsettling."},
 	"yonker_brim": {"name": "Yonker with Brim", "rarity": "legendary", "effects": {},
@@ -266,7 +270,9 @@ static func roll(skeleton: bool) -> String:
 # --- Building them ------------------------------------------------------------------
 
 ## A hat as a Node3D: its origin sits on top of the head, u is the head's width.
-static func build(id: String, u: float) -> Node3D:
+## head: where a painted-on hat's face parts go (eyes, front, arms: heights
+## and depth in head widths), for heads shaped unlike the default.
+static func build(id: String, u: float, head := {}) -> Node3D:
 	var hat := Node3D.new()
 	hat.name = "Hat"
 	match id:
@@ -424,7 +430,11 @@ static func build(id: String, u: float) -> Node3D:
 		"doom_mask":
 			_doctor_mask(hat, u)
 		"blood_hairline":
-			_drawn_hairline(hat, u)
+			_drawn_hairline(hat, u, head)
+		"pumpkin_helmet":
+			_pumpkin(hat, u, false)
+		"jack_o_lantern":
+			_pumpkin(hat, u, true)
 		"quake_headband":
 			_earth_headband(hat, u)
 		"golden_quills":
@@ -838,7 +848,7 @@ static func _doctor_mask(hat: Node3D, u: float) -> void:
 ## A drawn-on hairline: the head bare (its hair comes off), marker-black
 ## painted over the top and down the sides, bald temples either side of a
 ## sharp triangle widow's peak, and square black sunglasses.
-static func _drawn_hairline(hat: Node3D, u: float) -> void:
+static func _drawn_hairline(hat: Node3D, u: float, head := {}) -> void:
 	# Painted on, so head-sized (hats are built SIZE times bigger to read):
 	# in head widths, the scalp's sides sit at about 0.53 and its back at 0.52.
 	u /= SIZE
@@ -853,13 +863,69 @@ static func _drawn_hairline(hat: Node3D, u: float) -> void:
 		_b(hat, u, Vector3(0.03, 0.36, 0.78), Vector3(0.55 * side, -0.24, 0.08), ink)
 		_b(hat, u, Vector3(0.08, 0.06, 0.78), Vector3(0.51 * side, -0.07, 0.08), ink)
 	_b(hat, u, Vector3(1.08, 0.42, 0.03), Vector3(0, -0.25, 0.54), ink)
-	# Square sunglasses resting on the face, arms back to the ears.
+	# Square sunglasses resting on the face (clear of the brow and nose),
+	# arms back over the ears.
 	var lens := Color(0.03, 0.03, 0.04)
 	var frame := Color(0.5, 0.5, 0.52)
+	var eyes: float = head.get("eyes", -0.42)
+	var front: float = head.get("front", -0.56)
+	var arms: float = head.get("arms", -0.38)
 	for side in [-1.0, 1.0]:
-		_b(hat, u, Vector3(0.26, 0.19, 0.03), Vector3(0.19 * side, -0.42, -0.56), lens, Vector3.ZERO, false, 0.9)
-		_b(hat, u, Vector3(0.03, 0.03, 0.5), Vector3(0.55 * side, -0.38, -0.3), frame, Vector3.ZERO, false, 0.8)
-	_b(hat, u, Vector3(0.16, 0.035, 0.03), Vector3(0, -0.37, -0.575), frame, Vector3.ZERO, false, 0.8)
+		_b(hat, u, Vector3(0.26, 0.19, 0.03), Vector3(0.19 * side, eyes, front), lens, Vector3.ZERO, false, 0.9)
+		_b(hat, u, Vector3(0.03, 0.03, 0.05 - front), Vector3(0.55 * side, arms, (front - 0.05) / 2.0), frame, Vector3.ZERO, false, 0.8)
+	_b(hat, u, Vector3(0.16, 0.035, 0.03), Vector3(0, eyes + 0.05, front - 0.015), frame, Vector3.ZERO, false, 0.8)
+
+
+## A pumpkin pulled down over the whole head: ribbed orange lobes, a green
+## stem and a curling leaf. Carved (the jack-o'-lantern), it has a glowing
+## triangle-eyed, snaggle-toothed grin and a candle's light inside.
+static func _pumpkin(hat: Node3D, u: float, carved: bool) -> void:
+	var orange := Color(1.0, 0.5, 0.08)
+	var rib := orange.darkened(0.22)
+	var hi := orange.lightened(0.15)
+	var stem := Color(0.3, 0.42, 0.14)
+	# The body: a squat pumpkin rounded at the corners (three boxes, each a
+	# little narrower one way), a narrower band top and bottom, down over the
+	# face. Its front is flat for the carving.
+	for size in [Vector2(1.0, 1.12), Vector2(1.12, 1.0), Vector2(1.08, 1.08)]:
+		_b(hat, u, Vector3(size.x, 0.78, size.y), Vector3(0, -0.32, 0.02), orange)
+		_b(hat, u, Vector3(size.x - 0.24, 0.12, size.y - 0.24), Vector3(0, 0.12, 0.02), orange)
+		_b(hat, u, Vector3(size.x - 0.2, 0.1, size.y - 0.2), Vector3(0, -0.75, 0.02), rib)
+	# Ribs running top to bottom between the lobes, a shine on each lobe.
+	for side in [-1.0, 1.0]:
+		_b(hat, u, Vector3(0.05, 0.74, 0.03), Vector3(0.36 * side, -0.32, -0.555), rib)
+		_b(hat, u, Vector3(0.05, 0.74, 0.03), Vector3(0.36 * side, -0.32, 0.595), rib)
+		_b(hat, u, Vector3(0.03, 0.74, 0.05), Vector3(0.575 * side, -0.32, 0.3), rib)
+		_b(hat, u, Vector3(0.03, 0.74, 0.05), Vector3(0.575 * side, -0.32, -0.26), rib)
+		_b(hat, u, Vector3(0.03, 0.4, 0.1), Vector3(0.575 * side, -0.25, 0.02), hi)
+	# The stem, bent over, and a leaf.
+	_b(hat, u, Vector3(0.14, 0.2, 0.14), Vector3(0, 0.25, 0.02), stem)
+	_b(hat, u, Vector3(0.11, 0.12, 0.11), Vector3(0.05, 0.38, 0.02), stem.darkened(0.1), Vector3(0, 0, -0.5))
+	_b(hat, u, Vector3(0.3, 0.03, 0.18), Vector3(-0.2, 0.19, 0.08), Color(0.24, 0.55, 0.18), Vector3(0, 0.4, 0.3))
+	if not carved:
+		return
+	# The carved face: on the front, glowing candle yellow.
+	var glow := Color(1.0, 0.72, 0.15)
+	var z := -0.55
+	for side in [-1.0, 1.0]:
+		# Triangle eyes, point up.
+		for i in 3:
+			_b(hat, u, Vector3(0.22 - i * 0.07, 0.06, 0.03), Vector3(0.22 * side, -0.24 + i * 0.06, z), glow, Vector3.ZERO, true)
+	# A triangle nose.
+	for i in 2:
+		_b(hat, u, Vector3(0.12 - i * 0.06, 0.05, 0.03), Vector3(0, -0.38 + i * 0.05, z), glow, Vector3.ZERO, true)
+	# The grin: a wide curve up at the ends, two teeth left in.
+	_b(hat, u, Vector3(0.5, 0.1, 0.03), Vector3(0, -0.56, z), glow, Vector3.ZERO, true)
+	for side in [-1.0, 1.0]:
+		_b(hat, u, Vector3(0.1, 0.1, 0.03), Vector3(0.29 * side, -0.5, z), glow, Vector3.ZERO, true)
+		_b(hat, u, Vector3(0.07, 0.06, 0.035), Vector3(0.1 * side, -0.53 + 0.02 * side, z - 0.005), orange)
+	# Candlelight inside, spilling out of the face.
+	var light := OmniLight3D.new()
+	light.light_color = glow
+	light.light_energy = 0.5
+	light.omni_range = 1.2 * u
+	light.position = Vector3(0, -0.5, -1.0) * u
+	hat.add_child(light)
 
 
 ## The earth warrior's hair and headband: black hair with bangs over the
