@@ -189,12 +189,42 @@ func _preview(tint: Color) -> Control:
 	view.add_child(holder)
 	_hat = Hats.build(_id, 1.0)
 	holder.add_child(_hat)
+	# Centered on its blocks: masks and helmets hang down below the head
+	# top (their origin) and were cut off under the window. Very tall ones
+	# shrink to fit.
+	var bounds := _bounds(_hat, Transform3D.IDENTITY)
+	if bounds.size != Vector3.ZERO:
+		var fit := minf(1.0, 1.1 / bounds.size.y)
+		var center := Node3D.new()
+		center.scale = Vector3.ONE * fit
+		center.position.y = 0.42 - bounds.get_center().y * fit
+		holder.remove_child(_hat)
+		center.add_child(_hat)
+		holder.add_child(center)
 	Hats.sparkles(holder, tint, 0.9)
 	var camera := Camera3D.new()
 	camera.fov = 40
 	camera.look_at_from_position(Vector3(0, 0.9, 3.0), Vector3(0, 0.42, 0))
 	view.add_child(camera)
 	return frame
+
+
+## The box round every block under node, in the space `to` maps it into.
+static func _bounds(node: Node, to: Transform3D) -> AABB:
+	var box := AABB()
+	for child in node.get_children():
+		if not (child is Node3D):
+			continue
+		var at: Transform3D = to * (child as Node3D).transform
+		var part := AABB()
+		if child is MeshInstance3D and (child as MeshInstance3D).mesh:
+			part = at * (child as MeshInstance3D).mesh.get_aabb()
+		var inner := _bounds(child, at)
+		if inner.size != Vector3.ZERO:
+			part = inner if part.size == Vector3.ZERO else part.merge(inner)
+		if part.size != Vector3.ZERO:
+			box = part if box.size == Vector3.ZERO else box.merge(part)
+	return box
 
 
 func _collect() -> void:

@@ -133,6 +133,8 @@ var hat_lesson := false
 var _lesson_check := 0.0
 var _lesson_label: Label3D
 var _hat_node: Node3D
+## Parts hidden under the hat (a caster's own hat).
+var _hat_hidden: Array[MeshInstance3D] = []
 var player: Player
 ## Multiplies the damage this enemy's attacks deal. Grows with the wave.
 var damage_multiplier := 1.0
@@ -1090,15 +1092,35 @@ func _end_taunt() -> void:
 		_taunt_fx = null
 
 
-## Puts the hat on the head (on top of any helmet).
+## Puts the hat on the head (on top of any helmet). The seat is the highest
+## head-sized box on the middle line, not the biggest (a chest plate is
+## bigger than a skeleton's skull, and a mage's brim is wider than its head).
+## A caster's own hat goes under it, back when the hat comes off.
 func _wear_hat() -> void:
-	var head: Dictionary = EnemyGear._body_map(self).get("head", {})
-	if head.is_empty():
+	var to_body := _body.global_transform.affine_inverse()
+	var part: MeshInstance3D = null
+	var best := -INF
+	for mesh in _meshes:
+		if not is_instance_valid(mesh) or not (mesh.mesh is BoxMesh):
+			continue
+		var size: Vector3 = (mesh.mesh as BoxMesh).size * mesh.scale
+		var center := to_body * mesh.global_transform.origin
+		if absf(center.x) < 0.12 and size.x > 0.12 and size.y > 0.12 and size.z > 0.12 and center.y > best:
+			best = center.y
+			part = mesh
+	if part == null:
 		hat = ""
 		return
-	var part: MeshInstance3D = head.part
 	var size: Vector3 = (part.mesh as BoxMesh).size
-	var lift := size.y * (0.56 if gear.get("pieces", []).has("helmet") else 0.5)
+	var lift := size.y * 0.5
+	var seat := part.global_transform.origin
+	var top := (to_body * seat).y + size.y * part.scale.y * 0.5
+	for mesh in _meshes:
+		if is_instance_valid(mesh) and mesh != part and mesh.visible:
+			var center := to_body * mesh.global_transform.origin
+			if center.y > top and Vector2(center.x, center.z).distance_to(Vector2((to_body * seat).x, (to_body * seat).z)) < 0.3:
+				mesh.visible = false
+				_hat_hidden.append(mesh)
 	# Hats run big: they should read across the room, and look silly.
 	_hat_node = Hats.build(hat, maxf(size.x, 0.26) * Hats.SIZE * (Hats.FRUIT_SIZE if hat == "fruit_hat" else 1.0))
 	_hat_node.transform = part.transform * Transform3D(Basis.IDENTITY, Vector3(0, lift, 0))
@@ -1155,6 +1177,7 @@ func _pop_hat() -> void:
 		return
 	var flying := _hat_node
 	_hat_node = null
+	_unhide_under_hat()
 	var world := get_parent()
 	var at := flying.global_transform
 	flying.get_parent().remove_child(flying)
@@ -1180,6 +1203,15 @@ func _lose_hat() -> void:
 		DamagePopup.spawn(get_parent(), "poof", Color(0.75, 0.75, 0.8), 36, _hat_node.global_position + Vector3.UP * 0.3)
 		_hat_node.queue_free()
 	_hat_node = null
+	_unhide_under_hat()
+
+
+## What a hat covered (a caster's own hat) shows again once it's off.
+func _unhide_under_hat() -> void:
+	for mesh in _hat_hidden:
+		if is_instance_valid(mesh):
+			mesh.visible = true
+	_hat_hidden.clear()
 
 
 ## How EnemyGear dresses this enemy: "plate", "robe", "suit", "bare" (its
