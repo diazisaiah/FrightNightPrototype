@@ -214,7 +214,7 @@ func _pad_punch(type: String, _kind_of_hit: String) -> void:
 	# Only the input is judged: the punch the coach called (and, with Shift /
 	# Ctrl + click hooks, the hand). The combo itself is built to the rules.
 	var right: bool = type == _pad_combo[_pad_at]
-	if right and heavy and not Controls.direct_punches() and not Controls.pad():
+	if right and heavy and Controls.hand_heavies():
 		right = _player.last_hand() == _pad_hands[_pad_at]
 	if not right:
 		_pad_miss("WRONG PUNCH")
@@ -439,8 +439,8 @@ func _fill_chips() -> void:
 		column.add_theme_constant_override("separation", -2)
 		chip.add_child(column)
 		var title := type.to_upper()
-		if type in ["hook", "uppercut"] and not Controls.direct_punches() and not Controls.pad():
-			title = "%s %s" % ["L" if _pad_hands[i] == "left" else "R", title]  # Shift / Ctrl + that hand's click.
+		if type in ["hook", "uppercut"] and Controls.hand_heavies():
+			title = "%s %s" % ["L" if _pad_hands[i] == "left" else "R", title]  # Shift / Ctrl + that hand's click, or a trigger + that hand.
 		var name_label := UiTheme.title_label(title, 22, color.lightened(0.2) if done or next else UiTheme.MUTED)
 		name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		column.add_child(name_label)

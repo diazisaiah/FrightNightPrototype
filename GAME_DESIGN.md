@@ -1937,6 +1937,167 @@ A planning list, not a work order: nothing here gets built until the user picks 
 9. **Multiplayer [Planned]:** the Versus prototype (Phase 1 of the plan above). A first draft is parked on the `versus-prototype-wip` branch (Net autoload over WebSockets, a camp lobby, the graveyard split by a seal line, KOs sent across, first down loses); not reviewed, tested or merged.
 10. **New looks [Planned]:** updated KO screens, the camp background and the title screen.
 
+## Roadmap: priority order from the 10/30-11/4 playtest [Planned, 2026-11-01]
+
+Notes from the user's playtest week, put in order. Nothing here is built yet. More characters still to test (the Blur was played first).
+
+1. **Controls patch [Built 2026-11-02]:** see "Controls patch (2026-11-02)" below.
+   - Controller binding and unbinding is wonky: jab and cross threw hooks until the save was deleted (stale bindings or modifier state). Intended: Square = jab, Triangle = cross; hold LT + Square / Triangle = left / right hook; hold RT + Square / Triangle = left / right upper.
+   - Shift + Q / Shift + E roll as the default scheme (check what it is now); add Shift + D as a backstep ("pro gamer mode"); a roll dodges projectiles.
+   - Alternating hands quickly gives mostly jabs (punch input and timing).
+2. **Balance fixes** (see "Rebalance plan" below): combo drill rewards, boss power targets, a defense curve (before the new gear), combo multiplier, Grave Champion's punch speed, Shield bearers, card toggles, power upgrade costs, soul shop free refresh, hat and toilet spawn rates, the Stray's stomp chain, and per-character gold and power upgrades (own milestone: it changes the save).
+3. **Bug fixes:** the boss room spawn bug (maybe a toilet room: test with `Dungeon.force_toilet` over many floors), the Yonkers description, save codes too long to type by hand (copy and paste works in game; pasting outside the game is untested).
+4. **Crypt revamp** (see "Crypt revamp plan" below), in order: room furniture, the gear system, drop odds / store cards / salvage, mimics and elite mimics, the toilet and merchant tie-in, item models, then re-run the balance.
+5. **Later / on hold:** boss patterns and windup padding (after the power balance is tested; note `WINDUP_PAD` already adds +0.06s / +0.075s to the Plague Doctor's and the Coffin King's windups, which the user finds too slow now), a 6th set (Haunt, for the Catalyst), the super crit power, the boss soft damage cap.
+6. **Marketing:** devlogs always include screenshots.
+
+## Controls patch (2026-11-02)
+- **Controller heavies:** hold LT with Square / Triangle (X / Y) for a left / right hook, RT for a left / right uppercut (`Player._punch_type_for`). The triggers no longer punch on their own. Why: on a controller the punch type still read the keyboard's Shift + click rule, where Sprint is the hook modifier, and Sprint is the left stick click, so holding it while running turned every jab and cross into a hook. Keyboard modifiers never count on a controller now. Hints read "LT + X / Y" ("L2 + Square / Triangle"), and the combo drills ask for the hand on a controller too (`Controls.hand_heavies`).
+- **Shift + Q / E rolls are the default** Pro Gamer Mode scheme (`Settings.DEFAULTS.dodge_mode`); settings still on the old default (Space + direction) move over once (`controls_version` 2). **Shift + D back steps** in that scheme, alongside double-tap S; the D press doesn't walk you right.
+- **Rolls dodge projectiles:** arrows and fireballs (bolts, skull shots) can be rolled under as well as slipped (`Player.ANSWERS`).
+- **Mashing alternates:** the punch buffer holds one press per hand; when the cooldown ends, the other hand from the last punch goes first. Before, one slot kept only the latest press, so fast alternating often threw the same hand twice.
+- Checked in `balance_regression` (keys, hints, defaults, projectile answers) and `card_runtime_regression` (Shift + D, controller heavies, the buffer).
+
+## Rebalance plan [Planned, 2026-11-01]
+
+**What the playtest found (as the Blur):** the Bellman falls over (the daily combo drills pay a few thousand coins, which fills ring 1 and gives starting levels); the Headless needs a few Arena rounds and a little Crypt to be OVERPOWERED; Sister Southpaw is actually tough, but only if you forget HP and defense; the Plague Doctor is beaten with upgrades worth over 3x his power; the Coffin King was beaten right after the Plague Doctor with no upgrades while rated UNDERPOWERED. Bosses die too fast and a little defense makes their hits barely hurt. The Crypt starts hard and gets very easy after the third main boss. Late game the combo multiplier (cap x4) is reached within 3 hits, and the Blur mostly ran away and punched (alternating uppers or hooks). Other findings: the model assumes a 6-hit average combo, the Crypt ramps a quarter tier a floor while gear grows about x1.5 a floor, and defense (EHP = knuckles x (10 + defense) / 10) is linear, so stacked gear defense would be huge.
+
+**Boss power targets** (POWER, geometric between tiers):
+- Dead League, x2.3 per tier: Bellman 850, Headless 1,950, Southpaw 4,500, Plague Doctor 10,300, Coffin King 23,800.
+- Crypt bosses start at 1.3x the Bellman, then x2.5 per tier: tiers 1-5 are 1,105 / 2,760 / 6,900 / 17,300 / 43,200. The floor 10 boss is harder than the Coffin King and is one of the future seals.
+- Endless floors continue at the same ratio (now x1.25 per tier, which would go flat). The Coffin King's defeat opens a new, very strong ring of upgrades.
+- Target fight length, whole fight on one HP bar: 60-90 s, the Coffin King about 2 minutes.
+- **Test the power increase first.** Only then decide on caps or pattern changes.
+- **Shelved:** a soft per-hit damage cap on bosses (hits over the cap deal cap + (damage - cap) / 3; higher caps for counters x2, perfect counters x3, Doom burst x4, ultimates x5; caps of 1.5 / 1.2 / 1.0 / 0.95 / 0.75% of max HP). Revisit only if bosses still die too fast.
+
+**Other balance items:**
+- **Combo drills:** daily first-clear reward matches the other minigames, about 200-500 gold before the Bellman, scaling with tier after.
+- **Defense curve** before the new gear (e.g. defense / (defense + K) or a cap).
+- **Combo multiplier:** lower the gain per hit, add a way to raise the cap (a gear stat), and spamming hooks shouldn't keep the combo going.
+- **Grave Champion's punch** is too fast to dodge.
+- **Shield bearers and similar:** take 10-20% damage from punches other than hooks; a real blocking animation.
+- **Card toggles:** disable a card's effect (auto-teleport, AoE, knockback); selecting a card to disable it is fine.
+- **Power upgrade costs** based on where they are unlocked.
+- **Soul shop:** a 10-20 minute timer that grants one free refresh click (capped at one) instead of refreshing.
+- **Spawn rates:** hats more common; toilet rooms more common (now 1% a floor after the "overexerted" emote).
+- **The Stray's stomp:** a visible jump multiplier for chaining jumps, more damage per chained stomp; 8 jumps gives the 1up achievement and unlocks the plumber jump emote. Its upgrade widens the range (forgiveness for landing slightly off, not hitting several enemies) and improves the chain multiplier.
+- **Per-character progression:** each character gets its own gold and power upgrades. Global: hats, emotes, skins, soul coins, idle animations.
+- **Model gaps to fix:** rate the combo multiplier as sustained (cap reached in about 3 hits), hit-and-run through enemy melee turns, and auto powers (teleport, AoE, knockback). Raise the Crypt's per-floor ramp to match gear growth (about x1.5 POWER a floor).
+- Re-run `balance_report` and the bots against every contender and floor after each change.
+
+## Crypt revamp plan [Planned, 2026-11-01]
+
+**Goals:** a cleaner, more polished Crypt; real items with sets and looks; better salvage; mimics that are fun to fight.
+
+**Room furniture and layout:**
+- Today (`Dungeon._decorate`, `_decor_spot`) props go at random spots anywhere in the room, avoiding only layout blocks and the center, and the wall coffin sits at a random place on the left wall, so it can block a door.
+- New: keep-clear lanes 3 m wide from each door to the center and between doors; props only in zones (walls, corners, alcoves); coffins in tidy rows or stacks on the side walls; a cap on props per room; chains and banners stay overhead.
+- Per room type: the start room has a clear approach and one landmark; fight rooms have symmetric coffin rows and a clean center; chest rooms are vaults with the chest on a pedestal; the merchant has stalls and a rug; the boss room has a dais and a clear arena; the toilet room stays bare, one bulb.
+- Props stay decorative (no collision). Stone stays neutral; each tier's color (red, blue, purple, green, yellow) appears only in accents: banners, candle and torch flames, and their light. Coffins are scenery.
+
+**Gear system** (replaces the random affixes; these 20 pieces are the only Crypt items):
+- 5 sets of 4 pieces (Gloves, Wraps, Boots, Charm), 5 rarities each. Stats add up across worn pieces, so players can mix sets for a stat. Only the 4-piece set bonus exists; it uses the lowest-rarity piece.
+- **Rarity:** every piece has 5 stats unlocked in order: common 1, uncommon 1-2, rare 1-3, epic 1-4, legendary 1-5. Rarity never boosts a number. Stat 5 is a signature effect (SIG) that does not scale with level.
+- **Levels:** a drop's level is between (floor - 1) x 3 + 1 and floor x 3 (floor 1: 1-3, floor 10: 28-30); past floor 10 both bounds rise 1 a floor. Value = base x growth^(level - 1). Past level 30 the growth portion halves at 31, and again at 35, 40, 45...; stats top out near 2x their level-30 value. Gear levels up in the store, to the highest floor beaten (+1 a floor past 10).
+- **Stat scaling per piece, level 1 to 30** (approximate; the stat's base x growth per level):
+
+| Stat | Base | Growth | Level 30 |
+|---|---|---|---|
+| damage | +3 | x1.15 | +173 |
+| damage_percent | +6% | x1.093 | +80% |
+| crit_chance (total cap 100%) | +3% | x1.088 | +35% |
+| heavy_bonus | +6% | x1.076 | +50% |
+| head_bonus | +8% | x1.091 | +100% |
+| counter_bonus | +8% | x1.078 | +70% |
+| boss_damage | +8% | x1.078 | +70% |
+| finisher_bonus (damage to low-HP enemies) | +8% | x1.091 | +100% |
+| armor_pierce | +4% | x1.072 | +30% |
+| punch_speed | +3% | x1.068 | +20% |
+| max_knuckles | +15 | x1.13 | +519 (tune later) |
+| defense | +1 | x1.098 | +15 |
+| heal_on_kill | +1 | x1.109 | +20 |
+| graze_reduction, flinch_reduction | +4% | x1.072 | +30% |
+| free_punch_chance | +2% | x1.072 | +15% |
+| move_speed, sprint_bonus | +5% | x1.083 | +50% |
+| jump_bonus | +4% | x1.072 | +30% (jump height lessened, fall speed up: separate change) |
+| dodge_window | +0.01s | x1.04 | +0.03s |
+| counter_window | +0.02s | x1.03 | +0.05s |
+| combo_window | +0.05s | x1.05 | +0.20s |
+| combo_step | +0.01 | x1.05 | +0.04 |
+| combo_cap (new) | +0.05 | x1.083 | +0.5 (four pieces = +2) |
+| coin_bonus, xp_bonus | +6% | x1.091 | +75% |
+| ult_gain | +3% | x1.076 | +25% |
+
+- **Sets** (stats listed in unlock order, then the SIG; set bonus is common / uncommon / rare / epic / legendary):
+
+| Set (color, style) | Piece: stats | SIG |
+|---|---|---|
+| **Deadweight** (red; tank, heavy) | Knuckles: heavy_bonus, damage, armor_pierce, flinch_reduction | Shatter |
+| | Bindings: max_knuckles, defense, graze_reduction, flinch_reduction | Thorns |
+| | Treads: max_knuckles, defense, move_speed, sprint_bonus | Grit |
+| | Anchor: heal_on_kill, max_knuckles, defense, coin_bonus | Iron Will |
+| Bonus: take 3 / 5 / 7 / 10 / 14% less damage | | |
+| **Drowned** (blue; dodge and counter, "be water") | Fists: counter_bonus, damage, crit_chance, head_bonus | Champion's Hands |
+| | Wraps: defense, graze_reduction, heal_on_kill, max_knuckles | Slipknot Wraps |
+| | Steps: dodge_window, counter_window, move_speed, sprint_bonus | Clean Read |
+| | Pearl: combo_window, xp_bonus, finisher_bonus, combo_cap | Rhythm |
+| Bonus: clean dodge counters do +5 / 8 / 12 / 16 / 20% more | | |
+| **Grandmaster's** (purple; speed, combos, Wing Chun) | Hands: punch_speed, damage_percent, crit_chance, combo_cap | Lunging Jab |
+| | Wraps: free_punch_chance, combo_cap, max_knuckles, flinch_reduction | Mid-Roll Counter |
+| | Slippers: move_speed, sprint_bonus, dodge_window, combo_cap | Double Jab |
+| | Seal: combo_step, combo_window, combo_cap, xp_bonus | Frenzy |
+| Bonus: +3 / 5 / 8 / 12 / 16% punch speed | | |
+| **Iron Mike's** (yellow; finishers, bosses) | Gloves: finisher_bonus, boss_damage, damage_percent, armor_pierce | Bone Breaker |
+| | Wraps: max_knuckles, defense, boss_damage, heal_on_kill | The Long Count |
+| | Boots: move_speed, counter_window, jump_bonus, sprint_bonus | Gravewalker |
+| | Belt: finisher_bonus, boss_damage, ult_gain, xp_bonus | Executioner |
+| Bonus: +5 / 8 / 12 / 16 / 20% damage to elites and bosses | | |
+| **Dead Money** (green; greed, utility) | Rings: head_bonus, crit_chance, damage, coin_bonus | Gold Fever |
+| | Wraps: max_knuckles, heal_on_kill, coin_bonus, defense | Loaded Dice |
+| | Loafers: sprint_bonus, move_speed, jump_bonus, xp_bonus | Silver Tongue |
+| | Coin: coin_bonus, xp_bonus, combo_window, ult_gain | Haggler |
+| Bonus: +10 / 15 / 20 / 30 / 40% coins and XP | | |
+
+  Items are named "(set) (piece)": Deadweight Knuckles / Bindings / Treads / Anchor, Drowned Fists / Wraps / Steps / Pearl, Grandmaster's Hands / Wraps / Slippers / Seal, Iron Mike's Gloves / Wraps / Boots / Belt, Dead Money Rings / Wraps / Loafers / Coin. Cards show set progress under the name ("Iron Mike's 2/4"). A 6th set, **Haunt** (powers and ultimates, for the Catalyst), is on hold.
+- **Signatures** (fixed; the old specials and legendaries, edited):
+  - **Shatter:** counters burst for 50% damage within 2.5 m. **Thorns:** attackers take 150% of the knuckle damage they dealt (was 100%). **Grit:** below 30% knuckles, take 30% less. **Iron Will:** the first hit in each room is blocked.
+  - **Champion's Hands:** counters throw a free follow-up punch. **Slipknot Wraps:** 50% chance a graze counts as a basic dodge (no clean dodge, Rhythm or Gravewalker credit). **Clean Read:** clean dodges heal 4% of max knuckles. **Rhythm:** each dodge adds +0.15 combo multiplier, up to +1; the HUD reads "COMBO MULT: X +1" with the +1 in its own color.
+  - **Lunging Jab:** dash into a jab for +60%. **Mid-Roll Counter:** a punch thrown while rolling counts as a counter without using up your counter window, so you can still counter normally right after. **Double Jab:** the first jab on each enemy hits twice (once per enemy, no reset). **Frenzy:** every 10th hit in a combo lands twice.
+  - **Bone Breaker:** hook counters ignore 50% of armor. **The Long Count:** survive a knockout at 1 HP and stun everything for 3 s; once per floor, once per Arena bout, once total in the Dead League. **Gravewalker:** dodging an attack gives 25% damage reduction for 2 s. **Executioner:** counters finish non-boss enemies under 25% HP.
+  - **Gold Fever:** damage + log10(gold held) x 5% (100 gold = +10%, 100,000,000 = +40%; 0 gold = 0). **Loaded Dice:** chests can be rerolled 3 times a floor (not the merchant's wares). **Silver Tongue:** silver drops +25%. **Haggler:** your ultimate spends 10% less meter; with Sister Southpaw's card it stacks to 35%.
+- **Damage reduction cap:** set bonuses and effects that reduce damage taken (Deadweight's bonus, Grit, Gravewalker...) share one 75% cap. Armor and the defense stat are separate; Iron Will (a blocked hit) is outside it.
+- **Cursed chests are replaced by elite mimics;** the old risk specials (Glass Jaw, Last Stand, Blood Price) go away with the random item system. Existing gear in saves migrates to the nearest set piece by slot. Legendary becomes a normal rarity on every piece, so the boss and elite chest legendary rules change.
+
+**Drop odds** (tiers are 2 floors each, tier 6 is endless; chance by tier T1..T6):
+
+| Rarity | T1 | T2 | T3 | T4 | T5 | T6 |
+|---|---|---|---|---|---|---|
+| Common | 70 | 60 | 45 | 25 | 10 | 0 |
+| Uncommon | 20 | 25 | 30 | 30 | 20 | 10 |
+| Rare | 6 | 8 | 15 | 25 | 40 | 50 |
+| Epic | 3 | 5 | 6 | 12 | 20 | 25 |
+| Legendary | 1 | 2 | 4 | 8 | 10 | 15 |
+
+- Chests use this base pool. Elite mimics and boss chests roll it and then go up one rarity (legendary stays): T1 becomes 0 / 70 / 20 / 6 / 4, T6 becomes 0 / 0 / 10 / 50 / 40.
+- **The merchant** rolls three base-pool chests when the floor loads; those are his wares, plus the healer's kit.
+- Item level is rolled in the floor's range.
+
+**Economy:**
+- **Silver:** salvage gives 2 / 5 / 8 / 12 / 20 by rarity (not floor); merchant buy is 5x that: 10 / 25 / 40 / 60 / 100.
+- **Gold:** gilded items sell outside the Crypt for 3.31 x level^3 x rarity^1.5 gold (rarity 1-5), about 1,000,000 for a level-30 legendary and about 89,000 for a level-30 common; past level 30 it slows (+5% of the level-30 price per level). Tune the exponents with the economy.
+- **Soul coins:** store buy price is half the merchant price: 5 / 13 / 20 / 30 / 50. Leveling gear costs level / 2 soul coins per level (rounded up, minimum 1); level 1 to 30 is about 240. That is meant to be expensive: the point is to keep finding new gear and use different pieces.
+- **Equipping:** interact with your old item to salvage it, keep it (if gilded) or equip it again. The store page shows real item cards.
+
+**Mimics and elite mimics:**
+- Mimics are less common, invincible while closed, and periodically open to show a mouth with a boxer tongue that throws a punch combo like other enemies; open, it's vulnerable but deadly.
+- Elite mimics replace cursed chests: a mimic reskin with champion effects and stats. Interacting shows "this is obviously a mimic, but a strong one..." with two choices: challenge it anyway, or back away. Beating it drops a max-level item for that floor, rolled from the one-rarity-up pool.
+
+**Toilet and merchant tie-in:** after the emote unlock, a toilet spawns in the merchant room 10% of the time; clog it and the merchant calls the plumber; once you beat the plumber he says "just go, I'll take care of it myself." Toilet rooms overall should also be more common.
+
+**Item models:** every piece has its own 3D model, like hats (20 models). Each set has its own color. Wraps are cylinders with a thin partly unraveled loop sticking out the top. Rarity is a recolor of the same model: common is dull and dingy with tatter spots; uncommon is cleaner and muted; rare is full color; epic is saturated with small purple sparkles; legendary is saturated with dramatic gold sparkles. The sparkles are brighter on the purple and yellow sets so they don't vanish.
+
+**Open work, in order:** room furniture, the gear system and save migration, drop odds and store cards and salvage, mimics and elite mimics, the toilet and merchant tie-in, item models, then re-run the balance.
+
 ## Patchwork (2026-10-28)
 - **Upgrade web zoom:** out to 0.2x (was 0.5x) and in to 2x; it opens fitted down to 0.35x, and each wheel step is 15%. The "UPGRADES OWNED x / y" counter has room for three-digit counts.
 - **Tony's bald spot:** his buzz cut was thinner than a voxel (1.2 cm vs 1.6 cm), so the flat back of his skull showed through, ringed by hair; it's 2 cm now, and it stays on under hats (only bald hats take it).

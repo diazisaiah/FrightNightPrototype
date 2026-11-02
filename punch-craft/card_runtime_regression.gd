@@ -540,19 +540,40 @@ func _test_shift_rolls() -> void:
 	# (Input only counts with the mouse captured or a controller in use.)
 	Pad.active = true
 	# What each press sets off: Shift + Q is both slip_left and roll_left_key.
+	# Shift + D (2026-11-02) is both move_right and back_step_key.
 	for case in [[["slip_left", "roll_left_key"], "roll_left"], [["slip_right", "roll_right_key"], "roll_right"],
-			[["slip_left"], "slip_left"], [["move_back"], ""], [["move_back"], "back_step"]]:
+			[["slip_left"], "slip_left"], [["move_back"], ""], [["move_back"], "back_step"],
+			[["move_right", "back_step_key"], "back_step"]]:
 		if case[1] != "":
 			player._defense = ""
 			player._defense_cooldown = 0.0
 		for action: String in case[0]:
 			Input.action_press(action)
 		await get_tree().process_frame
+		if "back_step_key" in case[0]:
+			_check(player._suppressed_move == "move_right", "Shift + D doesn't walk you right (%s)" % player._suppressed_move)
 		for action: String in case[0]:
 			Input.action_release(action)
 		await get_tree().process_frame
 		if case[1] != "":
 			_check(player._defense == case[1], "%s does %s (did %s)" % [case[0], case[1], player._defense])
+	# Controller heavies: hold LT / RT with jab or cross picks the hand.
+	for case in [[[], "left", "jab"], [["punch_hook"], "left", "hook"], [["punch_hook"], "right", "hook"],
+			[["punch_uppercut"], "right", "uppercut"], [["sprint"], "left", "jab"]]:
+		for action: String in case[0]:
+			Input.action_press(action)
+		_check(player._punch_type_for(case[1]) == case[2], "Controller: %s + %s is a %s (was %s)" % [case[0], case[1], case[2], player._punch_type_for(case[1])])
+		for action: String in case[0]:
+			Input.action_release(action)
+	# Mashing both hands alternates: with both buffered, the other hand from
+	# the last punch goes first.
+	player._last_punch_hand = "left"
+	player._buffered = {"left": ["jab", 0.2], "right": ["cross", 0.2]}
+	player._cooldown = 0.0
+	player._flinch_timer = 0.0
+	await get_tree().process_frame
+	_check(player._last_punch_hand == "right" and player._buffered.has("left"), "Both hands buffered: the cross goes after a jab (last %s)" % player._last_punch_hand)
+	player._buffered.clear()
 	Pad.active = was_pad
 	Settings.values.assist_mode = old_assist
 	Settings.values.dodge_mode = old_dodge

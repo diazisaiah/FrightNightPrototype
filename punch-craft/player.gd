@@ -201,12 +201,13 @@ const ANSWERS := {
 	"right_hook": ["roll_left"],
 	"uppercut": ["back_step"],
 	"slam": ["back_step"],
-	"arrow": ["slip_left", "slip_right"],
+	# Projectiles: slip them, or roll under them.
+	"arrow": ["slip_left", "slip_right", "roll_left", "roll_right"],
 	"haymaker": ["roll_left", "roll_right"],
 	"staff": ["roll_left", "roll_right"],
 	"thrust": ["slip_left", "slip_right"],
 	"slash": ["roll_left", "roll_right"],
-	"fireball": ["slip_left", "slip_right"],
+	"fireball": ["slip_left", "slip_right", "roll_left", "roll_right"],
 	"bash": ["slip_left", "slip_right"],
 	"claw": ["roll_left", "roll_right"],
 	"sweep": ["roll_left", "roll_right"],
@@ -269,9 +270,10 @@ var _jab_run := 0
 var _last_target_id := 0
 var _combo_timer := 0.0
 var _cooldown := 0.0
-var _buffered_hand := ""
-var _buffered_type := ""
-var _buffer_timer := 0.0
+## Buffered punches, one per hand: {hand: [type, seconds left]}. When the
+## cooldown ends the other hand from the last punch goes first, so mashing
+## both hands alternates instead of the last press winning.
+var _buffered := {}
 var _shake := 0.0
 var _defense := ""
 var _defense_timer := 0.0
@@ -507,15 +509,16 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif _live_input():
 		# Hook/uppercut buttons (scroll wheel or side buttons by scheme, or
 		# your own keys; empty in the Shift/Ctrl + click scheme otherwise).
+		# On a controller they're held with jab / cross instead (_punch_type_for).
+		if event is InputEventJoypadButton or event is InputEventJoypadMotion:
+			return
 		for type in ["hook", "uppercut"]:
 			if event.is_action_pressed("punch_" + type):
 				_stop_emote()
 				if ult.mode == "time_stop":
 					ult.answer_direct(type)
 				elif not ult.busy():
-					_buffered_hand = "left" if _last_punch_hand == "right" else "right"
-					_buffered_type = type
-					_buffer_timer = INPUT_BUFFER_TIME
+					_buffered["left" if _last_punch_hand == "right" else "right"] = [type, INPUT_BUFFER_TIME]
 				get_viewport().set_input_as_handled()
 
 
@@ -581,15 +584,20 @@ func _process(delta: float) -> void:
 			ult.activate()
 		if Input.is_action_just_pressed("punch_left"):
 			_buffer_punch("left")
-		elif Input.is_action_just_pressed("punch_right"):
+		if Input.is_action_just_pressed("punch_right"):
 			_buffer_punch("right")
 
-	_buffer_timer -= delta
-	if _buffered_hand != "" and _buffer_timer <= 0.0:
-		_buffered_hand = ""
-	if _buffered_hand != "" and _cooldown <= 0.0 and _flinch_timer <= 0.0:
-		_punch(_buffered_type, _buffered_hand)
-		_buffered_hand = ""
+	for hand in _buffered.keys():
+		_buffered[hand][1] -= delta
+		if _buffered[hand][1] <= 0.0:
+			_buffered.erase(hand)
+	if not _buffered.is_empty() and _cooldown <= 0.0 and _flinch_timer <= 0.0:
+		var hand: String = "left" if _last_punch_hand == "right" else "right"
+		if not _buffered.has(hand):
+			hand = _buffered.keys()[0]
+		var type: String = _buffered[hand][0]
+		_buffered.erase(hand)
+		_punch(type, hand)
 
 
 ## Hand idles (IdleAnims): after IDLE_DELAY seconds of doing nothing the
@@ -786,7 +794,7 @@ func receive_attack(amount: float, from: Vector3, attack: String, attacker: Node
 		return "armored"
 	_shake = maxf(_shake, 0.08)
 	_flinch_timer = FLINCH_TIME * (1.0 - GameState.get_effect("flinch_reduction")) * cards.flinch_scale()
-	_buffered_hand = ""
+	_buffered.clear()
 	_on_hit_passives(attacker)
 	_set_combo(cards.combo_after_hit(combo))
 	_fists.flinch()
@@ -1023,7 +1031,7 @@ func start_emote(id: String) -> void:
 		_emote_cam.global_transform = _camera.global_transform
 	emote = id
 	_last_emote = id
-	_buffered_hand = ""
+	_buffered.clear()
 	if _emote_fx:
 		_emote_fx.queue_free()
 		_emote_fx = null
@@ -1136,6 +1144,11 @@ func _check_movement_moves() -> void:
 	# Dedicated keys (the Tab / R scheme, or your own bindings) work in any scheme.
 	for key in DEDICATED_MOVES:
 		if Input.is_action_just_pressed(key):
+			# A dodge key that is also a direction (Shift + D back step)
+			# doesn't walk you that way until it's released.
+			for direction in ["move_left", "move_right", "move_back"]:
+				if Input.is_action_just_pressed(direction):
+					_suppressed_move = direction
 			_do_move(DEDICATED_MOVES[key])
 			return
 	if not scheme in ["double_tap", "shift_qe"] and Input.is_action_pressed("dodge_modifier"):
@@ -1375,12 +1388,19 @@ func _animate_defense(move: String) -> void:
 
 func _buffer_punch(hand: String) -> void:
 	# Punch type is decided at click time so Shift/Ctrl only need to be held when clicking.
-	_buffered_hand = hand
-	_buffered_type = _punch_type_for(hand)
-	_buffer_timer = INPUT_BUFFER_TIME
+	_buffered[hand] = [_punch_type_for(hand), INPUT_BUFFER_TIME]
 
 
 func _punch_type_for(hand: String) -> String:
+	if Pad.active:
+		# Controller: hold the hook trigger (LT) or the uppercut trigger (RT)
+		# with jab / cross. Keyboard modifiers never count here: the sprint
+		# stick click used to turn every jab and cross into a hook.
+		if Input.is_action_pressed("punch_uppercut"):
+			return "uppercut"
+		if Input.is_action_pressed("punch_hook"):
+			return "hook"
+		return "jab" if hand == "left" else "cross"
 	if Controls.direct_punches():
 		# Hooks and uppercuts have their own buttons in this scheme.
 		return "jab" if hand == "left" else "cross"

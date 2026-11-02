@@ -210,8 +210,20 @@ func _test_control_preset() -> void:
 		return e is InputEventKey and e.physical_keycode == KEY_Q and e.shift_pressed)
 	_check(not shift_q.is_empty() and _keys("slip_left") == [KEY_Q] and _keys("jump") == [KEY_SPACE],
 			"Shift + Q rolls left, Q slips, Space jumps")
-	_check(Controls.text("roll") == "Shift+Q/Shift+E" and Controls.text("back_step") == "Double-tap S",
+	_check(Controls.text("roll") == "Shift+Q/Shift+E" and Controls.text("back_step") == "Shift+D or double-tap S",
 			"Shift + Q / E hints (%s, %s)" % [Controls.text("roll"), Controls.text("back_step")])
+	# Shift + D back steps (2026-11-02), and D alone still walks right.
+	var shift_d: Array = InputMap.action_get_events("back_step_key").filter(func(e: InputEvent) -> bool:
+		return e is InputEventKey and e.physical_keycode == KEY_D and e.shift_pressed)
+	var plain_d := InputEventKey.new()
+	plain_d.physical_keycode = KEY_D
+	plain_d.pressed = true
+	_check(not shift_d.is_empty() and not InputMap.event_is_action(plain_d, "back_step_key") and InputMap.event_is_action(plain_d, "move_right"),
+			"Shift + D back steps, D alone walks right")
+	_check(Settings.DEFAULTS.dodge_mode == "shift_qe", "Shift + Q / E rolls are the default dodge scheme")
+	# Rolls go under projectiles.
+	for projectile in ["arrow", "fireball"]:
+		_check("roll_left" in Player.ANSWERS[projectile] and "roll_right" in Player.ANSWERS[projectile], "A roll dodges a %s" % projectile)
 	# Controllers: a full layout, PlayStation names, and hints that follow.
 	Settings.values.assist_mode = "junior"
 	Settings.values.dodge_mode = "space"
@@ -223,9 +235,10 @@ func _test_control_preset() -> void:
 	var was_kind := Pad.kind
 	Pad.active = true
 	Pad.kind = "xbox"
-	_check(Controls.text("hook") == "LT" and Controls.text("slip") == "LB or RB", "Controller hints name the triggers and bumpers")
+	_check(Controls.text("hook") == "LT + X / Y" and Controls.text("slip") == "LB or RB", "Controller hints name the triggers and bumpers (%s)" % Controls.text("hook"))
+	_check(Controls.hand_heavies(), "On a controller you pick the hook's hand")
 	Pad.kind = "playstation"
-	_check(Controls.text("hook") == "L2" and Controls.key_name("jump") == "Cross", "PlayStation controllers get PlayStation names")
+	_check(Controls.text("uppercut") == "R2 + Square / Triangle" and Controls.key_name("jump") == "Cross", "PlayStation controllers get PlayStation names (%s)" % Controls.text("uppercut"))
 	Pad.active = was_active
 	Pad.kind = was_kind
 	Settings.values.dodge_mode = old_dodge

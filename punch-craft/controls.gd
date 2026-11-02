@@ -24,13 +24,14 @@ const PUNCH_MODES := {
 	"side_buttons": "Mouse side buttons (front hook, back uppercut)",
 }
 const DODGE_MODES := {
+	# (2026-10-30, the user's idea) Rolls on the slip keys with Shift, so
+	# nothing needs a modifier with a direction and Space stays jump. The
+	# default since 2026-11-02, with Shift + D as a second back step.
+	"shift_qe": "Shift + Q / E roll, Shift + D or double-tap S back step",
 	"ctrl": "Ctrl + A / D / S",
 	"space": "Space + A / D / S / W  (jump moves to C)",
 	"double_tap": "Double-tap A / D / S",
 	"keys": "Tab left roll / R right roll  (ultimate T)",
-	# (2026-10-30, the user's idea) Rolls on the slip keys with Shift, so
-	# nothing needs a modifier with a direction and Space stays jump.
-	"shift_qe": "Shift + Q / E roll, double-tap S back step",
 }
 ## Weenie Hut Junior Mode: Q / E dodge, and the game picks the slip, roll or
 ## back step that beats the incoming attack, as long as you pick its side.
@@ -49,8 +50,9 @@ const ACTIONS := ["punch_hook", "punch_uppercut", "dodge_modifier", "jump", "sli
 		"roll_left_key", "roll_right_key", "back_step_key", "dash_key", "ultimate", "map",
 		"look_left", "look_right", "look_up", "look_down", "pause", "emote"]
 ## The controller layout: [action, button] or [action, axis, direction].
-## Sticks move and look, X / Y (Square / Triangle) jab and cross, the
-## triggers hook and uppercut, the bumpers dodge, A jumps, B uses, the D-pad
+## Sticks move and look, X / Y (Square / Triangle) jab and cross, holding a
+## trigger with them makes it a hook (LT) or uppercut (RT) from that hand
+## (2026-11-02; the triggers used to punch on their own), the bumpers dodge, A jumps, B uses, the D-pad
 ## rolls / back steps / dashes, clicking the right stick fires the ultimate,
 ## View / Create holds for the emote wheel (a tap opens the Crypt map); in
 ## Weenie Hut Junior Mode D-pad down does too (it's free there).
@@ -122,6 +124,12 @@ static func direct_punches() -> bool:
 	return punches() != "modifiers"
 
 
+## True when you pick the hand of a hook or uppercut: Shift / Ctrl + click,
+## or a controller (hold LT / RT with jab or cross).
+static func hand_heavies() -> bool:
+	return pad() or not direct_punches()
+
+
 static func bindings() -> Dictionary:
 	var saved = Settings.get_value("bindings")
 	return saved if saved is Dictionary else {}
@@ -182,6 +190,7 @@ static func apply() -> void:
 			"shift_qe":
 				_add_key("roll_left_key", KEY_Q, true)
 				_add_key("roll_right_key", KEY_E, true)
+				_add_key("back_step_key", KEY_D, true)
 				_add_key("jump", KEY_SPACE)
 			_:
 				_add_key("jump", KEY_SPACE)
@@ -493,9 +502,11 @@ static func text(move: String) -> String:
 		"back_step":
 			if junior():
 				return "%s or %s" % [left, right]
+			if dodges() == "shift_qe" and not bindings().has("back_step_key"):
+				return "%s or double-tap %s" % [key_name("back_step_key"), key_name("move_back")]
 			if _bound("back_step_key"):
 				return key_name("back_step_key")
-			if dodges() in ["double_tap", "shift_qe"]:
+			if dodges() == "double_tap":
 				return "Double-tap %s" % key_name("move_back")
 			return "%s + %s" % [key_name("dodge_modifier"), key_name("move_back")]
 		"ultimate":
@@ -530,10 +541,9 @@ static func kb_hint(move: String) -> String:
 ## text() on a controller: every move has a button of its own.
 static func _pad_text(move: String, left: String, right: String) -> String:
 	match move:
-		"hook":
-			return pad_name("punch_hook")
-		"uppercut":
-			return pad_name("punch_uppercut")
+		"hook", "uppercut":
+			# Held with jab (left hand) or cross (right hand).
+			return "%s + %s / %s" % [pad_name("punch_" + move), pad_name("punch_left"), pad_name("punch_right")]
 		"roll":
 			if junior():
 				return "%s or %s" % [left, right]

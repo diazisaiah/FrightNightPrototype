@@ -16,7 +16,9 @@ const DEFAULTS := {
 	"mouse_sensitivity": 1.0, "fov": 75.0, "screen_shake": 1.0, "fullscreen": false,
 	"post_effects": true, "shadows": true,
 	# Control scheme (see Controls).
-	"punch_mode": "modifiers", "dodge_mode": "space", "slip_mode": "qe",
+	"punch_mode": "modifiers", "dodge_mode": "shift_qe", "slip_mode": "qe",
+	# Bumped when a default control scheme changes (see _load).
+	"controls_version": 2,
 	# "junior" (Weenie Hut Junior Mode: Q / E pick the right dodge) or "pro".
 	"assist_mode": "junior",
 	# How much dodges, counters and finishers slow time (0 = never).
@@ -225,6 +227,12 @@ func _load() -> void:
 	# to the new default dodge scheme, Space + direction, once.
 	if not file.has_section_key("settings", "assist_mode"):
 		values["dodge_mode"] = DEFAULTS["dodge_mode"]
+	# 2026-11-02: Shift + Q / E rolls became the default; settings still on the
+	# old default (Space + direction) move over once.
+	if int(file.get_value("settings", "controls_version", 1)) < 2:
+		if values["dodge_mode"] == "space":
+			values["dodge_mode"] = "shift_qe"
+		values["controls_version"] = 2
 
 
 func _apply_web_defaults() -> void:

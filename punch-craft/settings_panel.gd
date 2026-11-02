@@ -23,11 +23,11 @@ const CHOICES := {
 		"side_buttons": ["Mouse side buttons", "Front hook, back uppercut"],
 	},
 	"dodge_mode": {
+		"shift_qe": ["Shift + Q / E", "Rolls; Shift + D or double-tap S back step"],
 		"ctrl": ["Ctrl + A / D / S", "Hold Ctrl with a direction"],
 		"space": ["Space + A / D / S / W", "Jump moves to C"],
 		"double_tap": ["Double-tap A / D / S", "Tap a direction twice"],
 		"keys": ["Tab / R", "Roll left / right, ultimate on T"],
-		"shift_qe": ["Shift + Q / E", "Roll left / right, double-tap S back step"],
 	},
 	"slip_mode": {
 		"qe": ["Q / E", "Slip left / right"],
