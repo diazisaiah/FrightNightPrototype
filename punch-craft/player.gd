@@ -98,6 +98,15 @@ const CHAIN_LIGHTNING_EVERY := 5
 ## that they keep it alive but it won't grow until a set-up heavy, a counter,
 ## a dash jab or an air punch mixes it up.
 const STRAIGHT_RUN_LIMIT := 4
+## A jab thrown right after a cross (the combo still alive) hits this much
+## harder; any other jab is plain. Same as the cross's own multiplier, so
+## alternating cross, jab, cross beats repeating the jab (2026-11-02).
+const JAB_AFTER_CROSS := 1.3
+
+
+## The extra a jab gets for following a cross (1.0 for anything else).
+static func jab_after_cross_mult(type: String, last_type: String, combo_now: int) -> float:
+	return JAB_AFTER_CROSS if type == "jab" and last_type == "cross" and combo_now > 0 else 1.0
 ## A slip or roll loads that side for this long: a hook or uppercut with that
 ## hand is set up (slip right, right uppercut; roll left, left hook).
 const HEAD_MOVE_SETUP := 1.2
@@ -1535,6 +1544,7 @@ func _land_punch(type: String, hand: String, _dashing := false, airborne := fals
 	var dash_jab := type == "jab" and _dash_jab_time > 0.0
 	if dash_jab:
 		_dash_jab_time = 0.0
+	var jab_bonus := jab_after_cross_mult(type, _last_type, combo)
 	var target_was_low := target.hp < target.max_hp * FINISHER_HP_FRACTION
 	var target_was_fresh := target.hp >= target.max_hp
 
@@ -1569,6 +1579,7 @@ func _land_punch(type: String, hand: String, _dashing := false, airborne := fals
 	var raw_damage: float = GameState.get_damage() * get_combo_multiplier()
 	if not punch.heavy or set_up:
 		raw_damage *= punch.mult
+	raw_damage *= jab_bonus
 	if set_up:
 		raw_damage *= GameState.get_heavy_multiplier()
 	if counter:

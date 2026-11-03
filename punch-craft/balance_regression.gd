@@ -221,6 +221,11 @@ func _test_control_preset() -> void:
 	_check(not shift_d.is_empty() and not InputMap.event_is_action(plain_d, "back_step_key") and InputMap.event_is_action(plain_d, "move_right"),
 			"Shift + D back steps, D alone walks right")
 	_check(Settings.DEFAULTS.dodge_mode == "shift_qe", "Shift + Q / E rolls are the default dodge scheme")
+	# A jab only hits harder right after a cross (2026-11-02).
+	_check(is_equal_approx(Player.jab_after_cross_mult("jab", "cross", 2), Player.JAB_AFTER_CROSS), "A jab after a cross hits harder")
+	_check(Player.jab_after_cross_mult("jab", "jab", 2) == 1.0 and Player.jab_after_cross_mult("jab", "hook", 2) == 1.0
+			and Player.jab_after_cross_mult("jab", "cross", 0) == 1.0 and Player.jab_after_cross_mult("cross", "cross", 2) == 1.0,
+			"Any other jab (after a jab, after a hook, a dead combo) is plain, and a cross gets no bonus")
 	# Rolls go under projectiles.
 	for projectile in ["arrow", "fireball"]:
 		_check("roll_left" in Player.ANSWERS[projectile] and "roll_right" in Player.ANSWERS[projectile], "A roll dodges a %s" % projectile)
