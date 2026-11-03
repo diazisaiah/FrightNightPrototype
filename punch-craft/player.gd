@@ -115,25 +115,28 @@ static func punch_kind(type: String) -> String:
 
 ## What a landed punch does to the combo (2026-11-02): "grow", "hold" or "lose".
 ##   grow: a counter; the first punch; the other hand throwing a different kind
-##         of punch (straight, hook, uppercut); the second jab of a double jab.
-##   hold: the other hand throwing the same kind (jab, cross; hook, hook);
-##         the third jab; the first punch on a different enemy.
+##         of punch (straight, hook, uppercut); the other hand throwing the same
+##         kind once (jab, cross; left hook, right hook); the second jab of a
+##         double jab.
+##   hold: the other hand throwing that same kind a third time or more (jab,
+##         cross, jab; left hook, right hook, left hook); the third jab; the
+##         first punch on a different enemy.
 ##   lose: the same hand again (other than the double jab); a fourth jab.
 ## A slip or roll that worked since your last punch lets the same hand throw
-## without losing the combo (it grows if the kind changes, otherwise holds).
-## jab_run counts the jabs in a row, this one included.
+## without losing the combo (it then counts like the other hand would).
+## jab_run counts the jabs in a row and kind_run the punches of one kind in a
+## row, both with this punch included.
 static func combo_move(type: String, hand: String, last_type: String, last_hand: String, jab_run: int,
-		new_target: bool, dodged: bool, counter: bool) -> String:
+		kind_run: int, new_target: bool, dodged: bool, counter: bool) -> String:
 	if counter or last_hand == "":
 		return "grow"
 	if new_target:
 		return "hold"
-	var new_kind := punch_kind(type) != punch_kind(last_type)
-	if hand != last_hand or dodged:
-		return "grow" if new_kind else "hold"
-	if type == "jab" and last_type == "jab":
-		return "grow" if jab_run == 2 else ("hold" if jab_run == 3 else "lose")
-	return "lose"
+	if hand == last_hand and not dodged:
+		if type == "jab" and last_type == "jab":
+			return "grow" if jab_run == 2 else ("hold" if jab_run == 3 else "lose")
+		return "lose"
+	return "grow" if kind_run <= 2 else "hold"
 ## A slip or roll loads that side for this long: a hook or uppercut with that
 ## hand is set up (slip right, right uppercut; roll left, left hook).
 const HEAD_MOVE_SETUP := 1.2
@@ -303,6 +306,8 @@ var _moved_side := ""
 var _moved_at := -10.0
 ## When a slip or roll last worked (see combo_move).
 var _dodged_at := -10.0
+## Punches of one kind (straight, hook, uppercut) in a row (see combo_move).
+var _kind_run := 0
 ## Jabs in a row from the same hand (a double jab keeps the combo).
 var _jab_run := 0
 ## Who the last punch landed on: switching to a new enemy can start on
@@ -1182,7 +1187,7 @@ func _check_movement_moves() -> void:
 	# Dedicated keys (the Tab / R scheme, or your own bindings) work in any scheme.
 	for key in DEDICATED_MOVES:
 		if Input.is_action_just_pressed(key):
-			# A dodge key that is also a direction (Shift + D back step)
+			# A dodge key that is also a direction (Shift + S back step)
 			# doesn't walk you that way until it's released.
 			for direction in ["move_left", "move_right", "move_back"]:
 				if Input.is_action_just_pressed(direction):
@@ -1588,12 +1593,15 @@ func _land_punch(type: String, hand: String, _dashing := false, airborne := fals
 	_jab_run = _jab_run + 1 if jab_repeat else (1 if type == "jab" else 0)
 	var dodged := now_s - _dodged_at < HEAD_MOVE_SETUP
 	_dodged_at = -10.0
-	var move := combo_move(type, hand, _last_type, _last_hand, _jab_run, new_target, dodged, counter)
+	var same_kind := _last_hand != "" and not new_target and punch_kind(type) == punch_kind(_last_type)
+	_kind_run = _kind_run + 1 if same_kind else 1
+	var move := combo_move(type, hand, _last_type, _last_hand, _jab_run, _kind_run, new_target, dodged, counter)
 	if unbroken_time > 0.0:
 		move = "grow"  # Unbroken: nothing drops it and it keeps climbing.
 	elif move == "lose":
 		combo = 0  # This punch starts a fresh combo.
 		_jab_run = 1 if type == "jab" else 0
+		_kind_run = 1
 	_last_hand = hand
 	_last_type = type
 	_last_set_up = set_up
@@ -1606,7 +1614,7 @@ func _land_punch(type: String, hand: String, _dashing := false, airborne := fals
 		var now := Time.get_ticks_msec() / 1000.0
 		if not new_target and punch_kind(type) == "straight" and now - _mix_hint_time > 10.0:
 			_mix_hint_time = now
-			class_event.emit("MIX IT UP  -  hooks and uppercuts grow the combo")
+			class_event.emit("MIX IT UP  -  a new kind of punch grows the combo")
 
 	var raw_damage: float = GameState.get_damage() * get_combo_multiplier()
 	if not punch.heavy or set_up:

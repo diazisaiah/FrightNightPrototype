@@ -169,26 +169,35 @@ func _make_combo() -> Array:
 	var combo := [["jab", "cross"].pick_random()]
 	var hand := "left" if combo[0] == "jab" else "right"
 	_pad_hands = [hand]
+	var kind_run := 1  # Punches of the last kind in a row.
 	while combo.size() < length:
 		var last: String = combo[-1]
 		var other := "right" if hand == "left" else "left"
 		var straight := "jab" if other == "left" else "cross"
-		# Every punch is the other hand throwing a different kind of punch, so
-		# the combo grows with each one (a jab, cross just holds it).
+		# Every punch grows the combo: the other hand throwing a new kind of
+		# punch, or the same kind once (jab, cross; left hook, right hook). A
+		# third of one kind in a row would only hold it.
 		var options := []
 		if last in ["jab", "cross"]:
 			options = ["hook", "hook"]
 			if uppercuts:
 				options.append("uppercut")
+			if kind_run < 2:
+				options.append(straight)
 		elif last == "hook":
 			options = [straight, straight]
 			if uppercuts:
 				options.append("uppercut")
+			if kind_run < 2:
+				options.append("hook")
 		else:
 			options = [straight, straight, "hook"]
-		if last == "jab" and (combo.size() < 2 or combo[-2] != "jab"):
+			if kind_run < 2:
+				options.append("uppercut")
+		if last == "jab" and kind_run < 2:
 			options.append("jab")  # The double jab (the right hand comes next).
 		var pick: String = options.pick_random()
+		kind_run = kind_run + 1 if Player.punch_kind(pick) == Player.punch_kind(last) else 1
 		if not (pick == "jab" and last == "jab"):
 			hand = other
 		combo.append(pick)

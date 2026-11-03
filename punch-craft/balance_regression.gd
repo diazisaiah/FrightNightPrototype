@@ -210,16 +210,16 @@ func _test_control_preset() -> void:
 		return e is InputEventKey and e.physical_keycode == KEY_Q and e.shift_pressed)
 	_check(not shift_q.is_empty() and _keys("slip_left") == [KEY_Q] and _keys("jump") == [KEY_SPACE],
 			"Shift + Q rolls left, Q slips, Space jumps")
-	_check(Controls.text("roll") == "Shift+Q/Shift+E" and Controls.text("back_step") == "Shift+D or double-tap S",
+	_check(Controls.text("roll") == "Shift+Q/Shift+E" and Controls.text("back_step") == "Shift+S or double-tap S",
 			"Shift + Q / E hints (%s, %s)" % [Controls.text("roll"), Controls.text("back_step")])
-	# Shift + D back steps (2026-11-02), and D alone still walks right.
-	var shift_d: Array = InputMap.action_get_events("back_step_key").filter(func(e: InputEvent) -> bool:
-		return e is InputEventKey and e.physical_keycode == KEY_D and e.shift_pressed)
-	var plain_d := InputEventKey.new()
-	plain_d.physical_keycode = KEY_D
-	plain_d.pressed = true
-	_check(not shift_d.is_empty() and not InputMap.event_is_action(plain_d, "back_step_key") and InputMap.event_is_action(plain_d, "move_right"),
-			"Shift + D back steps, D alone walks right")
+	# Shift + S back steps (2026-11-02), and S alone still walks back.
+	var shift_s: Array = InputMap.action_get_events("back_step_key").filter(func(e: InputEvent) -> bool:
+		return e is InputEventKey and e.physical_keycode == KEY_S and e.shift_pressed)
+	var plain_s := InputEventKey.new()
+	plain_s.physical_keycode = KEY_S
+	plain_s.pressed = true
+	_check(not shift_s.is_empty() and not InputMap.event_is_action(plain_s, "back_step_key") and InputMap.event_is_action(plain_s, "move_back"),
+			"Shift + S back steps, S alone walks back")
 	_check(Settings.DEFAULTS.dodge_mode == "shift_qe", "Shift + Q / E rolls are the default dodge scheme")
 	# A jab only hits harder right after a cross (2026-11-02).
 	_check(is_equal_approx(Player.jab_after_cross_mult("jab", "cross", 2), Player.JAB_AFTER_CROSS), "A jab after a cross hits harder")
@@ -468,19 +468,20 @@ func _test_balance_constants() -> void:
 	_check(is_equal_approx(dungeon.CRYPT_XP_SCALE, 0.6), "Crypt XP should use the 0.6 scale")
 	_check(dungeon.VICTORY_COINS == 300, "The first Crypt victory bonus should be 300 coins")
 	# Combo rules (2026-11-02): grow, hold or lose.
-	var m := func(type: String, hand: String, last_type: String, last_hand: String, run := 0, new_target := false, dodged := false, counter := false) -> String:
-		return Player.combo_move(type, hand, last_type, last_hand, run, new_target, dodged, counter)
+	var m := func(type: String, hand: String, last_type: String, last_hand: String, jab_run := 0, kind_run := 1, new_target := false, dodged := false, counter := false) -> String:
+		return Player.combo_move(type, hand, last_type, last_hand, jab_run, kind_run, new_target, dodged, counter)
 	_check(m.call("jab", "left", "", "") == "grow", "The first punch starts the combo")
-	_check(m.call("cross", "right", "jab", "left") == "hold", "Jab, cross holds the combo (both straights)")
-	_check(m.call("hook", "right", "jab", "left") == "grow" and m.call("uppercut", "right", "cross", "right") == "lose", "A hook with the other hand grows it; the same hand loses it")
-	_check(m.call("hook", "right", "hook", "left") == "hold" and m.call("uppercut", "left", "hook", "right") == "grow", "Hook, hook holds; hook, uppercut grows")
-	_check(m.call("jab", "left", "jab", "left", 2) == "grow" and m.call("jab", "left", "jab", "left", 3) == "hold" and m.call("jab", "left", "jab", "left", 4) == "lose",
+	_check(m.call("cross", "right", "jab", "left", 0, 2) == "grow" and m.call("jab", "left", "cross", "right", 1, 3) == "hold", "Jab, cross grows; the jab after that holds")
+	_check(m.call("hook", "right", "hook", "left", 0, 2) == "grow" and m.call("hook", "left", "hook", "right", 0, 3) == "hold", "Left hook, right hook grows; the next hook holds")
+	_check(m.call("uppercut", "right", "uppercut", "left", 0, 2) == "grow" and m.call("uppercut", "left", "uppercut", "right", 0, 3) == "hold", "Same for uppercuts")
+	_check(m.call("hook", "right", "jab", "left") == "grow" and m.call("uppercut", "left", "hook", "right") == "grow", "A new kind with the other hand grows it")
+	_check(m.call("jab", "left", "jab", "left", 2, 2) == "grow" and m.call("jab", "left", "jab", "left", 3, 3) == "hold" and m.call("jab", "left", "jab", "left", 4, 4) == "lose",
 			"Second jab grows, third holds, fourth loses")
-	_check(m.call("uppercut", "left", "uppercut", "left") == "lose" and m.call("hook", "left", "jab", "left") == "lose", "The same hand twice loses it")
-	_check(m.call("hook", "left", "jab", "left", 1, false, true) == "grow" and m.call("jab", "left", "jab", "left", 1, false, true) == "hold",
+	_check(m.call("uppercut", "left", "uppercut", "left", 0, 2) == "lose" and m.call("hook", "left", "jab", "left") == "lose", "The same hand twice loses it")
+	_check(m.call("hook", "left", "jab", "left", 1, 1, false, true) == "grow" and m.call("jab", "left", "jab", "left", 3, 3, false, true) == "hold",
 			"After a worked dodge the same hand goes on without losing it")
-	_check(m.call("jab", "left", "jab", "left", 4, false, false, true) == "grow" and m.call("cross", "right", "jab", "left", 0, false, false, true) == "grow", "A counter always grows it")
-	_check(m.call("cross", "right", "cross", "right", 1, true) == "hold", "The first punch on a different enemy holds it")
+	_check(m.call("jab", "left", "jab", "left", 4, 4, false, false, true) == "grow" and m.call("jab", "left", "cross", "right", 1, 3, false, false, true) == "grow", "A counter always grows it")
+	_check(m.call("cross", "right", "cross", "right", 1, 1, true) == "hold", "The first punch on a different enemy holds it")
 	_check(is_equal_approx(Powers.CHAIN_DAMAGE, 0.4), "Chain Lightning should start at 40% damage")
 	_check(is_equal_approx(Powers.CHAIN_FALLOFF, 0.75), "Chain Lightning jumps should fall off to 75%")
 	_check(Ult.DESCRIPTIONS.berserker.findn("press R") == -1, "The fighter picker must not hard-code R for Inferno")
@@ -852,8 +853,8 @@ func _test_emotes_and_hats() -> void:
 
 
 ## Pad Work only calls combos you can throw clean: hands alternate (one
-## double jab), every punch is a different kind than the last so the combo
-## grows (2026-11-02), and every hook or uppercut is set up, by the player's rules.
+## double jab), no kind of punch is thrown a third time in a row so the combo
+## keeps growing (2026-11-02), and every hook or uppercut is set up, by the player's rules.
 func _test_pad_work_combos() -> void:
 	var drill = load("res://drills.gd").new()
 	seed(99)
@@ -873,8 +874,9 @@ func _test_pad_work_combos() -> void:
 				jab_run = jab_run + 1 if jab_repeat else (1 if type == "jab" else 0)
 				if i > 0 and hand == last_hand and not (jab_repeat and jab_run <= 2):
 					_check(false, "Pad Work called the same hand twice: %s" % [combo])
-				if i > 0 and not jab_repeat and Player.punch_kind(type) == Player.punch_kind(last_type):
-					_check(false, "Pad Work called the same kind of punch twice (the combo would only hold): %s" % [combo])
+				kind_run = kind_run + 1 if i > 0 and Player.punch_kind(type) == Player.punch_kind(last_type) else 1
+				if kind_run > 2:
+					_check(false, "Pad Work called a third punch of one kind in a row (the combo would only hold): %s" % [combo])
 				var heavy: bool = Player.PUNCHES[type].heavy
 				var set_up := heavy and i > 0 and hand != last_hand \
 						and (last_type in ["jab", "cross"] or (last_type in ["hook", "uppercut"] and last_set_up))

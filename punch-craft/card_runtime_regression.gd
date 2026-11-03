@@ -490,8 +490,13 @@ func _test_combo_setups() -> void:
 	# Player.combo_move): "dodge_x" is a slip or roll that worked, "x" a missed one.
 	var combos := [
 		[[["jab", "left"], ["hook", "right"], ["uppercut", "left"], ["hook", "right"]], 4],  # mixing kinds grows it
-		[[["jab", "left"], ["cross", "right"], ["hook", "left"]], 2],  # jab, cross holds; the hook grows
-		[[["jab", "left"], ["hook", "right"], ["hook", "left"]], 2],  # hook, hook holds
+		[[["jab", "left"], ["cross", "right"]], 2],  # jab, cross grows
+		[[["jab", "left"], ["cross", "right"], ["jab", "left"]], 2],  # the jab after that holds
+		[[["jab", "left"], ["cross", "right"], ["jab", "left"], ["cross", "right"]], 2],  # and keeps holding
+		[[["jab", "left"], ["cross", "right"], ["hook", "left"]], 3],  # a new kind grows again
+		[[["jab", "left"], ["hook", "right"], ["hook", "left"]], 3],  # left hook, right hook grows
+		[[["jab", "left"], ["hook", "right"], ["hook", "left"], ["hook", "right"]], 3],  # the next hook holds
+		[[["jab", "left"], ["hook", "right"], ["uppercut", "left"], ["uppercut", "right"], ["uppercut", "left"]], 4],  # same for uppercuts
 		[[["jab", "left"], ["jab", "left"]], 2],  # the double jab grows
 		[[["jab", "left"], ["jab", "left"], ["jab", "left"]], 2],  # a third jab holds
 		[[["jab", "left"], ["jab", "left"], ["jab", "left"], ["jab", "left"]], 1],  # a fourth loses it
@@ -499,7 +504,7 @@ func _test_combo_setups() -> void:
 		[[["jab", "left"], ["uppercut", "right"], ["uppercut", "right"]], 1],  # even a set-up uppercut
 		[[["jab", "left"], ["dodge_slip_right", ""], ["hook", "left"]], 2],  # a worked dodge lets the same hand go on
 		[[["jab", "left"], ["slip_right", ""], ["hook", "left"]], 1],  # a missed one doesn't
-		[[["jab", "left"], ["dodge_slip_right", ""], ["cross", "right"]], 2],  # a counter always grows it
+		[[["jab", "left"], ["cross", "right"], ["dodge_slip_left", ""], ["jab", "left"]], 3],  # a counter always grows it (it would hold)
 		[[["slip_left", ""], ["hook", "left"]], 1],
 	]
 	for entry in combos:
@@ -521,7 +526,7 @@ func _test_combo_setups() -> void:
 				_check(player._last_set_up, "%s %s is set up in %s" % [step[1], step[0], combo])
 		_check(player.combo == int(entry[1]), "The combo after %s is %d (was %d)" % [combo, int(entry[1]), player.combo])
 	# A new enemy: its first punch holds the combo even with the same hand.
-	_check(Player.combo_move("jab", "left", "jab", "left", 1, true, false, false) == "hold", "The first punch on a new enemy holds the combo")
+	_check(Player.combo_move("jab", "left", "jab", "left", 1, 1, true, false, false) == "hold", "The first punch on a new enemy holds the combo")
 	# A worked dodge also keeps the combo timer going.
 	player._set_combo(3)
 	player._combo_timer = 0.1
@@ -559,10 +564,10 @@ func _test_shift_rolls() -> void:
 	# (Input only counts with the mouse captured or a controller in use.)
 	Pad.active = true
 	# What each press sets off: Shift + Q is both slip_left and roll_left_key.
-	# Shift + D (2026-11-02) is both move_right and back_step_key.
+	# Shift + S (2026-11-02) is both move_back and back_step_key.
 	for case in [[["slip_left", "roll_left_key"], "roll_left"], [["slip_right", "roll_right_key"], "roll_right"],
 			[["slip_left"], "slip_left"], [["move_back"], ""], [["move_back"], "back_step"],
-			[["move_right", "back_step_key"], "back_step"]]:
+			[["move_back", "back_step_key"], "back_step"]]:
 		if case[1] != "":
 			player._defense = ""
 			player._defense_cooldown = 0.0
@@ -570,7 +575,7 @@ func _test_shift_rolls() -> void:
 			Input.action_press(action)
 		await get_tree().process_frame
 		if "back_step_key" in case[0]:
-			_check(player._suppressed_move == "move_right", "Shift + D doesn't walk you right (%s)" % player._suppressed_move)
+			_check(player._suppressed_move == "move_back", "Shift + S doesn't walk you back (%s)" % player._suppressed_move)
 		for action: String in case[0]:
 			Input.action_release(action)
 		await get_tree().process_frame

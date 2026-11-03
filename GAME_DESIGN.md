@@ -157,7 +157,7 @@ Where you aim decides it — no extra keys. A punch landing above the enemy's ne
 
 - Alternating left and right punches builds a combo, which adds a damage multiplier.
 - The combo drops if you punch the same hand twice in a row or stop landing hits for too long.
-- **Combo rules [rewritten 2026-11-02]:** see "Combo rules" in the Controls patch section below (grow / hold / lose). Jab and cross are both straights, so jab, cross only holds the combo.
+- **Combo rules [rewritten 2026-11-02]:** see "Combo rules" in the Controls patch section below (grow / hold / lose). Jab, cross grows it once; a third straight in a row only holds it.
 
 ### Damage
 
@@ -1943,7 +1943,7 @@ Notes from the user's playtest week, put in order. Nothing here is built yet. Mo
 
 1. **Controls patch [Built 2026-11-02]:** see "Controls patch (2026-11-02)" below.
    - Controller binding and unbinding is wonky: jab and cross threw hooks until the save was deleted (stale bindings or modifier state). Intended: Square = jab, Triangle = cross; hold LT + Square / Triangle = left / right hook; hold RT + Square / Triangle = left / right upper.
-   - Shift + Q / Shift + E roll as the default scheme (check what it is now); add Shift + D as a backstep ("pro gamer mode"); a roll dodges projectiles.
+   - Shift + Q / Shift + E roll as the default scheme (check what it is now); add Shift + S as a backstep ("pro gamer mode"); a roll dodges projectiles.
    - Alternating hands quickly gives mostly jabs (punch input and timing).
 2. **Balance fixes** (see "Rebalance plan" below): combo drill rewards, boss power targets, a defense curve (before the new gear), combo multiplier, Grave Champion's punch speed, Shield bearers, card toggles, power upgrade costs, soul shop free refresh, hat and toilet spawn rates, the Stray's stomp chain, and per-character gold and power upgrades (own milestone: it changes the save).
 3. **Bug fixes:** the boss room spawn bug (maybe a toilet room: test with `Dungeon.force_toilet` over many floors), the Yonkers description, save codes too long to type by hand (copy and paste works in game; pasting outside the game is untested).
@@ -1953,20 +1953,20 @@ Notes from the user's playtest week, put in order. Nothing here is built yet. Mo
 
 ## Controls patch (2026-11-02)
 - **Controller heavies:** hold LT with Square / Triangle (X / Y) for a left / right hook, RT for a left / right uppercut (`Player._punch_type_for`). The triggers no longer punch on their own. Why: on a controller the punch type still read the keyboard's Shift + click rule, where Sprint is the hook modifier, and Sprint is the left stick click, so holding it while running turned every jab and cross into a hook. Keyboard modifiers never count on a controller now. Hints read "LT + X / Y" ("L2 + Square / Triangle"), and the combo drills ask for the hand on a controller too (`Controls.hand_heavies`).
-- **Shift + Q / E rolls are the default** Pro Gamer Mode scheme (`Settings.DEFAULTS.dodge_mode`); settings still on the old default (Space + direction) move over once (`controls_version` 2). **Shift + D back steps** in that scheme, alongside double-tap S; the D press doesn't walk you right.
+- **Shift + Q / E rolls are the default** Pro Gamer Mode scheme (`Settings.DEFAULTS.dodge_mode`); settings still on the old default (Space + direction) move over once (`controls_version` 2). **Shift + S back steps** in that scheme (changed from Shift + D the same day), alongside double-tap S; the S press doesn't walk you back.
 - **Rolls dodge projectiles:** arrows and fireballs (bolts, skull shots) can be rolled under as well as slipped (`Player.ANSWERS`).
 - **Mashing alternates:** the punch buffer holds one press per hand; when the cooldown ends, the other hand from the last punch goes first. Before, one slot kept only the latest press, so fast alternating often threw the same hand twice.
-- Checked in `balance_regression` (keys, hints, defaults, projectile answers) and `card_runtime_regression` (Shift + D, controller heavies, the buffer).
+- Checked in `balance_regression` (keys, hints, defaults, projectile answers) and `card_runtime_regression` (Shift + S, controller heavies, the buffer).
 - **Tutorial fixes (same day):** rolling under an arrow counts as a slip in SLIP THE ARROWS (it only counted for ROLL steps, so rolled arrows never filled the goal); and a fight step whose monsters are all down before the other goals are met (the skeleton knocked out before its two slips, the brawler before three dodges) brings in another set after a second ("ANOTHER ONE!") instead of stranding the step with nothing left to dodge.
 - **Jab after cross:** a jab thrown right after a cross (combo still alive) hits x1.3 (`Player.JAB_AFTER_CROSS`, the cross's own multiplier); any other jab (after a jab, a hook, or with the combo gone) stays x1.0. So cross, jab, cross, jab beats jab spam. Alternating straights deal about 13% more than before; repeated jabs are unchanged.
-- **Combo rules (2026-11-02, `Player.combo_move`):** every landed punch is compared to the one before it and does one of three things.
-  - **Grows** (+1): a counter (always); the first punch; the other hand throwing a different kind of punch (straight, hook or uppercut; jab and cross are both "straight"); the second jab of a double jab.
-  - **Holds** (refreshes the timer, nothing added): the other hand throwing the same kind (jab, cross; left hook, right hook); the third jab; the first punch on a different enemy (even with the same hand), after which the next punch chains from it.
+- **Combo rules (2026-11-02, `Player.combo_move`):** every landed punch is compared to the one before it and does one of three things. Jab and cross are both "straight".
+  - **Grows** (+1): a counter (always); the first punch; the other hand throwing a different kind of punch (straight, hook or uppercut); the other hand throwing the same kind **once** (jab, cross; left hook, right hook; left uppercut, right uppercut); the second jab of a double jab.
+  - **Holds** (refreshes the timer, nothing added): the other hand throwing that same kind a **third time or more** (jab, cross, jab; left hook, right hook, left hook); the third jab; the first punch on a different enemy (even with the same hand), after which the next punch chains from it.
   - **Loses** (back to 0, and that punch starts a fresh combo at 1): the same hand again, other than the double jab; a fourth jab. Getting hit and letting the combo timer run out still lose it too.
-  - A slip or roll that worked refreshes the combo timer to a full window and lets the same hand throw without losing the combo (it grows if the kind changes, otherwise holds). A missed one no longer does either.
-  - Why: you could uppercut forever once a jab started a combo, even on the same side, and alternate hooks forever. Example full combos: jab, hook, uppercut, hook (the hands alternate and every punch is a new kind). The old 4-straight limit is gone; Unbroken still makes every punch grow.
+  - A slip or roll that worked refreshes the combo timer to a full window and lets the same hand throw without losing the combo (it then counts as the other hand would). A missed one no longer does either.
+  - Why: you could uppercut forever once a jab started a combo, even on the same side, and alternate hooks forever. Examples that grow every punch: jab, cross, hook, right-hand uppercut, or jab, hook, hook. The old 4-straight limit is gone; Unbroken still makes every punch grow.
   - Hooks and uppercuts still need the damage set-up (after a jab or cross, a set-up hook or uppercut, or a slip or roll to that side), which is separate from the combo count. A same-hand hook after a jab is set up for damage, but loses the combo.
-  - Tutorial COMBOS drills are now jab, hook, uppercut and jab, hook, uppercut, hook, and Pad Work builds only combos that grow with every punch (hands alternate, each punch a new kind, one double jab, hooks and uppercuts set up).
+  - Tutorial COMBOS drills stay jab, cross, hook and jab, cross, hook, uppercut (each punch still grows the combo under these rules), and Pad Work builds only combos that grow with every punch (hands alternate, no kind of punch three times in a row, one double jab, hooks and uppercuts set up).
 - **Cross matches the jab:** the cross had a slower windup (0.11 s) and a longer cooldown (0.34 s) than the jab (0.09 s, 0.28 s), which also made its animation slower. Both straights use the jab's timing now. The cross still hits for x1.3, so mashing jab / cross deals about 11% more damage per second than before; watch it in the power balance.
 
 ## Rebalance plan [Planned, 2026-11-01]

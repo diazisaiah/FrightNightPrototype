@@ -41,8 +41,8 @@ const STEPS_START := [
 		"text": "Hooks and uppercuts cost more knuckle HP, but hit big when set up: right after a jab, a cross, or a slip or roll to that side. Thrown cold they're SLOPPY.",
 		"keys": [["<jab> / <cross>", "Set up"], ["<hook>", "Hook"], ["<uppercut>", "Uppercut"]]},
 	{"title": "COMBOS", "goals": {"drill": 2}, "dummy": "passive", "costs": true,
-		"text": "Throw each combo in order. Switch hands and mix punches: the longer the combo, the harder you hit.",
-		"drills": [["jab", "hook", "uppercut"], ["jab", "hook", "uppercut", "hook"]],
+		"text": "Throw each combo in order. The longer the combo, the harder you hit.",
+		"drills": [["jab", "cross", "hook"], ["jab", "cross", "hook", "uppercut"]],
 		"keys": [["<jab>", "Jab"], ["<cross>", "Cross"], ["<hook>", "Hook"], ["<uppercut>", "Uppercut"]]},
 ]
 ## Weenie Hut Junior Mode: one key a side picks the dodge for you.

@@ -26,8 +26,8 @@ const PUNCH_MODES := {
 const DODGE_MODES := {
 	# (2026-10-30, the user's idea) Rolls on the slip keys with Shift, so
 	# nothing needs a modifier with a direction and Space stays jump. The
-	# default since 2026-11-02, with Shift + D as a second back step.
-	"shift_qe": "Shift + Q / E roll, Shift + D or double-tap S back step",
+	# default since 2026-11-02, with Shift + S as a second back step.
+	"shift_qe": "Shift + Q / E roll, Shift + S or double-tap S back step",
 	"ctrl": "Ctrl + A / D / S",
 	"space": "Space + A / D / S / W  (jump moves to C)",
 	"double_tap": "Double-tap A / D / S",
@@ -190,7 +190,7 @@ static func apply() -> void:
 			"shift_qe":
 				_add_key("roll_left_key", KEY_Q, true)
 				_add_key("roll_right_key", KEY_E, true)
-				_add_key("back_step_key", KEY_D, true)
+				_add_key("back_step_key", KEY_S, true)
 				_add_key("jump", KEY_SPACE)
 			_:
 				_add_key("jump", KEY_SPACE)
