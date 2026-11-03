@@ -728,6 +728,7 @@ func _end_run(title: String, slow := true) -> void:
 	TimeFx.clear()
 	if slow:
 		TimeFx.slowmo(0.3, 0.8)
+	GameState.mark_tip("arena_done")  # Camp's Dead League tip waits for this.
 	if _endless:
 		_end_endless(title)
 		return

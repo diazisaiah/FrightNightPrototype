@@ -543,6 +543,11 @@ func _start_drill(index: int) -> void:
 	_fill_drill()
 
 
+## The combo count when the drill's first punch landed. The drill judges growth
+## from there, so a combo already running doesn't make the first punch "wrong".
+var _drill_start := 0
+
+
 func _fill_drill() -> void:
 	for child in _drill_row.get_children():
 		child.queue_free()
@@ -571,11 +576,17 @@ func _fill_drill() -> void:
 func _drill_punch(type: String, kind: String) -> void:
 	var combo: Array = _plan[_step].drills[_drill]
 	var heavy: bool = Player.PUNCHES[type].heavy
-	var right: bool = type == combo[_drill_at] and (not heavy or kind == "setup") and _player.combo == _drill_at + 1
+	var right: bool = type == combo[_drill_at] and (not heavy or kind == "setup")
+	if right and _drill_at == 0:
+		_drill_start = _player.combo  # The first punch counts whatever combo was already up.
+	elif right:
+		right = _player.combo == _drill_start + _drill_at
 	if not right:
 		# A fresh start can begin right away with this punch.
-		var restart: bool = type == combo[0] and _player.combo <= 1
+		var restart: bool = type == combo[0] and (not heavy or kind == "setup")
 		_drill_at = 1 if restart else 0
+		if restart:
+			_drill_start = _player.combo
 		_coach_warning.text = "SLOPPY: set it up first" if heavy and kind != "setup" and type == combo[_drill_at] else "Start over: %s first" % String(combo[0]).to_upper()
 		_coach_warning.add_theme_color_override("font_color", Color(1, 0.55, 0.4))
 		_coach_warning.modulate.a = 1.0

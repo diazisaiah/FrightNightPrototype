@@ -24,6 +24,7 @@ var _shown_once := false
 var _night_label: Label
 var _tab_buttons := {}
 var _league_button: Button
+var _arena_button: Button
 var _pages := {}
 var _trees := {}
 var _details := {}
@@ -92,17 +93,17 @@ func _camp_tips() -> void:
 				_hat_grid, Callable(), false, true))
 
 
-## New players (2026-10-29): your first upgrade (the tutorial paid for it),
-## then the Dead League; your first attribute points. True if one opened.
+## New players (2026-10-29): the Arena (right after the tutorial, 2026-11-03),
+## your first upgrade (the tutorial paid for it), then the Dead League (once
+## you've finished an Arena bout); your first attribute points. True if one opened.
 func _onboarding_tips() -> bool:
-	var cheapest := GameState.cheapest_upgrade()
-	if GameState.upgrade_levels.is_empty() and cheapest > 0 and GameState.resources.get("coins", 0) >= cheapest:
-		var upgrade := Tutorial.open(self, "first_upgrade", "YOUR FIRST UPGRADE",
-				"Coins buy upgrades on this web, and they work for every fighter. The tutorial paid for your first one: buy it.",
-				_details["upgrade"].buy, func() -> bool: return not GameState.upgrade_levels.is_empty(), false)
-		if upgrade:
-			upgrade.finished.connect(_league_tip.bind(true))
+	if GameState.tutorial_done and not _arena_done():
+		var arena := _arena_tip()
+		if arena:
+			arena.finished.connect(_upgrade_tip.bind(true))
 			return true
+	if _upgrade_tip(false):
+		return true
 	if _league_tip(false):
 		return true
 	if GameState.attribute_points > 0:
@@ -112,8 +113,39 @@ func _onboarding_tips() -> bool:
 	return false
 
 
+## True once an Arena bout has ended (win or knockout). Older saves count by
+## their bout history.
+func _arena_done() -> bool:
+	if Tutorial.seen("arena_done"):
+		return true
+	for count in GameState.arena_bouts.values():
+		if int(count) > 0:
+			return true
+	return false
+
+
+func _arena_tip() -> Tutorial:
+	if _arena_button == null:
+		return null
+	return Tutorial.open(self, "arena_intro", "THE ARENA",
+			"To make money for upgrades and to level up, you gotta duke it out with the undead!\n\nStep into the Arena.",
+			_arena_button, Callable(), false)
+
+
+func _upgrade_tip(chain: bool) -> bool:
+	var cheapest := GameState.cheapest_upgrade()
+	if GameState.upgrade_levels.is_empty() and cheapest > 0 and GameState.resources.get("coins", 0) >= cheapest:
+		var upgrade := Tutorial.open(self, "first_upgrade", "YOUR FIRST UPGRADE",
+				"Coins buy upgrades on this web, and they work for every fighter. The tutorial paid for your first one: buy it.",
+				_details["upgrade"].buy, func() -> bool: return not GameState.upgrade_levels.is_empty(), false)
+		if upgrade:
+			upgrade.finished.connect(_league_tip.bind(true))
+			return true
+	return false
+
+
 func _league_tip(chain: bool) -> bool:
-	if _league_button == null:
+	if _league_button == null or not _arena_done():
 		return false
 	return Tutorial.open(self, "dead_league", "THE DEAD LEAGUE",
 			"Five contenders, one at a time. Challenge the next one whenever you like, as often as you like.\n\nBeating them is how you progress: each win breaks a seal, opening the next Arena division, new upgrades and more.",
