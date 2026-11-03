@@ -130,46 +130,26 @@ static func _shapes(set_id: String, piece: String) -> Array:
 	return []
 
 
-## A heavy red boxing glove lying on its side, fingers to the front, the
-## thumb rolled over the top with a dark gap under it, an iron ring on the
-## punching face, and a laced leather cuff with a riveted iron strap.
+## A red boxing glove lying on its side, like a real one: a big rounded fist,
+## the slim thumb lying along the palm side from the cuff to the curled
+## fingers (a small dark notch under it), and a plain dark cuff with a white
+## edge. The set shows in the colors, not in ornaments.
 static func _deadweight_gloves() -> Array:
-	var shapes := [
-		# The fist: back of the hand, the curled fingers, the knuckle pillow.
-		{"kind": "ball", "at": Vector3(0, -0.005, 0.025), "r": Vector3(0.072, 0.074, 0.085), "role": "primary"},
-		{"kind": "ball", "at": Vector3(0, -0.002, -0.045), "r": Vector3(0.082, 0.086, 0.095), "role": "primary"},
-		{"kind": "ball", "at": Vector3(0, 0.0, -0.1), "r": Vector3(0.075, 0.078, 0.06), "role": "primary"},
-		# Under the fingers the glove curls back toward the palm.
-		{"kind": "ball", "at": Vector3(0, -0.048, -0.05), "r": Vector3(0.07, 0.048, 0.08), "role": "primary", "blend": 0.02},
-		# The wrist tapers into a short, slightly flared cuff.
-		{"kind": "capsule", "a": Vector3(0, -0.004, 0.075), "b": Vector3(0, -0.004, 0.155), "r": 0.058, "role": "secondary", "blend": 0.01},
-		{"kind": "tube", "at": Vector3(0, -0.004, 0.17), "r": 0.064, "h": 0.026, "axis": "z", "role": "secondary", "blend": 0.006},
-		# The thumb rolls along the top edge and down onto the fingers,
-		# standing proud of the fist.
-		{"kind": "capsule", "a": Vector3(0.045, 0.062, 0.07), "b": Vector3(0.056, 0.08, -0.02), "r": 0.031, "role": "primary", "blend": 0.008},
-		{"kind": "capsule", "a": Vector3(0.056, 0.08, -0.02), "b": Vector3(0.062, 0.046, -0.088), "r": 0.027, "role": "primary", "blend": 0.006},
-		# The deep gap between the thumb and the fist, lined in dark leather.
-		{"op": "cut", "kind": "capsule", "a": Vector3(0.09, 0.04, 0.06), "b": Vector3(0.085, 0.034, -0.07), "r": 0.017},
-		{"op": "cut", "kind": "capsule", "a": Vector3(0.072, 0.045, 0.05), "b": Vector3(0.07, 0.04, -0.055), "r": 0.01},
-		{"op": "paint", "kind": "capsule", "a": Vector3(0.088, 0.04, 0.06), "b": Vector3(0.083, 0.034, -0.07), "r": 0.024, "role": "secondary"},
-		# An iron ring and boss on the punching face.
-		{"kind": "ring", "at": Vector3(0, -0.005, -0.158), "R": 0.03, "r": 0.007, "axis": "z", "role": "metal", "blend": 0.003},
-		{"kind": "ball", "at": Vector3(0, -0.005, -0.16), "r": Vector3(0.012, 0.012, 0.008), "role": "metal", "blend": 0.003},
-		# Stitched seam round the edge of the punching face.
-		{"op": "paint", "kind": "ring", "at": Vector3(0, 0.0, -0.128), "R": 0.077, "r": 0.005, "axis": "z", "role": "accent"},
-		# The cuff: an iron strap, white lacing along the inside, a trim band.
-		{"op": "paint", "kind": "box", "at": Vector3(0, 0.0, 0.118), "half": Vector3(0.08, 0.08, 0.007), "role": "metal"},
-		{"op": "paint", "kind": "box", "at": Vector3(0, -0.062, 0.14), "half": Vector3(0.016, 0.02, 0.036), "role": "trim"},
-		{"op": "paint", "kind": "box", "at": Vector3(0, 0.0, 0.176), "half": Vector3(0.08, 0.08, 0.006), "role": "trim"},
+	return [
+		# The fist: back of the hand and the curled fingers.
+		{"kind": "ball", "at": Vector3(0, -0.01, 0.0), "r": Vector3(0.07, 0.066, 0.1), "role": "primary"},
+		{"kind": "ball", "at": Vector3(0, 0.0, -0.072), "r": Vector3(0.076, 0.076, 0.074), "role": "primary", "blend": 0.02},
+		# The wrist tapers into the cuff; a white edge at its end.
+		{"kind": "capsule", "a": Vector3(0, -0.006, 0.07), "b": Vector3(0, -0.006, 0.15), "r": 0.054, "role": "secondary", "blend": 0.014},
+		{"kind": "tube", "at": Vector3(0, -0.006, 0.158), "r": 0.057, "h": 0.016, "axis": "z", "role": "trim", "blend": 0.0},
+		# The thumb lies along the palm side as a ridge, its tip joined to
+		# the curled fingers.
+		{"kind": "capsule", "a": Vector3(0.006, 0.052, 0.055), "b": Vector3(0.012, 0.08, -0.012), "r": 0.022, "role": "primary", "blend": 0.01},
+		{"kind": "capsule", "a": Vector3(0.012, 0.08, -0.012), "b": Vector3(0.008, 0.066, -0.07), "r": 0.02, "role": "primary", "blend": 0.01},
+		# A thin dark slit under the front of the thumb, where it meets the fingers.
+		{"op": "cut", "kind": "capsule", "a": Vector3(0.034, 0.064, -0.002), "b": Vector3(0.03, 0.058, -0.05), "r": 0.0055},
+		{"op": "paint", "kind": "capsule", "a": Vector3(0.034, 0.064, -0.002), "b": Vector3(0.03, 0.058, -0.05), "r": 0.009, "role": "secondary"},
 	]
-	# Lace crossings down the inside of the cuff.
-	for i in 4:
-		shapes.append({"kind": "box", "at": Vector3(0, -0.063, 0.116 + i * 0.016), "half": Vector3(0.014, 0.004, 0.003), "role": "trim", "blend": 0.0})
-	# Rivets round the iron strap.
-	for i in 6:
-		var angle := TAU * i / 6.0
-		shapes.append({"kind": "ball", "at": Vector3(cos(angle) * 0.062, -0.004 + sin(angle) * 0.062, 0.118), "r": Vector3(0.006, 0.006, 0.006), "role": "trim", "blend": 0.002})
-	return shapes
 
 
 # --- Color ------------------------------------------------------------------------
@@ -394,8 +374,8 @@ static func _shade(cells: Dictionary, c: Vector3i, rarity: String) -> Color:
 		if cells.has(c + o):
 			around += 1
 	var enclosed := around / float(CREASE_PROBES.size())
-	if enclosed > 0.5:
-		color = color.darkened(clampf((enclosed - 0.5) * 1.2, 0.0, 0.5))
+	if enclosed > 0.62:
+		color = color.darkened(clampf((enclosed - 0.62) * 1.1, 0.0, 0.35))
 	elif enclosed < 0.35:
 		color = color.lightened(clampf((0.35 - enclosed) * 0.25, 0.0, 0.07))
 	if not cells.has(c + Vector3i(0, 1, 0)):
