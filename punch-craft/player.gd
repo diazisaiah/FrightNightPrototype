@@ -114,13 +114,14 @@ static func punch_kind(type: String) -> String:
 
 
 ## What a landed punch does to the combo (2026-11-02): "grow", "hold" or "lose".
-##   grow: a counter; the first punch; the other hand throwing a different kind
+##   grow: a counter; the first punch; the first punch on a different enemy
+##         (so one-shotting enemies in a row still builds it; the next punch on
+##         that enemy follows the rules below); the other hand throwing a different kind
 ##         of punch (straight, hook, uppercut); the other hand throwing the same
 ##         kind once (jab, cross; left hook, right hook); the second jab of a
 ##         double jab.
 ##   hold: the other hand throwing that same kind a third time or more (jab,
-##         cross, jab; left hook, right hook, left hook); the third jab; the
-##         first punch on a different enemy.
+##         cross, jab; left hook, right hook, left hook); the third jab.
 ##   lose: the same hand again (other than the double jab); a fourth jab.
 ## A slip or roll that worked since your last punch lets the same hand throw
 ## without losing the combo (it then counts like the other hand would).
@@ -128,10 +129,8 @@ static func punch_kind(type: String) -> String:
 ## row, both with this punch included.
 static func combo_move(type: String, hand: String, last_type: String, last_hand: String, jab_run: int,
 		kind_run: int, new_target: bool, dodged: bool, counter: bool) -> String:
-	if counter or last_hand == "":
+	if counter or last_hand == "" or new_target:
 		return "grow"
-	if new_target:
-		return "hold"
 	if hand == last_hand and not dodged:
 		if type == "jab" and last_type == "jab":
 			return "grow" if jab_run == 2 else ("hold" if jab_run == 3 else "lose")
@@ -1586,7 +1585,7 @@ func _land_punch(type: String, hand: String, _dashing := false, airborne := fals
 
 	# The combo (2026-11-02, see combo_move): a punch grows it, holds it or
 	# loses it. Mixing kinds with alternating hands grows it; a counter always
-	# does; the first punch on a different enemy holds it.
+	# does; so does the first punch on a different enemy.
 	var new_target := target.get_instance_id() != _last_target_id
 	_last_target_id = target.get_instance_id()
 	var jab_repeat := type == "jab" and _last_type == "jab" and hand == _last_hand and not new_target
@@ -1860,8 +1859,10 @@ func _pay_for_punch(punch: Dictionary, counter: bool, type := "") -> void:
 		cost = maxf(1.0, cost - GameState.get_effect("heavy_cost_cut"))
 	cost += GameState.get_effect("blood_cost")
 	cost *= cards.cost_scale()
+	# Throwing punches can wear the knuckles down to 1 HP but never break them.
+	cost = minf(cost * punch_cost_scale, knuckles - 1.0)
 	if cost > 0.0:
-		_lose_knuckles(cost * punch_cost_scale)
+		_lose_knuckles(cost)
 
 
 ## Item specials that trigger when a punch lands.

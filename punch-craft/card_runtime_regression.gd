@@ -526,7 +526,7 @@ func _test_combo_setups() -> void:
 				_check(player._last_set_up, "%s %s is set up in %s" % [step[1], step[0], combo])
 		_check(player.combo == int(entry[1]), "The combo after %s is %d (was %d)" % [combo, int(entry[1]), player.combo])
 	# A new enemy: its first punch holds the combo even with the same hand.
-	_check(Player.combo_move("jab", "left", "jab", "left", 1, 1, true, false, false) == "hold", "The first punch on a new enemy holds the combo")
+	_check(Player.combo_move("jab", "left", "jab", "left", 1, 1, true, false, false) == "grow", "The first punch on a new enemy grows the combo")
 	# A worked dodge also keeps the combo timer going.
 	player._set_combo(3)
 	player._combo_timer = 0.1

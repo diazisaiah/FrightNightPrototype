@@ -481,7 +481,7 @@ func _test_balance_constants() -> void:
 	_check(m.call("hook", "left", "jab", "left", 1, 1, false, true) == "grow" and m.call("jab", "left", "jab", "left", 3, 3, false, true) == "hold",
 			"After a worked dodge the same hand goes on without losing it")
 	_check(m.call("jab", "left", "jab", "left", 4, 4, false, false, true) == "grow" and m.call("jab", "left", "cross", "right", 1, 3, false, false, true) == "grow", "A counter always grows it")
-	_check(m.call("cross", "right", "cross", "right", 1, 1, true) == "hold", "The first punch on a different enemy holds it")
+	_check(m.call("cross", "right", "cross", "right", 1, 1, true) == "grow", "The first punch on a different enemy grows it")
 	_check(is_equal_approx(Powers.CHAIN_DAMAGE, 0.4), "Chain Lightning should start at 40% damage")
 	_check(is_equal_approx(Powers.CHAIN_FALLOFF, 0.75), "Chain Lightning jumps should fall off to 75%")
 	_check(Ult.DESCRIPTIONS.berserker.findn("press R") == -1, "The fighter picker must not hard-code R for Inferno")
