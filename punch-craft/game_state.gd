@@ -1210,8 +1210,11 @@ var drill_pick := "pads"
 ## What a score is worth: a run scoring this pays about one good Arena bout
 ## of your division. Pad Work and Slip Line have no cap (the longer you last,
 ## the more you earn); Heavy Bags is a timed DPS check, capped at 1.5 bouts.
-const DRILL_GOOD_SCORE := {"pads": 1700.0, "slip": 1200.0, "bags": 4000.0}
-const DRILL_CAP := {"bags": 1.5}
+## 2026-11-03: Pad Work paid a few thousand coins before the Bellman (long
+## runs had no cap), filling ring 1. It now takes twice the score for the same
+## pay and tops out at half a bout.
+const DRILL_GOOD_SCORE := {"pads": 3400.0, "slip": 1200.0, "bags": 4000.0}
+const DRILL_CAP := {"bags": 1.5, "pads": 0.5}
 ## Hats spawned since the last legendary (bad-luck protection, see Hats).
 var hat_pity := 0
 ## All four Yonkers collected: Tony is playable.

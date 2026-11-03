@@ -772,7 +772,7 @@ func _test_class_balance() -> void:
 			report.set_build(GameState, Progression, class_id, tier)
 			# The power shift (2026-11-03) puts contenders above par on purpose,
 			# so par is judged against the contender before the shift.
-			var ratio := float(PowerRating.player()) * PowerRating.contender_shift(tier - 1) / float(PowerRating.contender(tier - 1))
+			var ratio := float(PowerRating.player()) / float(PowerRating.contender_unshifted(tier - 1))
 			_check(ratio > 0.88 and ratio < 1.2, "%s at par for tier %d should rate about even with the unshifted contender, got %.2f" % [class_id, tier, ratio])
 	var uplifts := []
 	for class_id in GameState.CLASSES:

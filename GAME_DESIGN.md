@@ -1984,14 +1984,19 @@ Prerequisites for the Crypt revamp, and the first Rebalance plan items.
 - **Endless floors and checkpoints** (`Progression.crypt_checkpoints`): beating floor 10 opens the endless floors. The camp Crypt picker shows an ENDLESS card that starts on floor 11, or on a checkpoint: floors 15, 20, 25, 30 ... once reached. A checkpoint start is as tough as reaching that floor.
 - **Card odds by level** (`Cards.rarity_weight`): rare, epic and legendary cards' draw weight is scaled by fighter level. At level 1: rare x0.5, epic x0.3, legendary x0.3. They reach x1 (the old odds) at level 30, and rise to rare x1.15, epic and legendary x1.3 at level 50. Commons stay x1.
 - **Loadout-locked cards:** a card that upgrades a passive or ultimate (`upgrades`) isn't drawn, and doesn't show in the deck, until the fighter has unlocked that ability (`Cards.available`).
-- **The power shift** (`PowerRating.contender_shift`, `crypt_boss_shift`): contenders sit at the Rebalance plan's POWER targets (850 / 1,950 / 4,500 / 10,300 / 23,800) instead of their par's own rating. Crypt floor bosses sit at their tier's target (1,105 / 2,760 / 6,900 / 17,300 / 43,200, floors 1-2 to 9-10; the endless floors grow on top).
+- **The power shift** (`PowerRating.contender_shift`, `crypt_boss_shift`): contenders sit at the Rebalance plan's POWER targets (850, later 500 / 1,950 / 4,500 / 10,300 / 23,800) instead of their par's own rating. Crypt floor bosses sit at their tier's target (1,105, later 650 / 2,760 / 6,900 / 17,300 / 43,200, floors 1-2 to 9-10; the endless floors grow on top).
   - A boss's HP and damage both take the shift, so its POWER moves by exactly that much.
   - Shifts at first build: contenders x2.36 / x1.88 / x1.64 / x1.70 / x1.62. Crypt floor bosses about x8 on floor 1, x5.8 on floor 2, x4.6 on floor 10 (they were built from the Crypt's gentle ramp).
   - A par build now rates about 0.4-0.6 of the contender. The regression checks par against the contender before the shift. Test in play before deciding on caps or pattern changes.
   - Not shifted yet: the Arena's Grave Champions, the True Coffin King.
+- **Second pass (same day, too steep):** the Bellman's target 850 -> 500 and Crypt floors 1-2 1,105 -> 650. Contenders now show their target exactly (class-neutral, like the Arena and Crypt recommendations); `contender_unshifted` is the old class-rated par.
+- **Arena recommendations count the whole bar** (`PowerRating.arena_power`): you fight every spawn in a row and in groups, so a bout recommends sum(spawn POWER) / 35 (`ARENA_GROUP`) + the Grave Champion's.
+  - A spawn's POWER is what it's built from (`climb_power`) times its weight against a plain zombie: sqrt(HP x damage) of its kind, veterans by the tier's share, the bar's growth, armor chance (x1.4), elites (x1.6) and champions (x2.3).
+  - Gravedigger now builds 114 / 419 / 541 (bout 1 keeps the soft first-night rules). Later divisions: Bone 1,239-1,891, Ghost 3,774-5,579, Plague 10,834-14,846, Crown 25,834-36,837. From the Ghost Division on, the third bout recommends more than that division's contender.
+- **Pad Work pays less:** it takes twice the score for the same pay (`DRILL_GOOD_SCORE.pads` 1,700 -> 3,400) and tops out at half a bout (`DRILL_CAP.pads` 0.5). It used to have no cap. That's about 580 coins at most before your first Arena win, about 1,300 at Gravedigger bout 3.
 - **Recommended POWER on every pick** (`PowerRating.arena_power`, `crypt_power`, camp's `_power_lines`): the Arena division and bout cards and the Crypt floor and checkpoint cards show REC. POWER, your POWER and the Dead League's verdict word and colors (OUTMATCHED ... OVERPOWERED).
   - An Arena bout recommends what its monsters and Grave Champion are built from. A division card shows your next unbeaten bout's.
-  - A Crypt pair recommends its floor boss's target (1,105 for floors 1-2). The endless floors grow it like the monsters.
+  - A Crypt pair recommends its floor boss's target (650 for floors 1-2). It doesn't count the floor's rooms of monsters yet. The endless floors grow it like the monsters.
 
 ## Rebalance plan [Planned, 2026-11-01]
 
