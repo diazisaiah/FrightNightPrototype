@@ -866,6 +866,7 @@ func _test_pad_work_combos() -> void:
 			var last_type := ""
 			var last_set_up := false
 			var jab_run := 0
+			var kind_run := 0
 			for i in combo.size():
 				var type: String = combo[i]
 				var hand := "left" if type == "jab" else ("right" if type == "cross" else ("right" if last_hand == "left" else "left"))
