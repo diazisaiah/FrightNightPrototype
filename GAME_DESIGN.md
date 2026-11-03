@@ -2142,7 +2142,24 @@ A possible phone / tablet version. Nothing is built. It comes after the current 
 1. **Lock-on camera** (aim assist): the view follows the nearest enemy, so the right stick isn't needed and the right thumb punches. Free look stays as an option. Pairs with a short auto-step toward the target when punching.
 2. **Move stick as a floating stick** that releases when a punch starts, so one thumb can move and then punch, like a fighting game.
 3. **Stick zones only in the bottom corners** with the punch gestures on the rest of each half, so a stick thumb and a punch thumb don't fight over the same area.
-- Recommendation: start with option 1 and a play test on a real phone before building anything else. Give the sticks a swap for left-handed play.
+- **Decision (2026-11-02): option 1, lock-on.** It gets built and tested after the Crypt revamp. Give the sticks a swap for left-handed play.
+
+**Lock-on camera plan:**
+- **Today's aim:** the camera is mouse or stick look (`Player._stick_look`: yaw turns the body, pitch tilts the camera), and a punch lands on whatever the straight ray hits, 2.5 m ahead (`PUNCH_REACH`, 3.2 m with Long Reach). That is too fiddly on a touch screen. `_land_punch` already takes a `forced` target (Temporal Break uses it), so a lock-on punch can pass the locked enemy.
+- **Two modes, switched by the situation:**
+  - **Combat** (an enemy within about 12 m, or a fight room / Arena / Dead League bout is active): the view locks on, there is no look stick, and both halves of the screen are punch zones.
+  - **Exploring** (no enemies near): the right stick appears for free look and the punch zones go away.
+- **Who gets locked:** the enemy currently taking its turn (the one throwing punches; `Enemy.take_turn` / `has_turn`) first, otherwise the nearest enemy in front of you within about 10 m. When the target dies, the next one locks automatically after a short beat. The lock drops if the target is more than about 14 m away or out of sight for a second or two.
+- **Switching targets:** a small button near the right thumb cycles through enemies. Tapping an enemy is not an option, because taps are punches.
+- **Camera motion:** the body turns toward the target (smoothed, about 500 degrees a second, with a small dead zone so it doesn't twitch), and the pitch eases to the target's aim point. Aim points are per enemy: the head by default, the glowing core for the Bone Colossus (its core takes double damage), the middle for flying Wraiths. Offer a "Lock-on strength" setting (off / soft / hard) and a "Reticle" setting (a ring and health bar on the locked enemy).
+- **Punches:** while locked, a punch passes the locked enemy as `forced` if it is within reach plus a small margin and within about 35 degrees of your facing; otherwise it whiffs as today. Optional short auto-step toward the target (up to about 0.6 m) when it's just out of reach.
+- **Movement:** with the view locked, the move stick strafes around the target, so rolls and slips orbit it the way they do now. Sprinting off in the open turns the view toward your movement, and the lock drops when you break away.
+- **What doesn't change:** combo rules, set-ups, counters, damage, the Temporal Break, and bosses' tells. Arrow slips still work (a ranged enemy locks when it is the nearest or the attacker).
+- **Build and test order:**
+  1. **Desktop prototype first, in the playground:** a lock-on toggle key and a controller button, so it can be tuned with a mouse before any touch layer exists. It may also be worth shipping on desktop and controller as an option.
+  2. **Touch layer:** the sticks, buttons and punch gestures on top of it.
+  3. **Real-phone test:** judge it on how many punches land, how comfortable the camera is (no jitter or nausea), and 30 fps.
+  4. **Edge cases:** a big boss at close range, a flying Wraith, several enemies at once, a sniper at range, the Arena's wave spawns, and the Dead League's tag-in fights.
 
 **Controls details to decide:**
 - **Buttons that aren't in the plan yet:** jump, ultimate, interact (chests, stairs; context-sensitive), emote (hold for the wheel), pause, and the Crypt map.
@@ -2166,7 +2183,7 @@ A possible phone / tablet version. Nothing is built. It comes after the current 
 - The parody content (the plumber caps, Yonkers, fighter-pun names) needs a review against store IP rules before submitting.
 
 **Plan (phases):**
-1. **Decide:** the thumb layout (the options above), target platform (Android first?), and landscape only.
+1. **Decide:** the thumb layout (lock-on chosen), target platform (Android first?), and landscape only.
 2. **Touch prototype in the playground:** gestures, sticks and buttons; test in the browser's mobile view, then on a real phone through the dev build.
 3. **Touch UI pass:** menus, camp, upgrade web gestures, readability.
 4. **Performance and native export** (Android), then a closed test with a few players.
