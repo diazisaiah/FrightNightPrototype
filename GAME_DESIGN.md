@@ -157,7 +157,7 @@ Where you aim decides it — no extra keys. A punch landing above the enemy's ne
 
 - Alternating left and right punches builds a combo, which adds a damage multiplier.
 - The combo drops if you punch the same hand twice in a row or stop landing hits for too long.
-- A run of plain grounded jabs/crosses grows the combo for its first **4 hits**. More straights keep the timer alive but do not raise the count or trigger combo powers until the player mixes in a set-up heavy, counter, dash jab or air punch. This keeps jab/cross useful without letting the safest two-button loop scale forever.
+- **Combo rules [rewritten 2026-11-02]:** see "Combo rules" in the Controls patch section below (grow / hold / lose). Jab and cross are both straights, so jab, cross only holds the combo.
 
 ### Damage
 
@@ -565,7 +565,7 @@ Permanent power was too strong for found items to matter (the maxed coin web gav
 The first floor-5 Crypt clear was still far too generous: it bought essentially the entire coin web, granted 10+ fighter levels, and Chain Lightning turned an endless jab/cross string into a room clear. At the same time, a wall of melee enemies made the defense system unreadable. The follow-up pass changes all four pressure points:
 
 - **Economy:** the coin web now costs **43,350 coins** to max, about **2.5x** the previous roughly 17,000. Crypt kill rewards and XP are multiplied by **0.6**, reward scaling per room/floor is flatter, room-clear rewards are **8 × floor**, floor-clear rewards are **60 × floor**, and the first floor-5 victory bonus is 300. A 2,000-run reward simulation using the live encounter tables puts the required-room floor-5 clear around **4,414 coins / 2,787 XP** before optional summons, mimics, salvage or player reward bonuses—about 10% of the full coin web rather than enough to finish it.
-- **Combo variety:** only the first 4 consecutive plain grounded straights grow the combo. A set-up heavy, counter, dash jab or air punch resets that straight run. Same-hand repeats still break the combo.
+- **Combo variety:** replaced on 2026-11-02 by the grow / hold / lose rules ("Combo rules" in the Controls patch section). The old 4-straight limit is gone.
 - **Chain Lightning:** it only triggers on a hit that actually grew the combo. Its damage starts at 40% of the triggering hit, falls to 75% on each successive jump, and receives only half of the triggering punch's combo bonus. This removes the high-combo room-deletion loop while keeping Storm useful against groups.
 - **Melee turns:** ordinary melee enemies form a loose ring about 3.8m away. One attacks at a time through Graveyard Night 3 and Crypt Floor 2; two may attack from Night 4 / Floor 3 onward. An attacker gives up its slot after its combo and rests before rotating back in. Ranged enemies and bosses keep acting independently, and punching a waiting enemy pulls it into the active fight.
 - **More sigil sinks:** each elemental branch ends in a second-sigil capstone (Pyre, Thunderhead, Shatter, Bloodbath). Each fighter's skill web also offers two center-adjacent sigil purchases: **Ultimate Surge** (+25% meter gain) and a class-specific **Ultimate II** upgrade.
@@ -1959,6 +1959,14 @@ Notes from the user's playtest week, put in order. Nothing here is built yet. Mo
 - Checked in `balance_regression` (keys, hints, defaults, projectile answers) and `card_runtime_regression` (Shift + D, controller heavies, the buffer).
 - **Tutorial fixes (same day):** rolling under an arrow counts as a slip in SLIP THE ARROWS (it only counted for ROLL steps, so rolled arrows never filled the goal); and a fight step whose monsters are all down before the other goals are met (the skeleton knocked out before its two slips, the brawler before three dodges) brings in another set after a second ("ANOTHER ONE!") instead of stranding the step with nothing left to dodge.
 - **Jab after cross:** a jab thrown right after a cross (combo still alive) hits x1.3 (`Player.JAB_AFTER_CROSS`, the cross's own multiplier); any other jab (after a jab, a hook, or with the combo gone) stays x1.0. So cross, jab, cross, jab beats jab spam. Alternating straights deal about 13% more than before; repeated jabs are unchanged.
+- **Combo rules (2026-11-02, `Player.combo_move`):** every landed punch is compared to the one before it and does one of three things.
+  - **Grows** (+1): a counter (always); the first punch; the other hand throwing a different kind of punch (straight, hook or uppercut; jab and cross are both "straight"); the second jab of a double jab.
+  - **Holds** (refreshes the timer, nothing added): the other hand throwing the same kind (jab, cross; left hook, right hook); the third jab; the first punch on a different enemy (even with the same hand), after which the next punch chains from it.
+  - **Loses** (back to 0, and that punch starts a fresh combo at 1): the same hand again, other than the double jab; a fourth jab. Getting hit and letting the combo timer run out still lose it too.
+  - A slip or roll that worked refreshes the combo timer to a full window and lets the same hand throw without losing the combo (it grows if the kind changes, otherwise holds). A missed one no longer does either.
+  - Why: you could uppercut forever once a jab started a combo, even on the same side, and alternate hooks forever. Example full combos: jab, hook, uppercut, hook (the hands alternate and every punch is a new kind). The old 4-straight limit is gone; Unbroken still makes every punch grow.
+  - Hooks and uppercuts still need the damage set-up (after a jab or cross, a set-up hook or uppercut, or a slip or roll to that side), which is separate from the combo count. A same-hand hook after a jab is set up for damage, but loses the combo.
+  - Tutorial COMBOS drills are now jab, hook, uppercut and jab, hook, uppercut, hook, and Pad Work builds only combos that grow with every punch (hands alternate, each punch a new kind, one double jab, hooks and uppercuts set up).
 - **Cross matches the jab:** the cross had a slower windup (0.11 s) and a longer cooldown (0.34 s) than the jab (0.09 s, 0.28 s), which also made its animation slower. Both straights use the jab's timing now. The cross still hits for x1.3, so mashing jab / cross deals about 11% more damage per second than before; watch it in the power balance.
 
 ## Rebalance plan [Planned, 2026-11-01]

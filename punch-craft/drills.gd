@@ -165,7 +165,7 @@ func _countdown() -> void:
 ## Fills _pad_hands too.
 func _make_combo() -> Array:
 	var length := clampi(2 + (_level - 1) / 3, 2, 6)
-	var heavies := _level >= 3
+	var uppercuts := _level >= 3
 	var combo := [["jab", "cross"].pick_random()]
 	var hand := "left" if combo[0] == "jab" else "right"
 	_pad_hands = [hand]
@@ -173,13 +173,21 @@ func _make_combo() -> Array:
 		var last: String = combo[-1]
 		var other := "right" if hand == "left" else "left"
 		var straight := "jab" if other == "left" else "cross"
-		var options := [straight, straight]
+		# Every punch is the other hand throwing a different kind of punch, so
+		# the combo grows with each one (a jab, cross just holds it).
+		var options := []
+		if last in ["jab", "cross"]:
+			options = ["hook", "hook"]
+			if uppercuts:
+				options.append("uppercut")
+		elif last == "hook":
+			options = [straight, straight]
+			if uppercuts:
+				options.append("uppercut")
+		else:
+			options = [straight, straight, "hook"]
 		if last == "jab" and (combo.size() < 2 or combo[-2] != "jab"):
 			options.append("jab")  # The double jab (the right hand comes next).
-		if heavies and last in ["jab", "cross"]:
-			options.append_array(["hook", "uppercut"])
-		elif heavies and last == "hook":
-			options.append("uppercut")
 		var pick: String = options.pick_random()
 		if not (pick == "jab" and last == "jab"):
 			hand = other

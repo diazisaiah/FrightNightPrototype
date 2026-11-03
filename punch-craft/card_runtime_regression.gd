@@ -486,28 +486,47 @@ func _test_combo_setups() -> void:
 	var target: Enemy = (rig[2] as Array)[0]
 	target.max_hp = 1e9
 	target.hp = 1e9
+	# Each entry is [steps, the combo after them] (2026-11-02, see
+	# Player.combo_move): "dodge_x" is a slip or roll that worked, "x" a missed one.
 	var combos := [
-		[["jab", "left"], ["cross", "right"], ["hook", "left"], ["roll_left", ""], ["hook", "left"]],
-		[["jab", "left"], ["cross", "right"], ["slip_right", ""], ["uppercut", "right"]],
-		[["jab", "left"], ["hook", "left"]],
-		[["jab", "left"], ["cross", "right"], ["hook", "left"], ["hook", "right"]],
-		[["jab", "left"], ["uppercut", "right"], ["uppercut", "left"]],
-		[["slip_left", ""], ["hook", "left"]],
+		[[["jab", "left"], ["hook", "right"], ["uppercut", "left"], ["hook", "right"]], 4],  # mixing kinds grows it
+		[[["jab", "left"], ["cross", "right"], ["hook", "left"]], 2],  # jab, cross holds; the hook grows
+		[[["jab", "left"], ["hook", "right"], ["hook", "left"]], 2],  # hook, hook holds
+		[[["jab", "left"], ["jab", "left"]], 2],  # the double jab grows
+		[[["jab", "left"], ["jab", "left"], ["jab", "left"]], 2],  # a third jab holds
+		[[["jab", "left"], ["jab", "left"], ["jab", "left"], ["jab", "left"]], 1],  # a fourth loses it
+		[[["jab", "left"], ["hook", "left"]], 1],  # the same hand again loses it
+		[[["jab", "left"], ["uppercut", "right"], ["uppercut", "right"]], 1],  # even a set-up uppercut
+		[[["jab", "left"], ["dodge_slip_right", ""], ["hook", "left"]], 2],  # a worked dodge lets the same hand go on
+		[[["jab", "left"], ["slip_right", ""], ["hook", "left"]], 1],  # a missed one doesn't
+		[[["jab", "left"], ["dodge_slip_right", ""], ["cross", "right"]], 2],  # a counter always grows it
+		[[["slip_left", ""], ["hook", "left"]], 1],
 	]
-	for combo in combos:
+	for entry in combos:
+		var combo: Array = entry[0]
 		player._set_combo(0)
 		player._defense_cooldown = 0.0
-		var landed := 0
+		player._dodged_at = -10.0
+		player._clear_counter()
 		for step in combo:
 			if step[1] == "":
 				player._defense_cooldown = 0.0
-				player._try_defense(step[0])
+				if step[0].begins_with("dodge_"):
+					player._on_dodge(step[0].trim_prefix("dodge_"))
+				else:
+					player._try_defense(step[0])
 				continue
 			player._land_punch(step[0], step[1], false, false, target)
-			landed += 1
 			if Player.PUNCHES[step[0]].heavy:
 				_check(player._last_set_up, "%s %s is set up in %s" % [step[1], step[0], combo])
-		_check(player.combo == landed, "The combo survives %s (%d of %d)" % [combo, player.combo, landed])
+		_check(player.combo == int(entry[1]), "The combo after %s is %d (was %d)" % [combo, int(entry[1]), player.combo])
+	# A new enemy: its first punch holds the combo even with the same hand.
+	_check(Player.combo_move("jab", "left", "jab", "left", 1, true, false, false) == "hold", "The first punch on a new enemy holds the combo")
+	# A worked dodge also keeps the combo timer going.
+	player._set_combo(3)
+	player._combo_timer = 0.1
+	player._on_dodge("roll_left")
+	_check(player._combo_timer >= GameState.get_combo_window() * player.cards.combo_window_scale() - 0.01, "A worked roll refreshes the combo timer")
 	# Still SLOPPY: a hook thrown cold, and an uppercut after a cold hook.
 	player._set_combo(0)
 	player._land_punch("hook", "left", false, false, target)

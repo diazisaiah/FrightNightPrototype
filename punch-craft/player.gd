@@ -97,7 +97,6 @@ const CHAIN_LIGHTNING_EVERY := 5
 ## Plain jabs and crosses only build the combo this many hits in a row; past
 ## that they keep it alive but it won't grow until a set-up heavy, a counter,
 ## a dash jab or an air punch mixes it up.
-const STRAIGHT_RUN_LIMIT := 4
 ## A jab thrown right after a cross (the combo still alive) hits this much
 ## harder; any other jab is plain. Same as the cross's own multiplier, so
 ## alternating cross, jab, cross beats repeating the jab (2026-11-02).
@@ -107,6 +106,34 @@ const JAB_AFTER_CROSS := 1.3
 ## The extra a jab gets for following a cross (1.0 for anything else).
 static func jab_after_cross_mult(type: String, last_type: String, combo_now: int) -> float:
 	return JAB_AFTER_CROSS if type == "jab" and last_type == "cross" and combo_now > 0 else 1.0
+
+
+## A punch's kind for the combo: jabs and crosses are both "straight".
+static func punch_kind(type: String) -> String:
+	return "straight" if type in ["jab", "cross"] else type
+
+
+## What a landed punch does to the combo (2026-11-02): "grow", "hold" or "lose".
+##   grow: a counter; the first punch; the other hand throwing a different kind
+##         of punch (straight, hook, uppercut); the second jab of a double jab.
+##   hold: the other hand throwing the same kind (jab, cross; hook, hook);
+##         the third jab; the first punch on a different enemy.
+##   lose: the same hand again (other than the double jab); a fourth jab.
+## A slip or roll that worked since your last punch lets the same hand throw
+## without losing the combo (it grows if the kind changes, otherwise holds).
+## jab_run counts the jabs in a row, this one included.
+static func combo_move(type: String, hand: String, last_type: String, last_hand: String, jab_run: int,
+		new_target: bool, dodged: bool, counter: bool) -> String:
+	if counter or last_hand == "":
+		return "grow"
+	if new_target:
+		return "hold"
+	var new_kind := punch_kind(type) != punch_kind(last_type)
+	if hand != last_hand or dodged:
+		return "grow" if new_kind else "hold"
+	if type == "jab" and last_type == "jab":
+		return "grow" if jab_run == 2 else ("hold" if jab_run == 3 else "lose")
+	return "lose"
 ## A slip or roll loads that side for this long: a hook or uppercut with that
 ## hand is set up (slip right, right uppercut; roll left, left hook).
 const HEAD_MOVE_SETUP := 1.2
@@ -274,6 +301,8 @@ var _last_set_up := false
 ## The side the last slip or roll moved to, and when (seconds).
 var _moved_side := ""
 var _moved_at := -10.0
+## When a slip or roll last worked (see combo_move).
+var _dodged_at := -10.0
 ## Jabs in a row from the same hand (a double jab keeps the combo).
 var _jab_run := 0
 ## Who the last punch landed on: switching to a new enemy can start on
@@ -347,8 +376,6 @@ var _defense_window := 0.0
 var _clean_counter := false
 ## Combo multiplier added by Rhythm (dodges), lost when hit.
 var _rhythm := 0.0
-## Plain jabs/crosses in a row (see STRAIGHT_RUN_LIMIT).
-var _straight_run := 0
 ## Did the last landed punch raise the combo? (Lightning only fires on growth.)
 var _combo_grew := false
 var _mix_hint_time := -100.0
@@ -1274,8 +1301,6 @@ func _try_defense(move: String) -> void:
 	if move.begins_with("slip") or move.begins_with("roll"):
 		_moved_side = defense.side
 		_moved_at = Time.get_ticks_msec() / 1000.0
-		if combo > 0:
-			_combo_timer = maxf(_combo_timer, window + HEAD_MOVE_SETUP)
 	_animate_defense(move)
 	Sfx.play("whoosh", -6.0, 0.8 if move.begins_with("slip") else 0.6)
 
@@ -1299,6 +1324,12 @@ func _return_from_back_step(delta: float) -> void:
 ## clean: pressed late, right before the hit landed.
 func _on_dodge(move: String, clean := false) -> void:
 	_defense_cooldown = 0.0  # A dodge can be chained straight into the next one.
+	# A slip or roll that worked keeps the combo alive and lets the same hand
+	# throw without losing it (2026-11-02; a missed one no longer does).
+	if move.begins_with("slip") or move.begins_with("roll"):
+		_dodged_at = Time.get_ticks_msec() / 1000.0
+		if combo > 0:
+			_combo_timer = maxf(_combo_timer, GameState.get_combo_window() * cards.combo_window_scale())
 	if GameState.has_passive("dodge_chain"):
 		# Stored Answers: chains go up to 10.
 		var most := 10 if GameState.has_effect("stored_answers") else DODGE_CHAIN_MAX
@@ -1548,33 +1579,34 @@ func _land_punch(type: String, hand: String, _dashing := false, airborne := fals
 	var target_was_low := target.hp < target.max_hp * FINISHER_HP_FRACTION
 	var target_was_fresh := target.hp >= target.max_hp
 
-	# Alternating hands builds the combo; the same hand twice starts it over,
-	# except a double jab (jab, jab), a set-up hook or uppercut (jab, left
-	# hook; hook, hook), or a slip or roll in between (left hook, roll left,
-	# left hook). Moving on to a new enemy can start on either hand.
+	# The combo (2026-11-02, see combo_move): a punch grows it, holds it or
+	# loses it. Mixing kinds with alternating hands grows it; a counter always
+	# does; the first punch on a different enemy holds it.
 	var new_target := target.get_instance_id() != _last_target_id
 	_last_target_id = target.get_instance_id()
 	var jab_repeat := type == "jab" and _last_type == "jab" and hand == _last_hand and not new_target
 	_jab_run = _jab_run + 1 if jab_repeat else (1 if type == "jab" else 0)
-	var jabs_allowed := 2
-	var same_hand_ok := (jab_repeat and _jab_run <= jabs_allowed) or set_up or moved
-	if hand == _last_hand and not new_target and not same_hand_ok and unbroken_time <= 0.0:
-		combo = 0
+	var dodged := now_s - _dodged_at < HEAD_MOVE_SETUP
+	_dodged_at = -10.0
+	var move := combo_move(type, hand, _last_type, _last_hand, _jab_run, new_target, dodged, counter)
+	if unbroken_time > 0.0:
+		move = "grow"  # Unbroken: nothing drops it and it keeps climbing.
+	elif move == "lose":
+		combo = 0  # This punch starts a fresh combo.
+		_jab_run = 1 if type == "jab" else 0
 	_last_hand = hand
 	_last_type = type
 	_last_set_up = set_up
 	_combo_timer = GameState.get_combo_window() * cards.combo_window_scale()
-	var plain := type in ["jab", "cross"] and not counter and not dash_jab and is_on_floor()
-	_straight_run = _straight_run + 1 if plain else 0
-	_combo_grew = _straight_run <= STRAIGHT_RUN_LIMIT or unbroken_time > 0.0
+	_combo_grew = move != "hold"
 	if _combo_grew:
 		_set_combo(combo + 1)
 	else:
 		_set_combo(combo)
 		var now := Time.get_ticks_msec() / 1000.0
-		if _straight_run == STRAIGHT_RUN_LIMIT + 1 and now - _mix_hint_time > 10.0:
+		if not new_target and punch_kind(type) == "straight" and now - _mix_hint_time > 10.0:
 			_mix_hint_time = now
-			class_event.emit("MIX IT UP  -  hooks, uppercuts and counters grow the combo")
+			class_event.emit("MIX IT UP  -  hooks and uppercuts grow the combo")
 
 	var raw_damage: float = GameState.get_damage() * get_combo_multiplier()
 	if not punch.heavy or set_up:
@@ -2479,7 +2511,6 @@ func _set_combo(value: int) -> void:
 	if combo >= 10:
 		Bounties.event("combo", combo)
 	if combo == 0:
-		_straight_run = 0
 		_last_hand = ""
 		_last_type = ""
 	combo_changed.emit(combo, get_combo_multiplier())
