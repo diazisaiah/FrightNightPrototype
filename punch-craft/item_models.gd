@@ -1,27 +1,58 @@
 class_name ItemModels
 ## The Crypt gear's 3D models (Crypt revamp plan, 2026-11-03): 5 sets x 4
-## pieces, each built from simple shapes sampled into small cubes. Gear uses
-## CUBE, half the fighters' edge (an eighth of their volume), so small things
-## like studs, straps and emblems have room to show.
+## pieces, sculpted as smooth shapes (signed distance fields blended into each
+## other) and sampled into small cubes, CUBE on a side: about 50 cubes along a
+## glove, enough for a rolled thumb, curled knuckles, a raised ring on the
+## punching face and laced cuffs.
 ##
 ## A piece is a list of shapes, each painted with one of its set's palette roles
 ## (primary, secondary, metal, accent, trim). Rarity recolors the same model:
 ## common is dull and dingy with tatter spots; uncommon cleaner and muted; rare
 ## full color; epic saturated with small purple sparkles; legendary saturated
-## with dramatic gold sparkles.
+## with dramatic gold sparkles. Built meshes are cached.
 ##
-## Origin at the piece's center; its front faces -Z (toward a camera at -Z).
+## Origin at the piece's center; its front faces -Z.
 
-## Cube edge in meters. The fighters use 0.036 (FighterBody "large").
-const CUBE := 0.018
+## Cube edge in meters (the fighters use 0.036).
+const CUBE := 0.006
 
 const RARITIES := ["common", "uncommon", "rare", "epic", "legendary"]
 
-## Palette roles per set.
 const SETS := {
 	"deadweight": {"name": "Deadweight", "primary": Color(0.62, 0.12, 0.1), "secondary": Color(0.24, 0.17, 0.14),
 		"metal": Color(0.44, 0.44, 0.48), "accent": Color(0.9, 0.38, 0.18), "trim": Color(0.7, 0.68, 0.64)},
+	"drowned": {"name": "Drowned", "primary": Color(0.14, 0.34, 0.6), "secondary": Color(0.09, 0.17, 0.26),
+		"metal": Color(0.45, 0.66, 0.62), "accent": Color(0.32, 0.85, 0.78), "trim": Color(0.88, 0.9, 0.92)},
+	"grandmaster": {"name": "Grandmaster's", "primary": Color(0.42, 0.18, 0.62), "secondary": Color(0.14, 0.09, 0.2),
+		"metal": Color(0.78, 0.62, 0.28), "accent": Color(0.95, 0.82, 0.48), "trim": Color(0.92, 0.9, 0.84)},
+	"iron_mike": {"name": "Iron Mike's", "primary": Color(0.92, 0.7, 0.14), "secondary": Color(0.1, 0.09, 0.09),
+		"metal": Color(0.62, 0.62, 0.64), "accent": Color(0.82, 0.14, 0.12), "trim": Color(0.97, 0.95, 0.88)},
+	"dead_money": {"name": "Dead Money", "primary": Color(0.16, 0.46, 0.24), "secondary": Color(0.09, 0.15, 0.11),
+		"metal": Color(0.88, 0.7, 0.22), "accent": Color(0.7, 0.86, 0.56), "trim": Color(0.95, 0.92, 0.8)},
 }
+## Each set's piece names by slot (the plan's "(set) (piece)").
+const PIECES := {
+	"deadweight": {"gloves": "Knuckles", "wraps": "Bindings", "boots": "Treads", "charm": "Anchor"},
+	"drowned": {"gloves": "Fists", "wraps": "Wraps", "boots": "Steps", "charm": "Pearl"},
+	"grandmaster": {"gloves": "Hands", "wraps": "Wraps", "boots": "Slippers", "charm": "Seal"},
+	"iron_mike": {"gloves": "Gloves", "wraps": "Wraps", "boots": "Boots", "charm": "Belt"},
+	"dead_money": {"gloves": "Rings", "wraps": "Wraps", "boots": "Loafers", "charm": "Coin"},
+}
+## What draws an item to a set (until the gear system gives every item its
+## set): its stats and specials, from the plan's set tables.
+const SET_STATS := {
+	"deadweight": ["heavy_bonus", "armor_pierce", "max_knuckles", "knuckles_percent", "defense", "flinch_reduction", "thorns",
+		"shatter", "grit", "iron_will", "heal_on_kill"],
+	"drowned": ["counter_bonus", "counter_window", "dodge_window", "graze_reduction", "slipknot", "champions_hands",
+		"clean_read", "rhythm", "counter_heal"],
+	"grandmaster": ["punch_speed", "damage_percent", "combo_step", "combo_window", "combo_cap", "free_punch_chance",
+		"lunging_jab", "double_jab", "frenzy", "move_speed"],
+	"iron_mike": ["finisher_bonus", "boss_damage", "ult_gain", "bone_breaker", "long_count", "gravewalker",
+		"executioner", "jump_bonus", "sprint_bonus"],
+	"dead_money": ["coin_bonus", "xp_bonus", "crit_chance", "crit_damage", "head_bonus", "damage", "gold_fever",
+		"loaded_dice", "silver_tongue", "haggler", "lantern"],
+}
+
 
 const SPARKLE := {"epic": Color(0.75, 0.45, 1.0), "legendary": Color(1.0, 0.82, 0.3)}
 
@@ -30,51 +61,113 @@ const SPARKLE := {"epic": Color(0.75, 0.45, 1.0), "legendary": Color(1.0, 0.82, 
 static func build(set_id: String, piece: String, rarity := "rare", cube := CUBE) -> Node3D:
 	var root := Node3D.new()
 	root.name = "%s_%s" % [set_id, piece]
-	var shapes := _shapes(set_id, piece)
-	if shapes.is_empty():
-		return root
-	var palette := _palette(set_id, rarity)
-	var cells := _rasterize(shapes, palette, cube)
-	if rarity == "common":
-		_tatter(cells)
+	var key := "%s/%s/%s/%.4f" % [set_id, piece, rarity, cube]
+	if not _cache.has(key):
+		var shapes := _shapes(set_id, piece)
+		if shapes.is_empty():
+			return root
+		var cells := _rasterize(shapes, _palette(set_id, rarity), cube)
+		if rarity == "common":
+			_tatter(cells)
+		_cache[key] = {"mesh": _mesh(cells, cube, rarity), "cells": cells}
+	var built: Dictionary = _cache[key]
 	var body := MeshInstance3D.new()
 	body.name = "Body"
-	body.mesh = _mesh(cells, cube, rarity)
+	body.mesh = built.mesh
 	root.add_child(body)
 	if SPARKLE.has(rarity):
-		root.add_child(_sparkles(cells, cube, rarity))
+		root.add_child(_sparkles(built.cells, cube, rarity))
 	return root
+
+
+## An item's model: its set (item.set, else the set its stats lean to) and
+## its slot, in its rarity. An empty Node3D for things with no model.
+static func build_for_item(item: Dictionary, cube := CUBE) -> Node3D:
+	var rarity: String = item.get("rarity", "rare")
+	if not rarity in RARITIES:
+		rarity = "epic" if rarity == "cursed" else "rare"
+	return build(set_for(item), String(item.get("slot", "")), rarity, cube)
+
+
+static func set_for(item: Dictionary) -> String:
+	if SETS.has(item.get("set", "")):
+		return item.set
+	var best := "deadweight"
+	var best_score := -1.0
+	var effects: Dictionary = item.get("effects", {})
+	for set_id in SET_STATS:
+		var score := 0.0
+		for effect in effects:
+			if effect in SET_STATS[set_id]:
+				score += 1.0
+		# Ties settle by name, so an item always looks the same.
+		score += 0.01 * (hash(String(item.get("name", "")) + set_id) % 10) / 10.0
+		if score > best_score:
+			best_score = score
+			best = set_id
+	return best
+
+
+## "Deadweight Knuckles".
+static func piece_name(set_id: String, slot: String) -> String:
+	return "%s %s" % [SETS[set_id].name, PIECES[set_id].get(slot, "")]
+
 
 
 # --- The pieces -----------------------------------------------------------------
 
-## Shapes: [kind, center, size, role] with kind box, ball (ellipsoid), tube
-## (cylinder along y), cut (removes cubes, size as a box) or paint (recolors
-## cubes already there, size as a box: plates and bands that follow a curve).
+## Shapes are dictionaries:
+##   op: "add" (default), "cut" (carves away) or "paint" (recolors what's there)
+##   kind: "ball" (ellipsoid: at, r), "capsule" (a, b, r), "box" (at, half,
+##     round), "tube" (cylinder along axis: at, r, h, axis "x"/"y"/"z"),
+##     "ring" (torus: at, R, r, axis)
+##   role: palette role; blend: how softly an "add" melts into what's before
+##     it (meters, default 0.012).
 static func _shapes(set_id: String, piece: String) -> Array:
 	match "%s/%s" % [set_id, piece]:
 		"deadweight/gloves":
-			# A heavy red boxing mitt standing on its cuff, the curled fist
-			# bulging forward: the striking face plated in studded iron, a
-			# buckled strap round the wrist, the thumb tucked along the front.
-			var shapes := [
-				["tube", Vector3(0, -0.095, 0.01), Vector3(0.1, 0.08, 0.1), "secondary"],
-				["tube", Vector3(0, -0.08, 0.01), Vector3(0.112, 0.022, 0.112), "metal"],
-				["box", Vector3(0, -0.08, -0.05), Vector3(0.036, 0.036, 0.018), "trim"],
-				["tube", Vector3(0, -0.052, 0.005), Vector3(0.118, 0.018, 0.118), "accent"],
-				["ball", Vector3(0, 0.01, 0.0), Vector3(0.13, 0.14, 0.14), "primary"],
-				["ball", Vector3(0, 0.035, -0.06), Vector3(0.13, 0.13, 0.12), "primary"],
-				["ball", Vector3(0, 0.075, -0.025), Vector3(0.12, 0.08, 0.14), "primary"],
-				["ball", Vector3(-0.058, -0.012, -0.075), Vector3(0.045, 0.07, 0.05), "primary"],
-				# The iron plate wraps the knuckles' curve (paints the surface).
-				["paint", Vector3(0, 0.045, -0.1), Vector3(0.11, 0.06, 0.06), "metal"],
-			]
-			# Studs across the plate, and a seam over the back of the hand.
-			for i in 3:
-				shapes.append(["box", Vector3(-0.036 + i * 0.036, 0.045, -0.123), Vector3(0.012, 0.012, 0.012), "trim"])
-			shapes.append(["box", Vector3(0, 0.03, 0.068), Vector3(0.018, 0.09, 0.018), "accent"])
-			return shapes
+			return _deadweight_gloves()
 	return []
+
+
+## A heavy red boxing glove lying on its side, fingers to the front, the
+## thumb rolled over the top with a dark gap under it, an iron ring on the
+## punching face, and a laced leather cuff with a riveted iron strap.
+static func _deadweight_gloves() -> Array:
+	var shapes := [
+		# The fist: back of the hand, the curled fingers, the knuckle pillow.
+		{"kind": "ball", "at": Vector3(0, -0.005, 0.03), "r": Vector3(0.068, 0.07, 0.09), "role": "primary"},
+		{"kind": "ball", "at": Vector3(0, -0.002, -0.045), "r": Vector3(0.076, 0.08, 0.095), "role": "primary"},
+		{"kind": "ball", "at": Vector3(0, 0.0, -0.105), "r": Vector3(0.07, 0.074, 0.058), "role": "primary"},
+		# Under the fingers the glove curls back toward the palm.
+		{"kind": "ball", "at": Vector3(0, -0.045, -0.05), "r": Vector3(0.066, 0.045, 0.08), "role": "primary", "blend": 0.02},
+		# The wrist tapers into the cuff.
+		{"kind": "capsule", "a": Vector3(0, -0.004, 0.08), "b": Vector3(0, -0.004, 0.185), "r": 0.058, "role": "secondary", "blend": 0.01},
+		# The thumb rolls over the top and down onto the fingers, standing
+		# proud of the fist.
+		{"kind": "capsule", "a": Vector3(0.03, 0.07, 0.075), "b": Vector3(0.04, 0.088, -0.02), "r": 0.031, "role": "primary", "blend": 0.008},
+		{"kind": "capsule", "a": Vector3(0.04, 0.088, -0.02), "b": Vector3(0.046, 0.058, -0.088), "r": 0.027, "role": "primary", "blend": 0.006},
+		# The deep gap between the thumb and the fist.
+		{"op": "cut", "kind": "capsule", "a": Vector3(0.078, 0.052, 0.06), "b": Vector3(0.074, 0.046, -0.065), "r": 0.016},
+		{"op": "cut", "kind": "capsule", "a": Vector3(0.06, 0.056, 0.05), "b": Vector3(0.062, 0.05, -0.05), "r": 0.009},
+		# An iron ring and boss on the punching face.
+		{"kind": "ring", "at": Vector3(0, -0.005, -0.158), "R": 0.03, "r": 0.007, "axis": "z", "role": "metal", "blend": 0.003},
+		{"kind": "ball", "at": Vector3(0, -0.005, -0.16), "r": Vector3(0.012, 0.012, 0.008), "role": "metal", "blend": 0.003},
+		# Stitched seam round the edge of the punching face.
+		{"op": "paint", "kind": "ring", "at": Vector3(0, 0.0, -0.13), "R": 0.07, "r": 0.006, "axis": "z", "role": "accent"},
+		# The cuff: an iron strap, the white lacing along the inside.
+		{"op": "paint", "kind": "box", "at": Vector3(0, 0.0, 0.125), "half": Vector3(0.08, 0.08, 0.008), "role": "metal"},
+		{"op": "paint", "kind": "box", "at": Vector3(0, -0.06, 0.15), "half": Vector3(0.016, 0.02, 0.04), "role": "trim"},
+		{"op": "paint", "kind": "box", "at": Vector3(0, 0.0, 0.188), "half": Vector3(0.08, 0.08, 0.006), "role": "accent"},
+	]
+	# Lace crossings down the inside of the cuff.
+	for i in 4:
+		shapes.append({"kind": "box", "at": Vector3(0, -0.063, 0.122 + i * 0.018), "half": Vector3(0.014, 0.004, 0.003), "role": "trim", "blend": 0.0})
+	# Rivets round the iron strap.
+	for i in 6:
+		var angle := TAU * i / 6.0
+		shapes.append({"kind": "ball", "at": Vector3(cos(angle) * 0.062, -0.004 + sin(angle) * 0.062, 0.125), "r": Vector3(0.006, 0.006, 0.006), "role": "trim", "blend": 0.002})
+	return shapes
 
 
 # --- Color ------------------------------------------------------------------------
@@ -98,51 +191,114 @@ static func _palette(set_id: String, rarity: String) -> Dictionary:
 	return out
 
 
+
+
 # --- Cubes ------------------------------------------------------------------------
 
-## {Vector3i: Color} for every filled cube; later shapes paint over earlier.
+static var _cache := {}
+
+
+## {Vector3i: Color} for every cube inside the blended shapes.
 static func _rasterize(shapes: Array, palette: Dictionary, cube: float) -> Dictionary:
 	var low := Vector3.INF
 	var high := -Vector3.INF
-	for s in shapes:
-		if s[0] in ["cut", "paint"]:
+	for s: Dictionary in shapes:
+		if s.get("op", "add") != "add":
 			continue
-		low = low.min(s[1] - s[2] / 2.0)
-		high = high.max(s[1] + s[2] / 2.0)
-	var first := Vector3i((low / cube).floor())
-	var last := Vector3i((high / cube).ceil())
+		var b := _bounds(s)
+		low = low.min(b.position)
+		high = high.max(b.end)
+	var first := Vector3i((low / cube).floor()) - Vector3i.ONE
+	var last := Vector3i((high / cube).ceil()) + Vector3i.ONE
 	var cells := {}
 	for x in range(first.x, last.x):
 		for y in range(first.y, last.y):
 			for z in range(first.z, last.z):
 				var p := (Vector3(x, y, z) + Vector3(0.5, 0.5, 0.5)) * cube
-				for s in shapes:
-					if _inside(s[0], p - s[1], s[2]):
-						if s[0] == "cut":
-							cells.erase(Vector3i(x, y, z))
-						elif s[0] == "paint":
-							if cells.has(Vector3i(x, y, z)):
-								cells[Vector3i(x, y, z)] = palette[s[3]]
-						elif not palette.has(s[3]):
-							push_error("ItemModels: no palette role %s" % s[3])
-						else:
-							cells[Vector3i(x, y, z)] = palette[s[3]]
+				var d := INF
+				var role := ""
+				var nearest := INF
+				for s: Dictionary in shapes:
+					var op: String = s.get("op", "add")
+					if op == "paint":
+						continue
+					var e := _sdf(s, p)
+					if op == "cut":
+						d = maxf(d, -e)
+						continue
+					var k: float = s.get("blend", 0.012)
+					d = e if d == INF else (_smin(d, e, k) if k > 0.0 else minf(d, e))
+					if e <= nearest + 0.002:
+						nearest = e
+						role = s.role
+				if d > 0.0:
+					continue
+				for s: Dictionary in shapes:
+					if s.get("op", "add") == "paint" and _sdf(s, p) <= 0.0:
+						role = s.role
+				cells[Vector3i(x, y, z)] = palette.get(role, Color.MAGENTA)
 	return cells
 
 
-static func _inside(kind: String, p: Vector3, size: Vector3) -> bool:
-	var h := size / 2.0
-	match kind:
-		"box", "cut", "paint":
-			return absf(p.x) <= h.x and absf(p.y) <= h.y and absf(p.z) <= h.z
+static func _smin(a: float, b: float, k: float) -> float:
+	var h := clampf(0.5 + 0.5 * (b - a) / k, 0.0, 1.0)
+	return lerpf(b, a, h) - k * h * (1.0 - h)
+
+
+static func _sdf(s: Dictionary, p: Vector3) -> float:
+	match s.kind:
 		"ball":
-			return (p.x * p.x) / (h.x * h.x) + (p.y * p.y) / (h.y * h.y) + (p.z * p.z) / (h.z * h.z) <= 1.0
+			var r: Vector3 = s.r
+			var q := p - (s.at as Vector3)
+			var k0 := (q / r).length()
+			var k1 := (q / (r * r)).length()
+			return k0 * (k0 - 1.0) / maxf(k1, 0.0001)
+		"capsule":
+			var a: Vector3 = s.a
+			var ab: Vector3 = (s.b as Vector3) - a
+			var t := clampf((p - a).dot(ab) / ab.length_squared(), 0.0, 1.0)
+			return (p - (a + ab * t)).length() - float(s.r)
+		"box":
+			var q := ((p - (s.at as Vector3)).abs() - (s.half as Vector3))
+			var rounding: float = s.get("round", 0.0)
+			return q.max(Vector3.ZERO).length() + minf(maxf(q.x, maxf(q.y, q.z)), 0.0) - rounding
 		"tube":
-			return absf(p.y) <= h.y and (p.x * p.x) / (h.x * h.x) + (p.z * p.z) / (h.z * h.z) <= 1.0
-	return false
+			var q := _axis(p - (s.at as Vector3), s.get("axis", "y"))
+			var dx := Vector2(q.x, q.z).length() - float(s.r)
+			var dy := absf(q.y) - float(s.h) / 2.0
+			return minf(maxf(dx, dy), 0.0) + Vector2(maxf(dx, 0.0), maxf(dy, 0.0)).length()
+		"ring":
+			var q := _axis(p - (s.at as Vector3), s.get("axis", "y"))
+			return Vector2(Vector2(q.x, q.z).length() - float(s.R), q.y).length() - float(s.r)
+	return INF
 
 
-## Common gear: worn through in spots, and grimy.
+## p turned so the shape's axis lies along y.
+static func _axis(p: Vector3, axis: String) -> Vector3:
+	match axis:
+		"x":
+			return Vector3(p.y, p.x, p.z)
+		"z":
+			return Vector3(p.x, p.z, p.y)
+	return p
+
+
+static func _bounds(s: Dictionary) -> AABB:
+	var pad := Vector3.ONE * float(s.get("blend", 0.012))
+	match s.kind:
+		"ball":
+			return AABB(s.at - s.r - pad, (s.r + pad) * 2.0)
+		"capsule":
+			var r := Vector3.ONE * float(s.r) + pad
+			var lo: Vector3 = (s.a as Vector3).min(s.b)
+			var hi: Vector3 = (s.a as Vector3).max(s.b)
+			return AABB(lo - r, hi - lo + r * 2.0)
+		"box":
+			var h: Vector3 = s.half + Vector3.ONE * float(s.get("round", 0.0)) + pad
+			return AABB(s.at - h, h * 2.0)
+	var big := Vector3.ONE * (maxf(float(s.get("R", 0.0)) + float(s.get("r", 0.0)), maxf(float(s.get("r", 0.0)), float(s.get("h", 0.0)))) + pad.x)
+	return AABB(s.at - big, big * 2.0)
+
 static func _tatter(cells: Dictionary) -> void:
 	var holes: Array = []
 	for c: Vector3i in cells:
@@ -163,6 +319,8 @@ static func _open_sides(cells: Dictionary, c: Vector3i) -> int:
 	return open
 
 
+
+
 static func _mesh(cells: Dictionary, cube: float, rarity: String) -> ArrayMesh:
 	var verts := PackedVector3Array()
 	var normals := PackedVector3Array()
@@ -174,6 +332,8 @@ static func _mesh(cells: Dictionary, cube: float, rarity: String) -> ArrayMesh:
 	]
 	var cell := Vector3.ONE * cube
 	for c: Vector3i in cells:
+		if _open_sides(cells, c) == 0:
+			continue
 		var tint := _shade(cells, c, rarity)
 		var center := (Vector3(c) + Vector3(0.5, 0.5, 0.5)) * cube
 		for face in faces:
@@ -189,28 +349,34 @@ static func _mesh(cells: Dictionary, cube: float, rarity: String) -> ArrayMesh:
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 	var material := StandardMaterial3D.new()
 	material.vertex_color_use_as_albedo = true
-	material.roughness = 0.8 if rarity in ["common", "uncommon"] else 0.6
+	material.roughness = 0.85 if rarity in ["common", "uncommon"] else 0.65
 	mesh.surface_set_material(0, material)
 	return mesh
 
 
-## A cube's shade: a little noise, darker on edges and corners (cleaner at
-## higher rarities).
+## A cube's shade: a little noise, darker in creases (where the surface
+## folds in), a touch lighter on top.
 static func _shade(cells: Dictionary, c: Vector3i, rarity: String) -> Color:
 	var color: Color = cells[c]
 	var noise := Voxel._hash(c.x, c.y, c.z, 1)
-	var spread := 0.1 if rarity in ["common", "uncommon"] else 0.06
+	var spread := 0.08 if rarity in ["common", "uncommon"] else 0.05
 	color = color.darkened(noise * spread) if noise > 0.5 else color.lightened((0.5 - noise) * spread)
-	var open := _open_sides(cells, c)
-	if open >= 3:
-		color = color.darkened(0.18)
-	elif open == 2:
-		color = color.darkened(0.08)
+	# How enclosed the cube is: count filled cubes in a 5x5x5 block round it.
+	var around := 0
+	for dx in range(-2, 3):
+		for dy in range(-2, 3):
+			for dz in range(-2, 3):
+				if cells.has(c + Vector3i(dx, dy, dz)):
+					around += 1
+	var enclosed := around / 125.0
+	if enclosed > 0.55:
+		color = color.darkened(clampf((enclosed - 0.55) * 1.4, 0.0, 0.45))
+	elif enclosed < 0.4:
+		color = color.lightened(clampf((0.4 - enclosed) * 0.3, 0.0, 0.08))
+	if not cells.has(c + Vector3i(0, 1, 0)):
+		color = color.lightened(0.03)
 	return color
 
-
-## Glowing specks just off the surface: small purple ones (epic), more and
-## bigger gold ones (legendary).
 static func _sparkles(cells: Dictionary, cube: float, rarity: String) -> Node3D:
 	var node := Node3D.new()
 	node.name = "Sparkles"
@@ -220,8 +386,13 @@ static func _sparkles(cells: Dictionary, cube: float, rarity: String) -> Node3D:
 	material.emission_enabled = true
 	material.emission = SPARKLE[rarity]
 	material.emission_energy_multiplier = 2.5 if rarity == "legendary" else 1.6
-	var chance := 0.09 if rarity == "legendary" else 0.05
-	var size := cube * (0.7 if rarity == "legendary" else 0.5)
+	# A set number of specks, whatever the cube size: 14 epic, 26 legendary.
+	var surface := 0
+	for c: Vector3i in cells:
+		if _open_sides(cells, c) > 0:
+			surface += 1
+	var chance := (26.0 if rarity == "legendary" else 14.0) / maxf(surface, 1.0)
+	var size := 0.011 if rarity == "legendary" else 0.008
 	var mesh := BoxMesh.new()
 	mesh.size = Vector3.ONE * size
 	mesh.material = material
@@ -232,7 +403,7 @@ static func _sparkles(cells: Dictionary, cube: float, rarity: String) -> Node3D:
 			if not cells.has(c + n):
 				var speck := MeshInstance3D.new()
 				speck.mesh = mesh
-				speck.position = (Vector3(c) + Vector3(0.5, 0.5, 0.5) + Vector3(n) * 0.75) * cube
+				speck.position = (Vector3(c) + Vector3(0.5, 0.5, 0.5)) * cube + Vector3(n) * (cube * 0.5 + size * 0.4)
 				speck.rotation = Vector3(0.6, 0.8, 0.0)
 				node.add_child(speck)
 				break
