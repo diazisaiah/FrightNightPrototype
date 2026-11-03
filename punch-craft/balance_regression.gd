@@ -794,6 +794,16 @@ func _test_class_balance() -> void:
 	_check(Cards.rarity_weight("common", 1) == 1.0 and Cards.rarity_weight("legendary", 1) < Cards.rarity_weight("legendary", 20)
 			and is_equal_approx(Cards.rarity_weight("epic", Cards.RARITY_FULL_LEVEL), 1.0) and Cards.rarity_weight("epic", 50) > 1.0,
 			"Rare, epic and legendary cards come up less at low levels and more at high ones")
+	for division in range(2, Progression.TIER_COUNT + 1):
+		var start := PowerRating.arena_power(division, 1)
+		var top := PowerRating.arena_power(division, Progression.BOUTS_PER_DIVISION)
+		_check(abs(start - PowerRating.contender(division - 2)) <= 1 and abs(top - PowerRating.contender(division - 1)) <= 1,
+				"Arena division %d builds from the last contender (%d) to its own (%d), got %d to %d" % [division,
+				PowerRating.contender(division - 2), PowerRating.contender(division - 1), start, top])
+	for tier in range(1, Progression.TIER_COUNT + 1):
+		var first := Progression.crypt_start_floor(tier)
+		_check(abs(PowerRating.crypt_power(first) - roundi(PowerRating.crypt_pair_power(tier))) <= 1,
+				"Crypt floors %d-%d recommend 1.3x their contender, rooms and boss together" % [first, first + 1])
 	var locked: Dictionary = Cards.info("berserker", "strike")
 	_check(not Cards.available(locked, {}, "berserker", 1) and Cards.available(locked, {}, "berserker", 5),
 			"A card that upgrades a loadout ability isn't drawn until the ability is unlocked")

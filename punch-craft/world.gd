@@ -421,11 +421,17 @@ func _night_scaling(night := -1) -> Dictionary:
 		var top := Progression.arena_position(_division, Progression.BOUTS_PER_DIVISION)
 		var hard := Progression.arena_difficulty(_division, Progression.BOUTS_PER_DIVISION)
 		var scaling := Progression.enemy_scaling(top, hard)
-		var growth := Progression.endless_growth(_wave, Progression.ENDLESS_RAMP_WAVES)
+		var growth := Progression.endless_growth(_wave, Progression.ENDLESS_RAMP_WAVES) * PowerRating.arena_shift(_division, Progression.BOUTS_PER_DIVISION)
 		scaling.hp *= growth
 		scaling.damage *= growth
 		return scaling
-	return Progression.enemy_scaling(_position(night), Progression.arena_difficulty(_division, _night if night < 0 else night))
+	var bout := _night if night < 0 else night
+	var built := Progression.enemy_scaling(_position(night), Progression.arena_difficulty(_division, bout))
+	# Divisions build up to their contender (PowerRating.arena_shift).
+	var shift := PowerRating.arena_shift(_division, bout)
+	built.hp *= shift
+	built.damage *= shift
+	return built
 
 
 func _boss_scaling() -> Dictionary:

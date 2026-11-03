@@ -210,13 +210,16 @@ static func contender_unshifted(index: int) -> int:
 
 ## The power shift (2026-11-03, the Rebalance plan's boss power targets):
 ## contenders sit at CONTENDER_POWER (x2.3 a tier) instead of their par's own
-## rating, and Crypt floor bosses at CRYPT_BOSS_POWER (1.3x the Bellman, then
-## x2.5 a tier). A boss's HP and damage both take the shift, so its POWER
+## rating, and Crypt floor bosses at crypt_boss_power. A boss's HP and damage both take the shift, so its POWER
 ## (sqrt of offense x defense) moves by exactly that much.
 ## 2026-11-03 (second pass): the Bellman 850 -> 500 and Crypt floors 1-2
 ## 1,105 -> 650; the first pass was too steep.
 const CONTENDER_POWER := [500, 1950, 4500, 10300, 23800]
-const CRYPT_BOSS_POWER := [650, 2760, 6900, 17300, 43200]
+## Crypt pairs (2026-11-03, third pass): a pair recommends CRYPT_OVER_CONTENDER
+## x the contender who opens it (650 for floors 1-2 after the Bellman's 500),
+## rooms and boss together; the floor boss gets what the rooms leave.
+const CRYPT_OVER_CONTENDER := 1.3
+const CRYPT_BOSS_FLOOR := 0.3
 static var _neutral_cache := {}
 
 
@@ -229,83 +232,159 @@ static func contender_shift(index: int) -> float:
 ## A Crypt floor boss's HP and damage multiplier: its tier's target over what
 ## the monsters it's built from (Progression.par_at(difficulty)) are worth.
 static func crypt_boss_shift(floor_number: int, difficulty: float) -> float:
-	var tier := clampi(ceili(clampi(floor_number, 1, Progression.crypt_last_floor()) / float(Progression.FLOORS_PER_TIER)), 1, CRYPT_BOSS_POWER.size())
 	var unshifted := climb_power(minf(difficulty, Progression.TIER_COUNT))
-	return CRYPT_BOSS_POWER[tier - 1] / maxf(unshifted, 1.0)
+	return crypt_boss_power(_crypt_tier(floor_number)) / maxf(unshifted, 1.0)
 
 
-## Recommended POWER for an Arena bout (2026-11-03): you fight the whole bar
-## in a row, in groups, then the Grave Champion. So it's the POWER of every
-## spawn added up (ARENA_GROUP of them count as one fight) plus the
-## Champion's. A spawn is worth what it's built from (climb_power) times its
+## A Crypt tier's recommendation (its pair, started on its first floor).
+static func crypt_pair_power(tier: int) -> float:
+	return CRYPT_OVER_CONTENDER * CONTENDER_POWER[clampi(tier, 1, CONTENDER_POWER.size()) - 1]
+
+
+## A Crypt tier's floor boss POWER: the pair's recommendation less what its
+## first floor's rooms are worth (at least CRYPT_BOSS_FLOOR of it).
+static func crypt_boss_power(tier: int) -> float:
+	var key := "boss%d" % tier
+	if not _arena_cache.has(key):
+		var first := Progression.crypt_start_floor(tier)
+		var pair := crypt_pair_power(tier)
+		_arena_cache[key] = maxf(pair - _crypt_rooms(first, first), pair * CRYPT_BOSS_FLOOR)
+	return _arena_cache[key]
+
+
+static func _crypt_tier(floor_number: int) -> int:
+	return clampi(ceili(clampi(floor_number, 1, Progression.crypt_last_floor()) / float(Progression.FLOORS_PER_TIER)), 1, CONTENDER_POWER.size())
+
+
+## Recommended POWER for an Arena bout or Crypt floor (2026-11-03): you
+## fight every monster in a row, in groups, then the boss. So it's the POWER
+## of every spawn added up (GROUP_SIZE of them count as one fight) plus the
+## boss's. A spawn is worth what it's built from (climb_power) times its
 ## weight against a plain zombie: its kind's HP and damage (veterans by the
-## tier's share), the bar's growth, armor, elites and champions.
-const ARENA_GROUP := 35.0
-## [HP, damage] of each Arena monster and its veteran (mirrors the scenes;
-## the zombie is the 1.0 reference).
-const ARENA_MONSTERS := {
+## tier's share), growth, armor, elites and champions.
+const GROUP_SIZE := 35.0
+## [HP, damage] of each monster and its veteran (mirrors the scenes; the
+## zombie is the 1.0 reference).
+const MONSTERS := {
 	"zombie": [20.0, 6.0], "skeleton": [14.0, 5.0], "runner": [18.0, 7.0], "hulk": [60.0, 12.0],
 	"brawler": [40.0, 6.0], "mage": [16.0, 6.0], "priest": [22.0, 6.0], "armor": [45.0, 11.0],
+	"shieldbearer": [50.0, 9.0], "wraith": [34.0, 8.0], "lich": [70.0, 8.0],
 }
-const ARENA_VETERANS := {
+const VETERAN_MONSTERS := {
 	"zombie": [55.0, 8.0], "skeleton": [22.0, 6.0], "runner": [26.0, 8.0], "hulk": [110.0, 10.0],
-	"brawler": [62.0, 7.5], "mage": [26.0, 8.5],
+	"brawler": [62.0, 7.5], "mage": [26.0, 8.5], "shieldbearer": [75.0, 10.5], "wraith": [50.0, 9.5],
 }
 ## Weight of an armored spawn (about double the HP to chew through), an elite
 ## (x2 HP and a trait) and a champion (x3.5 HP and two traits).
 const ARMORED_WEIGHT := 1.4
 const ELITE_WEIGHT := 1.6
 const CHAMPION_WEIGHT := 2.3
+static var _arena_cache := {}
 
 
+## Arena divisions build up to their contender (2026-11-03): from the Bone
+## Division on, bout 1 recommends the contender you just beat and bout 3 this
+## division's, geometric between. The Gravedigger keeps its own climb (to
+## about the Bellman). arena_shift scales the bout's monsters and Grave
+## Champion (HP and damage) to get there.
 static func arena_power(division: int, bout: int) -> int:
+	return roundi(arena_power_unshifted(division, bout) * arena_shift(division, bout))
+
+
+static func arena_shift(division: int, bout: int) -> float:
+	if division <= 1:
+		return 1.0
+	var key := "shift%d_%d" % [division, bout]
+	if not _arena_cache.has(key):
+		var low := float(CONTENDER_POWER[clampi(division - 2, 0, CONTENDER_POWER.size() - 1)])
+		var high := float(CONTENDER_POWER[clampi(division - 1, 0, CONTENDER_POWER.size() - 1)])
+		var steps := float(Progression.BOUTS_PER_DIVISION - 1)
+		var target := low * pow(high / low, clampf((bout - 1) / steps, 0.0, 1.0))
+		_arena_cache[key] = target / maxf(arena_power_unshifted(division, bout), 1.0)
+	return _arena_cache[key]
+
+
+## A bout's recommendation from its monsters as they're built (no shift).
+static func arena_power_unshifted(division: int, bout: int) -> float:
+	var key := "raw%d_%d" % [division, bout]
+	if _arena_cache.has(key):
+		return _arena_cache[key]
 	var world: GDScript = load("res://world.gd")
 	var base := climb_power(Progression.arena_difficulty(division, bout))
 	var first_night := division == 1 and bout == 1
+	var types: Dictionary = world.ENEMY_TYPES
+	if first_night:
+		types = {}
+		for kind in world.FIRST_NIGHT.types:
+			types[kind] = world.ENEMY_TYPES[kind]
 	var kills: int = world.FIRST_NIGHT.kills if first_night else world.KILLS_TO_BOSS
 	var total := 0.0
 	for i in kills:
 		var progress := (i + 0.5) / kills
-		total += _spawn_weight(world, division, progress, first_night)
+		var spawn := _kind_weight(types, progress, 0.0 if first_night else Veterans.share(division))
+		spawn *= sqrt((1.0 + world.HP_GROWTH * progress) * (1.0 + world.DAMAGE_GROWTH * progress))
+		if first_night:
+			spawn *= sqrt(world.FIRST_NIGHT.hp * world.FIRST_NIGHT.damage)
+		else:
+			spawn *= lerpf(1.0, ARMORED_WEIGHT, clampf((progress - world.ARMOR_START) * world.ARMOR_RATE, 0.0, world.MAX_ARMOR_CHANCE))
+			spawn *= 1.0 + world.ELITE_CHANCE[division - 1] * (ELITE_WEIGHT - 1.0) + world.CHAMPION_CHANCE[division - 1] * (CHAMPION_WEIGHT - 1.0)
+		total += spawn
 	var boss := base * (sqrt(world.FIRST_NIGHT.boss_hp * world.FIRST_NIGHT.boss_damage) if first_night else 1.0)
-	return roundi(base * total / ARENA_GROUP + boss)
+	_arena_cache[key] = base * total / GROUP_SIZE + boss
+	return _arena_cache[key]
 
 
-## The expected weight of one spawn at this point of the bar.
-static func _spawn_weight(world: GDScript, division: int, progress: float, first_night: bool) -> float:
+## Recommended POWER for a Crypt floor, starting a run on start_floor (the
+## floor itself when not given): its four fight rooms (3 + depth + a monster
+## a floor each, one elite) as a group, plus its boss (crypt_boss_power). The
+## endless floors grow both like the monsters do.
+static func crypt_power(floor_number: int, start_floor := -1) -> int:
+	if start_floor < 0:
+		start_floor = floor_number
+	var boss: float = crypt_boss_power(_crypt_tier(floor_number)) * Progression.crypt_endless_growth(floor_number, 1.0)
+	return roundi(_crypt_rooms(floor_number, start_floor) + boss)
+
+
+## A Crypt floor's rooms as one group's POWER.
+static func _crypt_rooms(floor_number: int, start_floor: int) -> float:
+	var dungeon: GDScript = load("res://dungeon.gd")
+	var world: GDScript = load("res://world.gd")
+	var types: Dictionary = world.ENEMY_TYPES.duplicate()
+	types.merge(dungeon.CRYPT_ENEMY_TYPES)
+	var veteran_share := Veterans.share(ceili(floor_number / float(Progression.FLOORS_PER_TIER)))
+	var total := 0.0
+	for depth in range(1, dungeon.MAIN_ROOMS - 1):
+		var along := float(depth - 1) / maxf(1.0, dungeon.MAIN_ROOMS - 3)
+		var progress := clampf(along * dungeon.FLOOR_PROGRESS_SPAN + dungeon.FLOOR_PROGRESS_STEP * (floor_number - 1), 0.0, 1.0)
+		var base := climb_power(Progression.crypt_difficulty(floor_number, start_floor, progress)) * Progression.crypt_endless_growth(floor_number, progress)
+		var spawn := _kind_weight(types, progress, veteran_share)
+		spawn *= lerpf(1.0, ARMORED_WEIGHT, clampf((progress - 0.1) * 0.8, 0.0, 0.6))
+		var count := mini(dungeon.ROOM_ENEMIES_BASE + depth + dungeon.ROOM_ENEMIES_PER_FLOOR * (floor_number - 1), dungeon.ROOM_ENEMIES_MAX)
+		total += base * spawn * count
+		if depth == dungeon.ELITE_MIN_DEPTH:
+			total += base * spawn * (ELITE_WEIGHT - 1.0)  # The floor's elite.
+	return total / GROUP_SIZE
+
+
+## The average weight of a spawn from these types at this progress (by their
+## spawn weights), veterans mixed in by their share.
+static func _kind_weight(types: Dictionary, progress: float, veteran_share: float) -> float:
 	var kind_total := 0.0
 	var weight_total := 0.0
-	var veteran_share := Veterans.share(division)
-	for kind in world.ENEMY_TYPES:
-		var entry: Dictionary = world.ENEMY_TYPES[kind]
-		if float(entry.unlock) > progress or (first_night and not kind in world.FIRST_NIGHT.types):
+	for kind in types:
+		var entry: Dictionary = types[kind]
+		if float(entry.unlock) > progress or not MONSTERS.has(kind):
 			continue
-		var plain := _monster_weight(ARENA_MONSTERS[kind])
-		var weight := plain
-		if not first_night and ARENA_VETERANS.has(kind):
-			weight = lerpf(plain, _monster_weight(ARENA_VETERANS[kind]), veteran_share)
+		var weight := _monster_weight(MONSTERS[kind])
+		if VETERAN_MONSTERS.has(kind):
+			weight = lerpf(weight, _monster_weight(VETERAN_MONSTERS[kind]), veteran_share)
 		kind_total += float(entry.weight) * weight
 		weight_total += float(entry.weight)
-	var spawn := kind_total / maxf(weight_total, 0.001)
-	spawn *= sqrt((1.0 + world.HP_GROWTH * progress) * (1.0 + world.DAMAGE_GROWTH * progress))
-	if first_night:
-		return spawn * sqrt(world.FIRST_NIGHT.hp * world.FIRST_NIGHT.damage)
-	var armored := clampf((progress - world.ARMOR_START) * world.ARMOR_RATE, 0.0, world.MAX_ARMOR_CHANCE)
-	spawn *= lerpf(1.0, ARMORED_WEIGHT, armored)
-	var elite: float = world.ELITE_CHANCE[division - 1]
-	var champion: float = world.CHAMPION_CHANCE[division - 1]
-	return spawn * (1.0 + elite * (ELITE_WEIGHT - 1.0) + champion * (CHAMPION_WEIGHT - 1.0))
+	return kind_total / maxf(weight_total, 0.001)
 
 
 static func _monster_weight(stats: Array) -> float:
-	return sqrt(stats[0] / ARENA_MONSTERS.zombie[0] * stats[1] / ARENA_MONSTERS.zombie[1])
-
-
-## Recommended POWER for a Crypt floor: its boss's (CRYPT_BOSS_POWER, growing
-## on the endless floors like the monsters do).
-static func crypt_power(floor_number: int) -> int:
-	var tier := clampi(ceili(clampi(floor_number, 1, Progression.crypt_last_floor()) / float(Progression.FLOORS_PER_TIER)), 1, CRYPT_BOSS_POWER.size())
-	return roundi(CRYPT_BOSS_POWER[tier - 1] * Progression.crypt_endless_growth(floor_number, 1.0))
+	return sqrt(stats[0] / MONSTERS.zombie[0] * stats[1] / MONSTERS.zombie[1])
 
 
 ## Par's POWER at tier t with no class (0 = a fresh fighter).
