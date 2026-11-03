@@ -2150,11 +2150,19 @@ A possible phone / tablet version. Nothing is built. It comes after the current 
   - **Combat** (an enemy within about 12 m, or a fight room / Arena / Dead League bout is active): the view locks on, there is no look stick, and both halves of the screen are punch zones.
   - **Exploring** (no enemies near): the right stick appears for free look and the punch zones go away.
 - **Who gets locked:** the enemy currently taking its turn (the one throwing punches; `Enemy.take_turn` / `has_turn`) first, otherwise the nearest enemy in front of you within about 10 m. When the target dies, the next one locks automatically after a short beat. The lock drops if the target is more than about 14 m away or out of sight for a second or two.
-- **Switching targets:** a small button near the right thumb cycles through enemies. Tapping an enemy is not an option, because taps are punches.
+- **Switching targets:** automatic by default, plus a small button near the right thumb that cycles through enemies by hand. Tapping an enemy is not an option, because taps are punches.
 - **Camera motion:** the body turns toward the target (smoothed, about 500 degrees a second, with a small dead zone so it doesn't twitch), and the pitch eases to the target's aim point. Aim points are per enemy: the head by default, the glowing core for the Bone Colossus (its core takes double damage), the middle for flying Wraiths. Offer a "Lock-on strength" setting (off / soft / hard) and a "Reticle" setting (a ring and health bar on the locked enemy).
 - **Punches:** while locked, a punch passes the locked enemy as `forced` if it is within reach plus a small margin and within about 35 degrees of your facing; otherwise it whiffs as today. Optional short auto-step toward the target (up to about 0.6 m) when it's just out of reach.
 - **Movement:** with the view locked, the move stick strafes around the target, so rolls and slips orbit it the way they do now. Sprinting off in the open turns the view toward your movement, and the lock drops when you break away.
 - **What doesn't change:** combo rules, set-ups, counters, damage, the Temporal Break, and bosses' tells. Arrow slips still work (a ranged enemy locks when it is the nearest or the attacker).
+- **Decisions (2026-11-02):**
+  - **Three lock-on levels to test**, aiming for a blend of soft and hard (starting numbers, all to be tuned):
+    - **Soft:** a gentle pull toward the target that eases off whenever you steer yourself (about 200 degrees a second; punches land within 25 degrees of facing; no auto-step).
+    - **Blend (the likely default):** the body turns toward the target on its own, smoothed (about 500 degrees a second; 35 degrees; a short auto-step, about 0.4 m).
+    - **Hard:** snaps to the target and holds it (about 900 degrees a second; 45 degrees; auto-step about 0.6 m).
+  - **Target cycling:** test both auto (the attacker, then the nearest) and manual (the cycle button), and compare them.
+  - **Desktop and controller:** lock-on ships there as an option too, with the same three levels.
+  - **Timing:** none of this starts until the Crypt revamp and its balance patches are done.
 - **Build and test order:**
   1. **Desktop prototype first, in the playground:** a lock-on toggle key and a controller button, so it can be tuned with a mouse before any touch layer exists. It may also be worth shipping on desktop and controller as an option.
   2. **Touch layer:** the sticks, buttons and punch gestures on top of it.
