@@ -229,7 +229,9 @@ const ANSWERS := {
 # length on impact. heavy: hooks/uppercuts, which stagger when set up.
 const PUNCHES := {
 	"jab": {"mult": 1.0, "knuckle_cost": 1.0, "impact": 0.09, "cooldown": 0.28, "shake": 0.015, "knockback": 2.0, "hitstop": 0.03, "heavy": false},
-	"cross": {"mult": 1.3, "knuckle_cost": 1.0, "impact": 0.11, "cooldown": 0.34, "shake": 0.02, "knockback": 3.0, "hitstop": 0.04, "heavy": false},
+	# (2026-11-02: the cross had a slower windup and a longer cooldown than
+	# the jab, which made alternating hands feel lopsided; both hands match now.)
+	"cross": {"mult": 1.3, "knuckle_cost": 1.0, "impact": 0.09, "cooldown": 0.28, "shake": 0.02, "knockback": 3.0, "hitstop": 0.04, "heavy": false},
 	"hook": {"mult": 2.0, "knuckle_cost": 2.0, "impact": 0.18, "cooldown": 0.5, "shake": 0.035, "knockback": 5.0, "hitstop": 0.07, "heavy": true},
 	"uppercut": {"mult": 2.6, "knuckle_cost": 3.0, "impact": 0.22, "cooldown": 0.62, "shake": 0.045, "knockback": 4.0, "hitstop": 0.08, "heavy": true},
 }

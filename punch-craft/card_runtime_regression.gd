@@ -670,6 +670,23 @@ func _test_tutorial_fights() -> void:
 	training._start_step(first_fight + 1)
 	await get_tree().process_frame
 	_check(training._fighters.size() == 1 and training._fighters[0] is Skeleton, "Fight 2: a skeleton")
+	# Rolling under an arrow counts as a slip for this step (2026-11-02).
+	var pro_mode: String = Settings.get_value("assist_mode")
+	training._player._dodged_attack = "arrow"
+	training._on_dodged("roll_left")
+	training._player._dodged_attack = ""
+	_check(training._progress.get("slip", 0.0) == 1.0, "A roll under an arrow counts as a slip (%s)" % str(training._progress.get("slip", 0.0)))
+	# Knocking the skeleton out before the slips doesn't strand the step: another one comes in.
+	var skeleton: Enemy = training._fighters[0]
+	for i in Training.FIGHT_HITS:
+		skeleton.take_hit(0.01, skeleton.global_position + Vector3(0, 1.0, 0), Vector3.ZERO, false)
+	_check(skeleton.is_dead() and not training._step_done, "The skeleton falls before the second slip: the step isn't done")
+	await get_tree().create_timer(1.4, false).timeout
+	_check(training._fighters.size() == 1 and not training._fighters[0].is_dead() and training._fighters[0] != skeleton,
+			"Another skeleton comes in so the slips can be finished")
+	Settings.values["assist_mode"] = pro_mode
+	_check(Player.PUNCHES.jab.impact == Player.PUNCHES.cross.impact and Player.PUNCHES.jab.cooldown == Player.PUNCHES.cross.cooldown,
+			"Jab and cross have the same windup and cooldown")
 	training._start_step(first_fight + 2)
 	await get_tree().process_frame
 	_check(training._fighters.size() == 1 and training._fighters[0] is Brawler, "Fight 3: a brawler")

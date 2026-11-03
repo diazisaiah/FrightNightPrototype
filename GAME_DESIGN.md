@@ -1957,6 +1957,8 @@ Notes from the user's playtest week, put in order. Nothing here is built yet. Mo
 - **Rolls dodge projectiles:** arrows and fireballs (bolts, skull shots) can be rolled under as well as slipped (`Player.ANSWERS`).
 - **Mashing alternates:** the punch buffer holds one press per hand; when the cooldown ends, the other hand from the last punch goes first. Before, one slot kept only the latest press, so fast alternating often threw the same hand twice.
 - Checked in `balance_regression` (keys, hints, defaults, projectile answers) and `card_runtime_regression` (Shift + D, controller heavies, the buffer).
+- **Tutorial fixes (same day):** rolling under an arrow counts as a slip in SLIP THE ARROWS (it only counted for ROLL steps, so rolled arrows never filled the goal); and a fight step whose monsters are all down before the other goals are met (the skeleton knocked out before its two slips, the brawler before three dodges) brings in another set after a second ("ANOTHER ONE!") instead of stranding the step with nothing left to dodge.
+- **Cross matches the jab:** the cross had a slower windup (0.11 s) and a longer cooldown (0.34 s) than the jab (0.09 s, 0.28 s), which also made its animation slower. Both straights use the jab's timing now. The cross still hits for x1.3, so mashing jab / cross deals about 11% more damage per second than before; watch it in the power balance.
 
 ## Rebalance plan [Planned, 2026-11-01]
 
@@ -1978,6 +1980,13 @@ Notes from the user's playtest week, put in order. Nothing here is built yet. Mo
 - **Shield bearers and similar:** take 10-20% damage from punches other than hooks; a real blocking animation.
 - **Card toggles:** disable a card's effect (auto-teleport, AoE, knockback); selecting a card to disable it is fine.
 - **Power upgrade costs** based on where they are unlocked.
+- **Dead League readiness warning (mini tutorial + dialogue):** the first time the Dead League opens, a freeze-frame mini tutorial (`tutorial.gd`, once per save) spotlights the POWER vs POWER tug-of-war bar. It says that you are probably not ready yet, and to come back after you've bought upgrades to get stronger. The fight button still works:
+  - First tap: "seriously you might want to get stronger first".
+  - Tap again: "alright but don't say I didn't warn you!", then the Bellman fight starts.
+  - Win: "wow that was impressive", and the achievement **Impress the Dev**.
+  - Lose: "told ya so".
+  - The lines show on the VS screen (`vs_intro.gd`) when the player goes straight back to the fight right after the Dead League tutorial.
+  - It also shows any time the player tries to fight while severely underpowered (the OUTMATCHED verdict, POWER under 0.7 of the contender's), not just right after the tutorial.
 - **Soul shop:** a 10-20 minute timer that grants one free refresh click (capped at one) instead of refreshing.
 - **Spawn rates:** hats more common; toilet rooms more common (now 1% a floor after the "overexerted" emote).
 - **The Stray's stomp:** a visible jump multiplier for chaining jumps, more damage per chained stomp; 8 jumps gives the 1up achievement and unlocks the plumber jump emote. Its upgrade widens the range (forgiveness for landing slightly off, not hitting several enemies) and improves the chain multiplier.
@@ -2092,7 +2101,11 @@ Notes from the user's playtest week, put in order. Nothing here is built yet. Mo
 - Mimics are less common, invincible while closed, and periodically open to show a mouth with a boxer tongue that throws a punch combo like other enemies; open, it's vulnerable but deadly.
 - Elite mimics replace cursed chests: a mimic reskin with champion effects and stats. Interacting shows "this is obviously a mimic, but a strong one..." with two choices: challenge it anyway, or back away. Beating it drops a max-level item for that floor, rolled from the one-rarity-up pool.
 
-**Toilet and merchant tie-in:** after the emote unlock, a toilet spawns in the merchant room 10% of the time; clog it and the merchant calls the plumber; once you beat the plumber he says "just go, I'll take care of it myself." Toilet rooms overall should also be more common.
+**Toilet and merchant tie-in:** a toilet spawns in the merchant room 10% of the time, even before the player has the poop emote (today the toilet room needs the "overexerted" emote and is 1% a floor); clog it and the merchant calls the plumber; once you beat the plumber he says "just go, I'll take care of it myself." Toilet rooms overall should also be more common. The player can go into the toilet room any time.
+- **Ask about the toilet:** when a merchant spawned with a toilet, talking to him shows an extra button to ask about it. The player says "why do you have a toilet... undead people can't poop." The merchant groans ("ughhhhhhhh... groooooannn"). Then the player says "oh yeah, he's undead."
+- **With the Fancy Bluetooth Headpiece on:** the merchant instead says "I just need some time for myself, ya know?" and the player says "the merchant is so real for that."
+- **New hat, Fancy Bluetooth Headpiece** (a scouter): "checks power levels and can translate anything!" It has no stat boost. Wearing it shows the POWER level of the enemy you are looking at, and it changes the merchant's toilet answer above.
+- **Clogging needs the poop emote:** the toilet can appear before the emote is unlocked, but the player can only clog it once they unlock the (secret) poop emote. Seeing a toilet and wondering "why", then finding the emote and wanting to try it, is the joke.
 
 **Item models:** every piece has its own 3D model, like hats (20 models). Each set has its own color. Wraps are cylinders with a thin partly unraveled loop sticking out the top. Rarity is a recolor of the same model: common is dull and dingy with tatter spots; uncommon is cleaner and muted; rare is full color; epic is saturated with small purple sparkles; legendary is saturated with dramatic gold sparkles. The sparkles are brighter on the purple and yellow sets so they don't vanish.
 

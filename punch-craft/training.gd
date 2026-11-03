@@ -312,9 +312,32 @@ func _start_fight(fight: Array) -> void:
 			if enemy is Boxer:
 				# A weak brawler: slow, clear tells.
 				enemy.windup_scale *= 1.5
-			enemy.died.connect(func(_e: Enemy) -> void: _add_progress("ko"))
+			enemy.died.connect(func(_e: Enemy) -> void:
+				_add_progress("ko")
+				_refill_fight(fight))
 			_fighters.append(enemy)
 			spot += 1
+
+
+## A fight step whose monsters are all down before the other goals are met
+## (the skeleton knocked out before its two slips) would be stuck with
+## nothing left to dodge: another set comes in.
+func _refill_fight(fight: Array) -> void:
+	var step := _step
+	if step < 0 or _step_done or not _plan[step].has("fight"):
+		return
+	await get_tree().create_timer(1.0).timeout
+	if _step != step or _step_done:
+		return
+	for enemy in _fighters:
+		if is_instance_valid(enemy) and not enemy.is_dead():
+			return
+	for enemy in _fighters:
+		if is_instance_valid(enemy):
+			enemy.queue_free()
+	_fighters.clear()
+	_hud.announce_small("ANOTHER ONE!", GOAL_COLOR)
+	_start_fight(fight)
 
 
 ## The fight's over (or skipped): its monsters go, the dummy comes back.
@@ -486,6 +509,10 @@ func _on_dodged(move: String) -> void:
 		_add_progress("slip")
 	elif move.begins_with("roll"):
 		_add_progress("roll")
+		# Rolling under an arrow or fireball is dodging it too (2026-11-02:
+		# rolls beat projectiles, and the slip-the-arrows step ignored them).
+		if _player._dodged_attack in ["arrow", "fireball"]:
+			_add_progress("slip")
 	elif move == "back_step":
 		_add_progress("back_step")
 
