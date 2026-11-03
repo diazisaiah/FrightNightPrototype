@@ -993,6 +993,11 @@ func blocks_punch(_punch_type: String, _counter: bool) -> bool:
 	return false
 
 
+## Share of a punch's damage that gets through a shield (1 = no shield).
+func shield_damage_scale(_punch_type: String, _counter: bool) -> float:
+	return 1.0
+
+
 ## Damage multiplier for a punch of this type hitting a weak spot (1 = none).
 ## Weak-spot hits also ignore armor.
 func weak_spot_multiplier(_punch_type: String) -> float:

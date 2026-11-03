@@ -358,7 +358,7 @@ func _animate(delta: float, speed: float) -> void:
 ## leg, torso, arm and head sizes, how it holds its guard, its idle.
 const SHAPES := [
 	{"foot": Vector3(0.26, 0.12, 0.36), "lower_leg": 0.42, "upper_leg": 0.4, "hip": 0.36, "torso_h": 0.81,
-		"shoulder": 0.9, "upper_arm": 0.36, "forearm": 0.32, "head": Vector3(0.4, 0.38, 0.38), "guard": 0.78, "style": "heavy"},
+		"shoulder": 0.9, "upper_arm": 0.36, "forearm": 0.32, "head": Vector3(0.4, 0.38, 0.38), "guard": 0.92, "style": "heavy"},
 	{"foot": Vector3(0.18, 0.1, 0.28), "lower_leg": 0.44, "upper_leg": 0.42, "hip": 0.3, "torso_h": 0.68,
 		"shoulder": 0.68, "upper_arm": 0.34, "forearm": 0.32, "head": Vector3(0.3, 0.3, 0.3), "guard": 0.92, "style": "float"},
 	{"foot": Vector3(0.16, 0.1, 0.26), "lower_leg": 0.43, "upper_leg": 0.42, "hip": 0.28, "torso_h": 0.6,
@@ -450,8 +450,9 @@ func _build_bellman() -> void:
 		_on("spine", _box(Vector3(0.46 - i * 0.04, 0.045, 0.05)), stone_light, Vector3(0, 1.17 + i * 0.085, -0.215))
 	_on("spine", _box(Vector3(0.06, 0.34, 0.05)), stone_light, Vector3(0, 1.3, -0.22))
 	for side: float in [-1.0, 1.0]:
-		_on("spine", _box(Vector3(0.2, 0.38, 0.44)), stone, Vector3(0.34 * side, 1.29, 0.02))
-	_on("spine", _box(Vector3(0.9, 0.5, 0.2)), stone_dark, Vector3(0, 1.3, 0.2))
+		# Slimmer and set back (2026-11-03): his forearms hung into them.
+		_on("spine", _box(Vector3(0.14, 0.38, 0.3)), stone, Vector3(0.31 * side, 1.29, 0.09))
+	_on("spine", _box(Vector3(0.62, 0.5, 0.2)), stone_dark, Vector3(0, 1.3, 0.2))
 	_on("spine", _box(Vector3(0.015, 0.3, 0.012)), molten, Vector3(0.12, 1.28, 0.306), Vector3(0, 0, -0.5))
 	_on("spine", _box(Vector3(0.015, 0.2, 0.012)), molten, Vector3(-0.2, 1.22, 0.306), Vector3(0, 0, 0.3))
 
@@ -463,9 +464,11 @@ func _build_bellman() -> void:
 		_on("chest", _box(Vector3(0.13, 0.015, 0.012)), molten, Vector3(0.2 * side, 1.55, -0.264), Vector3(0, 0, 0.35 * side))
 		_on("chest", _box(Vector3(0.32, 0.28, 0.08)), stone, Vector3(0.21 * side, 1.5, 0.31), Vector3(0, 0, 0.1 * side))
 		var s := "_l" if side < 0.0 else "_r"
-		_on("clavicle" + s, _box(Vector3(0.36, 0.26, 0.4)), stone, Vector3(0.47 * side, 1.66, 0))
-		_on("clavicle" + s, _box(Vector3(0.24, 0.12, 0.26)), stone_light, Vector3(0.5 * side, 1.82, 0.02), Vector3(0, 0, 0.2 * side))
-		_on("clavicle" + s, _box(Vector3(0.012, 0.16, 0.012)), molten, Vector3(0.42 * side, 1.66, -0.205), Vector3(0, 0, 0.4 * side))
+		# The pauldrons ride the upper arm (2026-11-03): raised for a slam, the
+		# arms went straight through them.
+		_on("upper_arm" + s, _box(Vector3(0.36, 0.26, 0.4)), stone, Vector3(0.47 * side, 1.66, 0))
+		_on("upper_arm" + s, _box(Vector3(0.24, 0.12, 0.26)), stone_light, Vector3(0.5 * side, 1.82, 0.02), Vector3(0, 0, 0.2 * side))
+		_on("upper_arm" + s, _box(Vector3(0.012, 0.16, 0.012)), molten, Vector3(0.42 * side, 1.66, -0.205), Vector3(0, 0, 0.4 * side))
 	_on("chest", _box(Vector3(0.03, 0.18, 0.02)), molten, Vector3(0, 1.56, -0.26))
 	_on("chest", _box(Vector3(0.9, 0.3, 0.2)), stone_dark, Vector3(0, 1.6, 0.2))
 	for i in 3:
@@ -908,6 +911,11 @@ const KITS := [["leap_slam"], ["charge", "skull_toss"], ["zones", "charge"], ["m
 ## brings them 12% sooner, the final bell 30% sooner.
 const SPECIAL_EVERY := [9.0, 6.5, 8.0, 9.0, 7.0]
 const FIRST_SPECIAL := 5.0
+
+
+## Charges can rebound off the ring's ropes (Boxer._rebound_off_ropes).
+func _ring_bounces() -> bool:
+	return true
 
 
 ## The ring is small and they fight up close: every move is always on, but

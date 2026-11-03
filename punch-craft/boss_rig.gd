@@ -357,19 +357,21 @@ func _pose_uppercut(action: String, u: float) -> void:
 ## offset (-z is forward); thigh, shin: added to both legs.
 const SWINGS := {
 	"jab": {
-		"arm": [Vector3(0.2, 0.25, 0.6), Vector3(1.5, -0.05, 0.05), Vector3(1.58, -0.1, 0.0)],
-		"fore": [Vector3(2.35, 0, 0), Vector3(0.05, 0, 0), Vector3(0.0, 0, 0)],
-		"chest": [Vector3(0.06, 0.32, 0.0), Vector3(-0.08, -0.3, 0.0), Vector3(-0.1, -0.38, 0.0)],
-		"pelvis": [Vector3(0, 0.1, 0), Vector3(0, -0.12, 0), Vector3(0, -0.15, 0)],
+		"arm": [Vector3(0.35, 0.25, 0.6), Vector3(1.5, -0.05, 0.05), Vector3(1.58, -0.1, 0.0)],
+		"fore": [Vector3(2.15, 0, 0), Vector3(0.05, 0, 0), Vector3(0.0, 0, 0)],
+		"chest": [Vector3(0.06, 0.12, 0.0), Vector3(-0.08, -0.14, 0.0), Vector3(-0.1, -0.18, 0.0)],
+		"pelvis": [Vector3(0, 0.04, 0), Vector3(0, -0.05, 0), Vector3(0, -0.06, 0)],
 		"hips": [Vector3(0, 0, 0.05), Vector3(0, 0, -0.08), Vector3(0, 0, -0.1)],
 	},
 	"cross": {
-		"arm": [Vector3(-0.4, 0.3, 0.65), Vector3(1.5, -0.15, -0.05), Vector3(1.6, -0.28, -0.1)],
-		"fore": [Vector3(2.25, 0, 0), Vector3(0.05, 0, 0), Vector3(0.0, 0, 0)],
-		"chest": [Vector3(0.12, 0.7, 0.0), Vector3(-0.1, -0.45, 0.0), Vector3(-0.16, -0.62, 0.0)],
-		"spine": [Vector3(0, 0.18, 0), Vector3(0, -0.12, 0), Vector3(0, -0.18, 0)],
-		"pelvis": [Vector3(0, 0.32, 0), Vector3(0, -0.25, 0), Vector3(0, -0.32, 0)],
-		"hips": [Vector3(0, -0.04, 0.11), Vector3(0, 0, -0.13), Vector3(0, -0.01, -0.16)],
+		# 2026-11-03: a straight right, not a hook: the elbow stays tucked and
+		# the waist barely turns (it was ~70 degrees of chest, spine and pelvis).
+		"arm": [Vector3(0.3, 0.25, 0.4), Vector3(1.5, -0.12, -0.02), Vector3(1.6, -0.2, -0.06)],
+		"fore": [Vector3(2.1, 0, 0), Vector3(0.05, 0, 0), Vector3(0.0, 0, 0)],
+		"chest": [Vector3(0.08, 0.2, 0.0), Vector3(-0.1, -0.22, 0.0), Vector3(-0.14, -0.28, 0.0)],
+		"spine": [Vector3(0, 0.05, 0), Vector3(0, -0.05, 0), Vector3(0, -0.07, 0)],
+		"pelvis": [Vector3(0, 0.08, 0), Vector3(0, -0.08, 0), Vector3(0, -0.1, 0)],
+		"hips": [Vector3(0, -0.02, 0.06), Vector3(0, 0, -0.12), Vector3(0, -0.01, -0.15)],
 	},
 	"hook": {
 		"arm": [Vector3(0.65, 0.65, 1.3), Vector3(1.35, -0.35, 0.85), Vector3(1.2, -0.8, 0.55)],
@@ -380,14 +382,14 @@ const SWINGS := {
 		"hips": [Vector3(0.07, -0.03, 0.06), Vector3(-0.04, 0, -0.07), Vector3(-0.06, 0, -0.08)],
 	},
 	"uppercut": {
-		"arm": [Vector3(-0.45, 0.15, 0.35), Vector3(1.55, -0.15, 0.15), Vector3(1.95, -0.2, 0.1)],
+		"arm": [Vector3(-0.3, 0.15, 0.5), Vector3(1.55, -0.15, 0.15), Vector3(1.95, -0.2, 0.1)],
 		"fore": [Vector3(1.35, 0, 0), Vector3(1.75, 0, 0), Vector3(1.5, 0, 0)],
-		"chest": [Vector3(-0.38, 0.42, 0.12), Vector3(0.15, -0.35, 0.0), Vector3(0.26, -0.42, 0.0)],
-		"spine": [Vector3(-0.15, 0.1, 0.05), Vector3(0.08, -0.08, 0), Vector3(0.12, -0.1, 0)],
+		"chest": [Vector3(-0.2, 0.42, 0.12), Vector3(0.15, -0.35, 0.0), Vector3(0.26, -0.42, 0.0)],
+		"spine": [Vector3(-0.06, 0.1, 0.05), Vector3(0.08, -0.08, 0), Vector3(0.12, -0.1, 0)],
 		"pelvis": [Vector3(0, 0.15, 0), Vector3(0, -0.2, 0), Vector3(0, -0.24, 0)],
-		"hips": [Vector3(0.03, -0.15, 0.05), Vector3(0, 0.03, -0.08), Vector3(0, 0.05, -0.08)],
-		"thigh": [Vector3(0.6, 0, 0), Vector3(-0.05, 0, 0), Vector3(-0.08, 0, 0)],
-		"shin": [Vector3(-0.95, 0, 0), Vector3(0.05, 0, 0), Vector3(0.05, 0, 0)],
+		"hips": [Vector3(0.03, -0.09, 0.05), Vector3(0, 0.03, -0.08), Vector3(0, 0.05, -0.08)],
+		"thigh": [Vector3(0.4, 0, 0), Vector3(-0.05, 0, 0), Vector3(-0.08, 0, 0)],
+		"shin": [Vector3(-0.65, 0, 0), Vector3(0.05, 0, 0), Vector3(0.05, 0, 0)],
 	},
 }
 
@@ -605,7 +607,8 @@ func _pose_sweep(side: float, wound: float, swung: float) -> void:
 	var s := "_l" if side < 0.0 else "_r"
 	_set_rot("upper_arm" + s, Vector3(0.9, 0, side * 1.35), wound)
 	_set_rot("forearm" + s, Vector3(0.15, 0, 0), wound)
-	_set_rot("upper_arm" + s, Vector3(1.45, side * 0.9, 0), swung)
+	# (2026-11-03: swings round in front, not through the chest.)
+	_set_rot("upper_arm" + s, Vector3(1.45, side * 0.5, side * 0.2), swung)
 	_set_rot("forearm" + s, Vector3(0.2, 0, 0), swung)
 	_add_rot("chest", Vector3(0, -side * 0.4 * wound + side * 0.45 * swung, 0))
 	_add_rot("pelvis", Vector3(0, -side * 0.15 * wound + side * 0.2 * swung, 0))

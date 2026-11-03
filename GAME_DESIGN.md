@@ -1972,6 +1972,22 @@ Notes from the user's playtest week, put in order. Nothing here is built yet. Mo
   - Tutorial COMBOS drills stay jab, cross, hook and jab, cross, hook, uppercut (each punch still grows the combo under these rules), and Pad Work builds only combos that grow with every punch (hands alternate, no kind of punch three times in a row, one double jab, hooks and uppercuts set up).
 - **Cross matches the jab:** the cross had a slower windup (0.11 s) and a longer cooldown (0.34 s) than the jab (0.09 s, 0.28 s), which also made its animation slower. Both straights use the jab's timing now. The cross still hits for x1.3, so mashing jab / cross deals about 11% more damage per second than before; watch it in the power balance.
 
+## Windups, arm placement and no clipping [Built 2026-11-03]
+
+**Rule (2026-11-03): no part of a monster's body or its gear (a shield, a weapon, a pauldron) passes through another part of its own body, in any pose.**
+
+- **Windups read by their waist turn:** jabs and crosses barely turn the waist, hooks turn it a lot with the arm out to the side and bent. Slams and uppercuts are unchanged in shape.
+  - **Boss rig** (`BossRig.SWINGS`, contenders, the Grave Champion, the Colossus): the cross wound up with about 70 degrees of chest, spine and pelvis twist (almost a hook's); now about 20, elbow tucked. The jab's twist is about a third of what it was.
+  - **Voxel boxers** (`Boxer.TORSO_POSES`): jab twist 0.14 to 0.06, cross 0.35 to 0.12, hooks 0.44 to 0.62.
+- **Arms in front of the body:**
+  - The boxers' guard carries the arms forward (`Boxer.GUARD_REACH`), and the loaded straights, the uppercut windup and the hook, haymaker, staff, slash and thrust swings were moved so the forearm, glove and weapon stay out of the chest and hips. Before, about 40% of a brawler's forearm sat inside its chest in every pose.
+  - The Grave Bruiser (veteran zombie) and the Bone Crusher had their shoulders inside their torsos: shoulders now sit outside and a little forward (`_build_arms`' `shoulder_forward`), their shoulder pads moved out with them.
+  - The Bellman: slimmer stone flanks and back plate, his pauldrons ride his upper arms (raised for a slam, the arms went through them), and a slightly higher guard.
+  - The rig's sweep swings round in front of the chest; the uppercut windup crouches and leans a little less (the off hand dipped into the hips).
+- **Shieldbearers:** the tower shield hangs upright, centered in front of the body (it hung off one side), and the sword arm waits low at the side instead of in a guard in front of the shield. Jabs, crosses and uppercuts into the shield deal 25% (`Shieldbearer.SHIELD_CHIP`) with a SHIELD tag and keep the combo going (they used to be stopped dead and break it). Hooks wrap round for full damage; counters and a staggered shieldbearer take full damage.
+- **Off the ropes:** a contender's Ghost Charge that reaches the ropes either rebounds 180 degrees back across the ring (OFF THE ROPES!, a new lane shows; at most once a charge) or ends dazed, 50/50 (`Boxer.RING_REBOUND_CHANCE`, only in the Dead League ring).
+- **How it was checked:** a dev probe posed every enemy and boss at each windup, contact and follow-through, and tested every forearm, glove and held-item vertex against the rest of the body's boxes. All boxers came in under 15% overlap; the one rig case left is the Bellman's off hand brushing his hip (16%) in the uppercut windup.
+
 ## Defense rework: the armor formula [Built 2026-11-03]
 
 **Why:** defense was 10 / (10 + defense) of every hit, and every enemy's damage was scaled to par's effective HP (knuckles x (10 + defense) / 10), which includes par's defense. Par's defense cancelled out: you took 20% of a Coffin King hit, but the hit was about 5x bigger for it. Upgrades read "65% damage taken" while enemies hit 4x harder.

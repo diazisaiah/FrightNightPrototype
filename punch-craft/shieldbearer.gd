@@ -1,28 +1,39 @@
 class_name Shieldbearer
 extends Boxer
-## A skeleton soldier behind a tower shield (Crypt). The shield stops jabs,
-## crosses and uppercuts from the front; hooks wrap around it, and any
-## counter gets through. It shoves with the shield (slip it, then counter)
-## and chops overhead with its blade (back step).
+## A skeleton soldier behind a tower shield (Crypt). Jabs, crosses and
+## uppercuts into the shield only deal SHIELD_CHIP of their damage (2026-11-03:
+## they used to be stopped dead); hooks wrap around it, and any counter gets
+## through. It shoves with the shield (slip it, then counter) and chops
+## overhead with its blade (back step).
 
 const COMBOS := [["bash"], ["bash"], ["bash", "bash"], ["slam"], ["bash", "slam"]]
 
 
-func blocks_punch(punch_type: String, counter: bool) -> bool:
+const SHIELD_CHIP := 0.25
+
+
+func shield_damage_scale(punch_type: String, counter: bool) -> float:
 	# Staggered, it's dropped its guard.
-	return not counter and punch_type != "hook" and _stagger_timer <= 0.0
+	return SHIELD_CHIP if not counter and punch_type != "hook" and _stagger_timer <= 0.0 else 1.0
 
 
 ## The shield arm swings in across the body and stays upright: the shield
 ## covers it, facing the player. A bash shoves it straight out, still upright.
 func _arm_pose(arm: String) -> Array:
 	if arm != "left":
+		# 2026-11-03: between attacks the sword arm waits low at the side,
+		# behind the shield, instead of in a boxer's guard in front of it.
+		if not (_state in [State.WINDUP, State.STRIKE]) or not _uses_arm(arm):
+			return [Vector3(-1.25, -0.25, 0), 0.1, Vector3(1.1, 0, 0)]
 		return super(arm)
+	# 2026-11-03: the shield centered in front of the body (it hung off to
+	# one side and left half the body open). It hangs upright while the upper
+	# arm's pitch plus the elbow's bend is about 1.5.
 	if _attack == "bash" and _state == State.STRIKE:
-		return [Vector3(-0.3, -0.55, 0), -0.45, Vector3(1.8, 0, 0)]
+		return [Vector3(-0.65, -0.3, 0), -0.75, Vector3(2.15, 0, 0)]
 	if _attack == "bash" and _state == State.WINDUP:
-		return [Vector3(-0.7, -0.7, 0), 0.25, Vector3(2.1, 0, 0)]
-	return [Vector3(-0.5, -0.8, 0), 0.0, Vector3(2.0, 0, 0)]
+		return [Vector3(-0.8, -0.4, 0), -0.25, Vector3(2.3, 0, 0)]
+	return [Vector3(-0.95, -0.3, 0), -0.38, Vector3(2.45, 0, 0)]
 
 
 func _pick_combo() -> Array:

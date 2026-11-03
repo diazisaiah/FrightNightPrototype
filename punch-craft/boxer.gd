@@ -65,6 +65,8 @@ const FEINTS := {
 	"uppercut": ["jab", "cross", "left_hook", "right_hook"],
 }
 const FEINT_WINDUP := 0.3
+## The guard's arms sit this far forward of the shoulders (- = forward).
+const GUARD_REACH := -0.14
 const UPPER_ARM_LENGTH := 0.24
 ## Body parts above this height ride on the torso pivot (it twists at the hips).
 const TORSO_PIVOT := 0.95
@@ -72,10 +74,12 @@ const TORSO_PIVOT := 0.95
 ## [windup rotation, windup dip, strike rotation, strike dip]. Rotation is
 ## (lean: + = back, twist: - = right shoulder back, tilt: - = right side down).
 const TORSO_POSES := {
-	"jab": [Vector3(0.0, -0.14, 0.0), 0.0, Vector3(-0.05, 0.12, 0.0), 0.0],
-	"cross": [Vector3(0.04, -0.35, 0.0), 0.0, Vector3(-0.08, 0.28, 0.0), 0.0],
-	"left_hook": [Vector3(0.0, -0.44, -0.12), -0.04, Vector3(0.0, 0.35, 0.06), 0.0],
-	"right_hook": [Vector3(0.0, -0.44, -0.12), -0.04, Vector3(0.0, 0.35, 0.06), 0.0],
+	# 2026-11-03: straights barely turn the waist, hooks turn it a lot, so the
+	# two read apart at a glance.
+	"jab": [Vector3(0.0, -0.06, 0.0), 0.0, Vector3(-0.05, 0.06, 0.0), 0.0],
+	"cross": [Vector3(0.03, -0.12, 0.0), 0.0, Vector3(-0.08, 0.12, 0.0), 0.0],
+	"left_hook": [Vector3(0.0, -0.62, -0.14), -0.04, Vector3(0.0, 0.5, 0.06), 0.0],
+	"right_hook": [Vector3(0.0, -0.62, -0.14), -0.04, Vector3(0.0, 0.5, 0.06), 0.0],
 	"uppercut": [Vector3(-0.1, -0.2, -0.12), -0.1, Vector3(0.12, 0.2, 0.05), 0.03],
 	"haymaker": [Vector3(0.12, -0.6, -0.05), 0.0, Vector3(-0.1, 0.5, 0.05), 0.0],
 	"slam": [Vector3(0.25, 0.0, 0.0), 0.0, Vector3(-0.3, 0.0, 0.0), -0.05],
@@ -415,44 +419,47 @@ func _arm_pose(arm: String) -> Array:
 	if _charging():
 		# Head down, both arms out low in front: a tackle coming.
 		return [Vector3(-0.35, 0.3 * side, 0), 0.0, Vector3(0.5, 0, 0)]
-	# Elbows tucked, gloves up by the chin.
-	var guard := [Vector3(-0.9, 0.35 * side, 0), 0.0, Vector3(2.4, 0, 0)]
+	# Elbows tucked, gloves up by the chin. GUARD_REACH carries the arms in
+	# front of the chest so the forearms don't sink into it (2026-11-03).
+	var guard := [Vector3(-0.9, 0.35 * side, 0), GUARD_REACH, Vector3(2.4, 0, 0)]
 	if not (_state in [State.WINDUP, State.STRIKE]) or not _uses_arm(arm):
 		return guard
 	var striking := _state == State.STRIKE
 	match _attack:
 		"jab", "cross":
 			# Loaded with the elbow bent, then snapped out straight.
-			var loaded := 0.1 if _attack == "jab" else 0.16
+			var loaded := GUARD_REACH + (0.04 if _attack == "jab" else 0.08)
 			return [Vector3(0.1, 0.12 * side, 0), -0.3, Vector3.ZERO] if striking \
 					else [Vector3(-0.6, 0.2 * side, 0), loaded, Vector3(2.0, 0, 0)]
 		"left_hook", "right_hook":
 			# Elbow out wide and level, forearm bent at ~90 degrees; swings across.
-			return [Vector3(0.15, 0.3 * side, 0), -0.05, Vector3(0, 1.3 * side, 0)] if striking \
+			return [Vector3(0.15, 0.3 * side, 0), -0.2, Vector3(0, 1.3 * side, 0)] if striking \
 					else [Vector3(0.15, -1.2 * side, 0), 0.05, Vector3(0, 1.6 * side, 0)]
 		"uppercut":
 			# Elbow drops low with the fist down by the waist, then drives up.
 			return [Vector3(-0.2, 0.25 * side, 0), -0.1, Vector3(1.6, 0, 0)] if striking \
-					else [Vector3(-1.2, 0.15 * side, 0), 0.05, Vector3(1.0, 0, 0)]
+					else [Vector3(-1.2, 0.0, 0), -0.1, Vector3(1.0, 0, 0)]
 		"slam":
 			return [Vector3(0.2, 0.1 * side, 0), -0.2, Vector3(0.1, 0, 0)] if striking \
 					else [Vector3(2.4, 0.1 * side, 0), 0.1, Vector3(-0.5, 0, 0)]
 		"haymaker":
 			# Wound way back and out, then a wide loop across.
-			return [Vector3(0.15, 0.9 * side, 0), -0.1, Vector3(0, 0.6 * side, 0)] if striking \
+			return [Vector3(0.15, 0.9 * side, 0), -0.3, Vector3(0, 0.6 * side, 0)] if striking \
 					else [Vector3(0.35, -1.5 * side, 0), 0.2, Vector3(0, 0.5 * side, 0)]
 		"staff":
 			# Staff cocked back over the shoulder, then a flat swing at head height.
-			return [Vector3(0.2, 1.5 * side, 0), -0.1, Vector3.ZERO] if striking \
+			return [Vector3(0.2, 1.5 * side, 0), -0.35, Vector3.ZERO] if striking \
 					else [Vector3(1.2, -1.6 * side, 0), 0.3, Vector3.ZERO]
 		"thrust":
 			# Blade drawn back at the chest with its point aimed at you, then
 			# driven straight out.
+			# (2026-11-03: drawn back beside the hip, not through the chest.)
 			return [Vector3(0.05, 0.05 * side, 0), -0.55, Vector3.ZERO] if striking \
-					else [Vector3(-0.95, -0.1 * side, 0), 0.45, Vector3(0.95, 0.5 * side, 0)]
+					else [Vector3(-0.95, -0.45 * side, 0), 0.1, Vector3(0.95, 0.5 * side, 0)]
 		"slash":
 			# Wound far back, then a wide sweep across.
-			return [Vector3(0.2, 1.6 * side, 0), -0.1, Vector3.ZERO] if striking \
+			# (2026-11-03: the follow-through stays in front of the body.)
+			return [Vector3(0.2, 1.1 * side, 0), -0.4, Vector3.ZERO] if striking \
 					else [Vector3(0.35, -2.0 * side, 0), 0.2, Vector3.ZERO]
 		"bash":
 			# Shield pulled in tight, then shoved straight out.
@@ -614,11 +621,12 @@ func _hold_weapon(arm: String, mesh: PrimitiveMesh, color: Color, pos: Vector3, 
 
 
 ## Two arms pivoting at the shoulders and bending at the elbows, each ending
-## in a glove that can glow.
-func _build_arms(arm_material: Material, glove_color: Color, shoulder_height := 1.45, shoulder_width := 0.3) -> void:
+## in a glove that can glow. Bulky bodies set the shoulders outside the torso
+## and shoulder_forward (- = forward) so the guard sits in front of the chest.
+func _build_arms(arm_material: Material, glove_color: Color, shoulder_height := 1.45, shoulder_width := 0.3, shoulder_forward := 0.0) -> void:
 	for arm in ["left", "right"]:
 		var side := -1.0 if arm == "left" else 1.0
-		var shoulder := Vector3(shoulder_width * side, shoulder_height, 0)
+		var shoulder := Vector3(shoulder_width * side, shoulder_height, shoulder_forward)
 		var pivot := _pivot(_body, shoulder)
 		# Arm cylinders are turned to lie along -Z.
 		_part(pivot, _cylinder(0.055, UPPER_ARM_LENGTH), arm_material, Vector3(0, 0, -UPPER_ARM_LENGTH / 2), Vector3(-PI / 2, 0, 0))
@@ -722,6 +730,11 @@ var _leap_to := Vector3.ZERO
 var _charge_dir := Vector3.FORWARD
 var _charge_end := Vector3.ZERO
 var _charge_hit := false
+## This charge already rebounded off the ropes (ring_rebound).
+var _rebounded := false
+## Chance a charge that reaches the ropes rebounds 180 degrees back across
+## the ring instead of ending dazed (only where _ring_bounces, 2026-11-03).
+const RING_REBOUND_CHANCE := 0.5
 var _locked := false
 var _marks: Telegraphs
 
@@ -912,6 +925,11 @@ func _run_special(delta: float) -> Vector3:
 					return Vector3.ZERO
 				Sfx.play_at("block", global_position, 2.0, 0.6)
 				player.shake(0.05)
+				# Into the ropes: a contender sometimes rebounds straight back
+				# across the ring (the new lane shows), dazed at the far side.
+				if _ring_bounces() and not _rebounded and randf() < RING_REBOUND_CHANCE:
+					_rebound_off_ropes()
+					return _charge_dir * CHARGE_SPEED
 				if _repeats > 0:
 					_repeats -= 1
 					_begin_charge(0.75)
@@ -997,10 +1015,34 @@ func _clamp_to_arena(point: Vector3) -> Vector3:
 
 
 func _begin_charge(windup_scale_now := 1.0) -> void:
+	_rebounded = false
 	_set_step("aim")
 	_locked = false
 	_step_time = CHARGE_WINDUP * (1.0 - windup_scale_now)
 	_aim_charge()
+
+
+## True where the arena's edge is ropes a charge can rebound off (the Dead
+## League ring).
+func _ring_bounces() -> bool:
+	return false
+
+
+## Turns the charge 180 degrees off the ropes, to the far side of the ring.
+func _rebound_off_ropes() -> void:
+	_rebounded = true
+	_charge_dir = -_charge_dir
+	var reach := INF
+	for axis in [0, 2]:
+		var d: float = _charge_dir[axis]
+		if absf(d) < 0.001:
+			continue
+		reach = minf(reach, (arena_center[axis] + arena_limit * signf(d) - global_position[axis]) / d)
+	_charge_end = global_position + _charge_dir * maxf(reach, 1.0)
+	_marks.show_lane(global_position, _charge_end, CHARGE_WIDTH)
+	collision_mask &= ~2
+	_step_time = 0.0
+	DamagePopup.spawn(get_parent(), "OFF THE ROPES!", Color(1.0, 0.75, 0.4), 36, global_position + Vector3(0, 2.4 * _body.scale.y, 0))
 
 
 ## Points the lane at you, to the edge of its arena (or DASH_REACH for a dash).

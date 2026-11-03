@@ -41,9 +41,11 @@ func _build_body() -> void:
 	_part(_body, _box(Vector3(0.34, 0.32, 0.32)), skin, Vector3(0, 1.72, -0.06))
 	for side in [-1.0, 1.0]:
 		_part(_body, _box(Vector3(0.08, 0.045, 0.02)), eyes, Vector3(0.08 * side, 1.75, -0.225))
-		_part(_body, _box(Vector3(0.24, 0.16, 0.3)), bone, Vector3(0.36 * side, 1.6, 0))
+		_part(_body, _box(Vector3(0.24, 0.16, 0.3)), bone, Vector3(0.45 * side, 1.62, -0.04))
 	_part(_body, _box(Vector3(0.16, 0.05, 0.02)), _material(Color(0.1, 0.05, 0.04)), Vector3(0, 1.63, -0.225))
-	_build_arms(skin, Color(0.3, 0.36, 0.24), 1.5, 0.36)
+	# Shoulders outside the torso and a little forward, so the arms (and the
+	# windups) show instead of sinking into the chest.
+	_build_arms(skin, Color(0.3, 0.36, 0.24), 1.5, 0.46, -0.1)
 
 
 func _build_armor() -> void:

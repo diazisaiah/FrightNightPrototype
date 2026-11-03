@@ -1693,6 +1693,12 @@ func _land_punch(type: String, hand: String, _dashing := false, airborne := fals
 	if weak > 1.0:
 		raw_damage *= weak
 		caption = "WEAK SPOT!" if caption == "" else caption + "\nWEAK SPOT"
+	# Into a Shieldbearer's shield: only a share gets through (hooks wrap round).
+	var shielded := target.shield_damage_scale(type, counter)
+	if shielded < 1.0:
+		raw_damage *= shielded
+		caption = "SHIELD" if caption == "" else caption + "\nSHIELD"
+		Sfx.play("block", -6.0, 0.9)
 
 	# A hook or uppercut with nothing setting it up does jab damage for 2-3x
 	# the knuckle cost. Say so, and after a few in a row, say how to fix it.
