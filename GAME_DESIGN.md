@@ -1949,7 +1949,7 @@ Notes from the user's playtest week, put in order. Nothing here is built yet. Mo
 3. **Bug fixes:** the boss room spawn bug (maybe a toilet room: test with `Dungeon.force_toilet` over many floors), the Yonkers description, save codes too long to type by hand (copy and paste works in game; pasting outside the game is untested).
 4. **Crypt revamp** (see "Crypt revamp plan" below), in order: room furniture, the gear system, drop odds / store cards / salvage, mimics and elite mimics, the toilet and merchant tie-in, item models, then re-run the balance.
 5. **Character dialogue and the ultimate aura [Planned, announced]:** every fighter gets their own dialogue (when the lines play and what they say are still to be decided). When the ultimate is ready the fighter shows their aura, like the one in the trailer when they power up in third person while emoting (`EmoteFx` aura). Both are teased in the announcement for the coming week.
-6. **Later / on hold:** boss patterns and windup padding (after the power balance is tested; note `WINDUP_PAD` already adds +0.06s / +0.075s to the Plague Doctor's and the Coffin King's windups, which the user finds too slow now), a 6th set (Haunt, for the Catalyst), the super crit power, the boss soft damage cap.
+6. **Later / on hold:** a mobile build (see "Mobile build" below), boss patterns and windup padding (after the power balance is tested; note `WINDUP_PAD` already adds +0.06s / +0.075s to the Plague Doctor's and the Coffin King's windups, which the user finds too slow now), a 6th set (Haunt, for the Catalyst), the super crit power, the boss soft damage cap.
 7. **Marketing:** devlogs always include screenshots (the user waived them for the v0.9.19 devlog).
 
 ## Controls patch (2026-11-02)
@@ -2121,6 +2121,57 @@ Notes from the user's playtest week, put in order. Nothing here is built yet. Mo
 **Item models:** every piece has its own 3D model, like hats (20 models). Each set has its own color. Wraps are cylinders with a thin partly unraveled loop sticking out the top. Rarity is a recolor of the same model: common is dull and dingy with tatter spots; uncommon is cleaner and muted; rare is full color; epic is saturated with small purple sparkles; legendary is saturated with dramatic gold sparkles. The sparkles are brighter on the purple and yellow sets so they don't vanish.
 
 **Open work, in order:** room furniture, the gear system and save migration, drop odds and store cards and salvage, mimics and elite mimics, the toilet and merchant tie-in, item models, then re-run the balance.
+
+## Mobile build [Idea, planned 2026-11-02]
+
+A possible phone / tablet version. Nothing is built. It comes after the current roadmap (controls, balance, Crypt revamp), and the touch scheme should be tested in the playground first.
+
+**Touch controls (the user's design):**
+- Landscape. A virtual joystick on each side: left moves, right looks. Buttons for dash and back step, and a toggle for sprint (sprint doesn't change punches).
+- Punching: the screen is split into a left half and a right half. Each half is one hand.
+  - **Tap:** a straight on that side (left tap = jab, right tap = cross).
+  - **Swipe toward the midline:** a hook from that side.
+  - **Swipe up:** an uppercut on that side.
+  - **Swipe away from the midline:** a slip on that side.
+  - **Swipe down:** a roll on that side.
+  - Example: jab, cross, left hook, right roll, right uppercut = tap left, tap right, swipe in on the left, swipe down on the right, swipe up on the right.
+- Upgrade web and menus: tap and drag to pan, pinch to zoom, double tap to buy. Buttons are easy to tap; the UI needs a readability pass for small screens.
+- Later: in-app purchases for cosmetics.
+
+**The biggest design risk: two thumbs.** Holding the move stick, the look stick and punching on both halves is more than two thumbs can do (and the dash, back step, sprint, jump and ultimate buttons need a thumb too). Options to test, easiest first:
+1. **Lock-on camera** (aim assist): the view follows the nearest enemy, so the right stick isn't needed and the right thumb punches. Free look stays as an option. Pairs with a short auto-step toward the target when punching.
+2. **Move stick as a floating stick** that releases when a punch starts, so one thumb can move and then punch, like a fighting game.
+3. **Stick zones only in the bottom corners** with the punch gestures on the rest of each half, so a stick thumb and a punch thumb don't fight over the same area.
+- Recommendation: start with option 1 and a play test on a real phone before building anything else. Give the sticks a swap for left-handed play.
+
+**Controls details to decide:**
+- **Buttons that aren't in the plan yet:** jump, ultimate, interact (chests, stairs; context-sensitive), emote (hold for the wheel), pause, and the Crypt map.
+- **Gesture reading:** a tap fires on release (short and barely moved); a swipe fires as soon as it passes a small distance, without waiting for the finger to lift. Up / down / in / away use ±45 degree cones. Weenie Hut Junior Mode is a good default on mobile: a swipe away picks the right dodge for you.
+- **Rules stay the same:** the combo rules, set-ups and counters work as they do on a controller, because the gesture names the hand and the punch directly. Add a direct "throw this punch with this hand" entry on `Player`, and a `Controls` touch mode, so the touch layer sends the same actions as keys and pads.
+- **Aim:** the punch ray needs magnetism toward the nearest enemy in front, since thumbs aim worse than a mouse.
+- **No hover:** tooltips become long-press; the emote wheel, the Dead League bar and card details need tap versions.
+- **Customization:** button size, opacity and position; sensitivity; left-handed layout.
+
+**UI readability pass:** bigger text and tap targets (about 48 dp minimum), safe areas for notches, HUD kept clear of the thumbs, and touch hints in place of keyboard names. The camp's upgrade web, the Armory, the store and the Settings panel all need touch layouts.
+
+**Platform and performance:**
+- A browser build on phones is a quick way to test but weak: audio unlock, no easy orientation lock, and the existing web performance work (render scale, no shadows) is the floor. A native Android build is the better target; iOS needs a Mac, an Apple developer account and Xcode.
+- Target a steady 30 fps first. Reuse the web profile (shadows and post effects off) and `render_scale` auto.
+- Saves: cloud save or an easier backup than the long save codes.
+
+**Monetization (later):**
+- Sell cosmetics only: skins, hats, emote packs, idle animations. Never power: not soul coins, gear or upgrades.
+- Hats drop at random in the game, so don't sell random hat packs (it looks like a loot box, and the stores restrict those).
+- Stores take 15-30%. They need a privacy policy, a data-safety form and an age rating (boxing, undead, toilet humor).
+- The parody content (the plumber caps, Yonkers, fighter-pun names) needs a review against store IP rules before submitting.
+
+**Plan (phases):**
+1. **Decide:** the thumb layout (the options above), target platform (Android first?), and landscape only.
+2. **Touch prototype in the playground:** gestures, sticks and buttons; test in the browser's mobile view, then on a real phone through the dev build.
+3. **Touch UI pass:** menus, camp, upgrade web gestures, readability.
+4. **Performance and native export** (Android), then a closed test with a few players.
+5. **Store prep:** privacy, ratings, parody review, a store page.
+6. **Cosmetic purchases:** after launch, once players are in.
 
 ## Patchwork (2026-10-28)
 - **Upgrade web zoom:** out to 0.2x (was 0.5x) and in to 2x; it opens fitted down to 0.35x, and each wheel step is 15%. The "UPGRADES OWNED x / y" counter has room for three-digit counts.
