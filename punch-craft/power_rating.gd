@@ -141,7 +141,7 @@ static func split(build: Dictionary) -> Vector2:
 	# Crits: the chance (capped) times the extra they deal (x1.5 + crit damage).
 	offense *= 1.0 + minf(fx.get("crit_chance", 0.0), 0.5) * (0.5 + fx.get("crit_damage", 0.0))
 	offense *= 1.0 + _weighted(fx, POWERS)
-	var defense: float = build.knuckles * (10.0 + build.defense) / 10.0 / 50.0 / (1.0 + maxf(fx.get("damage_taken", 0.0), -0.5))
+	var defense: float = Progression.effective_hp(build.knuckles, build.defense) / 50.0 / (1.0 + maxf(fx.get("damage_taken", 0.0), -0.5))
 	defense *= 1.0 + _weighted(fx, DEFENSE)
 	var cards := _card_worth(fx, build.get("perks", []))
 	return Vector2(offense * (1.0 + cards.x), defense * (1.0 + cards.y))
@@ -214,13 +214,33 @@ static func contender_unshifted(index: int) -> int:
 ## (sqrt of offense x defense) moves by exactly that much.
 ## 2026-11-03 (second pass): the Bellman 850 -> 500 and Crypt floors 1-2
 ## 1,105 -> 650; the first pass was too steep.
-const CONTENDER_POWER := [500, 1950, 4500, 10300, 23800]
-## Crypt pairs (2026-11-03, third pass): a pair recommends CRYPT_OVER_CONTENDER
-## x the contender who opens it (650 for floors 1-2 after the Bellman's 500),
-## rooms and boss together; the floor boss gets what the rooms leave.
-const CRYPT_OVER_CONTENDER := 1.3
-const CRYPT_BOSS_FLOOR := 0.3
+## 2026-11-03 (defense rework): POWER's scale moved with the armor formula
+## (par's effective HP is 1.4-1.6x its knuckles, not up to 5x), so the
+## targets are the plan's x2.3 a tier again, from the Bellman's 500.
+const CONTENDER_POWER := [500, 1150, 2645, 6084, 13993]
+## Floor 10's boss: one more x2.3 step over the Coffin King (the endless floors
+## grow from it).
+const FINAL_BOSS_OVER_KING := 2.3
+## Crypt floor bosses (2026-11-03, defense rework): as strong as the
+## contender who opened their floors (CRYPT_BOSS_OVER_CONTENDER x); a floor
+## recommends its rooms on top (floors 1-2 about 600 after the Bellman's 500).
+const CRYPT_BOSS_OVER_CONTENDER := 1.0
+## A Grave Champion's share of its bout's recommendation (from the Bone
+## Division on); the bout's monsters get the rest.
+const CHAMPION_SHARE := 0.5
 static var _neutral_cache := {}
+## Boss base stats on the contenders' scale (2026-11-03): [HP, damage] a boss
+## kind is built from before scaling (a contender's profile is 52-134 HP and
+## 4.6-8.1 damage). The scenes' own numbers (500-650 HP) made Grave
+## Champions and Crypt floor bosses take 300-700 punches.
+const ARENA_CHAMPION_UNIT := [40.0, 4.6]
+const CRYPT_BOSS_UNITS := {"boss": [60.0, 5.0], "colossus": [75.0, 6.0], "lich_king": [65.0, 5.0]}
+
+
+## Scaling multipliers that put a boss's scene stats on its unit: {hp, damage}.
+static func boss_unit_scale(enemy: Enemy, unit: Array) -> Dictionary:
+	var base_damage: float = enemy.get("attack_damage") if enemy.get("attack_damage") != null else float(enemy.get("bolt_damage"))
+	return {"hp": unit[0] / maxf(enemy.max_hp, 1.0), "damage": unit[1] / maxf(base_damage, 0.01)}
 
 
 ## Contender i's HP and damage multiplier.
@@ -233,23 +253,20 @@ static func contender_shift(index: int) -> float:
 ## the monsters it's built from (Progression.par_at(difficulty)) are worth.
 static func crypt_boss_shift(floor_number: int, difficulty: float) -> float:
 	var unshifted := climb_power(minf(difficulty, Progression.TIER_COUNT))
-	return crypt_boss_power(_crypt_tier(floor_number)) / maxf(unshifted, 1.0)
+	return crypt_floor_boss_power(floor_number) / maxf(unshifted, 1.0)
 
 
-## A Crypt tier's recommendation (its pair, started on its first floor).
-static func crypt_pair_power(tier: int) -> float:
-	return CRYPT_OVER_CONTENDER * CONTENDER_POWER[clampi(tier, 1, CONTENDER_POWER.size()) - 1]
+## A floor's boss POWER: its tier's, or floor 10's finale (and the endless
+## floors after it) FINAL_BOSS_OVER_KING x the Coffin King.
+static func crypt_floor_boss_power(floor_number: int) -> float:
+	if floor_number >= Progression.crypt_last_floor():
+		return FINAL_BOSS_OVER_KING * CONTENDER_POWER[-1]
+	return crypt_boss_power(_crypt_tier(floor_number))
 
 
-## A Crypt tier's floor boss POWER: the pair's recommendation less what its
-## first floor's rooms are worth (at least CRYPT_BOSS_FLOOR of it).
+## A Crypt tier's floor boss POWER: the contender who opened its floors.
 static func crypt_boss_power(tier: int) -> float:
-	var key := "boss%d" % tier
-	if not _arena_cache.has(key):
-		var first := Progression.crypt_start_floor(tier)
-		var pair := crypt_pair_power(tier)
-		_arena_cache[key] = maxf(pair - _crypt_rooms(first, first), pair * CRYPT_BOSS_FLOOR)
-	return _arena_cache[key]
+	return CRYPT_BOSS_OVER_CONTENDER * CONTENDER_POWER[clampi(tier, 1, CONTENDER_POWER.size()) - 1]
 
 
 static func _crypt_tier(floor_number: int) -> int:
@@ -288,20 +305,34 @@ static var _arena_cache := {}
 ## about the Bellman). arena_shift scales the bout's monsters and Grave
 ## Champion (HP and damage) to get there.
 static func arena_power(division: int, bout: int) -> int:
-	return roundi(arena_power_unshifted(division, bout) * arena_shift(division, bout))
+	if division <= 1:
+		return roundi(arena_power_unshifted(division, bout))
+	return roundi(arena_target(division, bout))
 
 
+## A bout's target from the Bone Division on.
+static func arena_target(division: int, bout: int) -> float:
+	var low := float(CONTENDER_POWER[clampi(division - 2, 0, CONTENDER_POWER.size() - 1)])
+	var high := float(CONTENDER_POWER[clampi(division - 1, 0, CONTENDER_POWER.size() - 1)])
+	var steps := float(Progression.BOUTS_PER_DIVISION - 1)
+	return low * pow(high / low, clampf((bout - 1) / steps, 0.0, 1.0))
+
+
+## The bout's monsters' HP and damage multiplier: they fill what the Grave
+## Champion (CHAMPION_SHARE) leaves of the target.
 static func arena_shift(division: int, bout: int) -> float:
 	if division <= 1:
 		return 1.0
-	var key := "shift%d_%d" % [division, bout]
-	if not _arena_cache.has(key):
-		var low := float(CONTENDER_POWER[clampi(division - 2, 0, CONTENDER_POWER.size() - 1)])
-		var high := float(CONTENDER_POWER[clampi(division - 1, 0, CONTENDER_POWER.size() - 1)])
-		var steps := float(Progression.BOUTS_PER_DIVISION - 1)
-		var target := low * pow(high / low, clampf((bout - 1) / steps, 0.0, 1.0))
-		_arena_cache[key] = target / maxf(arena_power_unshifted(division, bout), 1.0)
-	return _arena_cache[key]
+	arena_power_unshifted(division, bout)
+	return (1.0 - CHAMPION_SHARE) * arena_target(division, bout) / maxf(_arena_cache["mobs%d_%d" % [division, bout]], 1.0)
+
+
+## The Grave Champion's HP and damage multiplier: CHAMPION_SHARE of the target.
+static func arena_champion_shift(division: int, bout: int) -> float:
+	if division <= 1:
+		return 1.0
+	arena_power_unshifted(division, bout)
+	return CHAMPION_SHARE * arena_target(division, bout) / maxf(_arena_cache["champ%d_%d" % [division, bout]], 1.0)
 
 
 ## A bout's recommendation from its monsters as they're built (no shift).
@@ -330,6 +361,8 @@ static func arena_power_unshifted(division: int, bout: int) -> float:
 			spawn *= 1.0 + world.ELITE_CHANCE[division - 1] * (ELITE_WEIGHT - 1.0) + world.CHAMPION_CHANCE[division - 1] * (CHAMPION_WEIGHT - 1.0)
 		total += spawn
 	var boss := base * (sqrt(world.FIRST_NIGHT.boss_hp * world.FIRST_NIGHT.boss_damage) if first_night else 1.0)
+	_arena_cache["mobs%d_%d" % [division, bout]] = base * total / GROUP_SIZE
+	_arena_cache["champ%d_%d" % [division, bout]] = boss
 	_arena_cache[key] = base * total / GROUP_SIZE + boss
 	return _arena_cache[key]
 
@@ -341,7 +374,7 @@ static func arena_power_unshifted(division: int, bout: int) -> float:
 static func crypt_power(floor_number: int, start_floor := -1) -> int:
 	if start_floor < 0:
 		start_floor = floor_number
-	var boss: float = crypt_boss_power(_crypt_tier(floor_number)) * Progression.crypt_endless_growth(floor_number, 1.0)
+	var boss: float = crypt_floor_boss_power(floor_number) * Progression.crypt_endless_growth(floor_number, 1.0)
 	return roundi(_crypt_rooms(floor_number, start_floor) + boss)
 
 

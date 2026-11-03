@@ -802,8 +802,17 @@ func _test_class_balance() -> void:
 				PowerRating.contender(division - 2), PowerRating.contender(division - 1), start, top])
 	for tier in range(1, Progression.TIER_COUNT + 1):
 		var first := Progression.crypt_start_floor(tier)
-		_check(abs(PowerRating.crypt_power(first) - roundi(PowerRating.crypt_pair_power(tier))) <= 1,
-				"Crypt floors %d-%d recommend 1.3x their contender, rooms and boss together" % [first, first + 1])
+		_check(is_equal_approx(PowerRating.crypt_floor_boss_power(first), float(PowerRating.contender(tier - 1))) and PowerRating.crypt_power(first) > PowerRating.contender(tier - 1),
+				"Crypt floors %d-%d: the boss is as strong as the contender who opened them, the rooms add on top" % [first, first + 1])
+	_check(PowerRating.crypt_floor_boss_power(Progression.crypt_last_floor()) > 2.0 * PowerRating.contender(Progression.TIER_COUNT - 1),
+			"Floor 10's boss is well above the Coffin King")
+	# The armor formula (2026-11-03): defense / (defense + 3 x hit), capped, at least 1.
+	_check(is_equal_approx(GameState.armor_reduction(100.0, 20.0), 100.0 / 160.0) and GameState.armor_reduction(100.0, 300.0) < 0.11
+			and is_equal_approx(GameState.armor_reduction(1.0e6, 1.0), GameState.MAX_ARMOR_REDUCTION) and GameState.armor_reduction(0.0, 50.0) == 0.0,
+			"Defense cuts small hits a lot and big hits a little, up to the cap")
+	_check(is_equal_approx(Progression.effective_hp(100.0, 0.0), 100.0) and Progression.effective_hp(100.0, 50.0) > 100.0
+			and Progression.effective_hp(100.0, 1.0e6) <= 100.0 / (1.0 - GameState.MAX_ARMOR_REDUCTION) + 0.01, "Effective HP grows with defense, within the cap")
+	_check(float(Attributes.LIST.grit.per_point.get("defense", 0.0)) > 0.0, "Grit points add defense")
 	var locked: Dictionary = Cards.info("berserker", "strike")
 	_check(not Cards.available(locked, {}, "berserker", 1) and Cards.available(locked, {}, "berserker", 5),
 			"A card that upgrades a loadout ability isn't drawn until the ability is unlocked")

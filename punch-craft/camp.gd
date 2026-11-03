@@ -989,7 +989,7 @@ func _refresh_sheet() -> void:
 		["Passive", "%s  ·  %s" % [String(Abilities.info(GameState.player_class, GameState.passive()).get("name", "")),
 				Abilities.power_text(GameState.passive(), GameState.passive_power()) if GameState.passive_power() > 0.0 else "grows with levels"]],
 		["Punch cost", "Jab/cross 1, hook 2, uppercut 3"],
-		["Damage taken", "%d%%" % roundi(GameState.get_knuckle_loss_multiplier() * 100.0)],
+		["Typical hit taken", "%d%%" % roundi(GameState.get_knuckle_loss_multiplier() * 100.0)],
 		["Punch speed", "x%.2f" % GameState.get_punch_speed()],
 		["Combo growth", "+%.2f per hit" % GameState.get_combo_step()],
 		["Combo time", "%.1fs" % GameState.get_combo_window()],

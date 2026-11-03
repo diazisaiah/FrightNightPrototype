@@ -249,7 +249,7 @@ func hit_amount(amount: float, attacker: Enemy) -> float:
 		amount *= 0.5
 	# Ward soaks what it can (it's in knuckle HP; amount is before defense).
 	if _ward > 0.0 and amount > 0.0:
-		var loss := GameState.get_knuckle_loss_multiplier()
+		var loss := GameState.mitigate(amount) / amount
 		var soak := minf(_ward, amount * loss)
 		_ward -= soak
 		amount -= soak / loss

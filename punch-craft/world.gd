@@ -45,7 +45,7 @@ const FIRST_NIGHT := {
 	"kills": 30, "hp": 0.6, "damage": 0.6, "min_alive": 2, "max_alive": 5, "spawn_slow": 1.4,
 	"punch_cost": 0.5, "kill_heal": 2.0, "milestone_heal": 0.08,
 	"types": ["zombie", "skeleton", "runner", "hulk", "brawler"],
-	"boss_hp": 0.3, "boss_damage": 0.7, "escorts": ["skeleton"],
+	"boss_hp": 0.8, "boss_damage": 0.7, "escorts": ["skeleton"],
 }
 const LATE_NIGHT := 0.75
 ## Enemies on the field at once, growing as the bar fills.
@@ -436,6 +436,10 @@ func _night_scaling(night := -1) -> Dictionary:
 
 func _boss_scaling() -> Dictionary:
 	var scaling := _night_scaling()
+	# The Champion takes its own share of the bout's target, not the monsters'.
+	var shift := PowerRating.arena_champion_shift(_division, _night) / maxf(PowerRating.arena_shift(_division, _night), 0.001)
+	scaling.hp *= shift
+	scaling.damage *= shift
 	if _first_night():
 		scaling.hp *= FIRST_NIGHT.boss_hp
 		scaling.damage *= FIRST_NIGHT.boss_damage
@@ -450,7 +454,13 @@ func _spawn_enemy(entry: Dictionary, at := Vector3.INF) -> void:
 	var enemy: Enemy = (veteran if veteran else SCENES[kind]).instantiate()
 	if veteran:
 		enemy.set_meta("veteran", true)
-	enemy.setup(_player, entry.armored, _boss_scaling() if kind == "boss" else _spawn_scaling())
+	var scaling := _boss_scaling() if kind == "boss" else _spawn_scaling()
+	if kind == "boss":
+		# The Grave Champion on the contenders' scale (PowerRating.ARENA_CHAMPION_UNIT).
+		var unit := PowerRating.boss_unit_scale(enemy, PowerRating.ARENA_CHAMPION_UNIT)
+		scaling.hp *= unit.hp
+		scaling.damage *= unit.damage
+	enemy.setup(_player, entry.armored, scaling)
 	if kind == "boss":
 		enemy.windup_pad = Progression.boss_windup_pad(_division)
 	enemy.set_meta("kind", kind)

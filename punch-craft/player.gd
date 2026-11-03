@@ -950,10 +950,10 @@ func shake(amount: float) -> void:
 ## Knuckle damage from enemy hits. Defense reduces it; Glass Jaw raises it;
 ## Grit lowers it while knuckles are low.
 func hurt_knuckles(amount: float) -> void:
-	var taken := amount * GameState.get_knuckle_loss_multiplier() * (1.0 + GameState.get_effect("damage_taken"))
+	var taken := amount * (1.0 + GameState.get_effect("damage_taken"))
 	if knuckles < max_knuckles * LAST_STAND_LOW:
 		taken *= 1.0 - GameState.get_effect("grit")
-	_lose_knuckles(taken)
+	_lose_knuckles(GameState.mitigate(taken))
 
 
 func _lose_knuckles(amount: float) -> void:

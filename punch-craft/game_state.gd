@@ -39,7 +39,7 @@ const CLASSES := {
 		"traits": [["skull", "Grudge", "Hits back harder."], ["burst", "Massive Damage", "Big, slow punches."], ["flame", "Inferno Uppercut", "A flaming uppercut."]],
 		"bars": {"Power": 95, "Defense": 80, "Speed": 40, "Combo": 35, "Counter": 55},
 		"desc": "Big damage, tough knuckles. Holds a grudge: whatever hits him is marked, and his next punch on it hits triple and staggers. Hooks and uppercuts need no setup. Combos grow slower.",
-		"mods": {"damage": 1.3, "knuckles": 1.25, "defense": 3.0, "combo_step": 0.6},
+		"mods": {"damage": 1.3, "knuckles": 1.25, "defense": 30.0, "combo_step": 0.6},
 	},
 	"counter_master": {
 		"name": "Counter Master", "icon": "target",
@@ -210,32 +210,32 @@ const UPGRADES := {
 	"def_1": {
 		"name": "Mouthguard", "icon": "tooth", "pos": Vector2(0, 1.5), "requires": ["wrapped_knuckles"], "ring": 1,
 		"desc": "Hits take less knuckle HP.",
-		"max_level": 5, "cost": 120, "cost_growth": 1.22, "effects": {"defense": 0.5},
+		"max_level": 5, "cost": 120, "cost_growth": 1.22, "effects": {"defense": 5},
 	},
 	"def_2": {
 		"name": "High Guard", "icon": "shield", "pos": Vector2(0, 2.5), "requires": ["def_1"], "ring": 2,
 		"desc": "Hits take less knuckle HP.",
-		"max_level": 5, "cost": 600, "cost_growth": 1.22, "effects": {"defense": 1},
+		"max_level": 5, "cost": 600, "cost_growth": 1.22, "effects": {"defense": 10},
 	},
 	"def_3": {
 		"name": "Ribcage Armor", "icon": "bones", "pos": Vector2(0, 3.5), "requires": ["def_2"], "ring": 3,
 		"desc": "Hits take less knuckle HP.",
-		"max_level": 5, "cost": 2400, "cost_growth": 1.22, "effects": {"defense": 1},
+		"max_level": 5, "cost": 2400, "cost_growth": 1.22, "effects": {"defense": 10},
 	},
 	"def_4": {
 		"name": "Bone Plating", "icon": "chestplate", "pos": Vector2(0, 4.5), "requires": ["def_3"], "ring": 4,
 		"desc": "Hits take less knuckle HP.",
-		"max_level": 5, "cost": 12000, "cost_growth": 1.22, "effects": {"defense": 2},
+		"max_level": 5, "cost": 12000, "cost_growth": 1.22, "effects": {"defense": 20},
 	},
 	"def_5": {
 		"name": "Tombstone Chin", "icon": "helmet", "pos": Vector2(0, 5.5), "requires": ["def_4"], "ring": 5,
 		"desc": "Hits take less knuckle HP.",
-		"max_level": 5, "cost": 90000, "cost_growth": 1.22, "effects": {"defense": 2},
+		"max_level": 5, "cost": 90000, "cost_growth": 1.22, "effects": {"defense": 20},
 	},
 	"def_6": {
 		"name": "Iron Coffin", "icon": "shield", "pos": Vector2(0, 6.5), "requires": ["def_5"], "ring": 6,
 		"desc": "Hits take less knuckle HP.",
-		"max_level": 5, "cost": 450000, "cost_growth": 1.22, "effects": {"defense": 3},
+		"max_level": 5, "cost": 450000, "cost_growth": 1.22, "effects": {"defense": 30},
 	},
 	"gold_1": {
 		"name": "Grave Robber", "icon": "shovel", "pos": Vector2(-0, -1.5), "requires": ["wrapped_knuckles"], "ring": 1,
@@ -335,22 +335,22 @@ const UPGRADES := {
 	"headless_helm": {
 		"name": "Headless Helm", "icon": "helmet", "pos": Vector2(0, 0), "requires": ["bellmans_bell"], "center": true, "ring": 3,
 		"desc": "Trophy: no head, no problem.",
-		"max_level": 3, "cost": 3500, "cost_growth": 1.3, "effects": {"damage": 2, "max_knuckles": 15, "defense": 1},
+		"max_level": 3, "cost": 3500, "cost_growth": 1.3, "effects": {"damage": 2, "max_knuckles": 15, "defense": 10},
 	},
 	"southpaws_rosary": {
 		"name": "Southpaw's Veil", "icon": "medal", "pos": Vector2(0, 0), "requires": ["headless_helm"], "center": true, "ring": 4,
 		"desc": "Trophy: a little of her left hand, now yours.",
-		"max_level": 3, "cost": 15000, "cost_growth": 1.3, "effects": {"damage": 3, "max_knuckles": 20, "defense": 2},
+		"max_level": 3, "cost": 15000, "cost_growth": 1.3, "effects": {"damage": 3, "max_knuckles": 20, "defense": 20},
 	},
 	"plague_censer": {
 		"name": "Plague Censer", "icon": "bucket", "pos": Vector2(0, 0), "requires": ["southpaws_rosary"], "center": true, "ring": 5,
 		"desc": "Trophy: the cure smells terrible.",
-		"max_level": 3, "cost": 110000, "cost_growth": 1.3, "effects": {"damage": 4, "max_knuckles": 30, "defense": 2},
+		"max_level": 3, "cost": 110000, "cost_growth": 1.3, "effects": {"damage": 4, "max_knuckles": 30, "defense": 20},
 	},
 	"coffin_crown": {
 		"name": "The Coffin Crown", "icon": "crown", "pos": Vector2(0, 0), "requires": ["plague_censer"], "center": true, "ring": 6,
 		"desc": "Trophy: the Coffin King's crown. Raw power for the endless floors.",
-		"max_level": 5, "cost": 800000, "cost_growth": 1.3, "effects": {"damage": 5, "max_knuckles": 40, "defense": 3},
+		"max_level": 5, "cost": 800000, "cost_growth": 1.3, "effects": {"damage": 5, "max_knuckles": 40, "defense": 30},
 	},
 	"cornerman": {
 		"name": "Cornerman", "icon": "medkit", "pos": Vector2(-1.06, 1.06), "requires": ["hp_1"], "ring": 1,
@@ -426,12 +426,12 @@ const UPGRADES := {
 	"iron_jaw": {
 		"name": "Iron Jaw", "icon": "tooth", "pos": Vector2(2.1, 5.08), "requires": ["def_5"], "ring": 5,
 		"desc": "A little more defense.",
-		"max_level": 2, "cost": 45000, "cost_growth": 1.22, "effects": {"defense": 1},
+		"max_level": 2, "cost": 45000, "cost_growth": 1.22, "effects": {"defense": 10},
 	},
 	"stone_wall": {
 		"name": "Stone Wall", "icon": "shield", "pos": Vector2(-2.1, 5.08), "requires": ["def_5"], "ring": 5,
 		"desc": "A little more defense.",
-		"max_level": 2, "cost": 45000, "cost_growth": 1.22, "effects": {"defense": 1},
+		"max_level": 2, "cost": 45000, "cost_growth": 1.22, "effects": {"defense": 10},
 	},
 	"scar_tissue": {
 		"name": "Scar Tissue", "icon": "heart", "pos": Vector2(-5.08, 2.1), "requires": ["hp_5"], "ring": 5,
@@ -466,12 +466,12 @@ const UPGRADES := {
 	"crypt_door": {
 		"name": "Crypt Door", "icon": "shield", "pos": Vector2(2.49, 6.01), "requires": ["def_6"], "ring": 6,
 		"desc": "A little more defense.",
-		"max_level": 2, "cost": 230000, "cost_growth": 1.22, "effects": {"defense": 1.5},
+		"max_level": 2, "cost": 230000, "cost_growth": 1.22, "effects": {"defense": 15},
 	},
 	"vault_guard": {
 		"name": "Vault Guard", "icon": "helmet", "pos": Vector2(-2.49, 6.01), "requires": ["def_6"], "ring": 6,
 		"desc": "A little more defense.",
-		"max_level": 2, "cost": 230000, "cost_growth": 1.22, "effects": {"defense": 1.5},
+		"max_level": 2, "cost": 230000, "cost_growth": 1.22, "effects": {"defense": 15},
 	},
 	"grave_skin": {
 		"name": "Grave Skin", "icon": "heart", "pos": Vector2(-6.01, 2.49), "requires": ["hp_6"], "ring": 6,
@@ -1924,9 +1924,36 @@ func get_defense() -> float:
 	return get_effect("defense") + get_class_mod("defense", 0.0)
 
 
-## Multiplier on knuckle HP lost to enemy hits. Never reaches zero.
+## Defense (2026-11-03, the Path of Exile armor formula): a hit is cut by
+## defense / (defense + DEFENSE_HIT_FACTOR x hit), at most MAX_ARMOR_REDUCTION,
+## and always deals at least 1. Small hits (a crowd) are cut a lot, big hits (a
+## boss's haymaker) a little. Defense numbers are 10x the old ones.
+const DEFENSE_HIT_FACTOR := 3.0
+const MAX_ARMOR_REDUCTION := 0.9
+## A typical monster hit, as a share of your max knuckle HP (a zombie's 6 on
+## a fresh fighter's 50): what the "Damage taken" readout and POWER use.
+const TYPICAL_HIT := 0.12
+## Old saves' items carry the old defense numbers: x this once.
+const DEFENSE_SCALE := 10.0
+
+
+## The share of a hit this much defense takes off.
+static func armor_reduction(defense: float, hit: float) -> float:
+	if hit <= 0.0 or defense <= 0.0:
+		return 0.0
+	return minf(defense / (defense + DEFENSE_HIT_FACTOR * hit), MAX_ARMOR_REDUCTION)
+
+
+## What a hit leaves after your defense (at least 1, or the hit if smaller).
+func mitigate(hit: float) -> float:
+	if hit <= 0.0:
+		return 0.0
+	return maxf(minf(hit, 1.0), hit * (1.0 - armor_reduction(get_defense(), hit)))
+
+
+## Share of a typical hit (TYPICAL_HIT of your max knuckles) that gets through.
 func get_knuckle_loss_multiplier() -> float:
-	return 10.0 / (10.0 + get_defense())
+	return 1.0 - armor_reduction(get_defense(), TYPICAL_HIT * get_max_knuckles())
 
 
 func get_max_knuckles() -> float:
@@ -2446,6 +2473,7 @@ func save_game() -> void:
 		"dead_league_clears": dead_league_clears,
 		"souls": souls,
 		"armory": armory,
+		"defense_scale": int(DEFENSE_SCALE),
 		"equipped": equipped,
 		"next_uid": _next_uid,
 		"arena_division": arena_division,
@@ -2529,9 +2557,13 @@ func load_game() -> void:
 		crypt_new = true
 	souls = int(data.get("souls", 0))
 	armory = data.get("armory", []).duplicate(true) if data.get("armory", []) is Array else []
+	# Defense x10 (2026-11-03): kept gear rolled before carries the old numbers.
+	var rescale := int(data.get("defense_scale", 1)) < int(DEFENSE_SCALE)
 	for item in armory:
 		if item is Dictionary:
 			Items.retire_powers(item)
+			if rescale and item.get("effects", {}) is Dictionary and item.effects.has("defense"):
+				item.effects.defense = float(item.effects.defense) * DEFENSE_SCALE
 	_next_uid = int(data.get("next_uid", 1))
 	var saved_equipped = data.get("equipped", {})
 	equipped = {}

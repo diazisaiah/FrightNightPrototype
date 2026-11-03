@@ -67,7 +67,7 @@ const CURSED_SPECIALS := {
 ## Shrine blessings: [name, effects]. Plus any special (as "Blessing of ...").
 const BLESSINGS := [
 	["Blessing of Might", {"damage_percent": 0.2}],
-	["Blessing of Stone", {"knuckles_percent": 0.2, "defense": 2.0}],
+	["Blessing of Stone", {"knuckles_percent": 0.2, "defense": 20.0}],
 	["Blessing of the Slip", {"dodge_window": 0.15, "counter_bonus": 0.3}],
 	["Blessing of Plenty", {"coin_bonus": 0.3, "xp_bonus": 0.2}],
 	["Blessing of Fury", {"combo_step": 0.08, "punch_speed": 0.08}],
@@ -105,7 +105,7 @@ const AFFIXES := {
 	},
 	"wraps": {
 		"normal": {
-			"max_knuckles": [12.0, 1.0], "defense": [1.5, 0.5], "heal_on_kill": [1.0, 0.5],
+			"max_knuckles": [12.0, 1.0], "defense": [15.0, 5.0], "heal_on_kill": [1.0, 0.5],
 			"free_punch_chance": [0.08, 0.01], "graze_reduction": [0.15, 0.05], "flinch_reduction": [0.12, 0.01],
 		},
 		"powers": {"knuckles_percent": [0.2, 0.05]},

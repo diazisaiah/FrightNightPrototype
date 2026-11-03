@@ -18,7 +18,7 @@ const LIST := {
 			["knockout_blow", "Knockout Blow", "Every 6th punch you land in a combo hits double and staggers"],
 		]},
 	"grit": {"name": "Grit", "icon": "heart_plus", "color": Color(1.0, 0.35, 0.4),
-		"text": "+1.5% max knuckle HP", "per_point": {"knuckles_percent": 0.015},
+		"text": "+1.5% max knuckle HP, +1 defense", "per_point": {"knuckles_percent": 0.015, "defense": 1.0},
 		"perks": [
 			["iron_knuckles", "Iron Knuckles", "Punches cost 20% less knuckle HP"],
 			["granite_chin", "Granite Chin", "After a hit, the next hit within 2s deals half"],

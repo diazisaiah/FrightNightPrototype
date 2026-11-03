@@ -1972,6 +1972,32 @@ Notes from the user's playtest week, put in order. Nothing here is built yet. Mo
   - Tutorial COMBOS drills stay jab, cross, hook and jab, cross, hook, uppercut (each punch still grows the combo under these rules), and Pad Work builds only combos that grow with every punch (hands alternate, no kind of punch three times in a row, one double jab, hooks and uppercuts set up).
 - **Cross matches the jab:** the cross had a slower windup (0.11 s) and a longer cooldown (0.34 s) than the jab (0.09 s, 0.28 s), which also made its animation slower. Both straights use the jab's timing now. The cross still hits for x1.3, so mashing jab / cross deals about 11% more damage per second than before; watch it in the power balance.
 
+## Defense rework: the armor formula [Built 2026-11-03]
+
+**Why:** defense was 10 / (10 + defense) of every hit, and every enemy's damage was scaled to par's effective HP (knuckles x (10 + defense) / 10), which includes par's defense. Par's defense cancelled out: you took 20% of a Coffin King hit, but the hit was about 5x bigger for it. Upgrades read "65% damage taken" while enemies hit 4x harder.
+
+- **The formula** (`GameState.armor_reduction`, `mitigate`, the Path of Exile armor formula): a hit is cut by defense / (defense + 3 x hit), at most 90%, and deals at least 1. Small hits are cut a lot, big ones a little: 100 defense takes 62% off a 20 hit, 10% off a 300 hit. Applied after Glass Jaw's extra and Grit's cut; Ward soaks after it.
+- **Defense x10 everywhere:** the upgrade web (Mouthguard 5 a level ... Iron Coffin 30; Trophies 10-30; Iron Jaw, Stone Wall 10; Crypt Door, Vault Guard 15), the Mauler's class defense (30), Wraps' defense affix (15, +5 a floor), the Blessing of Stone (20), hats (Bucket and Fat Plumber Cap 5, Grim Reaper's Hood 10). Kept gear in old saves is scaled once on load (`defense_scale`).
+- **Grit adds defense:** +1 defense a point (with +1.5% max knuckle HP). Par counts it.
+- **Effective HP** (`Progression.effective_hp`): knuckles over the share of a typical hit that gets through, a typical hit being 12% of the effective HP (`GameState.TYPICAL_HIT`, a zombie's 6 on a fresh 50). Enemies are still built from par's effective HP, but par's armor now blocks about 28-39% of a typical hit at every tier, so it's 1.4-1.6x knuckles instead of up to 5x. POWER's defense side uses the same effective HP. Camp's sheet shows "Typical hit taken".
+- **POWER's scale moved** with it (par: 395 / 984 / 2,211 / 4,104 / 7,840 at tiers 1-5), so the contender targets are the plan's x2.3 a tier again from the Bellman's 500: **500 / 1,150 / 2,645 / 6,084 / 13,993**. Arena divisions build up to them as before.
+- **Bosses on one scale:** Grave Champions and Crypt floor bosses were built from their scenes' 500-650 HP while contenders use 52-134, so they took 300-700 punches. They're now built from contender-sized units (`PowerRating.ARENA_CHAMPION_UNIT` 40 HP / 4.6 damage; `CRYPT_BOSS_UNITS` 60-75 HP / 5-6 damage). The first night's Champion keeps 80% HP (was 30% of the old 500).
+  - **Grave Champions** take half their bout's recommendation (`CHAMPION_SHARE`); the bout's monsters are scaled to the other half.
+  - **Crypt floor bosses** are as strong as the contender who opened their floors (500 / 1,150 / 2,645 / 6,084 / 13,993); a floor recommends its rooms on top (floors 1-2 about 600).
+  - **Floor 10's boss** is 2.3x the Coffin King (32,184), the climb's real peak; floors 9-10 recommend about 26,000-47,000. The endless floors grow from it.
+- **At par** (raw punches, before combo and heavy multipliers; hits = how many of the boss's hits knock you out):
+
+| Fight | Punches | Hits |
+|---|---|---|
+| Bellman r1 / r3 | 33 / 44 | 8.7 / 7.1 |
+| Headless | 37 / 50 | 8.2 / 6.6 |
+| Southpaw | 48 / 64 | 6.7 / 5.5 |
+| Plague Doctor | 77 / 103 | 4.2 / 3.5 |
+| Coffin King | 120 / 160 | 2.8 / 2.4 |
+| Grave Champions (bout 3) | 30-54 | 5.6-7.7 |
+| Crypt floor bosses 1-9 | 39-61 | 4.4-7.9 |
+| Floor 10 (vs Coffin King par) | 129 | 1.8 |
+
 ## Boss pacing and the power shift [Built 2026-11-03]
 
 Prerequisites for the Crypt revamp, and the first Rebalance plan items.
@@ -2015,7 +2041,7 @@ Prerequisites for the Crypt revamp, and the first Rebalance plan items.
 
 **Other balance items:**
 - **Combo drills:** daily first-clear reward matches the other minigames, about 200-500 gold before the Bellman, scaling with tier after.
-- **Defense curve** before the new gear (e.g. defense / (defense + K) or a cap).
+- **Defense curve** before the new gear. *[Built 2026-11-03: see "Defense rework: the armor formula".]*
 - **Combo multiplier:** lower the gain per hit, add a way to raise the cap (a gear stat), and spamming hooks shouldn't keep the combo going.
 - **Grave Champion's punch** is too fast to dodge.
 - **Shield bearers and similar:** take 10-20% damage from punches other than hooks; a real blocking animation.
@@ -2064,7 +2090,7 @@ Prerequisites for the Crypt revamp, and the first Rebalance plan items.
 | armor_pierce | +4% | x1.072 | +30% |
 | punch_speed | +3% | x1.068 | +20% |
 | max_knuckles | +15 | x1.13 | +519 (tune later) |
-| defense | +1 | x1.098 | +15 |
+| defense (x10 scale, armor formula, 2026-11-03) | +10 | x1.098 | +150 |
 | heal_on_kill | +1 | x1.109 | +20 |
 | graze_reduction, flinch_reduction | +4% | x1.072 | +30% |
 | free_punch_chance | +2% | x1.072 | +15% |
@@ -2116,6 +2142,7 @@ Prerequisites for the Crypt revamp, and the first Rebalance plan items.
   - **Bone Breaker:** hook counters ignore 50% of armor. **The Long Count:** survive a knockout at 1 HP and stun everything for 3 s; once per floor, once per Arena bout, once total in the Dead League. **Gravewalker:** dodging an attack gives 25% damage reduction for 2 s. **Executioner:** counters finish non-boss enemies under 25% HP.
   - **Gold Fever:** damage + log10(gold held) x 5% (100 gold = +10%, 100,000,000 = +40%; 0 gold = 0). **Loaded Dice:** chests can be rerolled 3 times a floor (not the merchant's wares). **Silver Tongue:** silver drops +25%. **Haggler:** your ultimate spends 10% less meter; with Sister Southpaw's card it stacks to 35%.
 - **Damage reduction cap:** set bonuses and effects that reduce damage taken (Deadweight's bonus, Grit, Gravewalker...) share one 75% cap. Armor and the defense stat are separate; Iron Will (a blocked hit) is outside it.
+- **Defense under the armor formula (revised 2026-11-03):** the defense stat now cuts each hit by defense / (defense + 3 x hit), capped at 90%, at least 1 damage. So defense gear is the crowd stat: Deadweight and the Wraps pieces carrying defense matter most in Crypt rooms and Arena bars, little against a boss haymaker. Their numbers are on the x10 scale (a level-30 piece's +150 is about a third of tier-5 par's 426). Deadweight's flat "take less damage" bonus stays the boss-fight answer (it applies to every hit, after armor, inside the 75% cap). The par build counts gear defense the same way, so stacking it moves POWER through effective HP, not a separate number.
 - **Cursed chests are replaced by elite mimics;** the old risk specials (Glass Jaw, Last Stand, Blood Price) go away with the random item system. Existing gear in saves migrates to the nearest set piece by slot. Legendary becomes a normal rarity on every piece, so the boss and elite chest legendary rules change.
 
 **Drop odds** (tiers are 2 floors each, tier 6 is endless; chance by tier T1..T6):

@@ -714,6 +714,11 @@ func _spawn_enemy(entry: Dictionary, at: Vector3) -> Enemy:
 		var shift := PowerRating.crypt_boss_shift(_floor, Progression.crypt_difficulty(_floor, _start_floor))
 		night_only.hp *= shift
 		night_only.damage *= shift
+		# Floor bosses on the contenders' scale (PowerRating.CRYPT_BOSS_UNITS).
+		if PowerRating.CRYPT_BOSS_UNITS.has(kind) and not entry.has("scaling"):
+			var unit := PowerRating.boss_unit_scale(enemy, PowerRating.CRYPT_BOSS_UNITS[kind])
+			night_only.hp *= unit.hp
+			night_only.damage *= unit.damage
 	enemy.setup(_player, entry.armored, entry.scaling if entry.has("scaling") else night_only if is_boss_kind else _scaling(_current_room))
 	if is_boss_kind:
 		enemy.windup_pad = Progression.boss_windup_pad(Progression.crypt_boss_tier(_floor))

@@ -155,9 +155,9 @@ static func par_build(tier: int, share: float) -> Dictionary:
 			for effect in node_effects:
 				effects[effect] = effects.get(effect, 0.0) + float(node_effects[effect])
 	var level: int = PAR_LEVEL[mini(tier, PAR_LEVEL.size() - 1)]
-	# Power and Grit go straight into damage and knuckle HP.
+	# Power and Grit go straight into damage, knuckle HP and (Grit) defense.
 	var per := par_points(level)
-	for effect in ["damage_percent", "knuckles_percent"]:
+	for effect in ["damage_percent", "knuckles_percent", "defense"]:
 		effects[effect] = effects.get(effect, 0.0) + per * _attribute_effect(effect)
 	# Decent gear from the tier's deepest floor: gloves with damage, wraps with
 	# knuckles and defense (expected values of rare-ish rolls).
@@ -170,7 +170,21 @@ static func par_build(tier: int, share: float) -> Dictionary:
 	var factor := level_factor(tier, damage, knuckles, defense, effects)
 	damage *= factor
 	knuckles *= factor
-	return {"damage": damage, "knuckles": knuckles, "defense": defense, "ehp": knuckles * (10.0 + defense) / 10.0, "effects": effects, "factor": factor}
+	return {"damage": damage, "knuckles": knuckles, "defense": defense, "ehp": effective_hp(knuckles, defense), "effects": effects, "factor": factor}
+
+
+## Effective knuckle HP (2026-11-03, with the armor formula): knuckles over
+## the share of a typical hit that gets through, where a typical hit is
+## GameState.TYPICAL_HIT of the effective HP itself (enemies are built from
+## it, Progression.enemy_scaling): solves E (1 - D / (D + f a E)) = K, i.e.
+## f a E^2 - f a K E - K D = 0, with f = DEFENSE_HIT_FACTOR, a = TYPICAL_HIT.
+static func effective_hp(knuckles: float, defense: float) -> float:
+	if defense <= 0.0:
+		return knuckles
+	var fa: float = GameState.DEFENSE_HIT_FACTOR * GameState.TYPICAL_HIT
+	var e := (fa * knuckles + sqrt(fa * fa * knuckles * knuckles + 4.0 * fa * knuckles * defense)) / (2.0 * fa)
+	# The armor cap: never more than 1 / (1 - MAX_ARMOR_REDUCTION) x knuckles.
+	return minf(e, knuckles / (1.0 - GameState.MAX_ARMOR_REDUCTION))
 
 
 ## Where a fighter of this level sits on the climb (PAR_LEVEL): 0 at level
