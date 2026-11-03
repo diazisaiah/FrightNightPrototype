@@ -106,6 +106,9 @@ const TURN_TIMEOUT := 4.0
 @export var armor_value := 4.0
 @export var armor_bonus_hp := 20.0
 
+## Seconds added to every windup or cast (after windup_scale). Bosses get it
+## by tier (Progression.boss_windup_pad); regular monsters keep 0.
+var windup_pad := 0.0
 var hp := 0.0
 ## HP never drops below this (the True Coffin King holds on until he tags out,
 ## and can't be hurt while he's out of the ring).

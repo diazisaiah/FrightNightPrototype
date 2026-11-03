@@ -445,6 +445,8 @@ func _spawn_enemy(entry: Dictionary, at := Vector3.INF) -> void:
 	if veteran:
 		enemy.set_meta("veteran", true)
 	enemy.setup(_player, entry.armored, _boss_scaling() if kind == "boss" else _spawn_scaling())
+	if kind == "boss":
+		enemy.windup_pad = Progression.boss_windup_pad(_division)
 	enemy.set_meta("kind", kind)
 	# Position before entering the tree so it never overlaps the player at the origin.
 	enemy.position = _spawn_point() if at == Vector3.INF else at

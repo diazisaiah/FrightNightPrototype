@@ -770,8 +770,10 @@ func _test_class_balance() -> void:
 	for tier in range(1, Progression.TIER_COUNT + 1):
 		for class_id in GameState.CLASSES:
 			report.set_build(GameState, Progression, class_id, tier)
-			var ratio := float(PowerRating.player()) / float(PowerRating.contender(tier - 1))
-			_check(ratio > 0.88 and ratio < 1.2, "%s at par for tier %d should rate about even with the contender, got %.2f" % [class_id, tier, ratio])
+			# The power shift (2026-11-03) puts contenders above par on purpose,
+			# so par is judged against the contender before the shift.
+			var ratio := float(PowerRating.player()) * PowerRating.contender_shift(tier - 1) / float(PowerRating.contender(tier - 1))
+			_check(ratio > 0.88 and ratio < 1.2, "%s at par for tier %d should rate about even with the unshifted contender, got %.2f" % [class_id, tier, ratio])
 	var uplifts := []
 	for class_id in GameState.CLASSES:
 		report.set_build(GameState, Progression, class_id, 5, false)
@@ -781,6 +783,20 @@ func _test_class_balance() -> void:
 	_check(uplifts.max() - uplifts.min() < 0.15, "Every fighter's typical hand should be worth about the same: %s" % [uplifts])
 	print("Typical hand POWER: %s" % [uplifts.map(func(u: float) -> String: return "x%.2f" % u)])
 	GameState.player_class = saved_class
+	# 2026-11-03: boss windup padding by tier, the power shift, card odds by
+	# level and loadout-locked cards.
+	_check(is_equal_approx(Progression.boss_windup_pad(1), 0.075) and is_equal_approx(Progression.boss_windup_pad(2), 0.07)
+			and is_equal_approx(Progression.boss_windup_pad(5), 0.055), "Boss windup padding: 0.075 at tier 1, 0.005 less a tier")
+	_check(Progression.crypt_boss_tier(1) == 2 and Progression.crypt_boss_tier(2) == 2 and Progression.crypt_boss_tier(10) == 6
+			and Progression.crypt_boss_tier(25) == 6, "Crypt floor bosses pad a tier ahead (floors 1-2 are tier 2), endless stays at floor 10's")
+	for index in PowerRating.CONTENDER_POWER.size():
+		_check(PowerRating.contender_shift(index) > 1.0, "Contender %d is shifted up to its POWER target" % (index + 1))
+	_check(Cards.rarity_weight("common", 1) == 1.0 and Cards.rarity_weight("legendary", 1) < Cards.rarity_weight("legendary", 20)
+			and is_equal_approx(Cards.rarity_weight("epic", Cards.RARITY_FULL_LEVEL), 1.0) and Cards.rarity_weight("epic", 50) > 1.0,
+			"Rare, epic and legendary cards come up less at low levels and more at high ones")
+	var locked: Dictionary = Cards.info("berserker", "strike")
+	_check(not Cards.available(locked, {}, "berserker", 1) and Cards.available(locked, {}, "berserker", 5),
+			"A card that upgrades a loadout ability isn't drawn until the ability is unlocked")
 
 
 ## Emotes: every dance only moves real joints; the emote key is G / View

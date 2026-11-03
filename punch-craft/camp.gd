@@ -1085,15 +1085,39 @@ func _pick_bout(division: int) -> void:
 		_start_run())
 
 
-## Crypt: pick a pair of floors to start on (one pair per tier you've reached).
+## Crypt: pick a pair of floors to start on (one pair per contender beaten),
+## or, once floor 10 is beaten, the endless floors from a checkpoint.
 func _pick_crypt_floors() -> void:
 	var options := []
 	for i in Progression.TIER_COUNT:
 		var first := Progression.crypt_start_floor(i + 1)
-		options.append({"name": "FLOORS %d-%d" % [first, first + 1], "open": i + 1 <= Progression.current_tier(), "tier": i + 1, "value": i + 1})
+		options.append({"name": "FLOORS %d-%d" % [first, first + 1], "open": Progression.crypt_floor_open(first), "tier": i + 1, "value": i + 1})
+	var checkpoints := Progression.crypt_checkpoints()
+	if not checkpoints.is_empty():
+		options.append({"name": "ENDLESS", "number": "%d+" % checkpoints[0], "number_size": 48, "open": true, "tier": Progression.TIER_COUNT,
+			"value": 0, "detail": "Checkpoints: %s" % ", ".join(checkpoints.map(func(f: int) -> String: return str(f)))})
 	_pick("THE CRYPT", options, func(tier: int) -> void:
+		if tier == 0:
+			_pick_crypt_checkpoint(checkpoints)
+			return
 		GameState.crypt_tier = tier
+		GameState.crypt_start_pick = 0
 		_start_crypt())
+
+
+## The endless floors: start from floor 11 or any checkpoint reached (15, 20 ...).
+func _pick_crypt_checkpoint(checkpoints: Array) -> void:
+	if checkpoints.size() == 1:
+		GameState.crypt_start_pick = checkpoints[0]
+		_start_crypt()
+		return
+	var options := []
+	for floor_number in checkpoints:
+		options.append({"name": "FLOOR %d" % floor_number, "number": "%d" % floor_number, "number_size": 48,
+			"open": true, "tier": Progression.TIER_COUNT, "value": floor_number})
+	_pick("ENDLESS CRYPT", options, func(floor_number: int) -> void:
+		GameState.crypt_start_pick = floor_number
+		_start_crypt(), "Start from a checkpoint")
 
 
 ## A row of big cards, one per tier, edged in that tier's contender's color.

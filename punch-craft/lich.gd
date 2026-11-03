@@ -104,7 +104,7 @@ func _think(delta: float) -> Vector3:
 	if _cooldown <= 0.0 and distance <= max_range + 4.0:
 		_casting = true
 		_flashed = false
-		_cast_timer = cast_time
+		_cast_timer = cast_time + windup_pad
 		Sfx.play_at("zap", global_position + Vector3.UP * 2.0, -6.0, 0.6)
 		return Vector3.ZERO
 	if distance > max_range:

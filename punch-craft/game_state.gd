@@ -1158,6 +1158,9 @@ var arena_bout_pick := 0
 var arena_bouts := {}
 ## The Crypt bracket picked at camp (runs start on its first floor).
 var crypt_tier := 1
+## An endless checkpoint floor picked at camp for the next Crypt run (0 = start
+## at crypt_tier's first floor). Not saved.
+var crypt_start_pick := 0
 ## Collected hats: id -> how many popped (duplicates turned into Souls).
 var hats := {}
 ## The hat your fighter wears (seen when you emote), "" for none. Cosmetic:
@@ -2122,7 +2125,7 @@ func card_offer() -> Array:
 	if progress.draws <= 0:
 		return []
 	if progress.offer.is_empty():
-		progress.offer = Cards.draw(player_class, progress.cards, 3, card_seals())
+		progress.offer = Cards.draw(player_class, progress.cards, 3, card_seals(), level)
 		if progress.offer.is_empty():
 			# The deck is spent (or everything's sealed): the draw waits.
 			return []
@@ -2158,9 +2161,9 @@ func reroll_offer() -> bool:
 	var hidden: Dictionary = progress.cards.duplicate()
 	for id in shown:
 		hidden[id] = Cards.copies(Cards.info(player_class, id))
-	var fresh := Cards.draw(player_class, hidden, 3, card_seals())
+	var fresh := Cards.draw(player_class, hidden, 3, card_seals(), level)
 	if fresh.size() < 3:
-		for id in Cards.draw(player_class, progress.cards, 3, card_seals()):
+		for id in Cards.draw(player_class, progress.cards, 3, card_seals(), level):
 			if fresh.size() < 3 and not id in fresh:
 				fresh.append(id)
 	progress.offer = fresh
@@ -2184,9 +2187,9 @@ func swap_card(id: String) -> bool:
 	progress.draws += 1
 	var without: Dictionary = progress.cards.duplicate()
 	without[id] = Cards.copies(Cards.info(player_class, id))
-	progress.offer = Cards.draw(player_class, without, 3, card_seals())
+	progress.offer = Cards.draw(player_class, without, 3, card_seals(), level)
 	if progress.offer.is_empty():
-		progress.offer = Cards.draw(player_class, progress.cards, 3, card_seals())
+		progress.offer = Cards.draw(player_class, progress.cards, 3, card_seals(), level)
 	progress.rerolls = 0
 	_commit()
 	return true
@@ -2212,7 +2215,7 @@ func redraft() -> bool:
 ## Draws the deck can fill now. Past about level 40 there are more draws than
 ## cards; the rest wait for a swap, a redraft or a seal.
 func usable_draws() -> int:
-	return mini(draws, Cards.left_in_deck(player_class, cards, card_seals()))
+	return mini(draws, Cards.left_in_deck(player_class, cards, card_seals(), level))
 
 
 func cards_kept() -> int:

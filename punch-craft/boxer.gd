@@ -143,9 +143,6 @@ var _last_result := ""
 ## Bosses: while more punches are queued in a combo, hits still land but
 ## can't stagger or interrupt it. Dodge the whole combo, then punish the end.
 var combo_armor := false
-## Seconds added to every windup (after windup_scale): the later Dead League
-## contenders get a little extra to read their bigger swings.
-var windup_pad := 0.0
 var _armor_shown := false
 
 

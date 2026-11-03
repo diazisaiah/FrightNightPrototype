@@ -380,6 +380,57 @@ static func crypt_position(floor_number: int, progress := 1.0) -> float:
 	return (tier - 1) + (within + clampf(progress, 0.0, 1.0)) * CRYPT_FLOOR_SPAN
 
 
+## Boss windup padding (2026-11-03): seconds added to every boss windup, by
+## tier. Tier 1 (the Bellman, the Gravedigger Arena) gets the most; each tier
+## after gets BOSS_PAD_STEP less. Crypt floor bosses run a tier ahead of their
+## floors' contender (floors 1-2 are tier 2), see crypt_boss_tier.
+const BOSS_PAD_FIRST := 0.075
+const BOSS_PAD_STEP := 0.005
+
+
+static func boss_windup_pad(tier: int) -> float:
+	return maxf(0.0, BOSS_PAD_FIRST - BOSS_PAD_STEP * (maxi(tier, 1) - 1))
+
+
+## The padding tier of a Crypt floor's boss: floors 1-2 are tier 2, 3-4 tier
+## 3 ... 9-10 tier 6; the endless floors stay at floor 10's.
+static func crypt_boss_tier(floor_number: int) -> int:
+	return ceili(clampi(floor_number, 1, crypt_last_floor()) / float(FLOORS_PER_TIER)) + 1
+
+
+## Crypt floors open with the seals (2026-11-03): each contender beaten opens
+## their pair of floors (the Bellman 1-2 ... the Coffin King 9-10). The
+## endless floors open once floor 10 is beaten.
+static func crypt_floor_open(floor_number: int) -> bool:
+	if floor_number > crypt_last_floor():
+		return GameState.crypt_floors_cleared >= crypt_last_floor()
+	return ceili(floor_number / float(FLOORS_PER_TIER)) <= seals_broken()
+
+
+## The contender whose seal holds a floor shut ("" if it's open or endless).
+static func crypt_floor_seal(floor_number: int) -> String:
+	if crypt_floor_open(floor_number) or floor_number > crypt_last_floor():
+		return ""
+	return DeadLeagueRules.boss(ceili(floor_number / float(FLOORS_PER_TIER)) - 1).name
+
+
+## Endless checkpoints: floor 11, then every CHECKPOINT_EVERY floors from 15
+## (15, 20, 25 ...), each once you've reached it. Runs can start on any of them.
+const CHECKPOINT_EVERY := 5
+
+
+static func crypt_checkpoints() -> Array:
+	var points := []
+	if GameState.crypt_floors_cleared < crypt_last_floor():
+		return points
+	points.append(crypt_last_floor() + 1)
+	var next := CHECKPOINT_EVERY * 3
+	while next <= GameState.crypt_floors_cleared + 1:
+		points.append(next)
+		next += CHECKPOINT_EVERY
+	return points
+
+
 ## Floor a Crypt run starts on when entering at tier bracket t.
 static func crypt_start_floor(tier: int) -> int:
 	return (tier - 1) * FLOORS_PER_TIER + 1

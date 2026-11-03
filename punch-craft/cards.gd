@@ -13,6 +13,14 @@ class_name Cards
 const COPIES := {"common": 4, "rare": 2, "epic": 1, "legendary": 1}
 ## Legendaries come up this many times as often as one copy of anything else.
 const LEGENDARY_WEIGHT := 2.0
+## Rarer cards come up less at low fighter levels (2026-11-03). A card's draw
+## weight is scaled by its rarity: RARITY_LOW at level 1, rising evenly to x1
+## (the old odds) at RARITY_FULL_LEVEL, then on to RARITY_HIGH at
+## RARITY_TOP_LEVEL. Commons stay x1.
+const RARITY_LOW := {"common": 1.0, "rare": 0.5, "epic": 0.3, "legendary": 0.3}
+const RARITY_HIGH := {"common": 1.0, "rare": 1.15, "epic": 1.3, "legendary": 1.3}
+const RARITY_FULL_LEVEL := 30
+const RARITY_TOP_LEVEL := 50
 ## The seals, in climb order: legendary "seal" i joins after contender i.
 const SEALS := ["bellman", "headless", "southpaw", "plague_doctor", "coffin_king"]
 const RARITY_ORDER := ["common", "rare", "epic", "legendary"]
@@ -340,28 +348,45 @@ static func effects_at(card: Dictionary, rank: int) -> Dictionary:
 	return result
 
 
-## Whether a legendary has joined the deck (its seal is broken). The clears
+## How a card's rarity scales its draw weight at a fighter level (1 when the
+## level isn't known, -1).
+static func rarity_weight(rarity: String, level: int) -> float:
+	if level < 0:
+		return 1.0
+	var low: float = RARITY_LOW.get(rarity, 1.0)
+	var high: float = RARITY_HIGH.get(rarity, 1.0)
+	if level <= RARITY_FULL_LEVEL:
+		return lerpf(low, 1.0, clampf((level - 1) / float(RARITY_FULL_LEVEL - 1), 0.0, 1.0))
+	return lerpf(1.0, high, clampf((level - RARITY_FULL_LEVEL) / float(RARITY_TOP_LEVEL - RARITY_FULL_LEVEL), 0.0, 1.0))
+
+
+## Whether a card has joined the deck: a legendary once its seal is broken;
+## a card that upgrades a passive or ultimate ("upgrades") once the fighter
+## has unlocked that ability (when fighter and level are given). The clears
 ## are passed in so this data module does not depend back on the GameState
 ## autoload that loads it (important for command-line balance tools).
-static func available(card: Dictionary, clears := {}) -> bool:
+static func available(card: Dictionary, clears := {}, fighter := "", level := -1) -> bool:
+	if card.has("upgrades") and fighter != "" and level >= 0 and not Abilities.unlocked(fighter, card.upgrades, level):
+		return false
 	if card.get("rarity", "") != "legendary":
 		return true
 	return bool(clears.get(card.get("seal", ""), false))
 
 
 ## Three different cards drawn from what's left of a fighter's deck (copies
-## not yet kept; legendaries once their seal is broken, at double weight).
-## owned: {id: rank}. Fewer than three if the deck is nearly spent.
-static func draw(fighter: String, owned: Dictionary, count := 3, clears := {}) -> Array:
+## not yet kept; legendaries once their seal is broken, at double weight;
+## rarer cards scaled by level, see rarity_weight). owned: {id: rank}. Fewer
+## than three if the deck is nearly spent. level -1 skips the level rules.
+static func draw(fighter: String, owned: Dictionary, count := 3, clears := {}, level := -1) -> Array:
 	var pool := []
 	var weights := []
 	for id in deck(fighter):
 		var card: Dictionary = deck(fighter)[id]
 		var left := copies(card) - int(owned.get(id, 0))
-		if left <= 0 or not available(card, clears):
+		if left <= 0 or not available(card, clears, fighter, level):
 			continue
 		pool.append(id)
-		weights.append(left * (LEGENDARY_WEIGHT if card.rarity == "legendary" else 1.0))
+		weights.append(left * (LEGENDARY_WEIGHT if card.rarity == "legendary" else 1.0) * rarity_weight(card.rarity, level))
 	var picks := []
 	while picks.size() < count and not pool.is_empty():
 		var total := 0.0
@@ -382,11 +407,11 @@ static func draw(fighter: String, owned: Dictionary, count := 3, clears := {}) -
 
 ## How many cards a fighter's deck still holds for them (copies not kept and
 ## available now).
-static func left_in_deck(fighter: String, owned: Dictionary, clears := {}) -> int:
+static func left_in_deck(fighter: String, owned: Dictionary, clears := {}, level := -1) -> int:
 	var left := 0
 	for id in deck(fighter):
 		var card: Dictionary = deck(fighter)[id]
-		if available(card, clears):
+		if available(card, clears, fighter, level):
 			left += copies(card) - int(owned.get(id, 0))
 	return left
 

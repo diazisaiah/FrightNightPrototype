@@ -179,7 +179,10 @@ func _ready() -> void:
 	add_to_group("map_scene")  # A tap of the controller emote button opens the map.
 	# You bring your kept gear in; what you find is bound to the Crypt until
 	# it's gilded at an altar and carried out by the exit stairs.
-	_start_floor = Progression.crypt_start_floor(clampi(GameState.crypt_tier, 1, Progression.current_tier()))
+	_start_floor = Progression.crypt_start_floor(clampi(GameState.crypt_tier, 1, maxi(1, Progression.seals_broken())))
+	if GameState.crypt_start_pick in Progression.crypt_checkpoints():
+		_start_floor = GameState.crypt_start_pick
+	GameState.crypt_start_pick = 0
 	_floor = _start_floor
 	GameState.begin_crypt_run()
 	Look.tune_environment($WorldEnvironment.environment, "crypt")
@@ -706,7 +709,14 @@ func _spawn_enemy(entry: Dictionary, at: Vector3) -> Enemy:
 		enemy.set_meta("veteran", true)
 	var night_only := _endless(Progression.enemy_scaling(_position(), Progression.crypt_difficulty(_floor, _start_floor)))
 	var is_boss_kind: bool = kind in BOSS_CYCLE
+	if is_boss_kind:
+		# The power shift: the floor boss up to its tier's POWER target (PowerRating).
+		var shift := PowerRating.crypt_boss_shift(_floor, Progression.crypt_difficulty(_floor, _start_floor))
+		night_only.hp *= shift
+		night_only.damage *= shift
 	enemy.setup(_player, entry.armored, entry.scaling if entry.has("scaling") else night_only if is_boss_kind else _scaling(_current_room))
+	if is_boss_kind:
+		enemy.windup_pad = Progression.boss_windup_pad(Progression.crypt_boss_tier(_floor))
 	enemy.set_meta("kind", kind)
 	enemy.position = at
 	enemy.arena_center = _current_room.center
@@ -1081,11 +1091,15 @@ func _use_stairs() -> void:
 	var note := ""
 	if keep + lose > 0:
 		note = "LEAVE NOW:  KEEP %d GILDED" % keep + ("   ·   LOSE %d" % lose if lose > 0 else "")
+	# The next floor may still be sealed: then the stairs only lead out.
+	var seal := Progression.crypt_floor_seal(_floor + 1)
+	if seal != "":
+		note = ("FLOOR %d IS SEALED:  BEAT %s" % [_floor + 1, seal.to_upper()]) + ("\n" + note if note != "" else "")
 	_hud.show_results({
 		"title": "THE CRYPT IS CLEARED" if _floor == FINAL_FLOOR else "FLOOR %d CLEARED" % _floor,
 		"rewards": {"coins": _run_coins, "xp": _run_xp, "souls": _run_souls},
 		"note": note,
-	}, "Go deeper" if _floor >= FINAL_FLOOR else "Descend to Floor %d" % (_floor + 1), false, "Leave the Crypt")
+	}, "" if seal != "" else "Go deeper" if _floor >= FINAL_FLOOR else "Descend to Floor %d" % (_floor + 1), false, "Leave the Crypt")
 
 
 # --- Gilding: keeping what you find ------------------------------------------

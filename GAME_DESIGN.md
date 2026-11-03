@@ -604,7 +604,7 @@ Each tier is the same climb: **earn** in the Underworld Arena, **loot** in the C
 - One melee attacker at a time in divisions 1-2, two from division 3.
 
 ### Crypt gear you can keep (the Enchanted Cave idea)
-- **Ten floors**, two per tier, then endless. The camp's **Crypt** button picks a starting pair (floors 1-2, 3-4 and so on); a pair opens once its tier is reached.
+- **Ten floors**, two per tier, then endless. The camp's **Crypt** button picks a starting pair (floors 1-2, 3-4 and so on); a pair opens once its tier is reached. *(2026-11-03: now a pair opens when its contender is beaten: the Bellman opens floors 1-2, the Headless 3-4 ... the Coffin King 9-10; beating floor 10 opens the endless floors. See "Boss pacing and the power shift".)*
 - Enemies climb to 40% of the way to the tier's contender on the pair's first floor and 80% on the second.
 - **Souls show on the Crypt HUD** (top right, beside silver) and count up as bosses drop them, since the altars spend them.
 - **Your worn gear comes in with you.** Anything found this run is **bound** to the Crypt.
@@ -1949,7 +1949,7 @@ Notes from the user's playtest week, put in order. Nothing here is built yet. Mo
 3. **Bug fixes:** the boss room spawn bug (maybe a toilet room: test with `Dungeon.force_toilet` over many floors), the Yonkers description, save codes too long to type by hand (copy and paste works in game; pasting outside the game is untested).
 4. **Crypt revamp** (see "Crypt revamp plan" below), in order: room furniture, the gear system, drop odds / store cards / salvage, mimics and elite mimics, the toilet and merchant tie-in, item models, then re-run the balance.
 5. **Character dialogue and the ultimate aura [Planned, announced]:** every fighter gets their own dialogue (when the lines play and what they say are still to be decided). When the ultimate is ready the fighter shows their aura, like the one in the trailer when they power up in third person while emoting (`EmoteFx` aura). Both are teased in the announcement for the coming week.
-6. **Later / on hold:** a mobile build (see "Mobile build" below), boss patterns and windup padding (after the power balance is tested; note `WINDUP_PAD` already adds +0.06s / +0.075s to the Plague Doctor's and the Coffin King's windups, which the user finds too slow now), a 6th set (Haunt, for the Catalyst), the super crit power, the boss soft damage cap.
+6. **Later / on hold:** a mobile build (see "Mobile build" below), boss patterns and windup padding (after the power balance is tested; windup padding is now by tier for every boss, see "Boss pacing and the power shift" (2026-11-03)), a 6th set (Haunt, for the Catalyst), the super crit power, the boss soft damage cap.
 7. **Marketing:** devlogs always include screenshots (the user waived them for the v0.9.19 devlog).
 
 ## Controls patch (2026-11-02)
@@ -1968,9 +1968,27 @@ Notes from the user's playtest week, put in order. Nothing here is built yet. Mo
   - A slip or roll that worked refreshes the combo timer to a full window and lets the same hand throw without losing the combo (it then counts as the other hand would). A missed one no longer does either.
   - Why: you could uppercut forever once a jab started a combo, even on the same side, and alternate hooks forever. Examples that grow every punch: jab, cross, hook, right-hand uppercut, or jab, hook, hook. The old 4-straight limit is gone; Unbroken still makes every punch grow.
   - Hooks and uppercuts still need the damage set-up (after a jab or cross, a set-up hook or uppercut, or a slip or roll to that side), which is separate from the combo count. A same-hand hook after a jab is set up for damage, but loses the combo.
-  - **Suspected fix (left as is for now):** the first punch on a new enemy only holds the combo. A strong fighter who one-shots enemies never gets a second punch on the same enemy, so every punch is a "first punch on a new enemy" and the combo may never grow. Watch for it in playtests; a fix could let a kill, a counter or a different kind of punch still grow it.
+  - **Fixed 2026-11-03:** the first punch on a new enemy now grows the combo (see Grows above). Old note: the first punch on a new enemy only holds the combo. A strong fighter who one-shots enemies never gets a second punch on the same enemy, so every punch is a "first punch on a new enemy" and the combo may never grow. Watch for it in playtests; a fix could let a kill, a counter or a different kind of punch still grow it.
   - Tutorial COMBOS drills stay jab, cross, hook and jab, cross, hook, uppercut (each punch still grows the combo under these rules), and Pad Work builds only combos that grow with every punch (hands alternate, no kind of punch three times in a row, one double jab, hooks and uppercuts set up).
 - **Cross matches the jab:** the cross had a slower windup (0.11 s) and a longer cooldown (0.34 s) than the jab (0.09 s, 0.28 s), which also made its animation slower. Both straights use the jab's timing now. The cross still hits for x1.3, so mashing jab / cross deals about 11% more damage per second than before; watch it in the power balance.
+
+## Boss pacing and the power shift [Built 2026-11-03]
+
+Prerequisites for the Crypt revamp, and the first Rebalance plan items.
+
+- **Boss windup padding by tier** (`Progression.boss_windup_pad`, `Enemy.windup_pad`): every boss windup gets +0.075 s at tier 1, then 0.005 s less a tier.
+  - Tier 1: the Bellman and the Gravedigger Arena's Grave Champion (0.075).
+  - Tier 2: the Headless, the Bone Arena, Crypt floors 1-2 (0.07). Tier 3: Southpaw, the Ghost Arena, floors 3-4 (0.065). And so on: the Coffin King and the Crown Arena 0.055, floors 9-10 and the endless floors 0.05 (`Progression.crypt_boss_tier`: Crypt floor bosses run a tier ahead of their floors).
+  - It replaces `DeadLeagueBoss.WINDUP_PAD` (0 / 0 / 0 / 0.06 / 0.075). The Lich King adds it to his cast time.
+- **Crypt floors open with the seals** (`Progression.crypt_floor_open`): the Bellman opens floors 1-2, the Headless 3-4, Southpaw 5-6, the Plague Doctor 7-8, the Coffin King 9-10. Before, a pair opened with its tier, so the Bellman opened floors 1-4. A run can't descend into a sealed floor: the stairs say "FLOOR N IS SEALED: BEAT ..." and only lead out.
+- **Endless floors and checkpoints** (`Progression.crypt_checkpoints`): beating floor 10 opens the endless floors. The camp Crypt picker shows an ENDLESS card that starts on floor 11, or on a checkpoint: floors 15, 20, 25, 30 ... once reached. A checkpoint start is as tough as reaching that floor.
+- **Card odds by level** (`Cards.rarity_weight`): rare, epic and legendary cards' draw weight is scaled by fighter level. At level 1: rare x0.5, epic x0.3, legendary x0.3. They reach x1 (the old odds) at level 30, and rise to rare x1.15, epic and legendary x1.3 at level 50. Commons stay x1.
+- **Loadout-locked cards:** a card that upgrades a passive or ultimate (`upgrades`) isn't drawn, and doesn't show in the deck, until the fighter has unlocked that ability (`Cards.available`).
+- **The power shift** (`PowerRating.contender_shift`, `crypt_boss_shift`): contenders sit at the Rebalance plan's POWER targets (850 / 1,950 / 4,500 / 10,300 / 23,800) instead of their par's own rating. Crypt floor bosses sit at their tier's target (1,105 / 2,760 / 6,900 / 17,300 / 43,200, floors 1-2 to 9-10; the endless floors grow on top).
+  - A boss's HP and damage both take the shift, so its POWER moves by exactly that much.
+  - Shifts at first build: contenders x2.36 / x1.88 / x1.64 / x1.70 / x1.62. Crypt floor bosses about x8 on floor 1, x5.8 on floor 2, x4.6 on floor 10 (they were built from the Crypt's gentle ramp).
+  - A par build now rates about 0.4-0.6 of the contender. The regression checks par against the contender before the shift. Test in play before deciding on caps or pattern changes.
+  - Not shifted yet: the Arena's Grave Champions, the True Coffin King.
 
 ## Rebalance plan [Planned, 2026-11-01]
 

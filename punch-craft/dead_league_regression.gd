@@ -52,8 +52,8 @@ func _test_normalized_build() -> void:
 		var boss := scene.instantiate() as DeadLeagueBoss
 		boss.configure(index, 1)
 		var par := Progression.par(index + 1)
-		_check(is_equal_approx(boss.max_hp, DeadLeagueRules.boss(index).hp * par.damage / Progression.BASE_DAMAGE),
-				"Contender %d's HP must scale with its tier's par damage" % (index + 1))
+		_check(is_equal_approx(boss.max_hp, DeadLeagueRules.boss(index).hp * par.damage / Progression.BASE_DAMAGE * PowerRating.contender_shift(index)),
+				"Contender %d's HP must scale with its tier's par damage and its power shift" % (index + 1))
 		_check(boss.max_hp > previous_hp, "Each contender must be tougher than the last")
 		previous_hp = boss.max_hp
 		boss.free()

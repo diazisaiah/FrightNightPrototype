@@ -198,7 +198,51 @@ static func _card_worth(fx: Dictionary, perks: Array) -> Vector2:
 ## built-in bonuses and drawbacks count on both sides, so the comparison is
 ## about your build, not which fighter you picked).
 static func contender(index: int) -> int:
-	return rate(_par_as_player(Progression.par(index + 1)))
+	return roundi(rate(_par_as_player(Progression.par(index + 1))) * contender_shift(index))
+
+
+## The power shift (2026-11-03, the Rebalance plan's boss power targets):
+## contenders sit at CONTENDER_POWER (x2.3 a tier) instead of their par's own
+## rating, and Crypt floor bosses at CRYPT_BOSS_POWER (1.3x the Bellman, then
+## x2.5 a tier). A boss's HP and damage both take the shift, so its POWER
+## (sqrt of offense x defense) moves by exactly that much.
+const CONTENDER_POWER := [850, 1950, 4500, 10300, 23800]
+const CRYPT_BOSS_POWER := [1105, 2760, 6900, 17300, 43200]
+static var _neutral_cache := {}
+
+
+## Contender i's HP and damage multiplier.
+static func contender_shift(index: int) -> float:
+	index = clampi(index, 0, CONTENDER_POWER.size() - 1)
+	return CONTENDER_POWER[index] / maxf(neutral_par_power(index + 1), 1.0)
+
+
+## A Crypt floor boss's HP and damage multiplier: its tier's target over what
+## the monsters it's built from (Progression.par_at(difficulty)) are worth.
+static func crypt_boss_shift(floor_number: int, difficulty: float) -> float:
+	var tier := clampi(ceili(clampi(floor_number, 1, Progression.crypt_last_floor()) / float(Progression.FLOORS_PER_TIER)), 1, CRYPT_BOSS_POWER.size())
+	var unshifted := climb_power(minf(difficulty, Progression.TIER_COUNT))
+	return CRYPT_BOSS_POWER[tier - 1] / maxf(unshifted, 1.0)
+
+
+## Par's POWER at tier t with no class (0 = a fresh fighter).
+static func neutral_par_power(tier: int) -> float:
+	if not _neutral_cache.has(tier):
+		var par: Dictionary = Progression.par(tier)
+		var fx: Dictionary = par.get("effects", {})
+		_neutral_cache[tier] = float(rate({"damage": par.damage, "knuckles": par.knuckles, "defense": par.defense,
+			"punch_speed": 1.0 + fx.get("punch_speed", 0.0), "combo_step": 0.25 + fx.get("combo_step", 0.0), "effects": fx}))
+	return _neutral_cache[tier]
+
+
+## Par's POWER at climb position x (0-5), geometric between tiers.
+static func climb_power(x: float) -> float:
+	x = clampf(x, 0.0, Progression.TIER_COUNT)
+	var low := floori(x)
+	var high := mini(low + 1, Progression.TIER_COUNT)
+	var a := neutral_par_power(low)
+	var b := neutral_par_power(high)
+	return a * pow(b / maxf(a, 1.0), x - low)
 
 
 ## A par build (Progression.par) as the current fighter would have it.
