@@ -1989,6 +1989,9 @@ Prerequisites for the Crypt revamp, and the first Rebalance plan items.
   - Shifts at first build: contenders x2.36 / x1.88 / x1.64 / x1.70 / x1.62. Crypt floor bosses about x8 on floor 1, x5.8 on floor 2, x4.6 on floor 10 (they were built from the Crypt's gentle ramp).
   - A par build now rates about 0.4-0.6 of the contender. The regression checks par against the contender before the shift. Test in play before deciding on caps or pattern changes.
   - Not shifted yet: the Arena's Grave Champions, the True Coffin King.
+- **Recommended POWER on every pick** (`PowerRating.arena_power`, `crypt_power`, camp's `_power_lines`): the Arena division and bout cards and the Crypt floor and checkpoint cards show REC. POWER, your POWER and the Dead League's verdict word and colors (OUTMATCHED ... OVERPOWERED).
+  - An Arena bout recommends what its monsters and Grave Champion are built from. A division card shows your next unbeaten bout's.
+  - A Crypt pair recommends its floor boss's target (1,105 for floors 1-2). The endless floors grow it like the monsters.
 
 ## Rebalance plan [Planned, 2026-11-01]
 

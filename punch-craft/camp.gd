@@ -1054,11 +1054,24 @@ func _pick_division() -> void:
 	var options := []
 	for i in Progression.TIER_COUNT:
 		var bouts := mini(int(GameState.arena_bouts.get(str(i + 1), 0)), Progression.BOUTS_PER_DIVISION)
+		# Runs pick up at your next unbeaten bout: recommend for that one.
+		var next_bout := clampi(bouts + 1, 1, Progression.BOUTS_PER_DIVISION)
 		options.append({"name": Progression.TIERS[i].division.to_upper(), "pips": [bouts, Progression.BOUTS_PER_DIVISION],
-			"open": i + 1 <= Progression.current_tier(), "tier": i + 1, "value": i + 1})
+			"open": i + 1 <= Progression.current_tier(), "tier": i + 1, "value": i + 1,
+			"lines": _power_lines(PowerRating.arena_power(i + 1, next_bout))})
 	_pick("UNDERWORLD ARENA", options, func(division: int) -> void:
 		GameState.arena_division = division
 		_pick_bout(division))
+
+
+## A pick card's POWER readout (2026-11-03): the recommended POWER, then yours
+## with the Dead League's verdict and colors.
+func _power_lines(recommended: int) -> Array:
+	var mine := PowerRating.player()
+	var verdict := PowerRating.verdict(mine, recommended)
+	var ratio: float = verdict[1]
+	var color: Color = UiTheme.BAD if ratio < 0.88 else (UiTheme.GOLD if ratio < 0.97 else UiTheme.GOOD)
+	return [["REC. POWER  %d" % recommended, UiTheme.MUTED], ["YOU  %d" % mine, color], [verdict[0], color]]
 
 
 ## Then the bout: any you've won (to farm it) or the next one. Harder bouts
@@ -1076,10 +1089,12 @@ func _pick_bout(division: int) -> void:
 		if bout == Progression.BOUTS_PER_DIVISION:
 			# The third bout is endless: 50 knockouts win it, then it's for a score.
 			options.append({"name": "ENDLESS", "number": "%d" % bout, "tier": division, "open": true, "value": bout,
-				"detail": "%s   ·   BEST %d" % [state, GameState.endless_best_in(division)]})
+				"detail": "%s   ·   BEST %d" % [state, GameState.endless_best_in(division)],
+				"lines": _power_lines(PowerRating.arena_power(division, bout))})
 			continue
 		options.append({"name": "BOUT %d" % bout, "number": "%d" % bout, "tier": division, "open": true, "value": bout,
-			"detail": state + "   ·   x%s pay" % String.num(Progression.pay(Progression.arena_position(division, bout)) / base, 2)})
+			"detail": state + "   ·   x%s pay" % String.num(Progression.pay(Progression.arena_position(division, bout)) / base, 2),
+			"lines": _power_lines(PowerRating.arena_power(division, bout))})
 	_pick("%s DIVISION" % Progression.TIERS[division - 1].division.to_upper(), options, func(bout: int) -> void:
 		GameState.arena_bout_pick = bout
 		_start_run())
@@ -1091,11 +1106,13 @@ func _pick_crypt_floors() -> void:
 	var options := []
 	for i in Progression.TIER_COUNT:
 		var first := Progression.crypt_start_floor(i + 1)
-		options.append({"name": "FLOORS %d-%d" % [first, first + 1], "open": Progression.crypt_floor_open(first), "tier": i + 1, "value": i + 1})
+		options.append({"name": "FLOORS %d-%d" % [first, first + 1], "open": Progression.crypt_floor_open(first), "tier": i + 1, "value": i + 1,
+			"lines": _power_lines(PowerRating.crypt_power(first))})
 	var checkpoints := Progression.crypt_checkpoints()
 	if not checkpoints.is_empty():
 		options.append({"name": "ENDLESS", "number": "%d+" % checkpoints[0], "number_size": 48, "open": true, "tier": Progression.TIER_COUNT,
-			"value": 0, "detail": "Checkpoints: %s" % ", ".join(checkpoints.map(func(f: int) -> String: return str(f)))})
+			"value": 0, "detail": "Checkpoints: %s" % ", ".join(checkpoints.map(func(f: int) -> String: return str(f))),
+			"lines": _power_lines(PowerRating.crypt_power(checkpoints[0]))})
 	_pick("THE CRYPT", options, func(tier: int) -> void:
 		if tier == 0:
 			_pick_crypt_checkpoint(checkpoints)
@@ -1114,7 +1131,7 @@ func _pick_crypt_checkpoint(checkpoints: Array) -> void:
 	var options := []
 	for floor_number in checkpoints:
 		options.append({"name": "FLOOR %d" % floor_number, "number": "%d" % floor_number, "number_size": 48,
-			"open": true, "tier": Progression.TIER_COUNT, "value": floor_number})
+			"open": true, "tier": Progression.TIER_COUNT, "value": floor_number, "lines": _power_lines(PowerRating.crypt_power(floor_number))})
 	_pick("ENDLESS CRYPT", options, func(floor_number: int) -> void:
 		GameState.crypt_start_pick = floor_number
 		_start_crypt(), "Start from a checkpoint")
@@ -1156,7 +1173,7 @@ func _pick(title: String, options: Array, callback: Callable, subtitle := "") ->
 			continue  # Sealed tiers aren't shown until they open.
 		var accent: Color = DeadLeagueRules.boss(option.tier - 1).accent
 		var card := Button.new()
-		var card_size: Vector2 = option.get("card_size", Vector2(200, 230))
+		var card_size: Vector2 = option.get("card_size", Vector2(210, 290) if option.has("lines") else Vector2(200, 230))
 		card.custom_minimum_size = card_size
 		card.disabled = not option.open
 		var face := UiTheme.raised(Color(0.06, 0.05, 0.08, 0.96), Color(accent, 0.75), 2, 12)

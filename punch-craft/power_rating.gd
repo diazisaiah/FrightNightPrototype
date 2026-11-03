@@ -225,6 +225,19 @@ static func crypt_boss_shift(floor_number: int, difficulty: float) -> float:
 	return CRYPT_BOSS_POWER[tier - 1] / maxf(unshifted, 1.0)
 
 
+## Recommended POWER for an Arena bout (2026-11-03): what its monsters and
+## Grave Champion are built from (Progression.arena_difficulty).
+static func arena_power(division: int, bout: int) -> int:
+	return roundi(climb_power(Progression.arena_difficulty(division, bout)))
+
+
+## Recommended POWER for a Crypt floor: its boss's (CRYPT_BOSS_POWER, growing
+## on the endless floors like the monsters do).
+static func crypt_power(floor_number: int) -> int:
+	var tier := clampi(ceili(clampi(floor_number, 1, Progression.crypt_last_floor()) / float(Progression.FLOORS_PER_TIER)), 1, CRYPT_BOSS_POWER.size())
+	return roundi(CRYPT_BOSS_POWER[tier - 1] * Progression.crypt_endless_growth(floor_number, 1.0))
+
+
 ## Par's POWER at tier t with no class (0 = a fresh fighter).
 static func neutral_par_power(tier: int) -> float:
 	if not _neutral_cache.has(tier):
