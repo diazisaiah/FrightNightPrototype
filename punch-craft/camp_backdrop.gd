@@ -112,7 +112,7 @@ func _build() -> void:
 	ground.mesh = plane
 	_world.add_child(ground)
 	Scenery.ground_patches(_world, 14.0, 18, rng)
-	Scenery.grass(_world, 24.0, 4000, rng, 2.2)
+	Scenery.grass(_world, 24.0, 1500 if Settings.use_web_profile() else 4000, rng, 2.2)
 	Scenery.night_sky(_world, rng, Vector3(-30, 24, -60))
 
 	# The fire: a ring of stones, crossed logs, flames, sparks and its light.
@@ -223,3 +223,5 @@ func _build() -> void:
 		else:
 			_crypt.show_open()
 	Scenery.wisps(_world, Vector3(0, 1.5, -6.0), Vector3(12, 1.0, 8), Color(0.45, 1.0, 0.75), 16)
+	# The fighters round the fire (CampCast).
+	_world.add_child(CampCast.new())

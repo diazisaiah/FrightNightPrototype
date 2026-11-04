@@ -27,6 +27,35 @@ func _ready() -> void:
 			var parts := argument.trim_prefix("--stage=").split(",")
 			await _capture_stage(int(parts[0]), float(parts[1]) if parts.size() > 1 else 0.0, float(parts[2]) if parts.size() > 2 else 0.0)
 			return
+		elif argument == "--camp":
+			# The camp's upgrade page as you see it.
+			add_child((load("res://camp.tscn") as PackedScene).instantiate())
+			for frame in 120:
+				await get_tree().process_frame
+			await _capture("res://camp_capture.png")
+			return
+		elif argument.begins_with("--backdrop"):
+			# The camp backdrop alone, full screen; --backdrop=X,Y,Z,LX,LY,LZ[,NAME]
+			# moves the camera (to frame the fire's cast up close).
+			var backdrop := CampBackdrop.new()
+			backdrop.set_anchors_preset(Control.PRESET_FULL_RECT)
+			add_child(backdrop)
+			var parts := argument.trim_prefix("--backdrop=").split(",") if argument.contains("=") else PackedStringArray()
+			for frame in 150:
+				await get_tree().process_frame
+			if parts.size() >= 6:
+				backdrop.set_process(false)
+				var camera: Camera3D = backdrop.get("_camera")
+				camera.position = Vector3(float(parts[0]), float(parts[1]), float(parts[2]))
+				camera.look_at(Vector3(float(parts[3]), float(parts[4]), float(parts[5])))
+				for frame in 4:
+					await get_tree().process_frame
+			var view: SubViewport = backdrop.get("_viewport")
+			print("BACKDROP: %d draw calls, %d primitives" % [
+				view.get_render_info(Viewport.RENDER_INFO_TYPE_VISIBLE, Viewport.RENDER_INFO_DRAW_CALLS_IN_FRAME),
+				view.get_render_info(Viewport.RENDER_INFO_TYPE_VISIBLE, Viewport.RENDER_INFO_PRIMITIVES_IN_FRAME)])
+			await _capture("res://backdrop_%s_capture.png" % (parts[6] if parts.size() > 6 else "view"))
+			return
 		elif argument.begins_with("--steer"):
 			if argument.begins_with("--steer="):
 				_open_division(int(argument.trim_prefix("--steer=")))

@@ -2299,6 +2299,8 @@ The camp backdrop (`camp_backdrop.gd`: fire, tent, dummy, Crypt door) stays; the
 - **Talking:** one speaker at a time gestures while the others turn their heads to them; it moves on every few seconds. No text or sound for now.
 - Animate only while the backdrop is visible (it already pauses under menus, `_skip`).
 
+**Built 2026-11-04, to test:** `camp_cast.gd` (`CampCast`, added by `CampBackdrop`). Real FighterBody bodies in their skins (only the fighter you play wears your hat), posed by Emotes clips written in code (sitting, cross-legged, lounging, bouncing, reading), props on their hands (a drumstick, a deli sub, a glowing tome with rising motes) and seats (a big stump with an axe in it, a crate, a rock). Talking: a speaker every 3.5-5.5 s (not the Catalyst, who reads); the speaker nods and gestures with a free arm, the others turn their heads to them. Tony joins once `tony_unlocked`, the Catalyst once bought. Cost (phone profile): the camp went from 164 to about 325 draw calls and 75k to 409k triangles with all six; the camp already renders every other frame on phones, and its grass is cut to 1500 blades there. `dead_league_visual_capture.tscn -- --backdrop[=X,Y,Z,LX,LY,LZ,NAME]` renders the camp backdrop (and prints its cost).
+
 ### 5. Custom UI kit
 Replace the stock Godot look (flat StyleBoxes in `ui_theme.gd`) with our own kit, used everywhere:
 - **Pieces:** buttons (normal / hover / pressed / disabled, a press squish and sound), panels and frames, cards framed by rarity and tier, tabs, sliders, toggles, scroll areas (no scrollbar on touch), outlined headers and numbers, tooltips (long-press on touch), dialogs, toasts.
