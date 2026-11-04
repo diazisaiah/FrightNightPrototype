@@ -573,7 +573,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		rotate_y(-event.relative.x * sensitivity)
 		_camera.rotate_x(-event.relative.y * sensitivity)
 		_camera.rotation.x = clampf(_camera.rotation.x, deg_to_rad(-89), deg_to_rad(89))
-	elif event is InputEventMouseButton and event.pressed and Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
+	elif event is InputEventMouseButton and event.pressed and Input.mouse_mode != Input.MOUSE_MODE_CAPTURED and not TouchUi.enabled:
 		# Clicking back into the window after alt-tabbing recaptures the mouse.
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 		get_viewport().set_input_as_handled()

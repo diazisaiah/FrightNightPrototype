@@ -24,6 +24,11 @@ const STICK_RADIUS := 88.0
 const STICK_DEAD := 0.12
 const BUTTON_RADIUS := 34.0
 const SMALL_RADIUS := 25.0
+## Finger drag (px) that points the emote wheel all the way; short, because the
+## EMOTE button sits near the top edge and there's little room to drag up.
+const WHEEL_DRAG := 38.0
+## A quick flick that began in a stick zone still counts as a punch swipe.
+const FLICK_TIME := 0.22
 
 ## name: [action or method, column, row, radius, label]
 const BUTTONS := {
@@ -54,6 +59,11 @@ var _sprint_on := false
 var _held_buttons := {}
 ## While EMOTE is held: where the finger has dragged, up to length 1 (the wheel).
 var wheel_vec := Vector2.ZERO
+## Desktop test mode ("?touchmouse"): the engine's own emulation is used instead.
+var _mouse_test := false
+## The finger acting as the mouse in menus (-1: none), and where it last was.
+var _menu_finger := -1
+var _menu_pos := Vector2.ZERO
 
 
 func _ready() -> void:
@@ -71,6 +81,10 @@ func _ready() -> void:
 	var search_text = JavaScriptBridge.eval("window.location.search", true) if OS.has_feature("web") else ""
 	if "--touch-mouse" in OS.get_cmdline_args() or (search_text is String and "touchmouse" in search_text):
 		Input.emulate_touch_from_mouse = true
+		_mouse_test = true
+	else:
+		# Menus get their taps from _menu_touch, never from the engine's emulation.
+		Input.emulate_mouse_from_touch = false
 	# Phones are wider than 16:9: show more world instead of black bars.
 	get_window().content_scale_aspect = Window.CONTENT_SCALE_ASPECT_EXPAND
 	_canvas = Control.new()
@@ -82,6 +96,10 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
+	# A phone has no pointer to capture; menus (and the HUD's resume) would
+	# otherwise leave the mouse "captured", which eats taps.
+	if Input.mouse_mode != Input.MOUSE_MODE_VISIBLE:
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	var player := _find_player()
 	# Menus and popups pause the game, so that's the signal (a phone browser
 	# can't capture the mouse, so the mouse mode says nothing there).
@@ -90,16 +108,20 @@ func _process(_delta: float) -> void:
 		live = now_live
 		_canvas.visible = live
 		# While fighting, touches must not also click: left click is a punch.
-		Input.emulate_mouse_from_touch = not live
+		if _mouse_test:
+			Input.emulate_mouse_from_touch = not live
+		if _menu_finger != -1:
+			_send_pointer(_menu_pos, 0, false, true)  # Don't leave a press hanging.
+			_menu_finger = -1
 		if not live:
 			_release_all()
+		elif _sprint_on:
+			Input.action_press("sprint")  # RUN stays on across pauses.
 	_player = player
 	if not live:
 		return
 	_size = get_viewport().get_visible_rect().size
 	_apply_sticks()
-	if _sprint_on and _move_vec.length() < 0.2:
-		_set_sprint(false)
 	_canvas.queue_redraw()
 
 
@@ -129,8 +151,10 @@ func _swapped() -> bool:
 ## right one (the other way round when left-handed).
 func _zone(role: String) -> Rect2:
 	var left_side := (role == "move") != _swapped()
-	var width := _size.x * 0.27
-	return Rect2(0 if left_side else _size.x - width, _size.y * 0.5, width, _size.y * 0.5)
+	# Small and low: a punch gesture that begins higher up or further in must
+	# not turn into a stick.
+	var width := _size.x * 0.22
+	return Rect2(0 if left_side else _size.x - width, _size.y * 0.64, width, _size.y * 0.36)
 
 
 func _button_center(id: String) -> Vector2:
@@ -144,7 +168,7 @@ func _button_center(id: String) -> Vector2:
 			var x := _size.x - edge if not _swapped() else edge
 			return Vector2(x, _size.y * float(spec[2]) + 60.0)
 	# Map, emote and pause in a row at the top right, left of the ULT button.
-	return Vector2(_size.x - 135.0 - (1.0 - float(spec[2])) * 60.0, 50.0)
+	return Vector2(_size.x - 135.0 - (1.0 - float(spec[2])) * 60.0, 64.0)
 
 
 func _button_at(pos: Vector2) -> String:
@@ -158,6 +182,8 @@ func _button_at(pos: Vector2) -> String:
 
 func _input(event: InputEvent) -> void:
 	if not live:
+		if not _mouse_test:
+			_menu_touch(event)
 		return
 	if event is InputEventScreenTouch:
 		if event.pressed:
@@ -170,8 +196,52 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 
+## Menus, pause screens and popups: the first finger acts as the mouse. A move
+## to the spot comes first so buttons see the pointer arrive, then press and
+## release. Sent straight to the viewport in its own coordinates, so it never
+## depends on the engine's touch-to-mouse conversion (which flips with the
+## fight controls and could be left in the wrong state).
+func _menu_touch(event: InputEvent) -> void:
+	if event is InputEventScreenTouch:
+		if event.pressed:
+			if _menu_finger != -1:
+				return
+			_menu_finger = event.index
+			_menu_pos = event.position
+			_send_pointer(event.position, 0, true, false)
+			_send_pointer(event.position, 0, true, true)
+		elif event.index == _menu_finger:
+			_menu_finger = -1
+			_send_pointer(event.position, 0, false, true)
+			get_viewport().set_input_as_handled()
+	elif event is InputEventScreenDrag and event.index == _menu_finger:
+		var rel: Vector2 = event.position - _menu_pos
+		_menu_pos = event.position
+		_send_pointer(event.position, 1, true, false, rel)
+
+
+## kind 0: a mouse move (button == false) or a left button (button == true);
+## kind 1: a move while the button is down.
+func _send_pointer(pos: Vector2, kind: int, down: bool, button: bool, rel := Vector2.ZERO) -> void:
+	var ev: InputEvent
+	if button:
+		var click := InputEventMouseButton.new()
+		click.button_index = MOUSE_BUTTON_LEFT
+		click.pressed = down
+		click.button_mask = MOUSE_BUTTON_MASK_LEFT if down else 0
+		ev = click
+	else:
+		var move := InputEventMouseMotion.new()
+		move.relative = rel
+		move.button_mask = MOUSE_BUTTON_MASK_LEFT if kind == 1 else 0
+		ev = move
+	ev.position = pos
+	ev.global_position = pos
+	get_viewport().push_input(ev, true)
+
+
 func _touch_down(index: int, pos: Vector2) -> void:
-	var touch := {"start": pos, "pos": pos, "t": Time.get_ticks_msec() / 1000.0, "fired": false,
+	var touch := {"start": pos, "origin": pos, "pos": pos, "t": Time.get_ticks_msec() / 1000.0, "fired": false,
 			"role": "punch", "side": "left" if pos.x < _size.x * 0.5 else "right"}
 	var button := _button_at(pos)
 	if button != "":
@@ -209,6 +279,12 @@ func _touch_up(index: int, pos: Vector2) -> void:
 				_punch(touch.side, "jab" if touch.side == "left" else "cross")
 		"button":
 			_release_button(touch.button)
+		"move", "look":
+			# A quick flick that started on a stick still throws the punch.
+			var flick: Vector2 = pos - touch.origin
+			var quick: float = Time.get_ticks_msec() / 1000.0 - float(touch.t)
+			if quick <= FLICK_TIME and flick.length() >= SWIPE_DISTANCE:
+				_swipe(touch.side, flick)
 
 
 func _has_role(role: String) -> bool:
@@ -268,7 +344,7 @@ func _apply_sticks() -> void:
 func _emote_drag() -> Vector2:
 	for touch in _touches.values():
 		if touch.role == "button" and touch.button == "emote":
-			return ((touch.pos - touch.start) / (90.0 * _scale())).limit_length(1.0)
+			return ((touch.pos - touch.start) / (WHEEL_DRAG * _scale())).limit_length(1.0)
 	return Vector2.ZERO
 
 
@@ -333,7 +409,8 @@ func _release_all() -> void:
 		if touch.role == "button":
 			_release_button(touch.button)
 	_touches.clear()
-	_set_sprint(false)
+	if Input.is_action_pressed("sprint"):
+		Input.action_release("sprint")  # RUN itself stays toggled (_sprint_on).
 	for id in _held_buttons.keys():
 		_release_button(id)
 	for action in ["move_left", "move_right", "move_forward", "move_back",

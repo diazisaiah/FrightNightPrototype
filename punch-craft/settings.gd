@@ -36,6 +36,33 @@ const DEFAULTS := {
 }
 
 var values := DEFAULTS.duplicate()
+var _web_fullscreen_asked := false
+
+const FULLSCREEN_JS := """
+(function () {
+	if (window.__fnFs) { return; }
+	function apply() {
+		var want = window.__fnWant;
+		if (want === null || want === undefined) { return; }
+		var d = document;
+		var is = !!(d.fullscreenElement || d.webkitFullscreenElement);
+		if (want === is) { window.__fnWant = null; return; }
+		var el = d.documentElement;
+		try {
+			var fn = want ? (el.requestFullscreen || el.webkitRequestFullscreen)
+					: (d.exitFullscreen || d.webkitExitFullscreen);
+			if (!fn) { window.__fnWant = null; return; }
+			var p = fn.call(want ? el : d);
+			if (p && p.then) { p.then(function () { window.__fnWant = null; }, function () {}); }
+			else { window.__fnWant = null; }
+		} catch (e) {}
+	}
+	window.__fnFs = function (on) { window.__fnWant = on; apply(); };
+	['pointerup', 'touchend', 'click'].forEach(function (name) {
+		document.addEventListener(name, apply, true);
+	});
+})();
+"""
 
 
 func _ready() -> void:
@@ -45,6 +72,10 @@ func _ready() -> void:
 	# holding Esc leaves full screen. Elsewhere P pauses (Controls).
 	if OS.has_feature("web"):
 		JavaScriptBridge.eval("if (navigator.keyboard && navigator.keyboard.lock) { navigator.keyboard.lock(['Escape']).catch(function () {}); }", true)
+		# Full screen on phones: browsers only allow it from a tap, and a request
+		# made a frame later can miss that. So the page keeps what's wanted and
+		# retries on every tap or click until the browser says yes.
+		JavaScriptBridge.eval(FULLSCREEN_JS, true)
 	# One look everywhere: every menu, HUD screen, dropdown and dialog. Merged
 	# into Godot's default theme, since a theme set on the window stops at
 	# CanvasLayers (the HUD).
@@ -201,7 +232,11 @@ func apply() -> void:
 	var fullscreen: bool = get_value("fullscreen")
 	var mode := DisplayServer.window_get_mode()
 	var is_fullscreen := mode == DisplayServer.WINDOW_MODE_FULLSCREEN or mode == DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN
-	if fullscreen != is_fullscreen and DisplayServer.get_name() != "headless":
+	if OS.has_feature("web"):
+		if fullscreen != _web_fullscreen_asked:
+			_web_fullscreen_asked = fullscreen
+			JavaScriptBridge.eval("window.__fnFs && window.__fnFs(%s)" % ("true" if fullscreen else "false"), true)
+	elif fullscreen != is_fullscreen and DisplayServer.get_name() != "headless":
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN if fullscreen else DisplayServer.WINDOW_MODE_WINDOWED)
 
 
