@@ -30,19 +30,26 @@ const WHEEL_DRAG := 38.0
 ## A quick flick that began in a stick zone still counts as a punch swipe.
 const FLICK_TIME := 0.22
 
-## name: [action or method, column, row, radius, label]
+## Big square buttons along the bottom (dash, run, back step): half a side.
+const SQUARE_HALF := 42.0
+## Gap between buttons.
+const GAP := 12.0
+
+## id: [action or method, label, shape ("c" circle, "s" square), radius or half side, arrow]
 const BUTTONS := {
-	"interact": ["interact", "L", 0.18, BUTTON_RADIUS, "USE"],
-	"back_step": ["back_step", "L", 0.34, BUTTON_RADIUS, "BACK"],
-	"sprint": ["sprint", "L", 0.50, BUTTON_RADIUS, "RUN"],
-	"ultimate": ["ultimate", "R", 0.18, BUTTON_RADIUS + 4.0, "ULT"],
-	"jump": ["jump", "R", 0.34, BUTTON_RADIUS, "JUMP"],
-	"dash": ["dash", "R", 0.50, BUTTON_RADIUS, "DASH"],
-	"lock": ["lock_cycle", "T", -2.0, SMALL_RADIUS, "LOCK"],
-	"map": ["map", "T", -1.0, SMALL_RADIUS, "MAP"],
-	"emote": ["emote", "T", 0.0, SMALL_RADIUS, "EMOTE"],
-	"pause": ["pause", "T", 1.0, SMALL_RADIUS, "II"],
+	"interact": ["interact", "USE", "c", BUTTON_RADIUS, ""],
+	"ultimate": ["ultimate", "ULT", "c", BUTTON_RADIUS + 4.0, ""],
+	"jump": ["jump", "JUMP", "c", BUTTON_RADIUS, ""],
+	"dash": ["dash", "DASH", "s", SQUARE_HALF, "up"],
+	"sprint": ["sprint", "RUN", "s", SQUARE_HALF, "up2"],
+	"back_step": ["back_step", "BACK", "s", SQUARE_HALF, "down"],
+	"lock": ["lock_cycle", "LOCK", "c", SMALL_RADIUS, ""],
+	"map": ["map", "MAP", "c", SMALL_RADIUS, ""],
+	"emote": ["emote", "EMOTE", "c", SMALL_RADIUS, ""],
+	"pause": ["pause", "II", "c", SMALL_RADIUS, ""],
 }
+## Where the small buttons sit in the top row (steps left of PAUSE).
+const TOP_STEP := {"pause": 0, "emote": 1, "map": 2, "lock": 3}
 
 ## True when touch controls are turned on for this run.
 var enabled := false
@@ -65,6 +72,17 @@ var _mouse_test := false
 ## The finger acting as the mouse in menus (-1: none), and where it last was.
 var _menu_finger := -1
 var _menu_pos := Vector2.ZERO
+var _menu_start := Vector2.ZERO
+var _menu_dragging := false
+var _menu_cancelled := false
+var _menu_scroll: ScrollContainer
+var _fingers := {}
+var _pinch_gap := 0.0
+## Recent finger paths for the punch trails: [{pts, age}] once a finger lifts.
+var _fading: Array = []
+var _box := StyleBoxFlat.new()
+const TRAIL_FADE := 0.3
+const TRAIL_POINTS := 22
 
 
 func _ready() -> void:
@@ -96,7 +114,7 @@ func _ready() -> void:
 	_canvas.visible = false
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	# A phone has no pointer to capture; menus (and the HUD's resume) would
 	# otherwise leave the mouse "captured", which eats taps.
 	if Input.mouse_mode != Input.MOUSE_MODE_VISIBLE:
@@ -114,6 +132,7 @@ func _process(_delta: float) -> void:
 		if _menu_finger != -1:
 			_send_pointer(_menu_pos, 0, false, true)  # Don't leave a press hanging.
 			_menu_finger = -1
+		_fingers.clear()
 		if not live:
 			_release_all()
 		elif _sprint_on:
@@ -123,6 +142,9 @@ func _process(_delta: float) -> void:
 		return
 	_size = get_viewport().get_visible_rect().size
 	_apply_sticks()
+	for fade in _fading:
+		fade.age += delta
+	_fading = _fading.filter(func(f: Dictionary) -> bool: return f.age < TRAIL_FADE)
 	_canvas.queue_redraw()
 
 
@@ -158,25 +180,75 @@ func _zone(role: String) -> Rect2:
 	return Rect2(0 if left_side else _size.x - width, _size.y * 0.64, width, _size.y * 0.36)
 
 
+## Half the button's size (radius for circles, half a side for squares).
+func _half(id: String) -> float:
+	return float(BUTTONS[id][3]) * _scale()
+
+
+## Layout: the right thumb's side has ULT and JUMP stacked over a bottom row of
+## big squares (DASH nearest the edge, RUN beside it, BACK beyond); USE sits
+## on the left above the move stick; the small buttons run along the top.
 func _button_center(id: String) -> Vector2:
-	var spec: Array = BUTTONS[id]
-	var edge := 36.0 + float(spec[3]) * _scale()
-	match spec[1]:
-		"L":
-			var x := edge if not _swapped() else _size.x - edge
-			return Vector2(x, _size.y * float(spec[2]) + 60.0)
-		"R":
-			var x := _size.x - edge if not _swapped() else edge
-			return Vector2(x, _size.y * float(spec[2]) + 60.0)
-	# Map, emote and pause in a row at the top right, left of the ULT button.
-	return Vector2(_size.x - 135.0 - (1.0 - float(spec[2])) * 60.0, 64.0)
+	var s := _scale()
+	var sq := SQUARE_HALF * s
+	var edge := 26.0 + sq
+	var bottom_y := _size.y * 0.64 - 14.0 - sq  # Just above the stick zones.
+	var jump_y := bottom_y - sq - GAP - BUTTON_RADIUS * s
+	var ult_r := (BUTTON_RADIUS + 4.0) * s
+	var p := Vector2.ZERO  # Distance from the right edge, y.
+	match id:
+		"dash":
+			p = Vector2(edge, bottom_y)
+		"sprint":
+			p = Vector2(edge + sq * 2.0 + GAP, bottom_y)
+		"back_step":
+			p = Vector2(edge + (sq * 2.0 + GAP) * 2.0, bottom_y)
+		"jump":
+			p = Vector2(edge, jump_y)
+		"ultimate":
+			p = Vector2(edge, jump_y - BUTTON_RADIUS * s - GAP - ult_r)
+		"interact":
+			# Left side, above the move stick (so the mirror puts it on the right).
+			return _mirror_x(Vector2(26.0 + BUTTON_RADIUS * s, jump_y), true)
+		_:
+			# Small buttons along the top right, left of the coin counter.
+			var step: int = TOP_STEP[id]
+			return Vector2(_size.x - 150.0 - step * (SMALL_RADIUS * s * 2.0 + 12.0), 64.0)
+	return _mirror_x(Vector2(_size.x - p.x, p.y), false)
+
+
+## Left-handed layout: everything flips sideways.
+func _mirror_x(pos: Vector2, _left_side: bool) -> Vector2:
+	if _swapped():
+		pos.x = _size.x - pos.x
+	return pos
 
 
 ## LOCK only shows when the lock-on camera is on.
 func _button_shown(id: String) -> bool:
-	if id != "lock":
-		return true
-	return _player != null and _player.lock != null and _player.lock.level() != "off"
+	if id == "lock":
+		return _player != null and _player.lock != null and _player.lock.level() != "off"
+	if id == "map":
+		return _map_label() != ""
+	return true
+
+
+## MAP opens the Crypt map when there is one; in the Practice ring the same
+## button steps the dummy up a level (and skips the tutorial), so it's NEXT
+## there. Nowhere else it does anything, so it hides.
+## The MAP button's name in hints.
+func map_name() -> String:
+	var label := _map_label()
+	return label if label != "" else "MAP"
+
+
+func _map_label() -> String:
+	if not get_tree().get_nodes_in_group("map_scene").is_empty():
+		return "MAP"
+	var scene := get_tree().current_scene
+	if scene != null and scene.scene_file_path.contains("training"):
+		return "NEXT"
+	return ""
 
 
 ## Locked onto an enemy: the view follows it, so the look stick goes away and
@@ -189,7 +261,12 @@ func _button_at(pos: Vector2) -> String:
 	for id in BUTTONS:
 		if not _button_shown(id):
 			continue
-		if pos.distance_to(_button_center(id)) <= float(BUTTONS[id][3]) * _scale() + 10.0:
+		var offset: Vector2 = (pos - _button_center(id)).abs()
+		var reach := _half(id) + 8.0
+		if BUTTONS[id][2] == "s":
+			if maxf(offset.x, offset.y) <= reach:
+				return id
+		elif offset.length() <= reach + 2.0:
 			return id
 	return ""
 
@@ -217,23 +294,100 @@ func _input(event: InputEvent) -> void:
 ## release. Sent straight to the viewport in its own coordinates, so it never
 ## depends on the engine's touch-to-mouse conversion (which flips with the
 ## fight controls and could be left in the wrong state).
+##
+## Dragging scrolls whatever scrollable list is under the finger (even over
+## cards, which would swallow the drag), unless it began on a slider or the
+## like; that drag goes on as a mouse drag (the upgrade web pans with it).
+## Two fingers pinch: spreading zooms in, squeezing zooms out (mouse wheel).
 func _menu_touch(event: InputEvent) -> void:
 	if event is InputEventScreenTouch:
 		if event.pressed:
-			if _menu_finger != -1:
-				return
-			_menu_finger = event.index
+			_fingers[event.index] = event.position
+			if _menu_finger == -1:
+				_menu_finger = event.index
+				_menu_pos = event.position
+				_menu_start = event.position
+				_menu_dragging = false
+				_menu_cancelled = false
+				_send_pointer(event.position, 0, true, false)
+				_send_pointer(event.position, 0, true, true)
+			else:
+				_cancel_click()
+				_pinch_gap = _finger_gap()
+		else:
+			_fingers.erase(event.index)
+			if event.index == _menu_finger:
+				_menu_finger = -1
+				if not _menu_cancelled:
+					_send_pointer(event.position, 0, false, true)
+				get_viewport().set_input_as_handled()
+	elif event is InputEventScreenDrag:
+		_fingers[event.index] = event.position
+		if _fingers.size() >= 2:
+			_pinch()
+		elif event.index == _menu_finger and not _menu_cancelled:
+			var rel: Vector2 = event.position - _menu_pos
 			_menu_pos = event.position
-			_send_pointer(event.position, 0, true, false)
-			_send_pointer(event.position, 0, true, true)
-		elif event.index == _menu_finger:
-			_menu_finger = -1
-			_send_pointer(event.position, 0, false, true)
-			get_viewport().set_input_as_handled()
-	elif event is InputEventScreenDrag and event.index == _menu_finger:
-		var rel: Vector2 = event.position - _menu_pos
-		_menu_pos = event.position
-		_send_pointer(event.position, 1, true, false, rel)
+			if not _menu_dragging and event.position.distance_to(_menu_start) > 12.0:
+				_menu_dragging = true
+				_menu_scroll = _scroll_under()
+				if _menu_scroll != null:
+					_cancel_click()
+					return
+			if _menu_scroll != null and is_instance_valid(_menu_scroll):
+				_menu_scroll.scroll_vertical -= int(roundf(rel.y))
+				_menu_scroll.scroll_horizontal -= int(roundf(rel.x))
+			else:
+				_send_pointer(event.position, 1, true, false, rel)
+		elif event.index == _menu_finger and _menu_scroll != null and is_instance_valid(_menu_scroll):
+			var rel2: Vector2 = event.position - _menu_pos
+			_menu_pos = event.position
+			_menu_scroll.scroll_vertical -= int(roundf(rel2.y))
+			_menu_scroll.scroll_horizontal -= int(roundf(rel2.x))
+
+
+## The scrollable list under the finger, unless the drag began on a slider.
+func _scroll_under() -> ScrollContainer:
+	var node: Node = get_viewport().gui_get_hovered_control()
+	if node is Range or node is TextEdit or node is LineEdit:
+		return null
+	while node != null:
+		if node is ScrollContainer and node.is_visible_in_tree():
+			return node
+		node = node.get_parent()
+	return null
+
+
+## Stops the press from counting as a click (a drag or pinch is under way).
+func _cancel_click() -> void:
+	if _menu_cancelled:
+		return
+	_menu_cancelled = true
+	_send_pointer(Vector2(-900, -900), 0, false, true)
+
+
+func _finger_gap() -> float:
+	var points: Array = _fingers.values()
+	return (points[0] as Vector2).distance_to(points[1]) if points.size() >= 2 else 0.0
+
+
+func _pinch() -> void:
+	_cancel_click()
+	var gap := _finger_gap()
+	if absf(gap - _pinch_gap) < 28.0:
+		return
+	var points: Array = _fingers.values()
+	var middle: Vector2 = ((points[0] as Vector2) + (points[1] as Vector2)) * 0.5
+	var wheel := MOUSE_BUTTON_WHEEL_UP if gap > _pinch_gap else MOUSE_BUTTON_WHEEL_DOWN
+	_pinch_gap = gap
+	for pressed in [true, false]:
+		var ev := InputEventMouseButton.new()
+		ev.button_index = wheel
+		ev.pressed = pressed
+		ev.factor = 1.0
+		ev.position = middle
+		ev.global_position = middle
+		get_viewport().push_input(ev, true)
 
 
 ## kind 0: a mouse move (button == false) or a left button (button == true);
@@ -258,7 +412,7 @@ func _send_pointer(pos: Vector2, kind: int, down: bool, button: bool, rel := Vec
 
 func _touch_down(index: int, pos: Vector2) -> void:
 	var touch := {"start": pos, "origin": pos, "pos": pos, "t": Time.get_ticks_msec() / 1000.0, "fired": false,
-			"role": "punch", "side": "left" if pos.x < _size.x * 0.5 else "right"}
+			"role": "punch", "side": "left" if pos.x < _size.x * 0.5 else "right", "trail": [pos]}
 	var button := _button_at(pos)
 	if button != "":
 		touch.role = "button"
@@ -276,6 +430,10 @@ func _touch_move(index: int, pos: Vector2) -> void:
 		return
 	var touch: Dictionary = _touches[index]
 	touch.pos = pos
+	if touch.role == "punch":
+		touch.trail.append(pos)
+		if touch.trail.size() > TRAIL_POINTS:
+			touch.trail.pop_front()
 	if touch.role == "punch" and not touch.fired:
 		var delta: Vector2 = pos - touch.start
 		if delta.length() >= SWIPE_DISTANCE:
@@ -288,6 +446,8 @@ func _touch_up(index: int, pos: Vector2) -> void:
 		return
 	var touch: Dictionary = _touches[index]
 	_touches.erase(index)
+	if touch.role == "punch":
+		_fading.append({"pts": touch.trail, "age": 0.0})
 	match touch.role:
 		"punch":
 			var held: float = Time.get_ticks_msec() / 1000.0 - float(touch.t)
@@ -442,32 +602,100 @@ func _release_all() -> void:
 
 func _draw_controls() -> void:
 	var font := ThemeDB.fallback_font
+	var color := GameState.fighter_color()
 	_canvas.modulate = Color(1, 1, 1, float(Settings.get_value("touch_opacity")))
-	_draw_stick("move", _zone("move"), "MOVE")
+	_draw_stick("move", _zone("move"), "MOVE", color)
 	if not _combat():
-		_draw_stick("look", _zone("look"), "LOOK")
+		_draw_stick("look", _zone("look"), "LOOK", color)
 	for id in BUTTONS:
 		if not _button_shown(id):
 			continue
-		var center := _button_center(id)
-		var radius: float = float(BUTTONS[id][3]) * _scale()
 		var pressed: bool = _held_buttons.has(id) or (id == "sprint" and _sprint_on) or (id == "lock" and _combat())
 		for touch in _touches.values():
 			if touch.role == "button" and touch.button == id:
 				pressed = true
-		_canvas.draw_circle(center, radius, Color(1, 1, 1, 0.30 if pressed else 0.12))
-		_canvas.draw_arc(center, radius, 0.0, TAU, 32, Color(1, 1, 1, 0.55), 2.0)
-		var label: String = BUTTONS[id][4]
-		var fs := 13 if radius > 30.0 else 10
+		_draw_button(id, pressed, color, font)
+	_draw_trails(color)
+
+
+func _draw_button(id: String, pressed: bool, color: Color, font: Font) -> void:
+	var spec: Array = BUTTONS[id]
+	var center := _button_center(id)
+	var half := _half(id)
+	var fill := color.darkened(0.7)
+	fill.a = 0.5
+	var edge := color.lightened(0.2)
+	edge.a = 0.9
+	if pressed:
+		fill = color
+		fill.a = 0.62
+		edge = color.lightened(0.55)
+		edge.a = 1.0
+	if spec[2] == "s":
+		_box.bg_color = fill
+		_box.border_color = edge
+		_box.set_border_width_all(3)
+		_box.set_corner_radius_all(int(half * 0.35))
+		_canvas.draw_style_box(_box, Rect2(center - Vector2(half, half), Vector2(half, half) * 2.0))
+	else:
+		_canvas.draw_circle(center, half, fill)
+		_canvas.draw_arc(center, half, 0.0, TAU, 40, edge, 3.0, true)
+	var ink := Color(1, 1, 1, 0.95)
+	var label: String = spec[1]
+	if id == "map":
+		label = _map_label()
+	var arrow: String = spec[4]
+	if arrow != "":
+		var unit := half * 0.34
+		var up := arrow != "down"
+		var rows: Array = [-unit * 0.15, unit * 0.9] if arrow == "up2" else [unit * 0.1]
+		for y in rows:
+			var tip := Vector2(0, (-unit if up else unit) * 0.6)
+			var pts := PackedVector2Array([Vector2(-unit, -tip.y * 0.1 + (unit * 0.6 if up else -unit * 0.6)) + Vector2(0, y - unit * 0.55),
+					tip + Vector2(0, y - unit * 0.55), Vector2(unit, (unit * 0.6 if up else -unit * 0.6)) + Vector2(0, y - unit * 0.55)])
+			for i in pts.size():
+				pts[i] += center + Vector2(0, -half * 0.12)
+			_canvas.draw_polyline(pts, ink, maxf(4.0, half * 0.1), true)
+		var small := 11
+		var width := font.get_string_size(label, HORIZONTAL_ALIGNMENT_CENTER, -1, small).x
+		_canvas.draw_string(font, center + Vector2(-width * 0.5, half * 0.78), label,
+				HORIZONTAL_ALIGNMENT_LEFT, -1, small, Color(1, 1, 1, 0.75))
+	elif id == "pause":
+		var bar := Vector2(5, half * 0.7)
+		_canvas.draw_rect(Rect2(center + Vector2(-8, -bar.y * 0.5), bar), ink)
+		_canvas.draw_rect(Rect2(center + Vector2(3, -bar.y * 0.5), bar), ink)
+	else:
+		var fs := 15 if half > 30.0 else 11
 		var width := font.get_string_size(label, HORIZONTAL_ALIGNMENT_CENTER, -1, fs).x
-		_canvas.draw_string(font, center + Vector2(-width * 0.5, fs * 0.35), label,
-				HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(1, 1, 1, 0.85))
+		_canvas.draw_string(font, center + Vector2(-width * 0.5, fs * 0.36), label,
+				HORIZONTAL_ALIGNMENT_LEFT, -1, fs, ink)
+
+
+## The punch fingers: a glow in your fighter's colour with a fading trail, and
+## the trails of fingers that just lifted.
+func _draw_trails(color: Color) -> void:
 	for touch in _touches.values():
 		if touch.role == "punch":
-			_canvas.draw_circle(touch.pos, 18.0, Color(1, 0.8, 0.4, 0.25))
+			_trail(touch.trail, color, 1.0)
+			var glow := color.lightened(0.25)
+			glow.a = 0.42
+			_canvas.draw_circle(touch.pos, 24.0, glow)
+			glow.a = 0.9
+			_canvas.draw_arc(touch.pos, 24.0, 0.0, TAU, 28, glow, 2.5, true)
+	for fade in _fading:
+		_trail(fade.pts, color, 1.0 - float(fade.age) / TRAIL_FADE)
 
 
-func _draw_stick(role: String, zone: Rect2, label: String) -> void:
+func _trail(points: Array, color: Color, strength: float) -> void:
+	var n := points.size()
+	for i in range(1, n):
+		var k := float(i) / float(n)
+		var c := color.lightened(0.35)
+		c.a = k * 0.8 * strength
+		_canvas.draw_line(points[i - 1], points[i], c, 3.0 + 14.0 * k, true)
+
+
+func _draw_stick(role: String, zone: Rect2, label: String, color: Color) -> void:
 	var base := zone.position + zone.size * Vector2(0.5, 0.58)
 	var knob_offset := Vector2.ZERO
 	for touch in _touches.values():
@@ -476,11 +704,19 @@ func _draw_stick(role: String, zone: Rect2, label: String) -> void:
 			knob_offset = (touch.pos - touch.start).limit_length(STICK_RADIUS * _scale())
 	var idle := knob_offset == Vector2.ZERO
 	var radius := STICK_RADIUS * _scale()
-	_canvas.draw_circle(base, radius, Color(1, 1, 1, 0.05 if idle else 0.09))
-	_canvas.draw_arc(base, radius, 0.0, TAU, 48, Color(1, 1, 1, 0.22 if idle else 0.45), 2.0)
-	_canvas.draw_circle(base + knob_offset, 34.0 * _scale(), Color(1, 1, 1, 0.16 if idle else 0.38))
+	var ring := color.lightened(0.2)
+	var well := color.darkened(0.7)
+	well.a = 0.18 if idle else 0.3
+	ring.a = 0.4 if idle else 0.85
+	_canvas.draw_circle(base, radius, well)
+	_canvas.draw_arc(base, radius, 0.0, TAU, 48, ring, 3.0, true)
+	var knob := color
+	knob.a = 0.35 if idle else 0.8
+	_canvas.draw_circle(base + knob_offset, 34.0 * _scale(), knob)
+	ring.a = 0.8 if not idle else 0.5
+	_canvas.draw_arc(base + knob_offset, 34.0 * _scale(), 0.0, TAU, 28, ring, 2.0, true)
 	if idle:
 		var font := ThemeDB.fallback_font
 		var width := font.get_string_size(label, HORIZONTAL_ALIGNMENT_CENTER, -1, 12).x
 		_canvas.draw_string(font, base + Vector2(-width * 0.5, 4), label,
-				HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(1, 1, 1, 0.35))
+				HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(1, 1, 1, 0.55))

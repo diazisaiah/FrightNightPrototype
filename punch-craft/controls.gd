@@ -180,7 +180,7 @@ static func touch_name(action: String) -> String:
 		"interact":
 			return "USE"
 		"map":
-			return "MAP"
+			return TouchUi.map_name()
 		"emote":
 			return "EMOTE"
 		"pause":
@@ -624,7 +624,7 @@ static func _touch_text(move: String) -> String:
 		"ultimate":
 			return "ULT"
 		"map":
-			return "MAP"
+			return TouchUi.map_name()
 		"dash":
 			return "DASH"
 		"jump":
