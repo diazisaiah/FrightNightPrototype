@@ -248,14 +248,8 @@ func _draw_reticle() -> void:
 		var angle := i * PI * 0.5 + PI * 0.25
 		var direction := Vector2(cos(angle), sin(angle))
 		_reticle.draw_line(center + direction * (radius + 2.0), center + direction * (radius + 8.0), color, 2.0)
-	# The health bar floats above the enemy's head, not on the ring.
-	var head := target.global_position + Vector3(0, target.head_height * 1.0 + 0.35, 0)
-	head.y = maxf(head.y, point.y + 0.4)
-	if camera.is_position_behind(head):
-		return
-	var top := camera.unproject_position(head)
-	var width := clampf(150.0 / maxf(distance, 1.0), 36.0, 90.0)
+	var width := 54.0
 	var fraction := clampf(target.hp / maxf(target.max_hp, 1.0), 0.0, 1.0)
-	var bar := Rect2(top + Vector2(-width * 0.5, -6.0), Vector2(width, 6.0))
-	_reticle.draw_rect(Rect2(bar.position - Vector2(1, 1), bar.size + Vector2(2, 2)), Color(0, 0, 0, 0.7))
-	_reticle.draw_rect(Rect2(bar.position, Vector2(width * fraction, bar.size.y)), Color(0.9, 0.25, 0.2, 0.95))
+	var bar := Rect2(center + Vector2(-width * 0.5, radius + 12.0), Vector2(width, 5.0))
+	_reticle.draw_rect(bar, Color(0, 0, 0, 0.6))
+	_reticle.draw_rect(Rect2(bar.position, Vector2(width * fraction, bar.size.y)), Color(0.9, 0.25, 0.2, 0.9))
