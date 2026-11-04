@@ -299,6 +299,8 @@ The tutorial ends with an 11th step: the meter starts full and the coach explain
 
 ## Browser performance [Built, 2026-10-14]
 
+**Ctrl in the browser (2026-11-04):** Ctrl is a game key (Ctrl + click uppercuts; some dodge schemes hold it), and in a browser Ctrl + S saved the page, Ctrl + D bookmarked it, Ctrl + A selected everything and Ctrl + W closed the tab. The web export's head include (`export_presets.cfg`, both web presets) now: stops the page default of Ctrl / Cmd + any key (the game still gets the key; Ctrl + Shift combos like the dev tools are left alone), asks "Leave site?" if the page starts closing while Ctrl is held (Ctrl + W can't be blocked in a window), locks the keyboard in fullscreen (Chrome and Edge then let the game keep Ctrl + W too) and drops the right-click menu over the game (Ctrl + click is a right click on a Mac).
+
 The web build is the only one released, and family testers found it laggy. On top of the earlier web profile (no glow, SSAO or shadows, fewer props, batched fences):
 - **3D resolution** (Settings → Display → 3D resolution, default Auto):
   - The browser renders 3D at about 1280x720 worth of pixels, however big or high-DPI the window, and scales it up. Big laptop screens were rendering 2-4x the pixels.
@@ -608,8 +610,7 @@ Each tier is the same climb: **earn** in the Underworld Arena, **loot** in the C
 - Enemies climb to 40% of the way to the tier's contender on the pair's first floor and 80% on the second.
 - **Souls show on the Crypt HUD** (top right, beside silver) and count up as bosses drop them, since the altars spend them.
 - **Your worn gear comes in with you.** Anything found this run is **bound** to the Crypt.
-- **Gilding altar:** in every floor's first room. Gilding a find costs Souls plus silver by rarity:
-  - Souls: common 1, uncommon 1, rare 2, epic 3, legendary 5, cursed 3.
+- **Gilding altar:** in every floor's first room. Gilding a find costs silver by rarity (2026-11-04: the Souls cost is gone):
   - Silver: 10, 15, 25, 40, 60 and 40.
   - A gilded item shows [GILDED] in gold.
 - **Leaving:** the stairs offer "Descend" or "Leave the Crypt (keep gilded finds)".
@@ -1193,7 +1194,7 @@ A buff old wizard with a white beard and long white hair who put his spells into
 - **Rarity:** common / uncommon / rare / epic / legendary. Rarer asks more and pays more: coins 150 / 300 / 600 / 1100 / 2000 x the pay where you are on the climb, Souls 0 / 1 (half the time) / 3 / 6 / 12, bounty XP 10 / 22 / 45 / 90 / 180.
 - **Mastery:** bounty XP levels it (to 25; 60 x level^1.4 a level). Odds start 55 / 27 / 12 / 5 / 1% and shift each level (about 28 / 32 / 23 / 13 / 5% at 10).
 
-**Prices up** (bounties pay coins and Souls): Soul Shop emotes 8 Souls (was 5), gear 6 / 12 / 22 / 38 / 60 (was 4 / 8 / 15 / 25 / 40), rerolls start at 2. Gilding Souls 1 / 2 / 3 / 5 / 8, cursed 5. Stat reroll 3 + 2 per earlier reroll + floor/3. Reforge 5 + 3 per earlier reforge + floor/2.
+**Prices up** (bounties pay coins and Souls): Soul Shop emotes 8 Souls (was 5), gear 6 / 12 / 22 / 38 / 60 (was 4 / 8 / 15 / 25 / 40), rerolls start at 2. Gilding Souls 1 / 2 / 3 / 5 / 8, cursed 5 (removed 2026-11-04: gilding is silver only). Stat reroll 3 + 2 per earlier reroll + floor/3. Reforge 5 + 3 per earlier reforge + floor/2.
 
 **The Crypt merchant:** an undead shopkeeper hunched behind a table (hooded skull, glowing eyes, a jaw that works, bony hands, a lantern). His three wares and a healing flask sit on the table. He watches you, taps the table and grunts (a new low "grunt" sound) when you walk up, now and then while you're near, and when you buy. Trading with him opens a shop panel: the three items against what you wear, and Patch Up. The minimap now sits under item panels.
 
@@ -1335,8 +1336,8 @@ A **Shop** tab in camp (`soul_shop.gd`) where you spend **Souls**:
 - **1 hand idle** you don't have yet, 6 Souls (Hand idles). Achievements still unlock theirs free; buying one just skips ahead (`GameState.emotes_bought`).
 - **3 pieces of gear** rolled at the deepest Crypt floor you've beaten (floor 1 if none), never your tier, so cheesing a boss for a higher tier doesn't buy stronger gear. Mostly plain so the shop never replaces the Crypt: common 6 Souls (50%), uncommon 12 (32%), rare 22 (13%), epic 38 (4%), legendary 60 (1%). Bosses drop 1 + tier Souls, so a rare is several bosses' worth. Bought gear goes straight to the armory.
 - **Fighters**, as new ones are added (`SoulShop.FIGHTERS`; Tony stays secret).
-- **Restock after every fight:** each return to camp from the Arena, Crypt or Dead League counts (`GameState.fights_done`, counted in `Loading.go`). Sold offers stay sold until then.
-- **Reroll:** 2 Souls, +1 each time, resets on restock.
+- **Restock after every fight:** each return to camp from the Arena, Crypt or Dead League counts (`GameState.fights_done`, counted in `Loading.go`). Sold offers stay sold until then. **Replaced 2026-11-04:** the stock keeps until you refresh it. A real-time timer (`SoulShop.FREE_REFRESH_TIME`, 20 minutes, saved as `GameState.shop_free_at`, so it runs while the game's closed) makes the next refresh free: the header reads "New stock in: 19:42" counting down, then "New stock ready!" in gold, and the Refresh button reads "Refresh (free)" with a pulsing "!" (the Shop tab gets one too). A free refresh starts the timer again.
+- **Reroll:** 2 Souls, +1 each time, resets on restock. (2026-11-04: the button is "Refresh"; paid any time, 2 Souls +1 each time until the next free one, which doesn't reset the timer.)
 - **Layout (2026-10-24):** the cards wrap into centered rows (4 across at 16:9), scrolling only if the window is too short for them.
 
 ## Mini tutorials and one power at a time [Built 2026-10-23]
@@ -1995,7 +1996,7 @@ Notes from the user's playtest week, put in order. Nothing here is built yet. Mo
 - **The formula** (`GameState.armor_reduction`, `mitigate`, the Path of Exile armor formula): a hit is cut by defense / (defense + 3 x hit), at most 90%, and deals at least 1. Small hits are cut a lot, big ones a little: 100 defense takes 62% off a 20 hit, 10% off a 300 hit. Applied after Glass Jaw's extra and Grit's cut; Ward soaks after it.
 - **Defense x10 everywhere:** the upgrade web (Mouthguard 5 a level ... Iron Coffin 30; Trophies 10-30; Iron Jaw, Stone Wall 10; Crypt Door, Vault Guard 15), the Mauler's class defense (30), Wraps' defense affix (15, +5 a floor), the Blessing of Stone (20), hats (Bucket and Fat Plumber Cap 5, Grim Reaper's Hood 10). Kept gear in old saves is scaled once on load (`defense_scale`).
 - **Grit adds defense:** +1 defense a point (with +1.5% max knuckle HP). Par counts it.
-- **Effective HP** (`Progression.effective_hp`): knuckles over the share of a typical hit that gets through, a typical hit being 12% of the effective HP (`GameState.TYPICAL_HIT`, a zombie's 6 on a fresh 50). Enemies are still built from par's effective HP, but par's armor now blocks about 28-39% of a typical hit at every tier, so it's 1.4-1.6x knuckles instead of up to 5x. POWER's defense side uses the same effective HP. Camp's sheet shows "Typical hit taken".
+- **Effective HP** (`Progression.effective_hp`): knuckles over the share of a typical hit that gets through, a typical hit being 12% of the effective HP (`GameState.TYPICAL_HIT`, a zombie's 6 on a fresh 50). Enemies are still built from par's effective HP, but par's armor now blocks about 28-39% of a typical hit at every tier, so it's 1.4-1.6x knuckles instead of up to 5x. POWER's defense side uses the same effective HP. Camp's sheet shows "Typical hit taken" (2026-11-04: now just "Defense", the stat itself).
 - **POWER's scale moved** with it (par: 395 / 984 / 2,211 / 4,104 / 7,840 at tiers 1-5), so the contender targets are the plan's x2.3 a tier again from the Bellman's 500: **500 / 1,150 / 2,645 / 6,084 / 13,993**. Arena divisions build up to them as before.
 - **Bosses on one scale:** Grave Champions and Crypt floor bosses were built from their scenes' 500-650 HP while contenders use 52-134, so they took 300-700 punches. They're now built from contender-sized units (`PowerRating.ARENA_CHAMPION_UNIT` 40 HP / 4.6 damage; `CRYPT_BOSS_UNITS` 60-75 HP / 5-6 damage). The first night's Champion keeps 80% HP (was 30% of the old 500).
   - **Grave Champions** take half their bout's recommendation (`CHAMPION_SHARE`); the bout's monsters are scaled to the other half.
@@ -2224,7 +2225,13 @@ Prerequisites for the Crypt revamp, and the first Rebalance plan items.
 - **Par and the contender targets are unchanged.** At par (upgrades, attributes, typical cards, par's rare gloves and wraps) the berserker sits at 1.02 / 1.14 / 1.24 / 1.12 / 1.08 of the five contenders' POWER, the counter master (lowest) at 0.71 to 0.90.
 - **Gear's reach:** a typical kit (a random set per slot at the rarity you'd usually keep by then: uncommon, rare, rare, epic; the deepest open floor's middle level) puts the berserker at 0.95 / 1.12 / 1.25 / 1.57x par facing the Headless, Southpaw, Plague Doctor and Coffin King (1.08 to 1.70x the contender). Its damage, knuckles and defense are about what par already counts; the edge is its percent stats (damage %, crit, heavy / head / finisher / boss damage...), which reach +20-50% a piece by level 23. A full best set at the floor's top level reaches 1.3 to 2.7x the contender. Kept as the Crypt's reward; the POWER readouts count your gear, so a geared fighter reads READY or OVERPOWERED. If the late climb is too easy with gear, the two knobs are: count the typical kit (percent stats too) in par and raise the tier-3+ contender targets with it, or slow the percent stats' growth.
 - **The True Coffin King** is tuned to a maxed fighter in an endgame kit (epic level-30 pieces from four sets, no set bonus: `Progression.endgame_kit`): about 60% more HP and 4% more damage than when measured in par's two rare pieces.
-- **Gold and Souls:** a gilded piece at the floor's middle level sells for 40k (common) to 450k (legendary) on floor 8, against ring 5's 5.4M; 81k to 903k on floor 10, against ring 6's 25.9M. Gilding's Souls cost limits how many come home, so the plan's formula stays. Leveling a piece from 1 to 30 is about 240 Souls, as planned.
+- **Gold and Souls:** a gilded piece at the floor's middle level sells for 40k (common) to 450k (legendary) on floor 8, against ring 5's 5.4M; 81k to 903k on floor 10, against ring 6's 25.9M. Gilding's silver cost (Souls removed later the same day) limits how many come home, so the plan's formula stays. Leveling a piece from 1 to 30 is about 240 Souls, as planned.
+
+**Polish after the revamp (2026-11-04):**
+- **Gilding is silver only** (no Souls).
+- **Panels never lose their buttons:** the merchant's, the altar's and the YOU FOUND row of item cards scrolls when it's taller than the screen leaves room for, Buy / Gild sit above each card, and Esc closes the merchant and the altar (and backs out of a question).
+- **The merchant's table** shows his wares as their real models, turning slowly, each with a little light in its rarity's color. Item cards show the model a touch smaller.
+- **The Headless boxes for real:** a high guard, both gloves up by the neck stump where his face would be, elbows in; a true stance (left foot forward, the right back and turned out 45 degrees, knees bent, hips bladed, abs crunched). `BossRig` profile keys stagger, turnout, blade, crunch and high_guard (only his shape uses them); his punches, toss and charge come out of that guard.
 
 **Open work:** none; the revamp is built (item models, item and store cards, the gear system with save migration, drop odds, salvage, the economy, room furniture, mimics, the toilet and merchant tie-in, and the balance re-run, 2026-11-04).
 
@@ -2392,7 +2399,7 @@ A possible phone / tablet version. Nothing is built. It comes after the current 
   - **The tutorial pays:** finishing it the first time pays the cheapest upgrade on the web (`GameState.cheapest_upgrade`, 60 coins: Taped Up). Skipping pays nothing; skippers learn the hard way.
   - **First camp visit:** "YOUR FIRST UPGRADE" points at the Buy button and closes when you buy. Then "THE DEAD LEAGUE": challenge the next contender whenever you like, as often as you like; beating them is how you progress (each win breaks a seal: the next Arena division, new upgrades and more).
   - **First attribute points:** one card on the Attributes tab: 3 points a level, a small boost each, and perks at 10, 20 and 30.
-  - **First Crypt run:** "GILD TO KEEP", 1.5s in: finds are bound to the Crypt and crumble if you leave or go down, unless gilded at an altar (each floor's first room and by each boss) with Souls and silver.
+  - **First Crypt run:** "GILD TO KEEP", 1.5s in: finds are bound to the Crypt and crumble if you leave or go down, unless gilded with silver at an altar (each floor's first room and by each boss).
   - **The Armory tab is hidden** until you bring home your first gear (kept or worn).
   - Checked in `card_runtime_regression` (the tutorial's pay).
 - **No hiding behind scenery:** monsters have no pathfinding, so since buildings went solid (2026-10-28) they piled up behind crypts, fences and the Ossuary's pillars while you hit them from the other side. One Bone Division endless run went 400+ knockouts that way.

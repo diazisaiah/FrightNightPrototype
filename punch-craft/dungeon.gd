@@ -187,7 +187,7 @@ var _minimap: Minimap
 func _gild_tip() -> void:
 	if is_inside_tree():
 		Tutorial.open(self, "crypt_gilding", "GILD TO KEEP",
-				"Gear you find down here is bound to the Crypt. Leave, or get knocked out, and it crumbles to dust.\n\nGild it at a gilding altar (in each floor's first room and by each boss) with Souls and silver, and it comes home to your Armory.")
+				"Gear you find down here is bound to the Crypt. Leave, or get knocked out, and it crumbles to dust.\n\nGild it with silver at a gilding altar (in each floor's first room and by each boss), and it comes home to your Armory.")
 
 
 func _ready() -> void:
@@ -1318,7 +1318,7 @@ func _bound_finds() -> Array:
 
 
 ## A gilding altar in each floor's first room and in the boss room once the
-## boss falls: pay Souls and silver to gild a find (it turns gold). Gilded
+## boss falls: pay silver to gild a find (it turns gold). Gilded
 ## finds are yours: they leave the Crypt with you by the stairs, and survive
 ## a knockout too.
 func _build_altar(at: Vector3) -> void:
@@ -1353,10 +1353,8 @@ func _open_gilding() -> void:
 		return
 	var entries := []
 	for item in finds:
-		var souls: int = Progression.GILD_SOULS.get(item.rarity, 2)
 		var silver: int = Progression.GILD_SILVER.get(item.rarity, 20)
-		entries.append({"item": item, "souls": souls, "silver": silver,
-				"gilded": item.get("gilded", false), "affordable": GameState.souls >= souls and _silver >= silver})
+		entries.append({"item": item, "silver": silver, "gilded": item.get("gilded", false), "affordable": _silver >= silver})
 	_hud.show_gild_menu(entries, _silver)
 
 
@@ -1453,7 +1451,7 @@ func _build_merchant(room: Dictionary) -> void:
 	var wares: Array = []
 	for i in 3:
 		var item := _merchant_item()
-		var token := _ware_token(item, Vector3(-1.1 + i * 0.75, 1.05, 0.05))
+		var token := _ware_token(item, Vector3(-1.1 + i * 0.75, 0.92, 0.05))
 		table.add_child(token)
 		wares.append({"item": item, "price": Gear.merchant_price(item), "sold": false, "token": token})
 	var flask := Node3D.new()
@@ -1472,19 +1470,25 @@ func _build_merchant(room: Dictionary) -> void:
 	_interactables.append({"node": table, "kind": "merchant", "used": false})
 
 
-## A ware on the table: a small glowing piece in its rarity's color.
+## A ware on the table: the piece's own model (ItemModels), sitting on the
+## tabletop at `at` and turning slowly (_animate_merchant), with a little
+## light in its rarity's color (2026-11-04: it was a glowing box).
 func _ware_token(item: Dictionary, at: Vector3) -> Node3D:
-	var color := Items.rarity_color(item)
-	var glow := StandardMaterial3D.new()
-	glow.albedo_color = color
-	glow.emission_enabled = true
-	glow.emission = color
-	glow.emission_energy_multiplier = 2.2
 	var token := Node3D.new()
 	token.position = at
-	var size: Vector3 = {"gloves": Vector3(0.18, 0.14, 0.2), "wraps": Vector3(0.22, 0.08, 0.16),
-			"boots": Vector3(0.14, 0.16, 0.24), "charm": Vector3(0.12, 0.12, 0.04)}.get(item.slot, Vector3.ONE * 0.16)
-	token.add_child(_mesh(Enemy._box(size), glow, Vector3.ZERO))
+	var model := ItemModels.build_for_item(item)
+	token.add_child(model)
+	var bounds := HatPopup._bounds(model, Transform3D.IDENTITY)
+	if bounds.size != Vector3.ZERO:
+		var fit := 0.34 / maxf(bounds.size.x, maxf(bounds.size.y, bounds.size.z))
+		model.scale = Vector3.ONE * fit
+		model.position = -bounds.get_center() * fit + Vector3(0, bounds.size.y * fit / 2.0 + 0.01, 0)
+	var light := OmniLight3D.new()
+	light.light_color = Items.rarity_color(item)
+	light.light_energy = 0.8
+	light.omni_range = 0.9
+	light.position.y = 0.2
+	token.add_child(light)
 	return token
 
 

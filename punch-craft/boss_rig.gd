@@ -16,7 +16,11 @@ extends Node3D
 ## Profile: lengths in the boss's own units (foot, lower_leg, upper_leg,
 ## hip, torso_h, shoulder, upper_arm, forearm, head) plus guard (how tight
 ## the guard is, 1 normal), style (heavy, sway, float, hunch, proud,
-## lumber, caster) and southpaw (stance mirrored).
+## lumber, caster) and southpaw (stance mirrored). A real boxing stance
+## (2026-11-04, the Headless first): stagger (the lead foot forward and the
+## rear back, by this much leg swing), turnout (the rear foot turned out),
+## blade (the hips turned side-on), crunch (abs crunched, shoulders rounded)
+## and high_guard (both gloves up by the face, elbows in).
 
 const DURATIONS := {
 	"jab_left": 0.28, "jab_right": 0.28, "cross_left": 0.34, "cross_right": 0.34,
@@ -233,9 +237,37 @@ func _pose_boxing_stance() -> void:
 	_add_rot("thigh" + rear, Vector3(-0.085, 0.045 * m, 0.06 * m) * weight)
 	_add_rot("shin" + rear, Vector3(-0.11, 0.0, -0.025 * m) * weight)
 	_add_rot("foot" + rear, Vector3(0.0, 0.18 * m, 0.0) * weight)
+	var stagger: float = profile.get("stagger", 0.0)
+	if stagger > 0.0:
+		# The lead foot well forward, the rear back on its ball, both knees
+		# bent and the hips low; walking blends it out like the rest.
+		_add_rot("thigh" + lead, Vector3(stagger, 0.0, -0.03 * m) * weight)
+		_add_rot("shin" + lead, Vector3(-stagger * 1.1, 0.0, 0.0) * weight)
+		_add_rot("foot" + lead, Vector3(stagger * 0.1, 0.0, 0.0) * weight)
+		_add_rot("thigh" + rear, Vector3(-stagger * 1.05, 0.0, 0.03 * m) * weight)
+		_add_rot("shin" + rear, Vector3(-stagger * 0.45, 0.0, 0.0) * weight)
+		_add_rot("foot" + rear, Vector3(stagger * 1.2, 0.0, 0.0) * weight)
+		_add_pos("pelvis", Vector3(0.0, -0.045, 0.0) * weight)
+	var turnout: float = profile.get("turnout", 0.0)
+	if turnout > 0.0:
+		_add_rot("foot" + rear, Vector3(0.0, (turnout - 0.18) * m, 0.0) * weight)
+	var blade: float = profile.get("blade", 0.0)
+	if blade > 0.0:
+		_add_rot("pelvis", Vector3(0.0, -blade * m, 0.0) * weight)
+		_add_rot("chest", Vector3(0.0, blade * 0.55 * m, 0.0) * weight)
+	var crunch: float = profile.get("crunch", 0.0)
+	if crunch > 0.0:
+		_add_rot("pelvis", Vector3(crunch * 0.25, 0.0, 0.0))
+		_add_rot("spine", Vector3(-crunch * 0.7, 0.0, 0.0))
+		_add_rot("chest", Vector3(-crunch * 0.6, 0.0, 0.0))
+		for side: float in [-1.0, 1.0]:
+			_add_rot("clavicle_l" if side < 0.0 else "clavicle_r", Vector3(0.0, side * crunch * 0.5, 0.0))
 
 
 func _pose_guard() -> void:
+	if profile.get("high_guard", false):
+		_pose_high_guard()
+		return
 	var tight: float = profile.get("guard", 1.0)
 	for side: float in [-1.0, 1.0]:
 		var s := "_l" if side < 0.0 else "_r"
@@ -243,6 +275,19 @@ func _pose_guard() -> void:
 		_add_rot("upper_arm" + s, Vector3(0.62 + (tight - 1.0) * 0.18, -side * 0.12, side * 0.18 * tight))
 		_add_rot("forearm" + s, Vector3(2.05 + (tight - 1.0) * 0.45, side * 0.08, -side * 0.12))
 		_add_rot("wrist" + s, Vector3(-0.12, 0, side * 0.08))
+
+
+## Both gloves up by the face, elbows down and in by the ribs: the lead glove
+## a little forward at eye level, the rear one by the chin.
+func _pose_high_guard() -> void:
+	var m := -1.0 if profile.get("southpaw", false) else 1.0
+	for side: float in [-1.0, 1.0]:
+		var s := "_l" if side < 0.0 else "_r"
+		var lead := (side < 0.0) == (m > 0.0)
+		_add_rot("clavicle" + s, Vector3(0, 0, -side * 0.03))
+		_add_rot("upper_arm" + s, Vector3(0.95 if lead else 0.8, side * 0.3, side * 0.12))
+		_add_rot("forearm" + s, Vector3(2.15 if lead else 2.3, -side * 0.35, -side * 0.1))
+		_add_rot("wrist" + s, Vector3(-0.25, 0, side * 0.1))
 
 
 ## Not a boxer: the staff hand forward, the other open at the side.

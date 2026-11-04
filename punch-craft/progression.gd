@@ -71,8 +71,8 @@ static func announcer_line() -> String:
 # Souls: dropped by Grave Champions and Crypt floor bosses; spent on gear.
 const SOULS_PER_TIER := 1
 const SOULS_FIRST_CLEAR := 3
-## Gilding (keeping) a Crypt find costs Souls and silver by rarity.
-const GILD_SOULS := {"common": 1, "uncommon": 2, "rare": 3, "epic": 5, "legendary": 8, "cursed": 5}
+## Gilding (keeping) a Crypt find costs silver by rarity (2026-11-04: no
+## Souls any more).
 const GILD_SILVER := {"common": 10, "uncommon": 15, "rare": 25, "epic": 40, "legendary": 60, "cursed": 40}
 ## Reforging a kept item: its numbers grow and it counts as two floors deeper.
 const REFORGE_GROWTH := 1.25

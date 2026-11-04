@@ -181,7 +181,8 @@ func _viewport() -> Control:
 		# Centered and sized to the window, whatever its shape.
 		var bounds := HatPopup._bounds(_model, Transform3D.IDENTITY)
 		if bounds.size != Vector3.ZERO:
-			var fit := 1.28 / maxf(bounds.size.x, maxf(bounds.size.y, bounds.size.z))
+			# (2026-11-04: a touch smaller, more room round it; was 1.28.)
+			var fit := 1.12 / maxf(bounds.size.x, maxf(bounds.size.y, bounds.size.z))
 			_model.scale = Vector3.ONE * fit
 			_model.position = -bounds.get_center() * fit
 	var camera := Camera3D.new()

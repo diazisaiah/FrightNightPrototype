@@ -28,6 +28,8 @@ signal merchant_asked
 const RHYTHM_COLOR := Color(0.32, 0.85, 0.78)
 
 var _can_pause := true
+## What Esc does while a panel is open (close it, back out), if anything.
+var _panel_close := Callable()
 var _announce_tween: Tween
 var _flash_tween: Tween
 var _combo_tween: Tween
@@ -159,6 +161,13 @@ func _notification(what: int) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	# Esc (or the pause button) closes the merchant and the altar, and backs
+	# out of a question (2026-11-04).
+	if _item_panel.visible and _panel_close.is_valid() and (event.is_action_pressed("pause") or event.is_action_pressed("ui_cancel")):
+		var close := _panel_close
+		close.call()
+		get_viewport().set_input_as_handled()
+		return
 	if _can_pause and event.is_action_pressed("pause"):
 		set_paused(not get_tree().paused)
 		get_viewport().set_input_as_handled()
@@ -1084,7 +1093,7 @@ func show_item_offer(item: Dictionary, current: Dictionary, salvage_coins: int, 
 	var cards := HBoxContainer.new()
 	cards.add_theme_constant_override("separation", 18)
 	cards.alignment = BoxContainer.ALIGNMENT_CENTER
-	column.add_child(cards)
+	column.add_child(_scrolling(cards, 210.0))
 	cards.add_child(_item_card(item, new_tag, current))
 	if not current.is_empty():
 		cards.add_child(_item_card(current, "WORN NOW"))
@@ -1112,6 +1121,7 @@ func show_item_offer(item: Dictionary, current: Dictionary, salvage_coins: int, 
 				_close_item_panel()
 			item_option_chosen.emit())
 		buttons.add_child(option)
+	_panel_close = Callable()  # A find must be decided.
 	_can_pause = false
 	get_tree().paused = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
@@ -1129,34 +1139,31 @@ func show_gild_menu(entries: Array, silver: int) -> void:
 	column.add_child(UiTheme.heading("GILDING ALTAR", 34))
 	var rules := IconLabel.new()
 	rules.font_size = 15
-	rules.text = "%d {souls}     %d {silver}" % [GameState.souls, silver]
+	rules.text = "%d {silver}" % silver
 	column.add_child(rules)
 	var cards := HBoxContainer.new()
 	cards.add_theme_constant_override("separation", 14)
 	cards.alignment = BoxContainer.ALIGNMENT_CENTER
-	column.add_child(cards)
+	column.add_child(_scrolling(cards, 220.0))
 	for entry in entries:
 		var box := VBoxContainer.new()
 		box.add_theme_constant_override("separation", 6)
-		box.add_child(_item_card(entry.item, "GILDED" if entry.gilded else "BOUND"))
 		var button := Button.new()
 		button.custom_minimum_size = Vector2(0, 42)
 		button.disabled = entry.gilded or not entry.affordable
-		IconLabel.on_button(button, "Gilded" if entry.gilded else "Gild   %d {souls}  %d {silver}" % [entry.souls, entry.silver])
+		IconLabel.on_button(button, "Gilded" if entry.gilded else "Gild   %d {silver}" % entry.silver)
 		var item: Dictionary = entry.item
 		button.pressed.connect(func() -> void: gild_chosen.emit(item))
 		box.add_child(button)
+		box.add_child(_item_card(entry.item, "GILDED" if entry.gilded else "BOUND"))
 		cards.add_child(box)
 	var done := Button.new()
 	done.text = "Done"
 	done.custom_minimum_size = Vector2(200, 44)
 	done.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	done.pressed.connect(func() -> void:
-		_item_panel.hide()
-		_can_pause = true
-		get_tree().paused = false
-		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED)
+	done.pressed.connect(_close_item_panel)
 	column.add_child(done)
+	_panel_close = _close_item_panel
 	_can_pause = false
 	get_tree().paused = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
@@ -1179,18 +1186,19 @@ func show_merchant(wares: Array, heal: Dictionary, silver: int, ask_text := "") 
 	var cards := HBoxContainer.new()
 	cards.add_theme_constant_override("separation", 14)
 	cards.alignment = BoxContainer.ALIGNMENT_CENTER
-	column.add_child(cards)
+	column.add_child(_scrolling(cards, 290.0))
 	for i in wares.size():
 		var ware: Dictionary = wares[i]
 		var box := VBoxContainer.new()
 		box.add_theme_constant_override("separation", 6)
-		box.add_child(_item_card(ware.item, "SOLD" if ware.sold else "FOR SALE", GameState.equipped.get(ware.item.slot, {})))
+		# The button on top, so it shows however long the card runs.
 		var buy := Button.new()
 		buy.custom_minimum_size = Vector2(0, 42)
 		buy.disabled = ware.sold or silver < int(ware.price)
 		IconLabel.on_button(buy, "Sold" if ware.sold else "Buy   %d {silver}" % ware.price)
 		buy.pressed.connect(func() -> void: ware_chosen.emit(i))
 		box.add_child(buy)
+		box.add_child(_item_card(ware.item, "SOLD" if ware.sold else "FOR SALE", GameState.equipped.get(ware.item.slot, {})))
 		cards.add_child(box)
 	var kit := VBoxContainer.new()
 	kit.add_theme_constant_override("separation", 6)
@@ -1206,13 +1214,13 @@ func show_merchant(wares: Array, heal: Dictionary, silver: int, ask_text := "") 
 	restore.font_size = 16
 	restore.text = "+%d%% {knuckles}" % heal.percent
 	lines.add_child(restore)
-	kit.add_child(flask)
 	var patch_up := Button.new()
 	patch_up.custom_minimum_size = Vector2(0, 42)
 	patch_up.disabled = heal.used or silver < int(heal.price)
 	IconLabel.on_button(patch_up, "Used" if heal.used else "Buy   %d {silver}" % heal.price)
 	patch_up.pressed.connect(func() -> void: ware_chosen.emit(-1))
 	kit.add_child(patch_up)
+	kit.add_child(flask)
 	cards.add_child(kit)
 	if ask_text != "":
 		var ask := Button.new()
@@ -1227,12 +1235,9 @@ func show_merchant(wares: Array, heal: Dictionary, silver: int, ask_text := "") 
 	done.text = "Done"
 	done.custom_minimum_size = Vector2(200, 44)
 	done.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	done.pressed.connect(func() -> void:
-		_item_panel.hide()
-		_can_pause = true
-		get_tree().paused = false
-		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED)
+	done.pressed.connect(_close_item_panel)
 	column.add_child(done)
+	_panel_close = _close_item_panel
 	_can_pause = false
 	get_tree().paused = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
@@ -1270,10 +1275,39 @@ func show_choice(title: String, body: String, options: Array) -> void:
 		buttons.add_child(button)
 		if i == 0:
 			button.grab_focus.call_deferred()
+	# Esc takes the last option (backing away, saying no).
+	_panel_close = func() -> void:
+		_close_item_panel()
+		choice_made.emit(options.size() - 1)
 	_can_pause = false
 	get_tree().paused = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	_item_panel.show()
+
+
+## A panel's row of item cards, scrolling when it's taller than the screen
+## leaves room for (reserve: the heading and buttons around it), so long stat
+## lists never push the buttons off the screen (2026-11-04: they hid the
+## merchant's Done).
+func _scrolling(content: Control, reserve: float) -> ScrollContainer:
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	scroll.follow_focus = true
+	scroll.add_child(content)
+	_fit_scroll(scroll, content, reserve)
+	return scroll
+
+
+func _fit_scroll(scroll: ScrollContainer, content: Control, reserve: float) -> void:
+	# Once the cards have laid out (wrapped text knows its height).
+	await get_tree().process_frame
+	if not is_instance_valid(scroll) or not is_instance_valid(content):
+		return
+	var room := maxf(get_viewport().get_visible_rect().size.y - reserve, 220.0)
+	var wanted := content.get_combined_minimum_size()
+	var tall := wanted.y > room
+	scroll.custom_minimum_size = Vector2(wanted.x + (16.0 if tall else 0.0), minf(wanted.y, room))
 
 
 func _decide_item(equip: bool) -> void:
@@ -1282,6 +1316,7 @@ func _decide_item(equip: bool) -> void:
 
 
 func _close_item_panel() -> void:
+	_panel_close = Callable()
 	_item_panel.hide()
 	_can_pause = true
 	get_tree().paused = false

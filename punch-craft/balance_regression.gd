@@ -151,6 +151,20 @@ func _test_skins() -> void:
 		if offer.kind == "skin":
 			_check(not GameState.skins_owned.has(offer.id), "The shop doesn't sell skins you own")
 			_check(Skins.CATALOG[offer.id].fighter in GameState.class_ids(), "The shop only sells skins for fighters you have")
+	# The free refresh (2026-11-04): the stock keeps through fights; on a timer
+	# the refresh is free (and starts the timer again), before it it costs Souls.
+	GameState._reset_fields()
+	var first := SoulShop.stock().duplicate(true)
+	_check(not SoulShop.free_refresh_ready() and SoulShop.free_refresh_left() > SoulShop.FREE_REFRESH_TIME - 5,
+			"A first stock starts the free refresh's timer")
+	GameState.fights_done += 3
+	_check(SoulShop.stock() == GameState.shop_stock and str(SoulShop.stock()) == str(first), "The stock keeps through fights")
+	GameState.souls = 1
+	_check(not SoulShop.reroll() and SoulShop.reroll_price() == SoulShop.REROLL_BASE, "Before the timer, a refresh costs Souls")
+	GameState.shop_free_at = int(Time.get_unix_time_from_system()) - 1
+	_check(SoulShop.free_refresh_ready() and SoulShop.reroll_price() == 0 and SoulShop.reroll() and GameState.souls == 1
+			and SoulShop.free_refresh_left() > SoulShop.FREE_REFRESH_TIME - 5, "When it's up, the refresh is free and the timer starts again")
+	_check(SoulShop.time_text(1182) == "19:42" and SoulShop.time_text(3900) == "1:05:00", "New stock in: m:ss")
 	GameState._reset_fields()
 
 
@@ -642,7 +656,7 @@ func _test_seals_and_gear() -> void:
 	GameState.equip(wraps)
 	GameState.equip(charm)
 	GameState.souls = 10
-	_check(GameState.gild(wraps), "Gilding with enough Souls must work")
+	_check(GameState.gild(wraps) and not GameState.gild(wraps), "Gilding works once (no Souls needed)")
 	var kept := GameState.end_crypt_run(true)
 	_check(kept.size() == 1 and kept[0].name == "Found Wraps", "Leaving by the stairs keeps only gilded finds")
 	_check(GameState.equipped.has("gloves") and GameState.equipped.has("wraps") and not GameState.equipped.has("charm"),

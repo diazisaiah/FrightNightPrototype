@@ -989,7 +989,7 @@ func _refresh_sheet() -> void:
 		["Passive", "%s  ·  %s" % [String(Abilities.info(GameState.player_class, GameState.passive()).get("name", "")),
 				Abilities.power_text(GameState.passive(), GameState.passive_power()) if GameState.passive_power() > 0.0 else "grows with levels"]],
 		["Punch cost", "Jab/cross 1, hook 2, uppercut 3"],
-		["Typical hit taken", "%d%%" % roundi(GameState.get_knuckle_loss_multiplier() * 100.0)],
+		["Defense", "%d" % roundi(GameState.get_defense())],
 		["Punch speed", "x%.2f" % GameState.get_punch_speed()],
 		["Combo growth", "+%.2f per hit" % GameState.get_combo_step()],
 		["Combo time", "%.1fs" % GameState.get_combo_window()],
@@ -1818,6 +1818,8 @@ func _bounty_card(index: int, bounty: Dictionary) -> Control:
 
 var _shop_grid: HFlowContainer
 var _shop_reroll: Button
+var _shop_restock: Label
+var _shop_free_shown := false
 
 
 func _build_shop_page() -> Control:
@@ -1837,11 +1839,17 @@ func _build_shop_page() -> Control:
 		else:
 			Sfx.play("deny", -10.0))
 	header.add_child(_shop_reroll)
-	var restock := _label("New stock after every fight.", 14, UiTheme.MUTED)
-	restock.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	restock.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	header.add_child(restock)
-	header.move_child(restock, 1)
+	# "New stock in: 19:42", counting down to the free refresh (2026-11-04).
+	_shop_restock = _label("", 15, UiTheme.MUTED)
+	_shop_restock.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_shop_restock.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header.add_child(_shop_restock)
+	header.move_child(_shop_restock, 1)
+	var tick := Timer.new()
+	tick.wait_time = 1.0
+	tick.autostart = true
+	tick.timeout.connect(_tick_shop)
+	panel.add_child(tick)
 	# Cards wrap onto more rows when the screen's too narrow for them all.
 	var scroll := KeptScroll.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -1864,9 +1872,43 @@ func _refresh_shop() -> void:
 	var offers := SoulShop.stock()
 	for i in offers.size():
 		_shop_grid.add_child(_shop_card(i, offers[i]))
-	_shop_reroll.text = "Reroll  (%d Souls)" % SoulShop.reroll_price()
-	_shop_reroll.disabled = GameState.souls < SoulShop.reroll_price()
+	var free := SoulShop.free_refresh_ready()
+	_shop_reroll.text = "Refresh  (free)" if free else "Refresh  (%d Souls)" % SoulShop.reroll_price()
+	_shop_reroll.disabled = not free and GameState.souls < SoulShop.reroll_price()
+	var old_badge := _shop_reroll.get_node_or_null("Free")
+	if old_badge:
+		old_badge.free()
+	if free:
+		var badge := _new_badge("!")
+		badge.name = "Free"
+		_shop_reroll.add_child(badge)
+	_shop_free_shown = free
+	_tick_shop()
 	_chips.souls.set_amount(GameState.souls, true)
+
+
+## Every second: the countdown to the free refresh, and its "!" on the
+## button and the Shop tab once it's ready.
+func _tick_shop() -> void:
+	if _shop_restock == null:
+		return
+	var free := SoulShop.free_refresh_ready()
+	if free:
+		_shop_restock.text = "New stock ready!"
+		_shop_restock.add_theme_color_override("font_color", UiTheme.GOLD)
+	else:
+		_shop_restock.text = "New stock in: %s" % SoulShop.time_text(SoulShop.free_refresh_left())
+		_shop_restock.add_theme_color_override("font_color", UiTheme.MUTED)
+	if _tab_buttons.has("Shop"):
+		var flag := (_tab_buttons["Shop"] as Button).get_node_or_null("Flag")
+		if free and flag == null:
+			var badge := _new_badge("!")
+			badge.name = "Flag"
+			_tab_buttons["Shop"].add_child(badge)
+		elif not free and flag != null:
+			flag.free()
+	if free != _shop_free_shown:
+		_refresh_shop()
 
 
 func _shop_card(index: int, offer: Dictionary) -> Control:

@@ -1,8 +1,10 @@
 class_name SoulShop
 ## The Soul Shop (camp): spend Souls on emotes, fighters and gear. The stock
-## refreshes after every fight (each return to camp from the Arena, the Crypt
-## or the Dead League), and can be rerolled for Souls (one more each time).
-## Achievements still unlock their emotes for free; buying one skips ahead.
+## keeps until you refresh it: free once FREE_REFRESH_TIME has passed since
+## the last free one (the button shows "!"), or any time for Souls (one more
+## each time until the next free one). (2026-11-04: it used to restock after
+## every fight.) Achievements still unlock their emotes for free; buying one
+## skips ahead.
 
 const EMOTE_SLOTS := 2
 const GEAR_SLOTS := 3
@@ -21,13 +23,39 @@ const FIGHTERS := {"elementalist": 80}
 ## Seals a fighter needs before he's offered (the Catalyst needs two powers).
 const FIGHTER_SEALS := {"elementalist": 2}
 const REROLL_BASE := 2
+## Real time between free refreshes, in seconds.
+const FREE_REFRESH_TIME := 20 * 60
 
 
-## The current offers, restocked if there's been a fight since.
+## The current offers (a first stock starts the free refresh's timer).
 static func stock() -> Array:
-	if GameState.shop_stock.is_empty() or GameState.shop_restock_at != GameState.fights_done or _stale():
+	if GameState.shop_stock.is_empty():
+		restock()
+		_start_timer()
+	elif _stale():
 		restock()
 	return GameState.shop_stock
+
+
+## Seconds until the free refresh (0 when it's ready).
+static func free_refresh_left() -> int:
+	return maxi(0, GameState.shop_free_at - int(Time.get_unix_time_from_system()))
+
+
+static func free_refresh_ready() -> bool:
+	return free_refresh_left() == 0
+
+
+static func _start_timer() -> void:
+	GameState.shop_free_at = int(Time.get_unix_time_from_system()) + FREE_REFRESH_TIME
+	GameState.save_game()
+
+
+## "19:42" (or "1:05:00").
+static func time_text(seconds: int) -> String:
+	if seconds >= 3600:
+		return "%d:%02d:%02d" % [seconds / 3600, seconds / 60 % 60, seconds % 60]
+	return "%d:%02d" % [seconds / 60, seconds % 60]
 
 
 ## Unsold gear from older rules (another price, or deeper than the Crypt
@@ -77,7 +105,6 @@ static func restock() -> void:
 		var item := Gear.make(Gear.PIECES.keys().pick_random(), Gear.SLOTS.pick_random(), rarity, randi_range(levels.x, levels.y))
 		offers.append({"kind": "gear", "item": item, "price": Gear.shop_price(rarity), "sold": false})
 	GameState.shop_stock = offers
-	GameState.shop_restock_at = GameState.fights_done
 	GameState.shop_rerolls = 0
 	GameState.save_game()
 
@@ -99,10 +126,16 @@ static func _pick_rarity() -> String:
 
 
 static func reroll_price() -> int:
-	return REROLL_BASE + GameState.shop_rerolls
+	return 0 if free_refresh_ready() else REROLL_BASE + GameState.shop_rerolls
 
 
+## A new stock: free when the timer's run out (and it starts again), else for
+## Souls.
 static func reroll() -> bool:
+	if free_refresh_ready():
+		restock()
+		_start_timer()
+		return true
 	var price := reroll_price()
 	if GameState.souls < price:
 		return false

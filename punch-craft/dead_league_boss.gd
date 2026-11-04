@@ -362,7 +362,10 @@ const SHAPES := [
 	{"foot": Vector3(0.26, 0.12, 0.36), "lower_leg": 0.42, "upper_leg": 0.4, "hip": 0.36, "torso_h": 0.81,
 		"shoulder": 0.9, "upper_arm": 0.36, "forearm": 0.32, "head": Vector3(0.4, 0.38, 0.38), "guard": 0.92, "style": "heavy"},
 	{"foot": Vector3(0.18, 0.1, 0.28), "lower_leg": 0.44, "upper_leg": 0.42, "hip": 0.3, "torso_h": 0.68,
-		"shoulder": 0.68, "upper_arm": 0.34, "forearm": 0.32, "head": Vector3(0.3, 0.3, 0.3), "guard": 0.92, "style": "float"},
+		"shoulder": 0.68, "upper_arm": 0.34, "forearm": 0.32, "head": Vector3(0.3, 0.3, 0.3), "guard": 0.92, "style": "float",
+		# A real boxing stance (2026-11-04): left foot forward, the right back
+		# and turned out 45 degrees, abs crunched, gloves up by the face.
+		"stagger": 0.2, "turnout": 0.785, "blade": 0.3, "crunch": 0.1, "high_guard": true},
 	{"foot": Vector3(0.16, 0.1, 0.26), "lower_leg": 0.43, "upper_leg": 0.42, "hip": 0.28, "torso_h": 0.6,
 		"shoulder": 0.56, "upper_arm": 0.31, "forearm": 0.29, "head": Vector3(0.24, 0.28, 0.24), "guard": 1.18, "style": "sway", "southpaw": true},
 	{"foot": Vector3(0.17, 0.1, 0.28), "lower_leg": 0.42, "upper_leg": 0.4, "hip": 0.3, "torso_h": 0.66,

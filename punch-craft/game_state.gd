@@ -1182,10 +1182,13 @@ var hats := {}
 var worn_hat := ""
 ## Mini tutorials already shown (Tutorial): {id: true}.
 var tips_seen := {}
-## The Soul Shop (SoulShop): its offers, when they were stocked (fights_done
-## then) and rerolls since; what's been bought.
+## The Soul Shop (SoulShop): its offers and the paid refreshes since the last
+## free one; what's been bought.
 var shop_stock: Array = []
-var shop_restock_at := -1
+## When the Soul Shop's free refresh is due (unix seconds; 0 = now). It
+## comes SoulShop.FREE_REFRESH_TIME after the last one (2026-11-04: the stock
+## no longer restocks after every fight).
+var shop_free_at := 0
 var shop_rerolls := 0
 var emotes_bought := {}
 var fighters_bought := {}
@@ -1766,13 +1769,11 @@ func end_crypt_run(_escaped: bool) -> Array:
 	return kept
 
 
-## Gilds a found item so it can be kept, paying Souls (silver is paid by the
-## Crypt run itself).
+## Gilds a found item so it can be kept (the Crypt run pays its silver;
+## 2026-11-04: no Souls).
 func gild(item: Dictionary) -> bool:
-	var cost: int = Progression.GILD_SOULS.get(item.rarity, 2)
-	if souls < cost or item.get("gilded", false):
+	if item.get("gilded", false):
 		return false
-	souls -= cost
 	item.gilded = true
 	changed.emit()
 	return true
@@ -2542,7 +2543,7 @@ func save_game() -> void:
 		"worn_hat": worn_hat,
 		"tips_seen": tips_seen,
 		"shop_stock": shop_stock,
-		"shop_restock_at": shop_restock_at,
+		"shop_free_at": shop_free_at,
 		"shop_rerolls": shop_rerolls,
 		"emotes_bought": emotes_bought,
 		"fighters_bought": fighters_bought,
@@ -2654,7 +2655,7 @@ func load_game() -> void:
 	for offer in shop_stock:
 		if offer is Dictionary and offer.get("item") is Dictionary:
 			Items.retire_powers(offer.item)
-	shop_restock_at = int(data.get("shop_restock_at", -1))
+	shop_free_at = int(data.get("shop_free_at", 0))
 	shop_rerolls = int(data.get("shop_rerolls", 0))
 	emotes_bought = data.get("emotes_bought", {}).duplicate() if data.get("emotes_bought", {}) is Dictionary else {}
 	fighters_bought = data.get("fighters_bought", {}).duplicate() if data.get("fighters_bought", {}) is Dictionary else {}
@@ -2986,7 +2987,7 @@ func _reset_fields() -> void:
 	worn_hat = ""
 	tips_seen = {}
 	shop_stock = []
-	shop_restock_at = -1
+	shop_free_at = 0
 	shop_rerolls = 0
 	emotes_bought = {}
 	fighters_bought = {}
