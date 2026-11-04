@@ -13,7 +13,8 @@ var _viewport: SubViewport
 
 ## distance: how far the camera stands (further shows more around the body).
 ## skin: a skin id (Skins), "" for the fighter's own look, "auto" for theirs.
-func _init(fighter := "", distance := 4.2, skin := "auto") -> void:
+## look_y: the height the camera aims at (raise it to fit raised arms).
+func _init(fighter := "", distance := 4.2, skin := "auto", look_y := 0.92) -> void:
 	stretch = true
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var viewport := SubViewport.new()
@@ -32,8 +33,8 @@ func _init(fighter := "", distance := 4.2, skin := "auto") -> void:
 	viewport.add_child(sun)
 	_camera = Camera3D.new()
 	_camera.fov = 34.0
-	var eye := Vector3(0, 1.1, -distance)
-	_camera.transform = Transform3D(Basis.looking_at(Vector3(0, 0.92, 0) - eye), eye)
+	var eye := Vector3(0, look_y + 0.18, -distance)
+	_camera.transform = Transform3D(Basis.looking_at(Vector3(0, look_y, 0) - eye), eye)
 	viewport.add_child(_camera)
 	body = _dancer(fighter, skin)
 	viewport.add_child(body)

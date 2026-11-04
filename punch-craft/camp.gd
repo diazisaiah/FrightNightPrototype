@@ -1953,7 +1953,7 @@ func _shop_card(index: int, offer: Dictionary) -> Control:
 	card.add_child(column)
 	# Emotes and hand idles: with the taller cards beside them, the preview and
 	# its name sit centered between the card's top and the buy button.
-	var centered: bool = offer.kind in ["emote", "idle"]
+	var centered: bool = offer.kind in ["emote", "idle", "skin"]
 	if centered:
 		var top_gap := Control.new()
 		top_gap.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -1964,14 +1964,14 @@ func _shop_card(index: int, offer: Dictionary) -> Control:
 		preview.custom_minimum_size = Vector2(240, 96)
 		column.add_child(preview)
 	elif offer.kind == "emote":
-		var stage := EmotePreview.new(GameState.player_class, 3.2)
+		var stage := EmotePreview.new(GameState.player_class, 4.1, "auto", 1.2)
 		stage.emote_id = offer.id
-		stage.custom_minimum_size = Vector2(240, 176)
+		stage.custom_minimum_size = Vector2(240, 200)
 		column.add_child(stage)
 	elif offer.kind == "skin":
-		var stage := EmotePreview.new(Skins.CATALOG[offer.id].fighter, 3.2, offer.id)
+		var stage := EmotePreview.new(Skins.CATALOG[offer.id].fighter, 4.1, offer.id, 1.2)
 		stage.emote_id = "default"
-		stage.custom_minimum_size = Vector2(200, 124)
+		stage.custom_minimum_size = Vector2(240, 200)
 		column.add_child(stage)
 	else:
 		var icon := IconView.new()
