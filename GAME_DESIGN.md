@@ -2282,6 +2282,13 @@ A possible phone / tablet version. Nothing is built. It comes after the current 
   3. **Real-phone test:** judge it on how many punches land, how comfortable the camera is (no jitter or nausea), and 30 fps.
   4. **Edge cases:** a big boss at close range, a flying Wraith, several enemies at once, a sniper at range, the Arena's wave spawns, and the Dead League's tag-in fights.
 
+**Touch layer v1 [Built, 2026-11-04, before lock-on]:** `touch_ui.gd` (autoload `TouchUi`), live only while a fight runs (a Player that is active, the game not paused; menus use normal touch-as-mouse). It sends the same actions as keys and pads, plus `Player.touch_punch(hand, type)`, `touch_dodge(side, kind)` and `touch_move(move)`.
+- Floating sticks in the bottom corners (left moves, right looks, no lock-on yet). The rest of each half is that hand's punch zone: tap = jab / cross, swipe in = hook, up = uppercut, away = slip, down = roll (Junior Mode picks the dodge for both). A swipe fires at 46 px, a tap on release.
+- Buttons: left column USE, BACK (back step), RUN (sprint toggle, drops when the stick is released); right column ULT, JUMP, DASH; MAP, EMOTE, pause (II) at the top right.
+- Turned on by the `mobile` export feature (the Web Mobile preset), `--touch` on the command line, or `?touch` in a web address (`?touchmouse` also turns mouse drags into touches, for testing on a desktop). On, it also sets the window to expand its aspect (phones are wider than 16:9) and skips the mouse capture.
+- Pipeline: preset "Web Mobile" (ETC2 / ASTC textures, portrait warning, no touch scroll) and `release_mobile.sh <version>` push to itch `isaiahd0221/fright-night-mobile` (restricted page, `html5` channel); `--export` only exports to builds/mobile.
+- Still to do: key hints on the HUD / dialogs ("Q", "Q / E dodge") need touch wording, camp / Armory / store layouts at phone size, emote wheel by touch, long-press tooltips, left-handed swap, button size and opacity settings, then lock-on.
+
 **Controls details to decide:**
 - **Buttons that aren't in the plan yet:** jump, ultimate, interact (chests, stairs; context-sensitive), emote (hold for the wheel), pause, and the Crypt map.
 - **Gesture reading:** a tap fires on release (short and barely moved); a swipe fires as soon as it passes a small distance, without waiting for the finger to lift. Up / down / in / away use ±45 degree cones. Weenie Hut Junior Mode is a good default on mobile: a swipe away picks the right dodge for you.

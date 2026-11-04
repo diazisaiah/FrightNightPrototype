@@ -30,6 +30,7 @@ Settings="*res://settings.gd"
 Sfx="*res://sfx.gd"
 Loading="*res://loading.gd"
 Pad="*res://pad.gd"
+TouchUi="*res://touch_ui.gd"
 
 [display]
 
@@ -106,5 +107,7 @@ slip_right={
 }
 
 [rendering]
+
+textures/vram_compression/import_etc2_astc=true
 
 environment/defaults/default_clear_color=Color(0.012, 0.01, 0.02, 1)

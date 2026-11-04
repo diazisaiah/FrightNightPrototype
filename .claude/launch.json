@@ -36,6 +36,18 @@
         "emote_lab"
       ],
       "port": 8090
+    },
+    {
+      "name": "web-mobile",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8061",
+        "--directory",
+        "builds/mobile"
+      ],
+      "port": 8061
     }
   ]
 }

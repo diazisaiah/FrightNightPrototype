@@ -461,13 +461,15 @@ var _wheel_pad := false
 
 
 func _ready() -> void:
+	add_to_group("fight_player")
 	_punch_ray.add_exception(self)
 	max_knuckles = GameState.get_max_knuckles()
 	knuckles = max_knuckles
 	_punch_ray.target_position = Vector3(0, 0, -(LONG_REACH + LONG_REACH_PER_POWER * GameState.passive_power()) if GameState.has_passive("long_reach") else -PUNCH_REACH)
 	_camera.fov = Settings.fov()
 	Settings.changed.connect(func() -> void: _camera.fov = Settings.fov())
-	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	if not TouchUi.enabled:
+		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	# The lantern lights the world, not the hands (they have their own light).
 	$Camera3D/Lantern.light_cull_mask &= ~(Fists.HAND_LAYER | PlayerBody.LAYER)
 	ult = Ult.new()
@@ -507,7 +509,36 @@ func _ready() -> void:
 
 ## Fight input is live: the mouse is captured, or you're on a controller.
 func _live_input() -> bool:
-	return Input.mouse_mode == Input.MOUSE_MODE_CAPTURED or Pad.active
+	return Input.mouse_mode == Input.MOUSE_MODE_CAPTURED or Pad.active or TouchUi.active()
+
+
+## Touch controls (TouchUi): throw this punch with this hand, right now.
+## Same rules as the other inputs: it buffers, and Temporal Break answers it.
+func touch_punch(hand: String, type: String) -> void:
+	if not active:
+		return
+	_stop_emote()
+	if ult.mode == "time_stop":
+		ult._stop_punch(hand, type)
+	elif not ult.busy():
+		_buffered[hand] = [type, INPUT_BUFFER_TIME]
+
+
+## A swipe away from the middle (slip) or down (roll) on one side. Weenie Hut
+## Junior Mode picks the dodge that beats the attack, like Q / E.
+func touch_dodge(side: String, kind: String) -> void:
+	if not active or ult.busy():
+		return
+	if kind == "roll" and not Controls.junior():
+		_try_defense("roll_" + side)
+	else:
+		_dodge_key(side)
+
+
+## The back step and forward dash buttons.
+func touch_move(move: String) -> void:
+	if active and not ult.busy():
+		_do_move(move)
 
 
 ## Right-stick look: a curve for fine aim near the middle, then fast turns.
