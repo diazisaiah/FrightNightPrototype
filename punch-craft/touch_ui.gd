@@ -616,6 +616,7 @@ func _release_all() -> void:
 # --- Drawing -------------------------------------------------------------------------
 
 func _draw_controls() -> void:
+	var font := ThemeDB.fallback_font
 	var color := GameState.fighter_color()
 	_canvas.modulate = Color(1, 1, 1, float(Settings.get_value("touch_opacity")))
 	_draw_stick("move", _zone("move"), "MOVE", color, false)
@@ -627,172 +628,77 @@ func _draw_controls() -> void:
 		for touch in _touches.values():
 			if touch.role == "button" and touch.button == id:
 				pressed = true
-		_draw_button(id, pressed, color)
+		_draw_button(id, pressed, color, font)
 	_draw_trails(color)
 
 
-# --- Look: dark game-UI panels with a gradient, a bright rim in the fighter's
-# colour, drawn icons and the game's display font. -----------------------------------------
-
-## A rounded rectangle as a polygon (radius = half the short side makes a circle).
-func _rrect(rect: Rect2, radius: float, segments := 7) -> PackedVector2Array:
-	var out := PackedVector2Array()
-	var r := minf(radius, minf(rect.size.x, rect.size.y) * 0.5)
-	var corners := [
-		[rect.position + Vector2(rect.size.x - r, r), -PI * 0.5],
-		[rect.position + Vector2(rect.size.x - r, rect.size.y - r), 0.0],
-		[rect.position + Vector2(r, rect.size.y - r), PI * 0.5],
-		[rect.position + Vector2(r, r), PI],
-	]
-	for corner in corners:
-		for k in segments + 1:
-			var a: float = float(corner[1]) + (PI * 0.5) * float(k) / float(segments)
-			out.append((corner[0] as Vector2) + Vector2(cos(a), sin(a)) * r)
-	return out
-
-
-## One panel: a soft shadow, a top-to-bottom gradient, the rim, a thin
-## highlight along the top. glow adds a halo.
-func _panel(rect: Rect2, radius: float, accent: Color, pressed: bool, glow := 0.0) -> void:
-	var points := _rrect(rect, radius)
-	var shadow := _rrect(Rect2(rect.position + Vector2(0, 4), rect.size), radius)
-	_canvas.draw_colored_polygon(shadow, Color(0, 0, 0, 0.38))
-	if glow > 0.0:
-		for i in 3:
-			var halo := accent.lightened(0.3)
-			halo.a = glow * (0.2 - i * 0.06)
-			_canvas.draw_colored_polygon(_rrect(rect.grow(4.0 + i * 5.0), radius + 4.0 + i * 5.0), halo)
-	var top := Color(0.2, 0.18, 0.24).lerp(accent, 0.18)
-	var bottom := Color(0.05, 0.045, 0.07).lerp(accent, 0.1)
-	if pressed:
-		top = accent.lightened(0.12)
-		bottom = accent.darkened(0.3)
-	top.a = 0.9
-	bottom.a = 0.9
-	var colors := PackedColorArray()
-	for point in points:
-		colors.append(top.lerp(bottom, clampf((point.y - rect.position.y) / rect.size.y, 0.0, 1.0)))
-	_canvas.draw_polygon(points, colors)
-	var rim := accent.lightened(0.45 if pressed else 0.15)
-	rim.a = 1.0 if pressed else 0.9
-	var loop := points.duplicate()
-	loop.append(points[0])
-	_canvas.draw_polyline(loop, rim, 2.5, true)
-	var sheen := Color(1, 1, 1, 0.14 if not pressed else 0.3)
-	_canvas.draw_line(rect.position + Vector2(radius * 0.8, 4.0), rect.position + Vector2(rect.size.x - radius * 0.8, 4.0), sheen, 1.5, true)
-
-
-## A fat arrow, pointing up (down when flip is true).
-func _arrow(center: Vector2, size: float, flip: bool, ink: Color) -> void:
-	var pts := PackedVector2Array([Vector2(0, -size), Vector2(size * 0.85, size * 0.05), Vector2(size * 0.34, size * 0.05),
-			Vector2(size * 0.34, size * 0.9), Vector2(-size * 0.34, size * 0.9), Vector2(-size * 0.34, size * 0.05),
-			Vector2(-size * 0.85, size * 0.05)])
-	for i in pts.size():
-		pts[i] = center + Vector2(pts[i].x, -pts[i].y if flip else pts[i].y)
-	_canvas.draw_colored_polygon(pts, ink)
-
-
-## A fat chevron pointing up.
-func _chevron(center: Vector2, size: float, ink: Color) -> void:
-	var t := size * 0.55
-	var pts := PackedVector2Array([Vector2(-size, size * 0.35), Vector2(0, -size * 0.65), Vector2(size, size * 0.35),
-			Vector2(size, size * 0.35 + t), Vector2(0, -size * 0.65 + t), Vector2(-size, size * 0.35 + t)])
-	for i in pts.size():
-		pts[i] += center
-	_canvas.draw_colored_polygon(pts, ink)
-
-
-func _label_at(text: String, pos: Vector2, size: int, ink: Color) -> void:
-	var font := UiTheme.display_font()
-	var width := font.get_string_size(text, HORIZONTAL_ALIGNMENT_CENTER, -1, size).x
-	var at := pos + Vector2(-width * 0.5, size * 0.36)
-	_canvas.draw_string_outline(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, 4, Color(0, 0, 0, 0.75))
-	_canvas.draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, ink)
-
-
-func _draw_button(id: String, pressed: bool, color: Color) -> void:
+func _draw_button(id: String, pressed: bool, color: Color, font: Font) -> void:
 	var spec: Array = BUTTONS[id]
 	var center := _button_center(id)
 	var half := _half(id)
-	var shape: String = spec[2]
+	var fill := color.darkened(0.7)
+	fill.a = 0.5
+	var edge := color.lightened(0.2)
+	edge.a = 0.9
+	if pressed:
+		fill = color
+		fill.a = 0.62
+		edge = color.lightened(0.55)
+		edge.a = 1.0
+	if spec[2] == "star":
+		var ready := _player != null and _player.ult != null and _player.ult.is_full()
+		var pulse := 0.5 + 0.5 * sin(Time.get_ticks_msec() * 0.008)
+		if ready:
+			# A glow: soft stars growing outward, breathing.
+			for i in 4:
+				var halo := color.lightened(0.4)
+				halo.a = (0.16 - i * 0.03) * (0.6 + 0.8 * pulse)
+				_canvas.draw_colored_polygon(_star(center, half * (1.18 + i * 0.1), 12), halo)
+			fill = color
+			fill.a = 0.75
+			edge = Color(1, 0.95, 0.7, 1.0)
+		var outline := _star(center, half, 12)
+		_canvas.draw_colored_polygon(outline, fill)
+		outline.append(outline[0])
+		_canvas.draw_polyline(outline, edge, 3.0, true)
+	elif spec[2] == "s":
+		_box.bg_color = fill
+		_box.border_color = edge
+		_box.set_border_width_all(3)
+		_box.set_corner_radius_all(int(half * 0.35))
+		_canvas.draw_style_box(_box, Rect2(center - Vector2(half, half), Vector2(half, half) * 2.0))
+	else:
+		_canvas.draw_circle(center, half, fill)
+		_canvas.draw_arc(center, half, 0.0, TAU, 40, edge, 3.0, true)
+	var ink := Color(1, 1, 1, 0.95)
 	var label: String = spec[1]
 	if id == "map":
 		label = _map_label()
-	var icon := color.lightened(0.4)
-	var text_ink := Color(1, 1, 1, 0.95)
-	if pressed:
-		center += Vector2(0, 2)
-		icon = Color(0.08, 0.06, 0.09)
-		text_ink = Color(0.08, 0.06, 0.09)
-	var rect := Rect2(center - Vector2(half, half), Vector2(half, half) * 2.0)
-	if shape == "star":
-		_draw_ult(center, half, color, pressed)
-		return
-	_panel(rect, half * 0.34 if shape == "s" else half, color, pressed)
-	match id:
-		"dash":
-			_arrow(center + Vector2(0, -half * 0.16), half * 0.36, false, icon)
-		"back_step":
-			_arrow(center + Vector2(0, -half * 0.12), half * 0.36, true, icon)
-		"sprint":
-			_chevron(center + Vector2(0, -half * 0.42), half * 0.3, icon)
-			_chevron(center + Vector2(0, -half * 0.02), half * 0.3, icon)
-		"jump":
-			_chevron(center + Vector2(0, -half * 0.3), half * 0.3, icon)
-			_canvas.draw_arc(center + Vector2(0, half * 0.12), half * 0.3, 0.1 * PI, 0.9 * PI, 12, icon, 3.0, true)
-		"interact":
-			_canvas.draw_arc(center + Vector2(0, -half * 0.16), half * 0.26, 0.0, TAU, 20, icon, 3.0, true)
-			_canvas.draw_circle(center + Vector2(0, -half * 0.16), half * 0.09, icon)
-		"pause":
-			var bar := Vector2(half * 0.2, half * 0.8)
-			_canvas.draw_rect(Rect2(center + Vector2(-half * 0.38, -bar.y * 0.5), bar), icon)
-			_canvas.draw_rect(Rect2(center + Vector2(half * 0.18, -bar.y * 0.5), bar), icon)
-			return
-		"lock":
-			var at := center + Vector2(0, -half * 0.18)
-			_canvas.draw_arc(at, half * 0.3, 0.0, TAU, 20, icon, 2.5, true)
-			for i in 4:
-				var d := Vector2.from_angle(i * PI * 0.5)
-				_canvas.draw_line(at + d * half * 0.2, at + d * half * 0.44, icon, 2.5, true)
-		"emote":
-			var face := center + Vector2(0, -half * 0.16)
-			_canvas.draw_arc(face, half * 0.3, 0.0, TAU, 20, icon, 2.5, true)
-			_canvas.draw_arc(face + Vector2(0, half * 0.04), half * 0.16, 0.15 * PI, 0.85 * PI, 8, icon, 2.5, true)
-		"map":
-			var fold := center + Vector2(0, -half * 0.18)
-			var map_pts := PackedVector2Array([fold + Vector2(-half * 0.34, -half * 0.22), fold + Vector2(-half * 0.12, -half * 0.3),
-					fold + Vector2(half * 0.12, -half * 0.22), fold + Vector2(half * 0.34, -half * 0.3), fold + Vector2(half * 0.34, half * 0.24),
-					fold + Vector2(half * 0.12, half * 0.32), fold + Vector2(-half * 0.12, half * 0.24), fold + Vector2(-half * 0.34, half * 0.32)])
-			_canvas.draw_polyline(map_pts, icon, 2.5, true)
-	_label_at(label, center + Vector2(0, half * 0.58), 13 if half > 30.0 else 10, text_ink)
-
-
-## The ultimate: a 12-point star on a dark body, with a meter ring inside that
-## fills as it charges; ready, it glows and breathes.
-func _draw_ult(center: Vector2, half: float, color: Color, pressed: bool) -> void:
-	var ready := _player != null and _player.ult != null and _player.ult.is_full()
-	var pulse := 0.5 + 0.5 * sin(Time.get_ticks_msec() * 0.008)
-	var charge := clampf(GameState.ult_share, 0.0, 1.0)
-	if ready:
-		for i in 4:
-			var halo := color.lightened(0.45)
-			halo.a = (0.2 - i * 0.04) * (0.6 + 0.8 * pulse)
-			_canvas.draw_colored_polygon(_star(center, half * (1.22 + i * 0.1), 12), halo)
-	_canvas.draw_colored_polygon(_star(center + Vector2(0, 4), half, 12), Color(0, 0, 0, 0.38))
-	var body := color.darkened(0.55)
-	if ready or pressed:
-		body = color.darkened(0.15)
-	body.a = 0.92
-	_canvas.draw_colored_polygon(_star(center, half, 12), body)
-	var outline := _star(center, half, 12)
-	outline.append(outline[0])
-	var rim := Color(1, 0.94, 0.7) if ready else color.lightened(0.2)
-	_canvas.draw_polyline(outline, rim, 3.0, true)
-	var inner := half * 0.58
-	_canvas.draw_arc(center, inner, 0.0, TAU, 32, Color(0, 0, 0, 0.45), 6.0, true)
-	if charge > 0.0:
-		_canvas.draw_arc(center, inner, -PI * 0.5, -PI * 0.5 + TAU * charge, 32, color.lightened(0.5), 6.0, true)
-	_label_at("ULT", center, 14, Color(1, 1, 1, 0.95))
+	var arrow: String = spec[4]
+	if arrow != "":
+		var unit := half * 0.34
+		var up := arrow != "down"
+		var rows: Array = [-unit * 0.15, unit * 0.9] if arrow == "up2" else [unit * 0.1]
+		for y in rows:
+			var tip := Vector2(0, (-unit if up else unit) * 0.6)
+			var pts := PackedVector2Array([Vector2(-unit, -tip.y * 0.1 + (unit * 0.6 if up else -unit * 0.6)) + Vector2(0, y - unit * 0.55),
+					tip + Vector2(0, y - unit * 0.55), Vector2(unit, (unit * 0.6 if up else -unit * 0.6)) + Vector2(0, y - unit * 0.55)])
+			for i in pts.size():
+				pts[i] += center + Vector2(0, -half * 0.12)
+			_canvas.draw_polyline(pts, ink, maxf(4.0, half * 0.1), true)
+		var small := 11
+		var width := font.get_string_size(label, HORIZONTAL_ALIGNMENT_CENTER, -1, small).x
+		_canvas.draw_string(font, center + Vector2(-width * 0.5, half * 0.78), label,
+				HORIZONTAL_ALIGNMENT_LEFT, -1, small, Color(1, 1, 1, 0.75))
+	elif id == "pause":
+		var bar := Vector2(5, half * 0.7)
+		_canvas.draw_rect(Rect2(center + Vector2(-8, -bar.y * 0.5), bar), ink)
+		_canvas.draw_rect(Rect2(center + Vector2(3, -bar.y * 0.5), bar), ink)
+	else:
+		var fs := 15 if half > 30.0 else 11
+		var width := font.get_string_size(label, HORIZONTAL_ALIGNMENT_CENTER, -1, fs).x
+		_canvas.draw_string(font, center + Vector2(-width * 0.5, fs * 0.36), label,
+				HORIZONTAL_ALIGNMENT_LEFT, -1, fs, ink)
 
 
 ## The punch fingers: a glow in your fighter's colour with a fading trail, and
@@ -841,27 +747,19 @@ func _draw_stick(role: String, zone: Rect2, label: String, color: Color, dim := 
 	if dim:
 		# Locked on: only up and down work, so it greys out.
 		color = color.lerp(Color(0.6, 0.6, 0.65), 0.75)
-	var rim := color.lightened(0.2)
-	rim.a = 0.4 if idle else 0.85
-	var well := Color(0.04, 0.035, 0.06, 0.34 if idle else 0.5)
+	var ring := color.lightened(0.2)
+	var well := color.darkened(0.7)
+	well.a = 0.18 if idle else 0.3
+	ring.a = 0.4 if idle else 0.85
 	_canvas.draw_circle(base, radius, well)
-	_canvas.draw_circle(base, radius * 0.66, Color(color.r, color.g, color.b, 0.07))
-	_canvas.draw_arc(base, radius, 0.0, TAU, 56, rim, 3.0, true)
-	# Tick marks around the rim, like a dial.
-	for i in 16:
-		var d := Vector2.from_angle(i * TAU / 16.0)
-		var tick := rim
-		tick.a *= 0.55
-		_canvas.draw_line(base + d * (radius - 9.0), base + d * (radius - 3.0), tick, 2.0, true)
-	var knob_center := base + knob_offset
-	var knob_radius := 34.0 * _scale()
-	_canvas.draw_circle(knob_center + Vector2(0, 4), knob_radius, Color(0, 0, 0, 0.35))
-	var knob_dark := color.darkened(0.45)
-	knob_dark.a = 0.9 if not idle else 0.7
-	_canvas.draw_circle(knob_center, knob_radius, knob_dark)
-	var knob_light := color.lightened(0.1)
-	knob_light.a = 0.9 if not idle else 0.6
-	_canvas.draw_circle(knob_center + Vector2(-3, -4), knob_radius * 0.72, knob_light)
-	_canvas.draw_arc(knob_center, knob_radius, 0.0, TAU, 32, rim, 2.0, true)
+	_canvas.draw_arc(base, radius, 0.0, TAU, 48, ring, 3.0, true)
+	var knob := color
+	knob.a = 0.35 if idle else 0.8
+	_canvas.draw_circle(base + knob_offset, 34.0 * _scale(), knob)
+	ring.a = 0.8 if not idle else 0.5
+	_canvas.draw_arc(base + knob_offset, 34.0 * _scale(), 0.0, TAU, 28, ring, 2.0, true)
 	if idle:
-		_label_at(label, knob_center, 12, Color(1, 1, 1, 0.7))
+		var font := ThemeDB.fallback_font
+		var width := font.get_string_size(label, HORIZONTAL_ALIGNMENT_CENTER, -1, 12).x
+		_canvas.draw_string(font, base + Vector2(-width * 0.5, 4), label,
+				HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(1, 1, 1, 0.55))
