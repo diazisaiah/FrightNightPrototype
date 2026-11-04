@@ -2077,15 +2077,16 @@ Prerequisites for the Crypt revamp, and the first Rebalance plan items.
 - **Model gaps to fix:** rate the combo multiplier as sustained (cap reached in about 3 hits), hit-and-run through enemy melee turns, and auto powers (teleport, AoE, knockback). Raise the Crypt's per-floor ramp to match gear growth (about x1.5 POWER a floor).
 - Re-run `balance_report` and the bots against every contender and floor after each change.
 
-## Crypt revamp plan [Planned 2026-11-01; gear, drops and economy built 2026-11-04]
+## Crypt revamp plan [Planned 2026-11-01; gear, drops, economy and room furniture built 2026-11-04]
 
 **Goals:** a cleaner, more polished Crypt; real items with sets and looks; better salvage; mimics that are fun to fight.
 
-**Room furniture and layout:**
-- Today (`Dungeon._decorate`, `_decor_spot`) props go at random spots anywhere in the room, avoiding only layout blocks and the center, and the wall coffin sits at a random place on the left wall, so it can block a door.
+**Room furniture and layout [Built 2026-11-04]:**
+- Before (`Dungeon._decorate`, `_decor_spot`) props go at random spots anywhere in the room, avoiding only layout blocks and the center, and the wall coffin sits at a random place on the left wall, so it can block a door.
 - New: keep-clear lanes 3 m wide from each door to the center and between doors; props only in zones (walls, corners, alcoves); coffins in tidy rows or stacks on the side walls; a cap on props per room; chains and banners stay overhead.
 - Per room type: the start room has a clear approach and one landmark; fight rooms have symmetric coffin rows and a clean center; chest rooms are vaults with the chest on a pedestal; the merchant has stalls and a rug; the boss room has a dais and a clear arena; the toilet room stays bare, one bulb.
 - Props stay decorative (no collision). Stone stays neutral; each tier's color (red, blue, purple, green, yellow) appears only in accents: banners, candle and torch flames, and their light. Coffins are scenery.
+- **As built:** `Dungeon._plan_props` gives every room its lanes (3 m, door to middle and door to door), a clear middle for fight and boss rooms (half the shorter side), the spots its torches and set piece take, and a budget of small prop groups (one per 36 m², at most 9; a third of that in the start room, half in vaults, the merchant's and the shrine's). `_zone_spot` only places props along the walls, in the corners and beside blocks, and hazards (toxic puddles, fire vents) stay off the lanes too, so doorways are safe. Fight rooms get upright coffins (shouldered, brass cross) in the bays between the wall pillars of every wall without a door, the corner bays left to the torches; the Catacombs keep their skull niches instead. A banner hangs either side of every door. Start room: the gilding altar on the wall facing the door between two candle stands under two banners. Vault: the chest on a gold-banded pedestal facing the door, candle stands either side, iron grates over the bays, coin heaps in the corners (a mimic there steps down toward you). Merchant: he keeps shop against the wall facing the door, a rug before his table, a stall on each side wall (crates, a barrel, sacks under an awning in the tier's color). Boss room: a dais against the wall facing the door with a throne, two braziers and two banners, coffins on the side walls; the chest, stairs and altar come up around the middle after the fight. Shrine: a ring of candles open toward the door. The tier looks use the same zones (half-sunk coffins along the walls, mushrooms in two greens, sarcophagi along the walls and a dark, gold-trimmed carpet down the way in). The stone and fog are neutral greys; the tier's seal holder's color (red, blue, purple, green, gold) is in the banners, the flames and their light.
 
 **Gear system [Built 2026-11-04] (`Gear`, `gear.gd`)** (replaces the random affixes; these 20 pieces are the only Crypt items):
 - 5 sets of 4 pieces (Gloves, Wraps, Boots, Charm), 5 rarities each. Stats add up across worn pieces, so players can mix sets for a stat. Only the 4-piece set bonus exists; it uses the lowest-rarity piece.
@@ -2217,7 +2218,7 @@ Prerequisites for the Crypt revamp, and the first Rebalance plan items.
 
 **Item cards [Built 2026-11-04] (`ItemCard`, `item_card.gd`):** Crypt drops ("YOU FOUND"), the gilding altar, the merchant and the camp shop's gear show the item's model turning in a little 3D window (lit like the hat popup), its name in its rarity color, what it is, and its stats colored against what's worn. The card's color and effects climb with rarity: common a thin grey frame; uncommon a green frame, a faint glow and a soft light under the item; rare a blue frame, a glow and slow light rays; epic a thick purple frame, a pulsing glow, brighter rays and purple sparkles over the window; legendary a thick gold frame, a strong pulse, bright fast rays, gold sparkles and a light sweep across the card every few seconds. The cards keep animating while a drop pauses the Crypt.
 
-**Open work, in order:** room furniture, mimics and elite mimics, the toilet and merchant tie-in, then re-run the balance. (Item models, the item and store cards, the gear system with save migration, drop odds, salvage and the economy are built, 2026-11-04.)
+**Open work, in order:** mimics and elite mimics, the toilet and merchant tie-in, then re-run the balance. (Item models, the item and store cards, the gear system with save migration, drop odds, salvage, the economy and room furniture are built, 2026-11-04.)
 
 ## Mobile build [Idea, planned 2026-11-02]
 

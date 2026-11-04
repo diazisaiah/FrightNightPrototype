@@ -30,22 +30,26 @@ const ARENA := [
 		"wisps": Color(1.0, 0.55, 0.2), "mist": Color(0.75, 0.5, 0.4)},
 ]
 
+## The Crypt's tiers (2026-11-04, Crypt revamp furniture): the stone stays
+## neutral grey; each tier's color (its seal holder's: red, blue, purple,
+## green, gold) is only in the banners, the candle and torch flames and their
+## light.
 const CRYPT := [
 	{"id": "crypt", "name": "The Crypt", "music": "crypt", "hazard": "",
-		"wall": Color(0.24, 0.23, 0.26), "floor": Color(0.15, 0.14, 0.15), "banner": Color(0.4, 0.06, 0.06),
-		"fire": Look.FIRE, "ambient": Color(0.4, 0.35, 0.45), "fog": Color(0.1, 0.08, 0.09)},
+		"wall": Color(0.25, 0.245, 0.255), "floor": Color(0.15, 0.145, 0.15), "banner": Color(0.45, 0.07, 0.06),
+		"fire": Look.FIRE, "ambient": Color(0.4, 0.37, 0.4), "fog": Color(0.09, 0.08, 0.08)},
 	{"id": "catacombs", "name": "The Catacombs", "music": "crypt_bone", "hazard": "",
-		"wall": Color(0.36, 0.33, 0.28), "floor": Color(0.2, 0.18, 0.15), "banner": Color(0.1, 0.18, 0.36),
-		"fire": Color(0.25, 0.65, 1.0), "ambient": Color(0.32, 0.38, 0.52), "fog": Color(0.05, 0.08, 0.13)},
+		"wall": Color(0.29, 0.285, 0.28), "floor": Color(0.17, 0.165, 0.16), "banner": Color(0.1, 0.2, 0.42),
+		"fire": Color(0.25, 0.65, 1.0), "ambient": Color(0.37, 0.38, 0.42), "fog": Color(0.07, 0.07, 0.09)},
 	{"id": "flooded", "name": "The Flooded Vaults", "music": "crypt_ghost", "hazard": "",
-		"wall": Color(0.18, 0.25, 0.25), "floor": Color(0.1, 0.14, 0.15), "banner": Color(0.08, 0.3, 0.28),
-		"fire": Color(0.3, 1.0, 0.75), "ambient": Color(0.3, 0.46, 0.46), "fog": Color(0.04, 0.1, 0.1)},
+		"wall": Color(0.23, 0.23, 0.24), "floor": Color(0.13, 0.13, 0.135), "banner": Color(0.3, 0.1, 0.42),
+		"fire": Color(0.72, 0.4, 1.0), "ambient": Color(0.38, 0.36, 0.43), "fog": Color(0.07, 0.06, 0.09)},
 	{"id": "rot", "name": "The Rot Gardens", "music": "crypt_plague", "hazard": "toxic",
-		"wall": Color(0.2, 0.23, 0.15), "floor": Color(0.13, 0.14, 0.09), "banner": Color(0.3, 0.12, 0.38),
-		"fire": Color(0.55, 1.0, 0.2), "ambient": Color(0.38, 0.45, 0.3), "fog": Color(0.07, 0.1, 0.03)},
+		"wall": Color(0.22, 0.22, 0.21), "floor": Color(0.14, 0.14, 0.13), "banner": Color(0.1, 0.32, 0.13),
+		"fire": Color(0.55, 1.0, 0.25), "ambient": Color(0.37, 0.4, 0.36), "fog": Color(0.07, 0.08, 0.06)},
 	{"id": "tomb", "name": "The Royal Tomb", "music": "crypt_crown", "hazard": "fire",
-		"wall": Color(0.11, 0.09, 0.1), "floor": Color(0.14, 0.08, 0.08), "banner": Color(0.6, 0.06, 0.08),
-		"fire": Look.FIRE, "ambient": Color(0.52, 0.4, 0.34), "fog": Color(0.14, 0.06, 0.04)},
+		"wall": Color(0.15, 0.145, 0.15), "floor": Color(0.12, 0.115, 0.115), "banner": Color(0.62, 0.45, 0.08),
+		"fire": Color(1.0, 0.72, 0.22), "ambient": Color(0.46, 0.42, 0.38), "fog": Color(0.1, 0.08, 0.06)},
 ]
 
 

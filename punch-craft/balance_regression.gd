@@ -25,6 +25,7 @@ func _run() -> void:
 	_test_climb_economy()
 	_test_seals_and_gear()
 	_test_gear()
+	_test_room_furniture()
 	_test_hats_and_tony()
 	_test_web_optimization_structure()
 	_test_browser_audio_guard()
@@ -784,6 +785,44 @@ func _test_gear() -> void:
 	GameState.souls = saved_souls
 	GameState.crypt_floors_cleared = saved_cleared
 	GameState.resources["coins"] = saved_coins
+
+
+## Crypt room furniture (Crypt revamp, 2026-11-04): props never stand in the
+## lanes from the doors to the middle and between doors, nor in a fight's
+## clear middle; coffins go in the bays between the wall pillars.
+func _test_room_furniture() -> void:
+	var dungeon: Node = load("res://dungeon.gd").new()
+	_check(dungeon._inner_bays(12.0) == [0.0] and dungeon._inner_bays(16.0) == [-2.0, 2.0]
+			and dungeon._inner_bays(20.0) == [-4.0, 0.0, 4.0], "Coffin bays sit between the wall pillars, not in the corners")
+	seed(4242)
+	var rooms := [
+		{"type": "fight", "size": Vector2(16, 16), "doors": [Vector2i(1, 0), Vector2i(-1, 0)]},
+		{"type": "fight", "size": Vector2(24, 12), "doors": [Vector2i(1, 0), Vector2i(-1, 0)]},
+		{"type": "fight", "size": Vector2(16, 16), "doors": [Vector2i(1, 0), Vector2i(0, 1)]},
+		{"type": "fight", "size": Vector2(12, 12), "doors": [Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(0, -1)]},
+		{"type": "boss", "size": Vector2(22, 22), "doors": [Vector2i(0, -1)]},
+		{"type": "chest", "size": Vector2(12, 12), "doors": [Vector2i(0, 1)]},
+	]
+	var clear := true
+	var placed := 0
+	for room in rooms:
+		room.center = Vector3.ZERO
+		room.solids = []
+		room.torch_spots = []
+		dungeon._plan_props(room)
+		for i in 40:
+			var spot: Vector3 = dungeon._zone_spot(room, ["corner", "wall", "alcove"])
+			if spot == Vector3.INF:
+				continue
+			placed += 1
+			var local := Vector2(spot.x, spot.z)
+			for lane in room.lanes:
+				if Geometry2D.get_closest_point_to_segment(local, lane[0], lane[1]).distance_to(local) < dungeon.LANE_WIDTH / 2.0:
+					clear = false
+			if local.length() < float(room.clear_radius):
+				clear = false
+	dungeon.free()
+	_check(clear and placed > 30, "Room props keep out of the door lanes and the fight's clear middle (%d placed)" % placed)
 
 
 func _weighted_kind(types: Dictionary, progress: float) -> String:
