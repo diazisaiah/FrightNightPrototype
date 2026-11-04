@@ -2235,6 +2235,64 @@ Prerequisites for the Crypt revamp, and the first Rebalance plan items.
 
 **Open work:** none; the revamp is built (item models, item and store cards, the gear system with save migration, drop odds, salvage, the economy, room furniture, mimics, the toilet and merchant tie-in, and the balance re-run, 2026-11-04).
 
+## Places and UI update plan [Planned, 2026-11-04]
+
+The arenas, the Dead League backdrop and the menus have barely changed since the start. This update gives every place more detail and solid props, gives each Dead League boss its own stage with a crowd, puts the fighters around the camp fire, and replaces the stock Godot widgets with a custom UI kit.
+
+**Rule for every step: mobile parity.** The mobile build is the same project (Web Mobile preset), so every change reaches it, but each change ships with its touch fixes: drag-to-scroll on every list and card row, ~48 px tap targets, long-press for hover info, touch wording, phone aspect (844x390). Every new scene holds 30 fps on a phone without heating it (see the performance budget). When a batch is released, the mobile page gets it too (`release_mobile.sh`).
+
+### 1. Groundwork: prop kit, solids, steering, performance budget
+- **Prop kit** in `scenery.gd`: new pieces shared by the arenas and stages (big gravestones, obelisks, statues, mausoleum rows, bone pillars, pews, tent poles, gold piles, banners, chandeliers). Each piece built through `_box_batch` (one MultiMesh per material) instead of one MeshInstance per box.
+- **Solid vs. walk-through:** large props (big gravestones, trees, statues, pillars, crypts, tents) get a `Scenery.solid` box or cylinder matching the trunk or base, not the canopy. Small graves, grass, bones and rubble stay walk-through. (Today the graveyard's props have no collision at all, `world.gd` `_build_decorations`.)
+- **Enemies around solids:** enemies `move_and_slide`, so they would snag. Add steering: a short ray toward the target; if it hits a solid, slide along the side nearer the target, and after ~1 s try the other side. Ranged enemies need line of sight to fire, so props become cover.
+- **Layout rule (organized, not scattered):** three rings per arena: a clear fighting floor (spawns and the boss's spot always clear), a middle ring of solid props in planned clusters with lanes between them, and an outer backdrop with no collision. Props come from a per-arena layout list, not random scatter, so each place reads as a place.
+- **Performance budget (phones, web profile):** shadows off; at most ~6 dynamic lights (the rest are emissive flames with no light); under ~250 draw calls in a fight; web particle counts; `visibility_range_end` on backdrop detail; camp grass cut on mobile (4000 to ~800). Measure each scene with `bench_probe` / `web_bench` before and after, and on a real phone.
+
+### 2. Arena revamp (the five divisions)
+Same 45 m fields and themes (`Themes.ARENA`; `world.gd` for the graveyard, `arena_scenery.gd` for the rest), rebuilt to the layout rule:
+- **The Graveyard:** stone paths, family plots with low walls, two mausoleums, big angel gravestones and dead oaks as solid cover, an iron gate, lantern posts along the paths.
+- **The Ossuary Pit:** a sunken pit with tiered bone walls, bone pillars and skull stacks as cover, blue-flame braziers, a bone throne on the far side.
+- **The Drowned Pier:** plank docks over dark water, piles, moored boats, crates and nets as cover, fog lamps.
+- **The Plague Carnival:** a midway of rotting stalls and small tents, a broken carousel in the middle ring, the toxic vats (existing hazard), sickly green string lights.
+- **The Coffin King's Colosseum:** sand floor, broken columns and statues as cover, tiered stands in the backdrop, banners, fire bowls (existing hazard).
+
+### 3. Dead League stages and crowds
+`dead_league_arena.gd` builds the same graveyard for every bout (`_build_graveyard`). Replace it with a stage per boss (`dead_league_stages.gd`, picked by `DeadLeagueRules.boss(index).id`). The ring, ropes, posts, spotlight and ring walls stay; the surroundings and lighting change.
+- **The Bellman: the Crypt hall.** Grey stone vaults (the Crypt revamp's tier-1 look, red banners), a huge bell hanging over the ring, candles. Crowd: zombies, skeletons, Hulks.
+- **The Headless: the Bone Pit.** Cold blue light, bone pillars and skull walls like the Ossuary, blue braziers. Crowd: many skeleton kinds (skeletons, snipers, shieldbearers, bulwarks, mages, possessed armor).
+- **Sister Southpaw: the Gothic Chapel.** Pews as the stands, tall stained-glass windows (emissive panes, no real light), organ pipes, candles, an altar behind her corner. Crowd: wraiths, banshees, priests, liches.
+- **The Plague Doctor: the Plague Tent.** Inside a rotting big top in the Carnival's green, striped canvas and a centre pole, hanging lanterns, bubbling vats. Crowd: ghouls and the bigger zombies (brawlers, bruisers, Hulks).
+- **The Coffin King: the Gold Hall.** A rich castle throne room: gold everywhere, a red carpet to an empty throne, chandeliers, treasure piles, gilded coffins. Crowd: Grave Champions and Bone Crushers.
+- **The True League** uses each boss's stage; a tag-in keeps the current stage.
+- **The crowd never fights:** static copies of enemy models, not enemies (no AI, no `Enemy` script, outside the ring walls behind a barrier). One baked body per enemy kind, instanced. A shared cheap loop (bob, sway, raised arms), a cheer on a knockdown, big hit or round end, a groan when you go down. About 12 on mobile / web and 30 on desktop; the far rows are flat silhouettes.
+
+### 4. The camp fire cast
+The camp backdrop (`camp_backdrop.gd`: fire, tent, dummy, Crypt door) stays; the log seats become the cast, using the fighters' third-person bodies (`FighterBody`, matching their voxel refs) in looping poses:
+- **The Mauler (Berserker):** on a big stump, eating a hunk of meat (bite, chew, gesture with it).
+- **The Answer (Counter Master):** cross-legged on the ground, calm, nodding.
+- **The Blur (Combo Master):** lounging on one elbow, the odd yawn.
+- **The Stray (Free Runner):** sitting, one leg always bouncing, looking around.
+- **Tony (once found):** next to the Mauler with a deli sandwich.
+- **The Catalyst (once bought):** sitting apart with a big tome, glowing motes rising from the pages.
+- **Talking:** one speaker at a time gestures while the others turn their heads to them; it moves on every few seconds. No text or sound for now.
+- Animate only while the backdrop is visible (it already pauses under menus, `_skip`).
+
+### 5. Custom UI kit
+Replace the stock Godot look (flat StyleBoxes in `ui_theme.gd`) with our own kit, used everywhere:
+- **Pieces:** buttons (normal / hover / pressed / disabled, a press squish and sound), panels and frames, cards framed by rarity and tier, tabs, sliders, toggles, scroll areas (no scrollbar on touch), outlined headers and numbers, tooltips (long-press on touch), dialogs, toasts.
+- **How:** textured nine-patch StyleBoxes (generated in code or small images) in the shared `Theme`, so every screen picks them up, plus a few custom controls where a theme can't do it (squish, glow, card frames). Anton stays the display face.
+- **Style first:** three mock-ups on one page (as with the touch look), the user picks one. Ideas: the taped glove (leather, stitching and tape, matching the touch buttons); carved stone and bone with gold; a fight poster (paper, ink, stamps).
+- **Screens in order:** title, camp hub, upgrade web, Armory and item cards, Soul Shop, Dead League menu and VS intro, pause and settings, results, HUD.
+- **Testing:** a UI Gallery in the playground showing every piece in every state at desktop and phone sizes.
+
+### Build order
+1. Groundwork (prop kit, solids, steering, budget).
+2. Dead League stages and crowds, one boss at a time (the Bellman first).
+3. Arena revamp, one division at a time (the Graveyard first), checking enemy pathing and balance.
+4. The camp fire cast.
+5. UI mock-ups, pick, the kit, then the screens.
+Each piece goes in the playground for the user to test (desktop and `?touch`) before release.
+
 ## Mobile build [Idea, planned 2026-11-02]
 
 A possible phone / tablet version. Nothing is built. It comes after the current roadmap (controls, balance, Crypt revamp), and the touch scheme should be tested in the playground first.
