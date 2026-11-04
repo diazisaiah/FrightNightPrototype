@@ -83,7 +83,7 @@ var _fading: Array = []
 ## A down swipe waiting to see if the other thumb joins (back step).
 var _pending_down := ""
 var _pending_down_t := 0.0
-const BACK_STEP_WINDOW := 0.11
+const BACK_STEP_WINDOW := 0.07
 var _box := StyleBoxFlat.new()
 const TRAIL_FADE := 0.3
 const TRAIL_POINTS := 22
