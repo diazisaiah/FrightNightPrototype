@@ -1194,53 +1194,11 @@ func _decide_item(equip: bool) -> void:
 	item_decided.emit(equip)
 
 
-## compare: the worn item to color the lines against (green = better, red =
-## worse, gold = special).
+## A gear card (ItemCard: the item's model turning, its rarity's colors and
+## effects). compare: the worn item to color the lines against (green = better,
+## red = worse, gold = special).
 func _item_card(item: Dictionary, tag: String, compare := {}) -> Control:
-	var card := PanelContainer.new()
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.08, 0.08, 0.1, 0.95)
-	style.border_color = Items.rarity_color(item)
-	style.set_border_width_all(2)
-	style.set_corner_radius_all(8)
-	style.set_content_margin_all(14)
-	card.add_theme_stylebox_override("panel", style)
-	card.custom_minimum_size = Vector2(300, 0)
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 4)
-	card.add_child(box)
-	var tag_label := _outlined_label(tag, 12)
-	tag_label.modulate = Color(1, 1, 1, 0.6)
-	box.add_child(tag_label)
-	var name_label := _outlined_label(item.name, 22)
-	name_label.add_theme_color_override("font_color", Items.rarity_color(item))
-	box.add_child(name_label)
-	var kind := _outlined_label(Items.kind_text(item), 14)
-	kind.modulate = Color(1, 1, 1, 0.75)
-	box.add_child(kind)
-	var worn: Dictionary = compare.get("effects", {})
-	for entry in Items.effect_entries(item):
-		var line := _outlined_label(entry[0], 16)
-		line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		var effect: String = entry[1]
-		if Items.is_special(effect):
-			line.add_theme_color_override("font_color", Color(1.0, 0.82, 0.35))
-		elif not compare.is_empty():
-			var mine: float = item.effects[effect]
-			var theirs: float = worn.get(effect, 0.0)
-			if mine > theirs + 0.001:
-				line.add_theme_color_override("font_color", Color(0.5, 0.95, 0.5))
-			elif mine < theirs - 0.001:
-				line.add_theme_color_override("font_color", Color(1.0, 0.45, 0.4))
-		box.add_child(line)
-	# What the worn item has that this one would lose.
-	for effect in worn:
-		if not item.effects.has(effect):
-			var lost := _outlined_label("Lose: " + GameState.effect_text({effect: worn[effect]}, 1), 14)
-			lost.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			lost.add_theme_color_override("font_color", Color(1.0, 0.45, 0.4, 0.85))
-			box.add_child(lost)
-	return card
+	return ItemCard.make(item, tag, compare)
 
 
 func _build_crypt_ui() -> void:

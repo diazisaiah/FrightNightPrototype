@@ -1875,6 +1875,8 @@ func _refresh_shop() -> void:
 
 
 func _shop_card(index: int, offer: Dictionary) -> Control:
+	if offer.kind == "gear":
+		return _gear_shop_card(index, offer)
 	var tint := UiTheme.SIGIL
 	var title := ""
 	var what := ""
@@ -1966,6 +1968,33 @@ func _shop_card(index: int, offer: Dictionary) -> Control:
 			_refresh_shop())
 	column.add_child(buy)
 	return card
+
+
+## A gear offer: its ItemCard (the model turning, the rarity's colors and
+## effects, stats against what's worn) with the Buy button under it.
+func _gear_shop_card(index: int, offer: Dictionary) -> Control:
+	var item: Dictionary = offer.item
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 6)
+	column.add_child(ItemCard.make(item, "SOLD" if offer.sold else "FOR SALE", GameState.equipped.get(item.slot, {})))
+	var buy := Button.new()
+	buy.custom_minimum_size.y = 40
+	if offer.sold:
+		buy.text = "SOLD"
+		buy.disabled = true
+	elif GameState.souls < int(offer.price):
+		buy.text = "%d Souls" % int(offer.price)
+		buy.disabled = true
+	else:
+		buy.text = "Buy  ·  %d Souls" % int(offer.price)
+		buy.theme_type_variation = "PrimaryButton"
+	buy.pressed.connect(func() -> void:
+		if SoulShop.buy(index):
+			Sfx.play("unlock", -6.0, 1.2)
+			_refresh_armory()
+			_refresh_shop())
+	column.add_child(buy)
+	return column
 
 
 ## Reroll: pick which stat to change, then see what it became.

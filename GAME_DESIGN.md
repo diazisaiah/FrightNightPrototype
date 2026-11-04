@@ -2191,9 +2191,23 @@ Prerequisites for the Crypt revamp, and the first Rebalance plan items.
 - **New hat, Fancy Bluetooth Headpiece** (a scouter): "checks power levels and can translate anything!" It has no stat boost. Wearing it shows the POWER level of the enemy you are looking at, and it changes the merchant's toilet answer above.
 - **Clogging needs the poop emote:** the toilet can appear before the emote is unlocked, but the player can only clog it once they unlock the (secret) poop emote. Seeing a toilet and wondering "why", then finding the emote and wanting to try it, is the joke.
 
-**Item models:** every piece has its own 3D model, like hats (20 models). Each set has its own color. Wraps are cylinders with a thin partly unraveled loop sticking out the top. Rarity is a recolor of the same model: common is dull and dingy with tatter spots; uncommon is cleaner and muted; rare is full color; epic is saturated with small purple sparkles; legendary is saturated with dramatic gold sparkles. The sparkles are brighter on the purple and yellow sets so they don't vanish.
+**Item models [Built 2026-11-04] (`ItemModels`, `item_models.gd`):** every piece has its own model, built the way hats are (`Hats._b` blocks in the block material), rounded with stacked, crossed blocks. Each set has its color and one signature per piece:
 
-**Open work, in order:** room furniture, the gear system and save migration, drop odds and store cards and salvage, mimics and elite mimics, the toilet and merchant tie-in, item models, then re-run the balance.
+| Set | Gloves | Wraps | Boots | Charm |
+|---|---|---|---|---|
+| Deadweight (red) | Knuckles: red glove, riveted iron knuckle plate, iron cuff edge | Bindings: dark red leather roll in iron chain links | Treads: heavy red boot, iron toe cap, tread sole, iron strap | Anchor: iron anchor, red rope round the shank |
+| Drowned (blue) | Fists: blue glove, seafoam wave stripe, barnacles | Wraps: blue roll, seafoam bands, seaweed, a pearl bead | Steps: low blue boot, seafoam cross straps, white sole | Pearl: open clam shell with a pearl |
+| Grandmaster's (purple) | Hands: fingerless glove, ivory fingertips, gold diamond, gold wrist band | Wraps: purple silk, gold stripes, gold tassel | Slippers: kung fu slippers, black sole, gold trim | Seal: jade stamp, gold lion, gold glyph |
+| Iron Mike's (yellow) | Gloves: yellow, black cuff, red band, white laces | Wraps: white tape, yellow band, red tape end | Boots: tall yellow boxing boots, white laces, red top stripe | Belt: championship belt, gold plate, red gem |
+| Dead Money (green) | Rings: gold four-ring knuckle duster, green gems | Wraps: green roll, paper bill band, gold money clip | Loafers: green loafers, gold penny strap | Coin: big gold coin with a green $ on both faces |
+
+- Gloves stand on their cuff, fist up, the thumb against the side of the fist from the palm by the wrist to its tip at the top front corner, a dark gap in the web. Every wrap has its loose end looping up out of the top.
+- Rarity recolors the same model: common dull and dingy, uncommon muted, rare full color, epic and legendary saturated. Epic has small purple sparkles, legendary more, bigger gold ones (their own particles, so the color stays purple and gold).
+- Until the gear system gives items a set, an item wears the model of the set its stats and special lean to (`ItemModels.set_for`, from the set tables above), so it always looks the same.
+
+**Item cards [Built 2026-11-04] (`ItemCard`, `item_card.gd`):** Crypt drops ("YOU FOUND"), the gilding altar, the merchant and the camp shop's gear show the item's model turning in a little 3D window (lit like the hat popup), its name in its rarity color, what it is, and its stats colored against what's worn. The card's color and effects climb with rarity: common a thin grey frame; uncommon a green frame, a faint glow and a soft light under the item; rare a blue frame, a glow and slow light rays; epic a thick purple frame, a pulsing glow, brighter rays and purple sparkles over the window; legendary a thick gold frame, a strong pulse, bright fast rays, gold sparkles and a light sweep across the card every few seconds. The cards keep animating while a drop pauses the Crypt.
+
+**Open work, in order:** room furniture, the gear system and save migration, drop odds and salvage, mimics and elite mimics, the toilet and merchant tie-in, then re-run the balance. (Item models and the item and store cards are built, 2026-11-04.)
 
 ## Mobile build [Idea, planned 2026-11-02]
 

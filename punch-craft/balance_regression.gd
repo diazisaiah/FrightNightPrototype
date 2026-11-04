@@ -813,6 +813,21 @@ func _test_class_balance() -> void:
 	_check(is_equal_approx(Progression.effective_hp(100.0, 0.0), 100.0) and Progression.effective_hp(100.0, 50.0) > 100.0
 			and Progression.effective_hp(100.0, 1.0e6) <= 100.0 / (1.0 - GameState.MAX_ARMOR_REDUCTION) + 0.01, "Effective HP grows with defense, within the cap")
 	_check(float(Attributes.LIST.grit.per_point.get("defense", 0.0)) > 0.0, "Grit points add defense")
+	# Gear models (2026-11-04): every set's four pieces build, in every rarity;
+	# epic and legendary carry purple and gold sparkles.
+	for set_id in ItemModels.SETS:
+		for slot in Items.SLOTS:
+			for rarity in ItemModels.RARITIES:
+				var model := ItemModels.build(set_id, slot, rarity)
+				var blocks := model.find_children("*", "MeshInstance3D", true, false).size()
+				var sparkles := model.find_child("Sparkles", true, false) as CPUParticles3D
+				_check(blocks >= 6, "%s %s (%s) should be built from blocks, got %d" % [set_id, slot, rarity, blocks])
+				_check((sparkles != null) == ItemModels.SPARKLE.has(rarity), "%s %s: only epic and legendary sparkle" % [set_id, slot])
+				if sparkles:
+					var tint: Color = sparkles.color_ramp.get_color(1)
+					_check(tint.is_equal_approx(ItemModels.SPARKLE[rarity].lightened(0.15)) or tint.is_equal_approx(Color(ItemModels.SPARKLE[rarity].lightened(0.15), 1.0)),
+							"%s sparkles keep their color" % rarity)
+				model.free()
 	var locked: Dictionary = Cards.info("berserker", "strike")
 	_check(not Cards.available(locked, {}, "berserker", 1) and Cards.available(locked, {}, "berserker", 5),
 			"A card that upgrades a loadout ability isn't drawn until the ability is unlocked")
