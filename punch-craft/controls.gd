@@ -20,6 +20,10 @@ class_name Controls
 
 const PUNCH_MODES := {
 	"modifiers": "Hold Shift / Ctrl + click",
+	# (2026-11-04, the user's idea) Z instead of Ctrl for uppercuts, so the
+	# browser never sees Ctrl held with a click. Ctrl still dodges / back steps
+	# in the schemes that use it.
+	"shift_z": "Hold Shift / Z + click (Z uppercut)",
 	"wheel": "Scroll wheel (down hook, up uppercut)",
 	"side_buttons": "Mouse side buttons (front hook, back uppercut)",
 }
@@ -119,12 +123,12 @@ static func slips() -> String:
 
 
 ## Hooks and uppercuts are their own buttons (thrown with the hand that
-## didn't punch last), not Shift/Ctrl + click.
+## didn't punch last), not Shift / Ctrl (or Z) + click.
 static func direct_punches() -> bool:
-	return punches() != "modifiers"
+	return not punches() in ["modifiers", "shift_z"]
 
 
-## True when you pick the hand of a hook or uppercut: Shift / Ctrl + click,
+## True when you pick the hand of a hook or uppercut: Shift / Ctrl (or Z) + click,
 ## or a controller (hold LT / RT with jab or cross).
 static func hand_heavies() -> bool:
 	return pad() or not direct_punches()
@@ -164,6 +168,10 @@ static func apply() -> void:
 			InputMap.add_action(action, 0.2)
 		InputMap.action_erase_events(action)
 	_restore_project_defaults()
+	# The uppercut modifier: Ctrl, or Z in the Shift / Z scheme.
+	if InputMap.has_action("uppercut_modifier"):
+		InputMap.action_erase_events("uppercut_modifier")
+		_add_key("uppercut_modifier", KEY_Z if punches() == "shift_z" else KEY_CTRL)
 	match punches():
 		"wheel":
 			_add_mouse("punch_hook", MOUSE_BUTTON_WHEEL_DOWN)

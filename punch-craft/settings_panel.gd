@@ -19,6 +19,7 @@ const CHOICES := {
 	},
 	"punch_mode": {
 		"modifiers": ["Shift / Ctrl + click", "Hold a key, then punch"],
+		"shift_z": ["Shift / Z + click", "Z uppercuts, no Ctrl"],
 		"wheel": ["Scroll wheel", "Down hook, up uppercut"],
 		"side_buttons": ["Mouse side buttons", "Front hook, back uppercut"],
 	},

@@ -88,7 +88,7 @@ Settings → Controls has three dropdowns, so layouts can be mixed and tried bef
 
 | Setting | Options |
 |---|---|
-| **Hooks / uppercuts** | **Hold Shift / Ctrl + click** (classic) · **Scroll wheel**: down = hook, up = uppercut · **Mouse side buttons**: front = hook, back = uppercut |
+| **Hooks / uppercuts** | **Hold Shift / Ctrl + click** (classic) · **Hold Shift / Z + click** (2026-11-04: Z uppercuts instead of Ctrl, so a browser never sees Ctrl held with a click; Ctrl dodges still work in the schemes that use it) · **Scroll wheel**: down = hook, up = uppercut · **Mouse side buttons**: front = hook, back = uppercut |
 | **Rolls / back step** | **Ctrl + A / D / S** (classic) · **Space + A / D / S / W** (W dashes; jump moves to C) · **Double-tap A / D / S** · **Tab left roll / R right roll / Ctrl+S back step** (ultimate moves to T; map moves to M) · **Shift + Q / E roll, double-tap S back step** (added 2026-10-30, the user's idea: Q / E alone still slip, Space stays jump, nothing needs a modifier with a direction) |
 | **Slips** | **Q / E** · **Q / E or mouse side buttons** (back = left, front = right; not available when hooks use the side buttons) |
 
@@ -299,7 +299,7 @@ The tutorial ends with an 11th step: the meter starts full and the coach explain
 
 ## Browser performance [Built, 2026-10-14]
 
-**Ctrl in the browser (2026-11-04):** Ctrl is a game key (Ctrl + click uppercuts; some dodge schemes hold it), and in a browser Ctrl + S saved the page, Ctrl + D bookmarked it, Ctrl + A selected everything and Ctrl + W closed the tab. The web export's head include (`export_presets.cfg`, both web presets) now: stops the page default of Ctrl / Cmd + any key (the game still gets the key; Ctrl + Shift combos like the dev tools are left alone), asks "Leave site?" if the page starts closing while Ctrl is held (Ctrl + W can't be blocked in a window), locks the keyboard in fullscreen (Chrome and Edge then let the game keep Ctrl + W too) and drops the right-click menu over the game (Ctrl + click is a right click on a Mac).
+**Ctrl in the browser (2026-11-04):** Ctrl is a game key (Ctrl + click uppercuts; some dodge schemes hold it), and in a browser Ctrl + S saved the page, Ctrl + D bookmarked it, Ctrl + A selected everything and Ctrl + W closed the tab. The web export's head include (`export_presets.cfg`, both web presets) now: stops the page default of Ctrl / Cmd + any key (the game still gets the key; Ctrl + Shift combos like the dev tools are left alone), asks "Leave site?" if the page starts closing while Ctrl is held (Ctrl + W can't be blocked in a window), locks the keyboard in fullscreen (Chrome and Edge then let the game keep Ctrl + W too) and drops the right-click menu over the game (Ctrl + click is a right click on a Mac). All of that stays; for anyone who would rather not hold Ctrl at all, the **Shift / Z + click** punch scheme (Settings, Controls, "Hooks and uppercuts") moves uppercuts to Z.
 
 The web build is the only one released, and family testers found it laggy. On top of the earlier web profile (no glow, SSAO or shadows, fewer props, batched fences):
 - **3D resolution** (Settings → Display → 3D resolution, default Auto):

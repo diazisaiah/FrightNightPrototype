@@ -241,6 +241,20 @@ func _test_control_preset() -> void:
 	_check(not shift_s.is_empty() and not InputMap.event_is_action(plain_s, "back_step_key") and InputMap.event_is_action(plain_s, "move_back"),
 			"Shift + S back steps, S alone walks back")
 	_check(Settings.DEFAULTS.dodge_mode == "shift_qe", "Shift + Q / E rolls are the default dodge scheme")
+	# Shift / Z + click (2026-11-04): Z uppercuts, Ctrl isn't needed, and
+	# going back to Shift / Ctrl brings Ctrl back.
+	var old_punch = Settings.values.punch_mode
+	Settings.values.punch_mode = "shift_z"
+	Controls.apply()
+	_check(_keys("uppercut_modifier") == [KEY_Z] and not Controls.direct_punches() and Controls.hand_heavies(),
+			"Shift / Z + click uppercuts on Z with the hand you pick")
+	_check(Controls.text("uppercut") == "Z + click" and Controls.text("hook") == "Shift + click",
+			"Shift / Z hints (%s, %s)" % [Controls.text("hook"), Controls.text("uppercut")])
+	Settings.values.punch_mode = "modifiers"
+	Controls.apply()
+	_check(_keys("uppercut_modifier") == [KEY_CTRL], "Shift / Ctrl + click uppercuts on Ctrl again")
+	Settings.values.punch_mode = old_punch
+	Controls.apply()
 	# A jab only hits harder right after a cross (2026-11-02).
 	_check(is_equal_approx(Player.jab_after_cross_mult("jab", "cross", 2), Player.JAB_AFTER_CROSS), "A jab after a cross hits harder")
 	_check(Player.jab_after_cross_mult("jab", "jab", 2) == 1.0 and Player.jab_after_cross_mult("jab", "hook", 2) == 1.0
