@@ -111,7 +111,8 @@ func coffin(frame: Transform3D, wood: Color) -> void:
 ## Stepped stone stands running along frame's X, length long: tiers rising
 ## away from the room (along +Z), each depth deep and rise high. Returns the
 ## spots (frames, facing -Z) where spectators stand, spacing apart.
-func stands(frame: Transform3D, length: float, tiers: int, depth: float, rise: float, color: Color, spacing := 1.15) -> Array[Transform3D]:
+## With pews, each tier gets a wooden backrest (the chapel).
+func stands(frame: Transform3D, length: float, tiers: int, depth: float, rise: float, color: Color, spacing := 1.15, pews := false) -> Array[Transform3D]:
 	var seats: Array[Transform3D] = []
 	var step := stone(color)
 	var lip := stone(color.darkened(0.3))
@@ -120,6 +121,9 @@ func stands(frame: Transform3D, length: float, tiers: int, depth: float, rise: f
 		var z := depth * (tier + 0.5)
 		box_in(frame, Vector3(length, h, depth), Vector3(0, h / 2.0, z), step)
 		box_in(frame, Vector3(length, 0.08, 0.12), Vector3(0, h + 0.04, z - depth / 2.0 + 0.06), lip)
+		if pews:
+			box_in(frame, Vector3(length, 0.7, 0.08), Vector3(0, h + 0.35, z + depth / 2.0 - 0.1), lip)
+			box_in(frame, Vector3(length, 0.06, 0.16), Vector3(0, h + 0.72, z + depth / 2.0 - 0.1), step)
 		var count := int(length / spacing)
 		for i in count:
 			var x := -length / 2.0 + spacing * (i + 0.5)
@@ -300,3 +304,93 @@ func path(a: Vector3, b: Vector3, width: float, rng: RandomNumberGenerator) -> v
 				box(size, Vector3(spot.x, 0.02, spot.z), tones[rng.randi() % 2], Vector3(0, yaw + rng.randf_range(-0.12, 0.12), 0))
 			lane += 0.8
 		t += 0.8
+
+
+
+# --- Stage and arena pieces ---------------------------------------------------------
+
+## A skull facing -Z: cranium, jaw, two dark sockets and a nose.
+func skull(frame: Transform3D, size: float, bone: Color, socket := Color(0.04, 0.04, 0.06)) -> void:
+	var b := stone(bone)
+	var d := stone(socket)
+	box_in(frame, Vector3(1.0, 0.8, 0.9) * size, Vector3(0, 0.4, 0) * size, b)
+	box_in(frame, Vector3(0.7, 0.25, 0.6) * size, Vector3(0, -0.08, -0.1) * size, b)
+	for side in [-1.0, 1.0]:
+		box_in(frame, Vector3(0.26, 0.22, 0.05) * size, Vector3(side * 0.22, 0.45, -0.46) * size, d)
+	box_in(frame, Vector3(0.12, 0.14, 0.05) * size, Vector3(0, 0.22, -0.46) * size, d)
+
+
+## A stained-glass window (facing -Z) w x h: a stone frame, a pointed top,
+## a grid of glowing panes in colors, lead bars between them.
+func stained_window(frame: Transform3D, w: float, h: float, colors: Array, rng: RandomNumberGenerator, energy := 1.3) -> void:
+	var rim := stone(Color(0.32, 0.3, 0.34))
+	var lead := stone(Color(0.05, 0.05, 0.06))
+	box_in(frame, Vector3(w + 0.5, 0.35, 0.3), Vector3(0, -0.15, 0), rim)
+	for side in [-1.0, 1.0]:
+		box_in(frame, Vector3(0.25, h, 0.3), Vector3(side * (w / 2.0 + 0.12), h / 2.0, 0), rim)
+		box_in(frame, Vector3(0.25, w * 0.75, 0.3), Vector3(side * w * 0.25, h + w * 0.25, 0), rim, Vector3(0, 0, side * 0.75))
+	var columns := 3
+	var rows := maxi(2, int(h / 0.9))
+	var pw := w / columns
+	var ph := h / rows
+	for row in rows:
+		for column in columns:
+			var color: Color = colors[rng.randi() % colors.size()]
+			box_in(frame, Vector3(pw - 0.06, ph - 0.06, 0.04), Vector3(-w / 2.0 + pw * (column + 0.5), ph * (row + 0.5), 0.02), glow(color, energy))
+	for column in columns + 1:
+		box_in(frame, Vector3(0.05, h, 0.06), Vector3(-w / 2.0 + pw * column, h / 2.0, -0.01), lead)
+	for row in rows + 1:
+		box_in(frame, Vector3(w, 0.05, 0.06), Vector3(0, ph * row, -0.01), lead)
+	# The pointed head: one pane in the arch.
+	box_in(frame, Vector3(w * 0.5, w * 0.35, 0.04), Vector3(0, h + w * 0.18, 0.02), glow(colors[0], energy))
+
+
+## A heap of gold coins with a cup or two and a gem, about radius wide.
+func treasure(frame: Transform3D, radius: float, rng: RandomNumberGenerator) -> void:
+	var coin := metal(Color(0.95, 0.72, 0.25), 0.85)
+	var dull := metal(Color(0.75, 0.55, 0.18), 0.8)
+	var layers := 4
+	for layer in layers:
+		var r := radius * (1.0 - float(layer) / layers)
+		var n := int(6 + r * 10)
+		for i in n:
+			var spot := Vector2.from_angle(rng.randf() * TAU) * r * sqrt(rng.randf())
+			box_in(frame, Vector3(0.22, 0.06, 0.22), Vector3(spot.x, 0.04 + layer * 0.12, spot.y), coin if rng.randf() < 0.7 else dull, Vector3(rng.randf_range(-0.4, 0.4), rng.randf() * TAU, 0))
+	box_in(frame, Vector3(radius * 1.4, 0.3, radius * 1.4), Vector3(0, 0.12, 0), dull, Vector3(0, PI / 4, 0))
+	for i in 2:
+		var spot := Vector2.from_angle(rng.randf() * TAU) * radius * 0.5
+		box_in(frame, Vector3(0.1, 0.25, 0.1), Vector3(spot.x, 0.55, spot.y), coin)
+		box_in(frame, Vector3(0.22, 0.18, 0.22), Vector3(spot.x, 0.75, spot.y), coin)
+	box_in(frame, Vector3(0.16, 0.16, 0.16), Vector3(0, 0.6, 0), glow([Color(0.9, 0.1, 0.15), Color(0.2, 0.5, 1.0), Color(0.2, 0.9, 0.4)][rng.randi() % 3], 3.0), Vector3(PI / 4, PI / 4, 0))
+
+
+## A gold chandelier hung from y top: a chain, two rings of candle arms with
+## glowing tips (no light; budgeted separately).
+func chandelier(frame: Transform3D, top: float, drop: float, radius: float) -> void:
+	var gold := metal(Color(0.95, 0.72, 0.25), 0.85)
+	var flame_tip := glow(Color(1.0, 0.75, 0.4), 5.0)
+	box_in(frame, Vector3(0.06, drop, 0.06), Vector3(0, top - drop / 2.0, 0), metal(Color(0.15, 0.12, 0.08)))
+	var y := top - drop
+	box_in(frame, Vector3(0.3, 0.5, 0.3), Vector3(0, y, 0), gold)
+	for ring in 2:
+		var r := radius * (1.0 - ring * 0.45)
+		var at: float = y - 0.2 + ring * 0.5
+		var arms := 10 - ring * 4
+		for i in arms:
+			var a := TAU * i / arms
+			box_in(frame, Vector3(0.12, 0.08, r), Vector3(cos(a) * r / 2.0, at, sin(a) * r / 2.0), gold, Vector3(0, -a + PI / 2.0, 0))
+			box_in(frame, Vector3(0.1, 0.22, 0.1), Vector3(cos(a) * r, at + 0.1, sin(a) * r), stone(Color(0.85, 0.82, 0.72)))
+			box_in(frame, Vector3(0.05, 0.08, 0.05), Vector3(cos(a) * r, at + 0.26, sin(a) * r), flame_tip)
+
+
+## A rusted vat of glowing green sludge; returns its surface's centre.
+func vat(frame: Transform3D, radius: float, sludge: Color) -> Vector3:
+	var iron := metal(Color(0.2, 0.18, 0.14), 0.5)
+	var band := metal(Color(0.32, 0.22, 0.12), 0.6)
+	box_in(frame, Vector3(radius * 2.0, 1.1, radius * 2.0), Vector3(0, 0.55, 0), iron)
+	box_in(frame, Vector3(radius * 2.0 + 0.08, 0.1, radius * 2.0 + 0.08), Vector3(0, 0.3, 0), band)
+	box_in(frame, Vector3(radius * 2.0 + 0.08, 0.1, radius * 2.0 + 0.08), Vector3(0, 0.95, 0), band)
+	box_in(frame, Vector3(radius * 1.8, 0.05, radius * 1.8), Vector3(0, 1.08, 0), glow(sludge, 2.5))
+	box_in(frame, Vector3(0.18, 0.18, 0.18), Vector3(radius * 0.3, 1.14, -radius * 0.2), glow(sludge.lightened(0.3), 3.0))
+	box_in(frame, Vector3(0.12, 0.12, 0.12), Vector3(-radius * 0.35, 1.12, radius * 0.25), glow(sludge.lightened(0.3), 3.0))
+	return frame * Vector3(0, 1.1, 0)
