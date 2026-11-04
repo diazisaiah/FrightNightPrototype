@@ -28,9 +28,9 @@ func _init() -> void:
 	combo_armor = true  # Counters can't break a boss's combo, only punish its end.
 
 
-func take_hit(raw_damage: float, hit_point: Vector3, push: Vector3, stagger: bool, caption := "", pierce := false, crush := false) -> float:
+func take_hit(raw_damage: float, hit_point: Vector3, push: Vector3, stagger: bool, caption := "", pierce := false, crush := false, armor_cut := 0.0) -> float:
 	# Too heavy to be knocked around much.
-	var dealt := super(raw_damage, hit_point, push * 0.3, stagger, caption, pierce, crush)
+	var dealt := super(raw_damage, hit_point, push * 0.3, stagger, caption, pierce, crush, armor_cut)
 	health_changed.emit(maxf(hp, 0.0), max_hp)
 	if not _enraged and hp > 0.0 and hp <= max_hp * ENRAGE_FRACTION:
 		_enrage()

@@ -11,10 +11,17 @@ signal continue_requested
 signal crypt_requested
 ## The player decided on a found item: equip it, or salvage it for coins.
 signal item_decided(equip: bool)
+## Loaded Dice: the player asked the chest to roll again.
+## The item card's third button: Loaded Dice's reroll on a chest, or Keep /
+## Leave it on a find you swapped out.
+signal item_option_chosen
 ## Gild this worn find at a Crypt altar.
 signal gild_chosen(item: Dictionary)
 ## The Crypt merchant's shop: a ware's index, or -1 for the heal.
 signal ware_chosen(index: int)
+
+## The Rhythm bonus on the combo line (the Drowned set's seafoam).
+const RHYTHM_COLOR := Color(0.32, 0.85, 0.78)
 
 var _can_pause := true
 var _announce_tween: Tween
@@ -30,6 +37,8 @@ var _pulse_time := 0.0
 @onready var _xp_bar: ProgressBar = %XpBar
 @onready var _resource_label: Label = %ResourceLabel
 @onready var _combo_label: Label = %ComboLabel
+## Rhythm's share of the combo multiplier, beside it in its own color.
+var _rhythm_label: Label
 @onready var _feed: VBoxContainer = %Feed
 @onready var _controls_label: Label = %ControlsLabel
 @onready var _pause_panel: Control = %PausePanel
@@ -204,6 +213,14 @@ func _style_hud() -> void:
 			_knuckle_ticks.draw_line(Vector2(x, 3), Vector2(x, _knuckle_ticks.size.y - 3), Color(0, 0, 0, 0.35), 2.0))
 	for label in [_announcement, _wave_label, _combo_label, _counter_label]:
 		label.add_theme_font_override("font", UiTheme.display_font())
+	_rhythm_label = Label.new()
+	_rhythm_label.add_theme_font_override("font", UiTheme.display_font())
+	_rhythm_label.add_theme_font_size_override("font_size", _combo_label.get_theme_font_size("font_size"))
+	_rhythm_label.add_theme_color_override("font_color", RHYTHM_COLOR)
+	_rhythm_label.add_theme_color_override("font_outline_color", Color.BLACK)
+	_rhythm_label.add_theme_constant_override("outline_size", _combo_label.get_theme_constant("outline_size"))
+	_rhythm_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_combo_label.add_child(_rhythm_label)
 	for label in [_knuckle_label, _level_label, _class_label]:
 		label.add_theme_font_override("font", UiTheme.bold_font())
 
@@ -322,8 +339,17 @@ func set_knuckles(current: float, maximum: float) -> void:
 	_knuckle_ratio = current / maximum if maximum > 0.0 else 0.0
 
 
-func set_combo(count: int, multiplier: float) -> void:
-	_combo_label.text = "" if count < 2 else "%d HITS   x%.2f" % [count, multiplier]
+func set_combo(count: int, multiplier: float, rhythm := 0.0) -> void:
+	_combo_label.text = "" if count < 2 else "%d HITS   x%.2f" % [count, multiplier - rhythm]
+	# Rhythm (the Drowned Pearl): "+0.45" right after the multiplier.
+	_rhythm_label.text = "+%.2f" % rhythm if count >= 2 and rhythm > 0.004 else ""
+	if _rhythm_label.text != "":
+		var font := _combo_label.get_theme_font("font")
+		var font_size := _combo_label.get_theme_font_size("font_size")
+		var width := font.get_string_size(_combo_label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+		_rhythm_label.position = Vector2(_combo_label.size.x / 2.0 + width / 2.0 + 10.0, 0.0)
+		_rhythm_label.size = Vector2(160, _combo_label.size.y)
+		_rhythm_label.vertical_alignment = _combo_label.vertical_alignment
 	if count < 2:
 		return
 	# Gets hotter and pops harder the longer the combo runs.
@@ -652,6 +678,7 @@ func knockout_fade() -> void:
 	_set_ult_visible(false)
 	hide_boss()
 	_combo_label.text = ""
+	_rhythm_label.text = ""
 	_knuckle_ratio = 1.0  # The low-health throb stops; the fade takes over.
 	_ko_cover.show()
 	_ko_cover.color = Color(0.55, 0.0, 0.02, 0.0)
@@ -747,6 +774,7 @@ func show_summary(title: String, details: String) -> void:
 	get_tree().paused = false
 	_pause_panel.hide()
 	_combo_label.text = ""
+	_rhythm_label.text = ""
 	_summary_title.text = title
 	if _summary_text == null:
 		_summary_text = IconLabel.new()
@@ -1039,18 +1067,19 @@ func set_equipment(equipped: Dictionary) -> void:
 ## Pauses and shows a found item next to what's worn in its slot, with
 ## Equip / Salvage buttons (or custom ones: Buy / Leave it, Accept ...).
 ## Emits item_decided.
-func show_item_offer(item: Dictionary, current: Dictionary, salvage_coins: int, accept_text := "", decline_text := "", accept_enabled := true) -> void:
+func show_item_offer(item: Dictionary, current: Dictionary, salvage_coins: int, accept_text := "", decline_text := "",
+		accept_enabled := true, option_text := "", option_closes := false, heading := "YOU FOUND", new_tag := "NEW") -> void:
 	for child in _item_panel.get_children():
 		child.queue_free()
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 12)
 	_item_panel.add_child(column)
-	column.add_child(UiTheme.heading("YOU FOUND", 34))
+	column.add_child(UiTheme.heading(heading, 34))
 	var cards := HBoxContainer.new()
 	cards.add_theme_constant_override("separation", 18)
 	cards.alignment = BoxContainer.ALIGNMENT_CENTER
 	column.add_child(cards)
-	cards.add_child(_item_card(item, "NEW", current))
+	cards.add_child(_item_card(item, new_tag, current))
 	if not current.is_empty():
 		cards.add_child(_item_card(current, "WORN NOW"))
 	var buttons := HBoxContainer.new()
@@ -1068,6 +1097,15 @@ func show_item_offer(item: Dictionary, current: Dictionary, salvage_coins: int, 
 	salvage.custom_minimum_size = Vector2(200, 46)
 	salvage.pressed.connect(_decide_item.bind(false))
 	buttons.add_child(salvage)
+	if option_text != "":
+		var option := Button.new()
+		option.text = option_text
+		option.custom_minimum_size = Vector2(170, 46)
+		option.pressed.connect(func() -> void:
+			if option_closes:
+				_close_item_panel()
+			item_option_chosen.emit())
+		buttons.add_child(option)
 	_can_pause = false
 	get_tree().paused = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
@@ -1187,11 +1225,15 @@ func show_merchant(wares: Array, heal: Dictionary, silver: int) -> void:
 
 
 func _decide_item(equip: bool) -> void:
+	_close_item_panel()
+	item_decided.emit(equip)
+
+
+func _close_item_panel() -> void:
 	_item_panel.hide()
 	_can_pause = true
 	get_tree().paused = false
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
-	item_decided.emit(equip)
 
 
 ## A gear card (ItemCard: the item's model turning, its rarity's colors and

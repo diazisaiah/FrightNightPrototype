@@ -255,17 +255,30 @@ static func _is_power(node: Dictionary) -> bool:
 
 ## No gear before the Bellman: the Crypt (where gear comes from) only opens
 ## with his seal, so he and Division 1 are tuned to an empty-handed fighter.
+## From the Bellman on (2026-11-04, the gear system): decent rare gloves and
+## wraps from the deepest Crypt floor open when facing contender t (the floors
+## the contender before opened: 2 for the Headless ... 8 for the Coffin King),
+## mid-range level: Deadweight Knuckles' damage, Deadweight Bindings' knuckles
+## and defense (par_gear_items; their other stats aren't counted).
 static func _par_gear(tier: int) -> Dictionary:
-	if tier <= 1:
+	var items := par_gear_items(tier)
+	if items.is_empty():
 		return {"damage": 0.0, "knuckles": 0.0, "defense": 0.0}
-	var floor_number := tier * FLOORS_PER_TIER
-	var growth := 1.0 + Items.FLOOR_GROWTH * (floor_number - 1)
-	var strength: float = Items.RARITIES.rare.strength * 0.7
 	return {
-		"damage": Items.AFFIXES.gloves.normal.damage[0] * strength * growth,
-		"knuckles": Items.AFFIXES.wraps.normal.max_knuckles[0] * strength * growth,
-		"defense": Items.AFFIXES.wraps.normal.defense[0] * strength * growth,
+		"damage": float(items[0].effects.get("damage", 0.0)),
+		"knuckles": float(items[1].effects.get("max_knuckles", 0.0)),
+		"defense": float(items[1].effects.get("defense", 0.0)),
 	}
+
+
+## The gear par wears facing contender t: [gloves, wraps], or none before the
+## Bellman (tier 6 = true par: level 29, floor 10's middle).
+static func par_gear_items(tier: int) -> Array:
+	if tier <= 1:
+		return []
+	var levels := Gear.level_range((mini(tier, TIER_COUNT + 1) - 1) * FLOORS_PER_TIER)
+	var level := (levels.x + levels.y) / 2
+	return [Gear.make("deadweight", "gloves", "rare", level), Gear.make("deadweight", "wraps", "rare", level)]
 
 
 ## Par at a position on the climb: x = 0 fresh, 1 = facing the Bellman, ...

@@ -150,7 +150,7 @@ var combo_armor := false
 var _armor_shown := false
 
 
-func take_hit(raw_damage: float, hit_point: Vector3, push: Vector3, stagger: bool, caption := "", pierce := false, crush := false) -> float:
+func take_hit(raw_damage: float, hit_point: Vector3, push: Vector3, stagger: bool, caption := "", pierce := false, crush := false, armor_cut := 0.0) -> float:
 	# Specials are armored: hits land, but nothing staggers it (except dazed).
 	if _special != "" and _step != "dazed":
 		stagger = false
@@ -163,7 +163,7 @@ func take_hit(raw_damage: float, hit_point: Vector3, push: Vector3, stagger: boo
 			Sfx.play_at("block", hit_point, -2.0, 0.8)
 		stagger = false
 		push *= 0.2
-	return super(raw_damage, hit_point, push, stagger, caption, pierce, crush)
+	return super(raw_damage, hit_point, push, stagger, caption, pierce, crush, armor_cut)
 
 
 ## Mid-combo with more punches still to come.

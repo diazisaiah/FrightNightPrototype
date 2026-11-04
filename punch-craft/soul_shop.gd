@@ -12,9 +12,8 @@ const IDLE_SLOTS := 1
 const IDLE_PRICE := 6
 ## Skins (Skins.PRICE) for the fighters you have.
 const SKIN_SLOTS := 1
-## Gear is a backup, not a way around the Crypt: mostly plain finds, priced
-## against boss Souls (1 + tier each), with good gear rare and dear.
-const GEAR_PRICE := {"common": 6, "uncommon": 12, "rare": 22, "epic": 38, "legendary": 60}
+## Gear is a backup, not a way around the Crypt: mostly plain finds, with
+## good gear rare (prices: Gear.SHOP_SOULS).
 const GEAR_RARITY := {"common": 0.5, "uncommon": 0.32, "rare": 0.13, "epic": 0.04, "legendary": 0.01}
 ## Fighters for sale ({class_id: price}). Tony stays a secret (the Yonker
 ## hats); new fighters go here as they're added.
@@ -44,7 +43,7 @@ static func _stale() -> bool:
 	for offer in GameState.shop_stock:
 		if offer.kind != "gear" or offer.sold:
 			continue
-		if int(offer.price) != int(GEAR_PRICE.get(offer.item.rarity, -1)) \
+		if not Gear.is_gear(offer.item) or int(offer.price) != Gear.shop_price(offer.item.rarity) \
 				or int(offer.item.get("floor", 1)) > maxi(1, GameState.crypt_floors_cleared):
 			return true
 	return false
@@ -69,11 +68,14 @@ static func restock() -> void:
 			offers.append({"kind": "fighter", "id": class_id, "price": FIGHTERS[class_id], "sold": false})
 	# Only as strong as the deepest Crypt floor you've beaten (floor 1 before
 	# any), so cheesing a boss for a higher tier doesn't buy better gear.
+	# Gear (2026-11-04): set pieces at that floor's levels, half the merchant's
+	# price, in Souls (Gear.SHOP_SOULS).
 	var floor_number := maxi(1, GameState.crypt_floors_cleared)
 	for i in GEAR_SLOTS:
 		var rarity := _pick_rarity()
-		var item: Dictionary = Items._roll_with(floor_number, Items.SLOTS.pick_random(), rarity)
-		offers.append({"kind": "gear", "item": item, "price": GEAR_PRICE[rarity], "sold": false})
+		var levels := Gear.level_range(floor_number)
+		var item := Gear.make(Gear.PIECES.keys().pick_random(), Gear.SLOTS.pick_random(), rarity, randi_range(levels.x, levels.y))
+		offers.append({"kind": "gear", "item": item, "price": Gear.shop_price(rarity), "sold": false})
 	GameState.shop_stock = offers
 	GameState.shop_restock_at = GameState.fights_done
 	GameState.shop_rerolls = 0

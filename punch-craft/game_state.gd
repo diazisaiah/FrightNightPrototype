@@ -1010,18 +1010,29 @@ const EFFECT_FORMATS := {
 	"frost_slip": "%s%% chance a slip or roll chills nearby enemies",
 	"spear_jab": "Dash into a jab: it spears every enemy in a line",
 	"clean_read": "Clean dodges restore %s%% knuckle HP",
-	"rhythm": "Each dodge adds +%s to your combo multiplier (lost when hit)",
+	"rhythm": "Each dodge adds +%s to your combo multiplier, up to +1 (lost when hit)",
 	"executioner": "Counters finish off non-boss enemies under %s%% HP",
 	"glass_jaw": "+%s%% damage",
 	"damage_taken": "+%s%% damage taken",
 	"last_stand": "Up to +%s%% damage as your knuckle HP falls",
 	"blood_price": "+%s%% damage",
 	"blood_cost": "Every punch costs %s more knuckle HP",
-	"bone_breaker": "Every 5th hook ignores all armor and damage reduction, and staggers",
-	"long_count": "Once per floor, survive a knockout at 1 HP and stun everything for 3s",
+	"bone_breaker": "Hook counters ignore %s%% of armor",
+	"combo_cap": "+%s max combo multiplier",
+	"mid_roll": "A punch thrown mid-roll counts as a counter (your counter stays ready)",
+	"double_jab": "The first jab on each enemy hits twice",
+	"frenzy": "Every 10th hit in a combo lands twice",
+	"gold_fever": "+%s%% damage for every x10 coins you hold",
+	"loaded_dice": "Reroll a chest up to %s times a floor",
+	"silver_tongue": "+%s%% silver from the dead",
+	"haggler": "Your ultimate keeps %s%% of its meter",
+	"set_damage_reduction": "Take %s%% less damage",
+	"clean_counter_bonus": "Clean dodge counters deal +%s%% damage",
+	"elite_boss_damage": "+%s%% damage to elites and bosses",
+	"long_count": "Once a floor, Arena bout or Dead League fight, survive a knockout at 1 HP and stun everything for 3s",
 	"champions_hands": "Counters throw a free follow-up punch",
-	"slipknot": "3 dodges in a row without being hit restore %s%% knuckle HP",
-	"gravewalker": "After a dodge, the next attack within 1.5s hits your ghost instead",
+	"slipknot": "%s%% chance a graze counts as a dodge",
+	"gravewalker": "Dodging an attack: take %s%% less damage for 2s",
 	"lantern": "Elites and bosses drop an extra chest",
 	"pyre": "Burning enemies explode when they die",
 	"thunderhead": "Clean dodges strike the attacker with lightning",
@@ -1086,11 +1097,14 @@ const PERCENT_EFFECTS := [
 	"quake_chance", "gale", "gale_damage", "plate_guard", "doom", "doom_chance",
 	"boost_fire", "boost_storm", "boost_frost", "boost_blood", "boost_quake", "boost_gale", "boost_iron", "boost_doom",
 	"all_power_boost", "window_cap_up", "window_boost",
+	"gold_fever", "silver_tongue", "haggler", "set_damage_reduction", "clean_counter_bonus", "elite_boss_damage",
+	"bone_breaker", "slipknot", "gravewalker",
 ]
 ## Effects that are on/off: their text has no number.
 const FLAG_EFFECTS := [
 	"chain_stun", "seal", "chain_on_counter", "perfect_any_punch", "dive_kick",
-	"iron_will", "spear_jab", "bone_breaker", "long_count", "champions_hands", "gravewalker", "lantern",
+	"iron_will", "spear_jab", "long_count", "champions_hands", "lantern",
+	"mid_roll", "double_jab", "frenzy",
 	"pyre", "thunderhead", "frost_shatter", "bloodbath", "ult_power",
 	"quake_knockdown", "fault_line", "quake_stun", "quake_aftershock", "gale_stagger", "gale_tailwind", "crosswind",
 	"updraft", "cyclone", "riveted", "iron_anvil", "iron_spikes", "shrapnel", "unbreakable", "reckoning",
@@ -1355,6 +1369,9 @@ func get_effect(effect: String) -> float:
 		total += float(Attributes.LIST[attribute].per_point.get(effect, 0.0)) * int(progress.attributes[attribute])
 	for slot in equipped:
 		total += equipped[slot].effects.get(effect, 0.0)
+	# The 4-piece set bonuses (Gear), only for the effects they grant.
+	if effect in Gear.BONUS_EFFECTS and equipped.size() >= Gear.SLOTS.size():
+		total += float(Gear.set_bonus(equipped).get(effect, 0.0))
 	for blessing in blessings:
 		total += blessing.effects.get(effect, 0.0)
 	for id in hats:
@@ -1781,11 +1798,53 @@ func unequip(slot: String) -> void:
 	_commit()
 
 
-## Reforges a kept item for Souls: its numbers grow and it counts as deeper.
+## Levels a kept piece of gear up one level for Souls (Gear.level_up_cost),
+## up to the store's cap (Gear.level_cap: the deepest floor you've beaten).
+func level_up(uid: int) -> bool:
+	var item := armory_item(uid)
+	if item.is_empty() or not Gear.is_gear(item) or int(item.level) >= Gear.level_cap():
+		return false
+	var cost := Gear.level_up_cost(item)
+	if souls < cost:
+		return false
+	souls -= cost
+	item.level = int(item.level) + 1
+	Gear.refresh(item)
+	_commit()
+	return true
+
+
+## Sells a kept piece for gold (Gear.sell_price).
+func sell(uid: int) -> int:
+	var item := armory_item(uid)
+	if item.is_empty():
+		return 0
+	var gold := Gear.sell_price(item)
+	salvage(uid, gold)
+	return gold
+
+
+## A gilded Crypt find you took off (or left on the floor): gilding is for
+## keeps, so it goes home to the armory now.
+func keep_find(item: Dictionary) -> void:
+	if not item.get("gilded", false) or armory.has(item):
+		return
+	item.erase("found")
+	if not item.has("uid"):
+		item.uid = _next_uid
+		_next_uid += 1
+	armory.append(item)
+	_commit()
+
+
+## Reforges a kept item for Souls: its numbers grow and it counts as deeper
+## (old items; gear levels up instead).
 func reforge(uid: int) -> bool:
 	var item := armory_item(uid)
 	if item.is_empty():
 		return false
+	if Gear.is_gear(item):
+		return level_up(uid)
 	var cost := Progression.reforge_cost(item)
 	if souls < cost:
 		return false
@@ -2562,6 +2621,8 @@ func load_game() -> void:
 	for item in armory:
 		if item is Dictionary:
 			Items.retire_powers(item)
+			# The gear system (2026-11-04): old random items become set pieces.
+			Gear.migrate(item)
 			if rescale and item.get("effects", {}) is Dictionary and item.effects.has("defense"):
 				item.effects.defense = float(item.effects.defense) * DEFENSE_SCALE
 	_next_uid = int(data.get("next_uid", 1))

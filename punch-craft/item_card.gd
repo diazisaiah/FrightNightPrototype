@@ -83,6 +83,8 @@ func _ready() -> void:
 	column.add_child(name_label)
 	var kind := _label(Items.kind_text(item), 14, Color(1, 1, 1, 0.7))
 	column.add_child(kind)
+	if Gear.is_gear(item):
+		column.add_child(_set_line())
 	_add_stats(column)
 	if fx.sweep:
 		_sweep = Control.new()
@@ -247,6 +249,24 @@ func _sparkles_2d(amount: int) -> CPUParticles2D:
 	ramp.set_color(ramp.get_point_count() - 1, Color(tint, 0.0))
 	sparkles.color_ramp = ramp
 	return sparkles
+
+
+## "Deadweight  3/4" (counting this piece as worn), and the 4-piece bonus at
+## this piece's rarity: gold when the four are worn, grey until then.
+func _set_line() -> Control:
+	var set_id: String = item.set
+	var with_this: Dictionary = GameState.equipped.duplicate()
+	with_this[item.slot] = item
+	var count := Gear.set_count(set_id, with_this)
+	var set_color: Color = ItemModels.SETS[set_id].primary.lightened(0.25)
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 0)
+	box.add_child(_label("%s  %d/4" % [ItemModels.SETS[set_id].name, count], 14, set_color))
+	var active := count >= 4
+	var bonus := _label("4-piece: " + Gear.bonus_text(set_id, item.rarity), 13, Color(1.0, 0.82, 0.35) if active else Color(1, 1, 1, 0.45))
+	bonus.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	box.add_child(bonus)
+	return box
 
 
 ## Each stat: green if better than the worn item's, red if worse, gold for a

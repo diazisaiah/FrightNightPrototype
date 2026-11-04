@@ -131,6 +131,8 @@ var _theme: Dictionary = Themes.CRYPT[0]
 var _hazards: Node3D
 ## The floor this run started on (the Crypt's difficulty ramps from it).
 var _start_floor := 1
+## Chest rerolls left this floor (Loaded Dice).
+var _dice_left := 0
 ## Rooms on this floor: {cell, type ("start", "fight", "chest", "boss"),
 ## depth, size, center, doors: [Vector2i], state, ...}.
 var _rooms: Array[Dictionary] = []
@@ -210,6 +212,7 @@ func _ready() -> void:
 	_hud.continue_requested.connect(_descend)
 	get_tree().create_timer(1.5, false).timeout.connect(_gild_tip)
 	_hud.item_decided.connect(_on_item_decided)
+	_hud.item_option_chosen.connect(_on_item_option)
 	_hud.set_knuckles(_player.knuckles, _player.max_knuckles)
 	_hud.set_combo(0, 1.0)
 	_hud.set_equipment(GameState.equipped)
@@ -315,6 +318,10 @@ func _exit_tree() -> void:
 # --- Floors -------------------------------------------------------------------
 
 func _build_floor() -> void:
+	# Gilded finds left on the floor above still go home.
+	_rescue_gilded_drops()
+	# Loaded Dice: chest rerolls for this floor.
+	_dice_left = int(GameState.get_effect("loaded_dice"))
 	# One attacker at a time until the Plague tier's floors (7 on), like the Arena.
 	Enemy.max_attackers = 1 if _floor < 7 else 2
 	if _level:
@@ -786,7 +793,8 @@ func _on_enemy_died(enemy: Enemy) -> void:
 	var silver := SILVER_BOSS if enemy.is_boss else SILVER_MIMIC if kind == "mimic" else SILVER_PER_KILL
 	if enemy.display_name.split(" ").size() > 1 and enemy.max_hp >= 60.0 and enemy.has_meta("elite"):
 		silver = SILVER_ELITE
-	_silver += silver
+	# Silver Tongue (Dead Money Loafers): more silver from the dead.
+	_silver += roundi(silver * (1.0 + GameState.get_effect("silver_tongue")))
 	GameState.add_xp(xp)
 	_player.heal(_player.kill_heal(enemy))
 	_update_info()
@@ -989,6 +997,8 @@ func _update_interaction() -> void:
 				_offer_blessing(_target)
 			"altar":
 				_open_gilding()
+			"dropped":
+				_offer_dropped(_target)
 			_:
 				_use_stairs()
 
@@ -1001,6 +1011,8 @@ func _prompt_for(thing: Dictionary) -> String:
 			return _use("Trade with the merchant")
 		"shrine":
 			return _use("Pray at the shrine")
+		"dropped":
+			return _use("Your old %s" % thing.item.name)
 		"altar":
 			var bound := _bound_finds().size()
 			return _use("Gild your finds  (%d to keep)" % bound) if bound > 0 else "Gilding altar  -  nothing to gild"
@@ -1041,12 +1053,57 @@ func _open_chest(chest: Dictionary) -> void:
 	_items_found += 1
 	_pending_item = item
 	_offer_thing = chest
-	var accept := "Take it  (cursed)" if chest.quality == "cursed" else ""
-	_hud.show_item_offer(item, GameState.equipped.get(item.slot, {}), _salvage_value(item), accept)
+	_show_chest_offer(item)
 
 
+## The chest's offer: equip or salvage for silver, and a reroll while Loaded
+## Dice has some left this floor.
+func _show_chest_offer(item: Dictionary) -> void:
+	var reroll := ("Reroll  (%d left)" % _dice_left) if _dice_left > 0 else ""
+	_hud.show_item_offer(item, GameState.equipped.get(item.slot, {}), _salvage_value(item), "",
+			"Salvage   +%d {silver}" % _salvage_value(item), true, reroll)
+
+
+## A find you swapped out (Crypt revamp economy): wear it again, salvage it,
+## or keep it if it's gilded (else leave it where it lies).
+func _offer_dropped(thing: Dictionary) -> void:
+	var item: Dictionary = thing.item
+	_pending_item = item
+	_offer_thing = thing
+	_hud.set_prompt("")
+	var gilded: bool = item.get("gilded", false)
+	_hud.show_item_offer(item, GameState.equipped.get(item.slot, {}), _salvage_value(item), "Wear again",
+			"Salvage   +%d {silver}" % _salvage_value(item), true, "Keep  (to your Armory)" if gilded else "Leave it",
+			true, "YOUR OLD %s" % String(Items.SLOT_NAMES[item.slot]).to_upper(), "ON THE FLOOR")
+
+
+## The card's third button: Loaded Dice's reroll on a chest; Keep (gilded) or
+## Leave it on a find you swapped out.
+func _on_item_option() -> void:
+	var chest := _offer_thing
+	if chest.get("kind", "") == "dropped":
+		_pending_item = {}
+		_offer_thing = {}
+		var item: Dictionary = chest.item
+		if item.get("gilded", false):
+			_take_dropped(chest)
+			GameState.keep_find(item)
+			_hud.add_feed("%s went home to your Armory" % item.name, Items.rarity_color(item))
+			Sfx.play("unlock", -6.0, 1.2)
+		return
+	# Loaded Dice (Dead Money Wraps): the chest rolls again.
+	if _dice_left <= 0 or chest.is_empty() or not chest.has("quality"):
+		return
+	_dice_left -= 1
+	var item := Items.roll_cursed(_floor) if chest.quality == "cursed" else Items.roll_for_chest(_floor, chest.quality)
+	_pending_item = item
+	Sfx.play("coin", -4.0, 1.3)
+	_show_chest_offer(item)
+
+
+## Salvage pays silver by rarity (Gear.SALVAGE_SILVER), not by floor.
 func _salvage_value(item: Dictionary) -> int:
-	return roundi(SALVAGE_COINS[item.rarity] * Progression.pay(_position()))
+	return Gear.salvage_silver(item)
 
 
 func _on_item_decided(equip: bool) -> void:
@@ -1056,6 +1113,8 @@ func _on_item_decided(equip: bool) -> void:
 	_offer_thing = {}
 	if item.is_empty():
 		return
+	if thing.get("kind", "") == "dropped":
+		_take_dropped(thing)
 	match thing.get("kind", "chest"):
 		"shrine":
 			if equip:
@@ -1070,23 +1129,84 @@ func _on_item_decided(equip: bool) -> void:
 				var light: OmniLight3D = thing.light
 				light.light_energy = 0.3
 			return
-	# A chest's item: equip it, or salvage it for coins.
+	# A chest's item: equip it, or salvage it for silver.
 	if equip:
 		_equip(item)
 	else:
-		var coins := _salvage_value(item)
-		_run_coins += coins
-		GameState.add_resource("coins", coins)
-		_hud.add_feed("Salvaged %s   +%d {coins}" % [item.name, coins], Color(1, 0.85, 0.4))
+		var silver := _salvage_value(item)
+		_silver += silver
+		_update_info()
+		_hud.add_feed("Salvaged %s   +%d {silver}" % [item.name, silver], Color(0.8, 0.85, 0.95))
 
 
 func _equip(item: Dictionary) -> void:
+	var old: Dictionary = GameState.equipped.get(item.slot, {})
 	if not item.has("uid"):
 		item.found = true  # Bound to the Crypt until it's gilded.
 	GameState.equip(item)
 	_player.refresh_max_knuckles()
 	_hud.set_equipment(GameState.equipped)
 	_hud.add_feed("Equipped %s" % item.name, Items.rarity_color(item))
+	# A find you swap out stays where you stood (gear you brought in is still
+	# in your Armory).
+	if old.get("found", false) and old != item:
+		_drop_old(old)
+
+
+## Floats a swapped-out find ahead and to your right (closer if a wall is in
+## the way), turning in its rarity's light, to pick up again.
+func _drop_old(item: Dictionary) -> void:
+	var node := Node3D.new()
+	var from := _player.global_position + Vector3(0, 1.0, 0)
+	var aim := _player._flat_forward().rotated(Vector3.UP, -0.5)
+	var reach := 2.0
+	var ray := PhysicsRayQueryParameters3D.create(from, from + aim * reach)
+	ray.exclude = [_player.get_rid()]
+	var hit := _player.get_world_3d().direct_space_state.intersect_ray(ray)
+	if not hit.is_empty():
+		reach = maxf(0.0, from.distance_to(hit.position) - 0.35)
+	var at := _player.global_position + aim * reach
+	node.position = Vector3(at.x, 0.0, at.z)
+	_level.add_child(node)
+	var turn := Node3D.new()
+	turn.position.y = 1.05
+	node.add_child(turn)
+	var model := ItemModels.build_for_item(item)
+	turn.add_child(model)
+	var bounds := HatPopup._bounds(model, Transform3D.IDENTITY)
+	if bounds.size != Vector3.ZERO:
+		var fit := 0.4 / maxf(bounds.size.x, maxf(bounds.size.y, bounds.size.z))
+		model.scale = Vector3.ONE * fit
+		model.position = -bounds.get_center() * fit
+	var spin := turn.create_tween().set_loops()
+	spin.tween_property(turn, "rotation:y", TAU, 4.0).as_relative()
+	var bob := turn.create_tween().set_loops()
+	bob.tween_property(turn, "position:y", 1.13, 1.0).set_trans(Tween.TRANS_SINE)
+	bob.tween_property(turn, "position:y", 1.05, 1.0).set_trans(Tween.TRANS_SINE)
+	var glow := OmniLight3D.new()
+	glow.light_color = Items.rarity_color(item)
+	glow.light_energy = 0.9
+	glow.omni_range = 2.2
+	glow.position.y = 1.2
+	node.add_child(glow)
+	_interactables.append({"node": node, "kind": "dropped", "item": item, "used": false})
+
+
+## Picks a dropped find up off the floor (worn again, salvaged or kept).
+func _take_dropped(thing: Dictionary) -> void:
+	thing.used = true
+	var node: Node3D = thing.node
+	if is_instance_valid(node):
+		node.queue_free()
+
+
+## Gilded finds left lying on a floor still go home when you move on.
+func _rescue_gilded_drops() -> void:
+	for thing in _interactables:
+		if thing.kind == "dropped" and not thing.used and thing.item.get("gilded", false):
+			thing.used = true
+			GameState.keep_find(thing.item)
+			_hud.add_feed("%s went home to your Armory" % thing.item.name, Items.rarity_color(thing.item))
 
 
 ## The stairs: go deeper, or leave with your gilded finds.
@@ -1252,7 +1372,7 @@ func _build_merchant(room: Dictionary) -> void:
 		var item := _merchant_item()
 		var token := _ware_token(item, Vector3(-1.1 + i * 0.75, 1.05, 0.05))
 		table.add_child(token)
-		wares.append({"item": item, "price": int(WARE_PRICES.get(item.rarity, 20)), "sold": false, "token": token})
+		wares.append({"item": item, "price": Gear.merchant_price(item), "sold": false, "token": token})
 	var flask := Node3D.new()
 	flask.position = Vector3(1.15, 1.04, 0.05)
 	table.add_child(flask)
@@ -1353,13 +1473,9 @@ func _on_ware_chosen(index: int) -> void:
 	_open_merchant()
 
 
+## The merchant's wares: three base-pool chests rolled when the floor loads.
 func _merchant_item() -> Dictionary:
-	if _floor >= Items.LEGENDARY_MIN_FLOOR and randf() < MERCHANT_LEGENDARY_CHANCE:
-		return Items.roll_legendary(_floor)
-	var item := Items.roll(_floor)
-	while item.rarity == "common":
-		item = Items.roll(_floor)
-	return item
+	return Items.roll(_floor)
 
 
 ## An altar with a pale flame: trade a quarter of your max knuckle HP (taken
@@ -2073,6 +2189,7 @@ func _end_run(title: String, slow := true) -> void:
 	if slow:
 		TimeFx.slowmo(0.3, 0.8)
 	var lost := _bound_finds().filter(func(item: Dictionary) -> bool: return not item.get("gilded", false)).size()
+	_rescue_gilded_drops()
 	var kept := GameState.end_crypt_run(false)
 	_hud.set_equipment(GameState.equipped)
 	var notes: Array[String] = []
@@ -2097,6 +2214,7 @@ func _end_run(title: String, slow := true) -> void:
 func _leave_crypt() -> void:
 	if not _run_over:
 		_run_over = true
+		_rescue_gilded_drops()
 		var kept := GameState.end_crypt_run(true)
 		if not kept.is_empty():
 			var names: Array = kept.map(func(item: Dictionary) -> String: return item.name)

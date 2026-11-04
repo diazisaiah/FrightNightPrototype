@@ -28,6 +28,9 @@ class_name PowerRating
 const OFFENSE := {
 	"heavy_bonus": 0.4, "counter_bonus": 0.13,
 	"finisher_bonus": 0.3, "boss_damage": 0.3, "armor_pierce": 0.3,
+	# Gear (2026-11-04): Iron Mike's set (elites and bosses), the Drowned
+	# set (clean counters), and the combo cap (late combos).
+	"elite_boss_damage": 0.35, "clean_counter_bonus": 0.05, "combo_cap": 0.15,
 	"last_stand": 0.35,
 	# Passive power (a point every few levels): each passive turns it into
 	# damage and staying power.
@@ -112,6 +115,8 @@ const SPECIALS := [
 	"jump_bonus", "pyre", "thunderhead", "bloodbath", "ground_pound", "perfect_any_punch", "dive_kick",
 	"thorns", "iron_will", "grit", "long_count", "slipknot", "gravewalker",
 	"frost_slip", "clean_read", "lantern",
+	# Gear signatures (2026-11-04).
+	"champions_hands", "mid_roll", "double_jab", "frenzy", "gold_fever", "loaded_dice", "silver_tongue", "haggler",
 ]
 const SPECIAL_WORTH := 0.05
 ## A fresh fighter's average combo multiplier over 6 hits (0.25 per hit).
@@ -142,6 +147,8 @@ static func split(build: Dictionary) -> Vector2:
 	offense *= 1.0 + minf(fx.get("crit_chance", 0.0), 0.5) * (0.5 + fx.get("crit_damage", 0.0))
 	offense *= 1.0 + _weighted(fx, POWERS)
 	var defense: float = Progression.effective_hp(build.knuckles, build.defense) / 50.0 / (1.0 + maxf(fx.get("damage_taken", 0.0), -0.5))
+	# Deadweight's set bonus cuts every hit.
+	defense /= 1.0 - minf(fx.get("set_damage_reduction", 0.0), Gear.MAX_DAMAGE_REDUCTION)
 	defense *= 1.0 + _weighted(fx, DEFENSE)
 	var cards := _card_worth(fx, build.get("perks", []))
 	return Vector2(offense * (1.0 + cards.x), defense * (1.0 + cards.y))

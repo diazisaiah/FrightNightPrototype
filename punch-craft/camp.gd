@@ -1364,9 +1364,8 @@ func _armory_card(item: Dictionary) -> Control:
 	var texts := VBoxContainer.new()
 	texts.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var worn: bool = GameState.equipped.get(item.slot, {}).get("uid", -1) == item.get("uid", -2)
-	var forged := int(item.get("reforged", 0))
-	texts.add_child(_label("%s%s%s" % [item.name, "  +%d" % forged if forged > 0 else "", "   (worn)" if worn else ""], 17, Items.rarity_color(item)))
-	texts.add_child(_label("%s  ·  floor %d" % [Items.kind_text(item), int(item.get("floor", 1))], 12, UiTheme.MUTED))
+	texts.add_child(_label("%s%s" % [item.name, "   (worn)" if worn else ""], 17, Items.rarity_color(item)))
+	texts.add_child(_label(Items.kind_text(item), 12, UiTheme.MUTED))
 	var effects := _label("   ".join(Items.effect_lines(item)), 13)
 	effects.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	texts.add_child(effects)
@@ -1382,28 +1381,24 @@ func _armory_card(item: Dictionary) -> Control:
 	wear.disabled = worn
 	wear.pressed.connect(GameState.equip_from_armory.bind(uid))
 	buttons.add_child(wear)
-	var cost := Progression.reforge_cost(item)
-	var forge := Button.new()
-	forge.disabled = GameState.souls < cost
-	forge.custom_minimum_size = Vector2(170, 36)
-	IconLabel.on_button(forge, "Reforge  %d {souls}" % cost, 15)
-	forge.pressed.connect(func() -> void:
-		if GameState.reforge(uid):
+	# Gear levels up for Souls, as far as the deepest floor you've beaten
+	# allows (Gear.level_cap), and sells for gold (2026-11-04).
+	var cost := Gear.level_up_cost(item)
+	var capped := int(item.get("level", 1)) >= Gear.level_cap()
+	var level_up := Button.new()
+	level_up.disabled = capped or GameState.souls < cost
+	level_up.custom_minimum_size = Vector2(170, 36)
+	level_up.tooltip_text = "Beat deeper Crypt floors to level it further." if capped else ""
+	IconLabel.on_button(level_up, "Max level for now" if capped else "Level up  %d {souls}" % cost, 15)
+	level_up.pressed.connect(func() -> void:
+		if GameState.level_up(uid):
 			Sfx.play("unlock", -8.0, 1.2))
-	buttons.add_child(forge)
-	var reroll_cost := Progression.reroll_cost(item)
-	var reroll := Button.new()
-	reroll.custom_minimum_size = Vector2(170, 36)
-	reroll.disabled = GameState.souls < reroll_cost or Items.rerollable(item).is_empty()
-	IconLabel.on_button(reroll, "Reroll  %d {souls}" % reroll_cost, 15)
-	reroll.pressed.connect(_pick_reroll.bind(uid))
-	buttons.add_child(reroll)
-	var value := roundi(DUNGEON.SALVAGE_COINS.get(item.rarity, 10) * Progression.pay(int(item.get("floor", 1)) / 2.0))
-	var scrap := Button.new()
-	scrap.custom_minimum_size = Vector2(170, 36)
-	IconLabel.on_button(scrap, "Salvage  +%d {coins}" % value, 15)
-	scrap.pressed.connect(GameState.salvage.bind(uid, value))
-	buttons.add_child(scrap)
+	buttons.add_child(level_up)
+	var sell := Button.new()
+	sell.custom_minimum_size = Vector2(170, 36)
+	IconLabel.on_button(sell, "Sell  +%d {coins}" % Gear.sell_price(item), 15)
+	sell.pressed.connect(func() -> void: GameState.sell(uid))
+	buttons.add_child(sell)
 	return card
 
 

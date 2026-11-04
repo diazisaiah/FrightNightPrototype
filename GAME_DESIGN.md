@@ -2077,7 +2077,7 @@ Prerequisites for the Crypt revamp, and the first Rebalance plan items.
 - **Model gaps to fix:** rate the combo multiplier as sustained (cap reached in about 3 hits), hit-and-run through enemy melee turns, and auto powers (teleport, AoE, knockback). Raise the Crypt's per-floor ramp to match gear growth (about x1.5 POWER a floor).
 - Re-run `balance_report` and the bots against every contender and floor after each change.
 
-## Crypt revamp plan [Planned, 2026-11-01]
+## Crypt revamp plan [Planned 2026-11-01; gear, drops and economy built 2026-11-04]
 
 **Goals:** a cleaner, more polished Crypt; real items with sets and looks; better salvage; mimics that are fun to fight.
 
@@ -2087,7 +2087,7 @@ Prerequisites for the Crypt revamp, and the first Rebalance plan items.
 - Per room type: the start room has a clear approach and one landmark; fight rooms have symmetric coffin rows and a clean center; chest rooms are vaults with the chest on a pedestal; the merchant has stalls and a rug; the boss room has a dais and a clear arena; the toilet room stays bare, one bulb.
 - Props stay decorative (no collision). Stone stays neutral; each tier's color (red, blue, purple, green, yellow) appears only in accents: banners, candle and torch flames, and their light. Coffins are scenery.
 
-**Gear system** (replaces the random affixes; these 20 pieces are the only Crypt items):
+**Gear system [Built 2026-11-04] (`Gear`, `gear.gd`)** (replaces the random affixes; these 20 pieces are the only Crypt items):
 - 5 sets of 4 pieces (Gloves, Wraps, Boots, Charm), 5 rarities each. Stats add up across worn pieces, so players can mix sets for a stat. Only the 4-piece set bonus exists; it uses the lowest-rarity piece.
 - **Rarity:** every piece has 5 stats unlocked in order: common 1, uncommon 1-2, rare 1-3, epic 1-4, legendary 1-5. Rarity never boosts a number. Stat 5 is a signature effect (SIG) that does not scale with level.
 - **Levels:** a drop's level is between (floor - 1) x 3 + 1 and floor x 3 (floor 1: 1-3, floor 10: 28-30); past floor 10 both bounds rise 1 a floor. Value = base x growth^(level - 1). Past level 30 the growth portion halves at 31, and again at 35, 40, 45...; stats top out near 2x their level-30 value. Gear levels up in the store, to the highest floor beaten (+1 a floor past 10).
@@ -2161,7 +2161,7 @@ Prerequisites for the Crypt revamp, and the first Rebalance plan items.
 - **Defense under the armor formula (revised 2026-11-03):** the defense stat now cuts each hit by defense / (defense + 3 x hit), capped at 90%, at least 1 damage. So defense gear is the crowd stat: Deadweight and the Wraps pieces carrying defense matter most in Crypt rooms and Arena bars, little against a boss haymaker. Their numbers are on the x10 scale (a level-30 piece's +150 is about a third of tier-5 par's 426). Deadweight's flat "take less damage" bonus stays the boss-fight answer (it applies to every hit, after armor, inside the 75% cap). The par build counts gear defense the same way, so stacking it moves POWER through effective HP, not a separate number.
 - **Cursed chests are replaced by elite mimics;** the old risk specials (Glass Jaw, Last Stand, Blood Price) go away with the random item system. Existing gear in saves migrates to the nearest set piece by slot. Legendary becomes a normal rarity on every piece, so the boss and elite chest legendary rules change.
 
-**Drop odds** (tiers are 2 floors each, tier 6 is endless; chance by tier T1..T6):
+**Drop odds [Built 2026-11-04]** (tiers are 2 floors each, tier 6 is endless; chance by tier T1..T6):
 
 | Rarity | T1 | T2 | T3 | T4 | T5 | T6 |
 |---|---|---|---|---|---|---|
@@ -2175,11 +2175,21 @@ Prerequisites for the Crypt revamp, and the first Rebalance plan items.
 - **The merchant** rolls three base-pool chests when the floor loads; those are his wares, plus the healer's kit.
 - Item level is rolled in the floor's range.
 
-**Economy:**
+**Economy [Built 2026-11-04]:**
 - **Silver:** salvage gives 2 / 5 / 8 / 12 / 20 by rarity (not floor); merchant buy is 5x that: 10 / 25 / 40 / 60 / 100.
 - **Gold:** gilded items sell outside the Crypt for 3.31 x level^3 x rarity^1.5 gold (rarity 1-5), about 1,000,000 for a level-30 legendary and about 89,000 for a level-30 common; past level 30 it slows (+5% of the level-30 price per level). Tune the exponents with the economy.
 - **Soul coins:** store buy price is half the merchant price: 5 / 13 / 20 / 30 / 50. Leveling gear costs level / 2 soul coins per level (rounded up, minimum 1); level 1 to 30 is about 240. That is meant to be expensive: the point is to keep finding new gear and use different pieces.
 - **Equipping:** interact with your old item to salvage it, keep it (if gilded) or equip it again. The store page shows real item cards.
+
+**As built (2026-11-04):**
+- **Numbers:** `Gear.STATS` is the table above. Three stats use the game's own units: dodge_window is a share of the dodge window (+3% at level 1, about +9% at 30, under the 25% cap), counter_window and combo_window are seconds. A piece's effects are rebuilt from (set, slot, rarity, level) whenever its level changes; flat stats round to 0.1, the rest to 0.001.
+- **Set bonus:** `GameState.get_effect` adds the 4-piece bonus (`Gear.set_bonus`) at the lowest rarity of the four. Deadweight's cut, Grit and Gravewalker share the 75% cap (`Gear.MAX_DAMAGE_REDUCTION`), applied after armor (a hit still costs at least 1). Cards show "Set n/4" and the 4-piece line (gold once it's on), counting the piece as if worn.
+- **Signatures as built:** Bone Breaker: hook counters ignore 50% of the armor left after armor pierce. Slipknot: 50% chance a wrong (grazing) defense counts as a plain dodge, with a counter but no clean dodge, Rhythm or Gravewalker. Gravewalker: a dodge cuts damage taken by 25% for 2 s. The Long Count: back every Crypt floor and every Arena bout, once a Dead League fight. Rhythm: the combo line reads "7 HITS  x1.90 +0.45", the Rhythm part in seafoam. Mid-Roll Counter, Double Jab, Frenzy, Gold Fever, Loaded Dice (a Reroll button on the YOU FOUND card), Silver Tongue and Haggler (the ultimate keeps 10% of its meter; with Ultimate Surge, 35%) are as written. Shatter, Thorns (150%), Grit, Iron Will, Champion's Hands, Clean Read, Lunging Jab and Executioner keep their code from the old specials, with the numbers above.
+- **Drops:** chests roll `Gear.roll` (a random set, the floor tier's odds, a level in the floor's range); boss and elite chests go one rarity up. Cursed chests stay until elite mimics replace them: a top-of-range level, one rarity up. The merchant's wares are base-pool pieces priced in silver.
+- **Your old item:** a find you swap out floats beside you, turning in its rarity's light. Interacting shows "YOUR OLD WRAPS" with Wear again, Salvage (silver), and Keep (gilded: it goes to your Armory now) or Leave it. A gilded find left lying on a floor still goes home when you go down, leave or get knocked out. Gear you brought in stays in your Armory either way.
+- **Camp:** the Armory card has Level up (Souls; "Max level for now" at the cap from the deepest floor beaten) and Sell (gold); Reforge, Reroll and Salvage are gone. The Soul shop's gear is a random set and slot at 5 / 13 / 20 / 30 / 50 Souls by rarity, its level in the deepest beaten floor's range.
+- **Old saves:** every kept item becomes the nearest set piece: its slot, the set its stats lean to (`ItemModels.set_for`), its rarity (cursed becomes epic, an unknown one rare) and level floor x 3 - 1.
+- **Balance:** par's gear is real gear now: rare Deadweight Knuckles (damage) and Bindings (knuckles, defense) at the middle level of the deepest Crypt floor open when facing each contender (floor 2 for the Headless up to floor 8 for the Coffin King; true par at level 29). Par POWER is 395 / 1,026 / 2,525 / 5,252 / 11,490 against the unchanged targets of 500 / 1,150 / 2,645 / 6,084 / 13,993. The True Coffin King's maxed-build tuning (`TRUE_MAXED`) is measured with the maxed fighter in true par's gear, so his HP and damage follow geared players. A full legendary level-30 set roughly triples a maxed fighter's POWER; the balance re-run looks at that.
 
 **Mimics and elite mimics:**
 - Mimics are less common, invincible while closed, and periodically open to show a mouth with a boxer tongue that throws a punch combo like other enemies; open, it's vulnerable but deadly.
@@ -2207,7 +2217,7 @@ Prerequisites for the Crypt revamp, and the first Rebalance plan items.
 
 **Item cards [Built 2026-11-04] (`ItemCard`, `item_card.gd`):** Crypt drops ("YOU FOUND"), the gilding altar, the merchant and the camp shop's gear show the item's model turning in a little 3D window (lit like the hat popup), its name in its rarity color, what it is, and its stats colored against what's worn. The card's color and effects climb with rarity: common a thin grey frame; uncommon a green frame, a faint glow and a soft light under the item; rare a blue frame, a glow and slow light rays; epic a thick purple frame, a pulsing glow, brighter rays and purple sparkles over the window; legendary a thick gold frame, a strong pulse, bright fast rays, gold sparkles and a light sweep across the card every few seconds. The cards keep animating while a drop pauses the Crypt.
 
-**Open work, in order:** room furniture, the gear system and save migration, drop odds and salvage, mimics and elite mimics, the toilet and merchant tie-in, then re-run the balance. (Item models and the item and store cards are built, 2026-11-04.)
+**Open work, in order:** room furniture, mimics and elite mimics, the toilet and merchant tie-in, then re-run the balance. (Item models, the item and store cards, the gear system with save migration, drop odds, salvage and the economy are built, 2026-11-04.)
 
 ## Mobile build [Idea, planned 2026-11-02]
 

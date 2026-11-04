@@ -4,7 +4,8 @@ extends CharacterBody3D
 ## (slips, rolls, back step), counters, flinching and knuckle HP.
 
 signal knuckles_changed(current: float, maximum: float)
-signal combo_changed(count: int, multiplier: float)
+## rhythm: the share of multiplier that is Rhythm's (the HUD shows it apart).
+signal combo_changed(count: int, multiplier: float, rhythm: float)
 signal knuckles_broken
 ## Emitted when an enemy hit lands cleanly, with the attacker's position.
 signal attacked(from: Vector3)
@@ -224,9 +225,8 @@ const SPEAR_REACH := 4.0
 const SPEAR_WIDTH := 0.9
 const SHATTER_RADIUS := 2.5
 const LAST_STAND_LOW := 0.3
-const GHOST_TIME := 1.5
-const SLIPKNOT_CHAIN := 3
-const BONE_BREAKER_EVERY := 5
+## Gravewalker: a dodge cuts damage taken this long.
+const GRAVEWALK_TIME := 2.0
 const LONG_COUNT_STUN := 3.0
 const FOLLOW_UP_DELAY := 0.14
 
@@ -399,9 +399,7 @@ var _perch_time := 0.0
 var _shove := Vector3.ZERO
 var _spear_cooldown := 0.0
 var _haymaker_cooldown := 0.0
-var _ghost_time := 0.0
-var _dodge_chain := 0
-var _hook_count := 0
+var _gravewalk_time := 0.0
 var _iron_will_ready := true
 var _long_count_ready := true
 ## The next punch's knuckle cost is waived (Champion's Hands follow-ups).
@@ -592,7 +590,7 @@ func _process(delta: float) -> void:
 		_power_status = power_status
 		power_status_changed.emit(power_status)
 	_dash_jab_time -= delta
-	_ghost_time -= delta
+	_gravewalk_time -= delta
 	_defense_cooldown -= delta
 	_defense_timer -= delta
 	if _defense_timer <= 0.0:
@@ -790,10 +788,17 @@ func receive_attack(amount: float, from: Vector3, attack: String, attacker: Node
 			if attack in ["arrow", "fireball"]:
 				_phantom_step(attacker)
 			return "dodged"
+		# Slipknot Wraps: a graze may count as a plain dodge (no clean dodge,
+		# Rhythm or Gravewalker).
+		if randf() < GameState.get_effect("slipknot"):
+			_dodged_attack = attack
+			_on_dodge(move, false, true)
+			_dodged_attack = ""
+			class_event.emit("SLIPKNOT")
+			return "dodged"
 		_defense_cooldown = minf(_defense_cooldown, GRAZE_RECOVERY)
 		Sfx.play("block", -6.0, 0.7)
 		grazed.emit()
-		_dodge_chain = 0
 		_take_damage(amount * GRAZE_MULTIPLIER * (1.0 - GameState.get_effect("graze_reduction")), attacker)
 		return "grazed"
 	# Cards that slip an undefended attack for you.
@@ -804,12 +809,6 @@ func receive_attack(amount: float, from: Vector3, attack: String, attacker: Node
 		if slipped != "READ IT":
 			_ready_counter("any")
 		DamagePopup.spawn(get_parent(), slipped, Color(0.6, 0.9, 1.0), 40, global_position + _flat_forward() * 1.2 + Vector3(0, 1.6, 0))
-		return "dodged"
-	# Gravewalker Boots: right after a dodge, the next attack hits your ghost.
-	if _ghost_time > 0.0:
-		_ghost_time = 0.0
-		Sfx.play("slip", -4.0, 1.3)
-		dodged.emit("ghost")
 		return "dodged"
 	# Iron Will: the first hit in each room is blocked.
 	if _iron_will_ready and GameState.has_effect("iron_will"):
@@ -843,9 +842,8 @@ func receive_attack(amount: float, from: Vector3, attack: String, attacker: Node
 	Sfx.play("hurt")
 	attacked.emit(from)
 	Pad.rumble(0.35, 0.6, 0.18)
-	# Rhythm and dodge chains are lost on a clean hit.
+	# Rhythm is lost on a clean hit.
 	_rhythm = 0.0
-	_dodge_chain = 0
 	ult.on_hit()
 	_take_damage(amount, attacker)
 	cards.on_hit(attacker as Enemy)
@@ -911,8 +909,9 @@ func start_fresh() -> void:
 	restore()
 	unbroken_time = 0.0
 	_rhythm = 0.0
-	_dodge_chain = 0
-	_ghost_time = 0.0
+	_gravewalk_time = 0.0
+	# The Long Count: once an Arena bout (and a floor, on_floor_start).
+	_long_count_ready = true
 	_set_combo(0)
 	_clear_counter()
 	_flinch_timer = 0.0
@@ -950,10 +949,16 @@ func shake(amount: float) -> void:
 ## Knuckle damage from enemy hits. Defense reduces it; Glass Jaw raises it;
 ## Grit lowers it while knuckles are low.
 func hurt_knuckles(amount: float) -> void:
-	var taken := amount * (1.0 + GameState.get_effect("damage_taken"))
+	var armored := GameState.mitigate(amount * (1.0 + GameState.get_effect("damage_taken")))
+	# Damage-taken cuts (Deadweight's set bonus, Grit when low, Gravewalker
+	# after a dodge) share one cap, after armor (still at least 1 damage).
+	var reduction := GameState.get_effect("set_damage_reduction")
 	if knuckles < max_knuckles * LAST_STAND_LOW:
-		taken *= 1.0 - GameState.get_effect("grit")
-	_lose_knuckles(GameState.mitigate(taken))
+		reduction += GameState.get_effect("grit")
+	if _gravewalk_time > 0.0:
+		reduction += GameState.get_effect("gravewalker")
+	var taken := armored * (1.0 - minf(reduction, Gear.MAX_DAMAGE_REDUCTION))
+	_lose_knuckles(maxf(minf(armored, 1.0), taken))
 
 
 func _lose_knuckles(amount: float) -> void:
@@ -1161,8 +1166,21 @@ func last_hand() -> String:
 
 
 func get_combo_multiplier() -> float:
-	var base := 1.0 if combo <= 1 else 1.0 + GameState.get_combo_step() * (combo - 1)
-	return minf(base + _rhythm, MAX_COMBO_MULTIPLIER)
+	# Gear's combo_cap raises the cap (2026-11-04).
+	return minf(_base_combo_multiplier() + _rhythm, _combo_cap())
+
+
+func _base_combo_multiplier() -> float:
+	return 1.0 if combo <= 1 else 1.0 + GameState.get_combo_step() * (combo - 1)
+
+
+func _combo_cap() -> float:
+	return MAX_COMBO_MULTIPLIER + GameState.get_effect("combo_cap")
+
+
+## What Rhythm adds to the combo multiplier right now (under the cap).
+func rhythm_part() -> float:
+	return maxf(0.0, get_combo_multiplier() - minf(_base_combo_multiplier(), _combo_cap()))
 
 
 ## True during a back step, which may carry the player out of reach of the
@@ -1326,7 +1344,8 @@ func _return_from_back_step(delta: float) -> void:
 
 
 ## clean: pressed late, right before the hit landed.
-func _on_dodge(move: String, clean := false) -> void:
+## plain: a Slipknot graze (no Rhythm or Gravewalker).
+func _on_dodge(move: String, clean := false, plain := false) -> void:
 	_defense_cooldown = 0.0  # A dodge can be chained straight into the next one.
 	# A slip or roll that worked keeps the combo alive and lets the same hand
 	# throw without losing it (2026-11-02; a missed one no longer does).
@@ -1356,7 +1375,8 @@ func _on_dodge(move: String, clean := false) -> void:
 		ult.on_dodge(false)
 		TimeFx.slowmo(0.7, 0.15)
 		dodged.emit(move)
-	_on_dodge_specials(move)
+	if not plain:
+		_on_dodge_specials(move)
 	powers.on_dodge(clean)
 	cards.on_dodge(clean, _dodged_attack, _last_attacker)
 
@@ -1366,21 +1386,15 @@ func _on_dodge_specials(move: String) -> void:
 	var rhythm := GameState.get_effect("rhythm")
 	if rhythm > 0.0:
 		_rhythm = minf(_rhythm + rhythm, RHYTHM_MAX)
-		combo_changed.emit(combo, get_combo_multiplier())
+		combo_changed.emit(combo, get_combo_multiplier(), rhythm_part())
 	if move != "back_step" and randf() < GameState.get_effect("frost_slip"):
 		HitFx.burst(get_parent(), global_position + Vector3(0, 1.0, 0), Vector3.UP, Enemy.FROST_COLOR, 24, 4.0, true, 0.06)
 		for node in get_tree().get_nodes_in_group("enemies"):
 			var enemy := node as Enemy
 			if enemy and not enemy.is_dead() and enemy.global_position.distance_to(global_position) <= FROST_RADIUS:
 				enemy.chill(FROST_TIME, FROST_SLOW)
-	_dodge_chain += 1
-	var slipknot := GameState.get_effect("slipknot")
-	if slipknot > 0.0 and _dodge_chain >= SLIPKNOT_CHAIN:
-		_dodge_chain = 0
-		heal(slipknot * max_knuckles / 100.0)
-		class_event.emit("SLIPKNOT")
 	if GameState.has_effect("gravewalker"):
-		_ghost_time = GHOST_TIME
+		_gravewalk_time = GRAVEWALK_TIME
 
 
 func _ready_counter(side: String) -> void:
@@ -1574,7 +1588,12 @@ func _land_punch(type: String, hand: String, _dashing := false, airborne := fals
 	# A counter only counts with the hand on the side you dodged to.
 	var counter := is_counter_ready() and (_counter_side == "any" or _counter_side == hand)
 	var clean := counter and _clean_counter
-	_clear_counter()
+	# Mid-Roll Counter (Grandmaster's Wraps): a punch thrown mid-roll counts
+	# as a counter without using up the counter window.
+	if not counter and _defense.begins_with("roll") and GameState.has_effect("mid_roll"):
+		counter = true
+	else:
+		_clear_counter()
 	# A jab thrown out of a forward dash (Lunging / Spear Jab).
 	var dash_jab := type == "jab" and _dash_jab_time > 0.0
 	if dash_jab:
@@ -1627,12 +1646,27 @@ func _land_punch(type: String, hand: String, _dashing := false, airborne := fals
 		raw_damage *= 1.0 + GameState.get_effect("finisher_bonus")
 	if target.is_boss:
 		raw_damage *= 1.0 + GameState.get_effect("boss_damage")
+	# Iron Mike's set: more against elites and bosses.
+	if target.is_boss or target.has_meta("elite") or target.has_meta("champion"):
+		raw_damage *= 1.0 + GameState.get_effect("elite_boss_damage")
+	# Gold Fever (Dead Money Rings): more for every x10 coins held.
+	var fever := GameState.get_effect("gold_fever")
+	if fever > 0.0:
+		raw_damage *= 1.0 + fever * log(maxf(float(GameState.resources.get("coins", 0)), 1.0)) / log(10.0)
+	# Double Jab (Grandmaster's Slippers): the first jab on each enemy hits twice.
+	if type == "jab" and GameState.has_effect("double_jab") and not target.has_meta("double_jabbed"):
+		target.set_meta("double_jabbed", true)
+		raw_damage *= 2.0
+	# Frenzy (Grandmaster's Seal): every 10th hit in a combo lands twice.
+	if GameState.has_effect("frenzy") and combo > 0 and combo % 10 == 0:
+		raw_damage *= 2.0
 	# Risk specials: Glass Jaw, Blood Price, and Last Stand (more as knuckles fall).
 	var missing := 1.0 - knuckles / max_knuckles
 	raw_damage *= 1.0 + GameState.get_effect("glass_jaw") + GameState.get_effect("blood_price") \
 			+ GameState.get_effect("last_stand") * missing
 	if clean:
-		raw_damage *= 1.0 + CLEAN_COUNTER_BONUS
+		# Drowned set: clean dodge counters hit harder still.
+		raw_damage *= 1.0 + CLEAN_COUNTER_BONUS + GameState.get_effect("clean_counter_bonus")
 	if dash_jab:
 		raw_damage *= 1.0 + GameState.get_effect("lunging_jab")
 
@@ -1655,11 +1689,11 @@ func _land_punch(type: String, hand: String, _dashing := false, airborne := fals
 		raw_damage = target.hp + target.armor + 1.0
 		crush = true
 		caption = "EXECUTED!"
-	# Bone Breaker: every 5th hook ignores all armor and reduction, and staggers.
-	if type == "hook" and GameState.has_effect("bone_breaker"):
-		_hook_count += 1
-		if _hook_count % BONE_BREAKER_EVERY == 0:
-			crush = true
+	# Bone Breaker (Iron Mike's Gloves): hook counters ignore a share of armor.
+	var armor_cut := 0.0
+	if type == "hook" and counter and GameState.has_effect("bone_breaker"):
+		armor_cut = GameState.get_effect("bone_breaker")
+		if target.armor > 0.0 and not crush:
 			caption = "BONE BREAKER!"
 	# Perfect Counter: a matching-hand hook/uppercut counter hits x2.5 harder
 	# (2026-10-24: it used to KO outright, and the Answer outclassed everyone).
@@ -1735,7 +1769,7 @@ func _land_punch(type: String, hand: String, _dashing := false, airborne := fals
 	var big := forced != null and bonus > 1.0
 	var spear_line := _dash_style == "spear" and GameState.has_effect("spear_line")
 	var staggers: bool = set_up or counter or dive_kick or crush or big or _dash_style == "haymaker" or passive.stagger or card.stagger or spear_line
-	var dealt := target.take_hit(raw_damage, hit_point, push, staggers, caption, weak > 1.0, crush)
+	var dealt := target.take_hit(raw_damage, hit_point, push, staggers, caption, weak > 1.0, crush, armor_cut)
 	# One absurd punch (10,000+) wins the Bald Hero Cap.
 	if dealt >= Hats.MASSIVE_HIT:
 		Hats.award(get_tree(), "bald_cap")
@@ -2528,7 +2562,7 @@ func _set_combo(value: int) -> void:
 	if combo == 0:
 		_last_hand = ""
 		_last_type = ""
-	combo_changed.emit(combo, get_combo_multiplier())
+	combo_changed.emit(combo, get_combo_multiplier(), rhythm_part())
 
 
 ## Head movement with a punch: load up during the windup, shift into the

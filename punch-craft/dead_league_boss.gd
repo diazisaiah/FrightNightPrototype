@@ -75,7 +75,8 @@ const FEINT_PER_ROUND := 0.03
 const TRUE_FEINT := 0.25
 const INSANO_FEINT := 0.32
 ## A maxed fighter (level 51, every card at full rank, every attribute, the
-## whole web) over Progression.true_par, by class: (offense, defense) from
+## whole web; 2026-11-04: in true par's own gear, Progression.par_gear_items)
+## over Progression.true_par, by class: (offense, defense) from
 ## PowerRating.maxed_over_true_par. The True Coffin King and his tag-ins take
 ## the offense in HP (so a maxed fighter needs as long as true par would) and
 ## the square root of the defense in damage (much of a maxed defense is
@@ -85,9 +86,9 @@ const INSANO_FEINT := 0.32
 ## The share of that HP he gets (2026-10-29: the full share was too tanky).
 const TRUE_HP_SHARE := 0.33
 const TRUE_MAXED := {
-	"berserker": Vector2(11.2, 3.54), "counter_master": Vector2(10.3, 3.29),
-	"combo_master": Vector2(14.85, 3.14), "free_runner": Vector2(10.9, 3.17),
-	"wise_guy": Vector2(12.1, 3.2), "elementalist": Vector2(18.55, 2.71),
+	"berserker": Vector2(12.0, 3.48), "counter_master": Vector2(11.05, 3.16),
+	"combo_master": Vector2(15.9, 3.13), "free_runner": Vector2(11.7, 3.15),
+	"wise_guy": Vector2(12.95, 3.09), "elementalist": Vector2(19.5, 2.69),
 }
 ## The True Coffin King's HP and damage by round (2026-10-29: rounds 4 and 5
 ## were round 3's, so the Insano finale went down fast).

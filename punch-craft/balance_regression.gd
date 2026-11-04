@@ -24,6 +24,7 @@ func _run() -> void:
 	_test_balance_constants()
 	_test_climb_economy()
 	_test_seals_and_gear()
+	_test_gear()
 	_test_hats_and_tony()
 	_test_web_optimization_structure()
 	_test_browser_audio_guard()
@@ -68,7 +69,8 @@ func _test_number_stacks() -> void:
 
 
 ## The True Coffin King's maxed-build tuning (DeadLeagueBoss.TRUE_MAXED) still
-## matches a maxed fighter of each class, within 15%.
+## matches a maxed fighter of each class, within 15% (2026-11-04: wearing true
+## par's own gear, so the gap is upgrades, cards and attributes, not gear).
 func _test_true_king_maxed() -> void:
 	for fighter in GameState.CLASSES:
 		GameState._reset_fields()
@@ -86,6 +88,8 @@ func _test_true_king_maxed() -> void:
 		for id in Cards.deck(fighter):
 			info.cards[id] = Cards.copies(Cards.deck(fighter)[id])
 		GameState.select_power("sigil_fire")
+		for item in Progression.par_gear_items(Progression.TIER_COUNT + 1):
+			GameState.equip(item)
 		var now := PowerRating.maxed_over_true_par()
 		var tuned: Vector2 = DeadLeagueBoss.TRUE_MAXED[fighter]
 		print("%s maxed over true par: offense x%.2f defense x%.2f (tuned %.2f, %.2f)" % [fighter, now.x, now.y, tuned.x, tuned.y])
@@ -655,6 +659,131 @@ func _test_seals_and_gear() -> void:
 	GameState.equipped = saved_equipped
 	GameState.armory = saved_armory
 	GameState.souls = saved_souls
+
+
+## The gear system (Crypt revamp, 2026-11-04): 5 sets x 4 pieces, stats by
+## rarity and level, the 4-piece bonus at the lowest rarity, drop odds and
+## levels by floor, old saves migrated, and the silver / Souls / gold prices.
+func _test_gear() -> void:
+	var saved_equipped: Dictionary = GameState.equipped.duplicate()
+	var saved_armory: Array = GameState.armory.duplicate()
+	var saved_souls := GameState.souls
+	var saved_cleared := GameState.crypt_floors_cleared
+	var saved_coins: int = GameState.resources.get("coins", 0)
+	# Numbers: base x growth^(level - 1), the growth halving past 30.
+	_check(is_equal_approx(Gear.value("damage", 1), 3.0) and is_equal_approx(Gear.value("damage", 30), 3.0 * pow(1.15, 29)),
+			"Gear damage is 3 at level 1 and 3 x 1.15^29 at 30")
+	var capped := true
+	for stat in Gear.STATS:
+		var growth: float = Gear.STATS[stat][1]
+		var at30 := Gear.value(stat, 30)
+		capped = capped and is_equal_approx(Gear.value(stat, 31) / at30, 1.0 + (growth - 1.0) * 0.5)
+		capped = capped and Gear.value(stat, 60) > at30 and Gear.value(stat, 60) < at30 * 2.1
+	_check(capped, "Past level 30 gear growth halves, and stats top out near 2x their level-30 value")
+	# Rarity unlocks stats in order (the signature on a legendary), never boosts them.
+	var unlocks := true
+	var formats := true
+	for set_id in Gear.PIECES:
+		for slot in Gear.SLOTS:
+			var common := Gear.effects(set_id, slot, "common", 12)
+			for i in Gear.RARITIES.size():
+				var fx := Gear.effects(set_id, slot, Gear.RARITIES[i], 12)
+				unlocks = unlocks and fx.size() == i + 1
+				for stat in common:
+					unlocks = unlocks and is_equal_approx(float(fx[stat]), float(common[stat]))
+				for effect in fx:
+					formats = formats and GameState.EFFECT_FORMATS.has(effect)
+			var sig: String = Gear.SIGS[set_id][slot][0]
+			unlocks = unlocks and Gear.effects(set_id, slot, "legendary", 12).has(sig) and Items.is_special(sig)
+		for effect in Gear.SET_BONUS[set_id]:
+			formats = formats and GameState.EFFECT_FORMATS.has(effect) and effect in Gear.BONUS_EFFECTS
+	_check(unlocks, "Gear unlocks 1-4 stats from common to epic plus a fixed signature on legendary, same numbers at every rarity")
+	_check(formats, "Every gear stat, signature and set bonus has a display format")
+	# Drop levels and tiers by floor.
+	_check(Gear.level_range(1) == Vector2i(1, 3) and Gear.level_range(10) == Vector2i(28, 30)
+			and Gear.level_range(11) == Vector2i(29, 31) and Gear.level_range(15) == Vector2i(33, 35),
+			"Drop levels: floor 1 is 1-3, floor 10 is 28-30, then +1 a floor")
+	_check(Gear.tier(1) == 1 and Gear.tier(2) == 1 and Gear.tier(10) == 5 and Gear.tier(11) == 6 and Gear.tier(40) == 6,
+			"Drop odds go by two floors a tier, the endless floors on tier 6")
+	# Drop odds (seeded): floor 1 is mostly common; boss / elite chests go one up.
+	seed(20261104)
+	var counts := [0, 0, 0, 0, 0]
+	var bumped_commons := 0
+	var endless_commons := 0
+	for i in 4000:
+		counts[Gear.rarity_index(Gear.roll_rarity(1))] += 1
+		if Gear.roll_rarity(1, true) == "common":
+			bumped_commons += 1
+		if Gear.roll_rarity(12) == "common":
+			endless_commons += 1
+	_check(counts[0] > 2600 and counts[0] < 3000 and counts[4] > 10 and counts[4] < 90,
+			"Floor 1 drops are ~70%% common, ~1%% legendary (%s)" % str(counts))
+	_check(bumped_commons == 0 and endless_commons == 0, "Boss and elite chests never drop commons; nor do the endless floors")
+	var rolled := true
+	for i in 200:
+		var piece := Items.roll_for_chest(4, "normal")
+		var levels := Gear.level_range(4)
+		rolled = rolled and Gear.is_gear(piece) and int(piece.level) >= levels.x and int(piece.level) <= levels.y
+	var cursed := Items.roll_cursed(4)
+	_check(rolled and int(cursed.level) == Gear.level_range(4).y and cursed.rarity != "common" and Items.roll(3, "boots").slot == "boots",
+			"Crypt chests drop set pieces in their floor's levels; cursed chests at the top level, one rarity up")
+	# The 4-piece bonus: only a full set, at its lowest rarity.
+	GameState.equipped = {}
+	var rarities := ["legendary", "legendary", "rare", "epic"]
+	for i in Gear.SLOTS.size():
+		GameState.equipped[Gear.SLOTS[i]] = Gear.make("deadweight", Gear.SLOTS[i], rarities[i], 10)
+	_check(is_equal_approx(GameState.get_effect("set_damage_reduction"), 0.07) and Gear.set_count("deadweight", GameState.equipped) == 4,
+			"Four Deadweight pieces (lowest rare) give the rare bonus: 7% less damage")
+	GameState.equipped.charm = Gear.make("drowned", "charm", "legendary", 10)
+	_check(GameState.get_effect("set_damage_reduction") == 0.0 and Gear.set_bonus(GameState.equipped).is_empty(),
+			"Three of a set give no bonus")
+	for slot in Gear.SLOTS:
+		GameState.equipped[slot] = Gear.make("dead_money", slot, "common", 5)
+	_check(is_equal_approx(Gear.set_bonus(GameState.equipped).get("coin_bonus", 0.0), 0.10)
+			and is_equal_approx(Gear.set_bonus(GameState.equipped).get("xp_bonus", 0.0), 0.10),
+			"A common Dead Money set: +10% coins and XP")
+	# Old saves: the nearest set piece, cursed as epic, level from its floor.
+	var old := {"slot": "gloves", "rarity": "cursed", "name": "Old Gloves", "floor": 4, "reforged": 2, "rerolls": 1,
+		"effects": {"damage": 4.0, "crit_chance": 0.05}, "uid": 77}
+	Gear.migrate(old)
+	_check(Gear.is_gear(old) and old.rarity == "epic" and int(old.level) == 11 and not old.has("reforged") and not old.has("rerolls")
+			and old.effects.size() == 4 and int(old.uid) == 77, "An old cursed floor-4 item becomes a level-11 epic set piece")
+	var unknown := {"slot": "charm", "rarity": "mystery", "floor": 1, "effects": {}}
+	Gear.migrate(unknown)
+	_check(unknown.rarity == "rare" and int(unknown.level) == 2, "An old item of an unknown rarity becomes a rare")
+	# Prices: silver in the Crypt, Souls in the store, gold for selling.
+	var legend := Gear.make("iron_mike", "charm", "legendary", 30)
+	_check(Gear.salvage_silver(legend) == 20 and Gear.merchant_price(legend) == 100 and Gear.shop_price("rare") == 20
+			and Gear.shop_price("common") == 5, "Silver salvage / merchant and Souls shop prices follow the plan")
+	_check(Gear.sell_price(Gear.make("drowned", "boots", "common", 1)) == 3
+			and Gear.sell_price(legend) == roundi(3.31 * 27000.0 * pow(5.0, 1.5))
+			and Gear.sell_price(Gear.make("iron_mike", "charm", "legendary", 32)) == roundi(Gear.sell_price(legend) * 1.1),
+			"Gold sell price: 3.31 x level^3 x rarity^1.5, +5% of level 30's a level past it")
+	# Leveling: half the level in Souls, capped by the deepest floor beaten.
+	GameState.armory = []
+	GameState.equipped = {}
+	var piece := Gear.make("deadweight", "wraps", "rare", 5)
+	GameState.equip(piece)
+	GameState.armory.append(piece)
+	GameState.crypt_floors_cleared = 2
+	GameState.souls = 3
+	_check(Gear.level_cap() == 6 and Gear.level_up_cost(piece) == 3, "Two floors beaten cap gear at level 6; level 5 -> 6 costs 3 Souls")
+	_check(GameState.level_up(int(piece.uid)) and int(piece.level) == 6 and GameState.souls == 0
+			and is_equal_approx(float(piece.effects.max_knuckles), snappedf(Gear.value("max_knuckles", 6), 0.1)),
+			"Leveling up spends Souls and rebuilds the piece's stats")
+	GameState.souls = 50
+	_check(not GameState.level_up(int(piece.uid)) and int(piece.level) == 6, "Gear can't level past the cap")
+	GameState.crypt_floors_cleared = 12
+	_check(Gear.level_cap() == 32, "Endless floors raise the cap one level each")
+	GameState.resources["coins"] = 0
+	var price := Gear.sell_price(piece)
+	_check(GameState.sell(int(piece.uid)) == price and GameState.resources.coins == price and GameState.armory.is_empty()
+			and not GameState.equipped.has("wraps"), "Selling a piece pays its gold and takes it off")
+	GameState.equipped = saved_equipped
+	GameState.armory = saved_armory
+	GameState.souls = saved_souls
+	GameState.crypt_floors_cleared = saved_cleared
+	GameState.resources["coins"] = saved_coins
 
 
 func _weighted_kind(types: Dictionary, progress: float) -> String:

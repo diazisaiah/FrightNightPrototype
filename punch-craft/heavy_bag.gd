@@ -32,8 +32,8 @@ func has_turn() -> bool:
 
 
 ## Bags don't slide or flinch: they swing on the chain.
-func take_hit(raw_damage: float, hit_point: Vector3, push: Vector3, _stagger: bool, caption := "", pierce := false, crush := false) -> float:
-	var dealt := super(raw_damage, hit_point, Vector3.ZERO, false, caption, pierce, crush)
+func take_hit(raw_damage: float, hit_point: Vector3, push: Vector3, _stagger: bool, caption := "", pierce := false, crush := false, armor_cut := 0.0) -> float:
+	var dealt := super(raw_damage, hit_point, Vector3.ZERO, false, caption, pierce, crush, armor_cut)
 	if not is_dead():
 		var swing := clampf(dealt / maxf(max_hp, 1.0) * 3.0, 0.08, 0.45)
 		var away := to_local(global_position + push.normalized())

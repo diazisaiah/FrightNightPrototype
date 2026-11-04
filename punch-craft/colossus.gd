@@ -17,14 +17,14 @@ const ENRAGED_COLOSSUS_COMBOS := [["sweep", "slam"], ["slam", "sweep", "slam"], 
 var _core: StandardMaterial3D
 
 
-func take_hit(raw_damage: float, hit_point: Vector3, push: Vector3, stagger: bool, caption := "", pierce := false, crush := false) -> float:
+func take_hit(raw_damage: float, hit_point: Vector3, push: Vector3, stagger: bool, caption := "", pierce := false, crush := false, armor_cut := 0.0) -> float:
 	# The core sits in the ribcage, well above the player's eye line: aim up.
 	var height := to_local(hit_point).y / _body.scale.y
 	if height > CORE_LOW and height < CORE_HIGH:
 		raw_damage *= CORE_MULTIPLIER
 		pierce = true
 		caption = "CORE!" if caption == "" else caption + "\nCORE"
-	return super(raw_damage, hit_point, push * 0.3, stagger, caption, pierce, crush)
+	return super(raw_damage, hit_point, push * 0.3, stagger, caption, pierce, crush, armor_cut)
 
 
 func _enrage() -> void:

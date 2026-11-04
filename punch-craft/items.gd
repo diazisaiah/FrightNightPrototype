@@ -78,14 +78,15 @@ const SPECIAL_EFFECTS := [
 	"shatter", "venom", "serrated", "lunging_jab", "thorns", "iron_will", "grit", "frost_slip", "spear_jab",
 	"clean_read", "rhythm", "executioner", "glass_jaw", "damage_taken", "last_stand", "blood_price", "blood_cost",
 	"bone_breaker", "long_count", "champions_hands", "slipknot", "gravewalker", "lantern",
+	"mid_roll", "double_jab", "frenzy", "gold_fever", "loaded_dice", "silver_tongue", "haggler",
 ]
 ## Named uniques: a fixed name and slot, a signature effect, plus rolled stats.
 const LEGENDARIES := {
-	"bone_breaker": {"name": "Bone Breaker", "slot": "gloves", "effects": {"bone_breaker": 1.0}},
+	"bone_breaker": {"name": "Bone Breaker", "slot": "gloves", "effects": {"bone_breaker": 0.5}},
 	"long_count": {"name": "The Long Count", "slot": "charm", "effects": {"long_count": 1.0}},
 	"champions_hands": {"name": "Champion's Hands", "slot": "gloves", "effects": {"champions_hands": 1.0}},
-	"slipknot": {"name": "Slipknot Wraps", "slot": "wraps", "effects": {"slipknot": 5.0, "dodge_window": 0.15}},
-	"gravewalker": {"name": "Gravewalker Boots", "slot": "boots", "effects": {"gravewalker": 1.0}},
+	"slipknot": {"name": "Slipknot Wraps", "slot": "wraps", "effects": {"slipknot": 0.5, "dodge_window": 0.15}},
+	"gravewalker": {"name": "Gravewalker Boots", "slot": "boots", "effects": {"gravewalker": 0.25}},
 	"lantern": {"name": "Lantern of the Dead", "slot": "charm", "effects": {"lantern": 1.0}},
 }
 
@@ -165,13 +166,10 @@ const SLOT_WORDS := {
 }
 
 
-## A cursed item: three strong stats plus a turned-up risk special.
+## A cursed chest's piece (until elite mimics replace them): the one-rarity-up
+## pool at the top of the floor's levels.
 static func roll_cursed(floor_number: int) -> Dictionary:
-	var item := _roll_with(floor_number, SLOTS.pick_random(), "cursed")
-	var pick: String = CURSED_SPECIALS.keys().pick_random()
-	_add_special(item, CURSED_SPECIALS[pick], pick)
-	item.name = "Cursed " + item.name
-	return item
+	return Gear.roll(floor_number, "", true, true)
 
 
 ## A shrine blessing: lasts the run, takes no slot.
@@ -191,8 +189,14 @@ static func roll_blessing(_floor_number: int) -> Dictionary:
 	return blessing
 
 
-## A named unique with its signature effect and two rolled stats.
-static func roll_legendary(floor_number: int, id := "") -> Dictionary:
+## A legendary piece of gear for this floor (any set and slot).
+static func roll_legendary(floor_number: int, _id := "") -> Dictionary:
+	var levels := Gear.level_range(floor_number)
+	return Gear.make(Gear.PIECES.keys().pick_random(), SLOTS.pick_random(), "legendary", randi_range(levels.x, levels.y))
+
+
+## A named unique from before the gear system (old tools only).
+static func roll_unique(floor_number: int, id := "") -> Dictionary:
 	if id == "":
 		id = LEGENDARIES.keys().pick_random()
 	var info: Dictionary = LEGENDARIES[id]
@@ -204,20 +208,20 @@ static func roll_legendary(floor_number: int, id := "") -> Dictionary:
 	return item
 
 
-## Rolls a chest's item. quality "boss" / "elite" can give a legendary deep
-## enough, and are rare+ / uncommon+.
+## Rolls a chest's piece of gear (Gear, 2026-11-04): boss and elite chests
+## roll the floor's odds and go up one rarity.
 static func roll_for_chest(floor_number: int, quality: String) -> Dictionary:
-	if floor_number >= LEGENDARY_MIN_FLOOR and randf() < LEGENDARY_CHANCE.get(quality, 0.0):
-		return roll_legendary(floor_number)
-	var too_plain: Array = ["common", "uncommon"] if quality == "boss" else ["common"] if quality == "elite" else []
-	var item := roll(floor_number)
-	while item.rarity in too_plain:
-		item = roll(floor_number)
-	return item
+	return Gear.roll(floor_number, "", quality in ["boss", "elite", "cursed"])
 
 
-## A new random item for this floor. slot defaults to a random one.
+## A new random piece of gear for this floor. slot defaults to a random one.
 static func roll(floor_number: int, slot := "") -> Dictionary:
+	return Gear.roll(floor_number, slot)
+
+
+## The old random-affix item (before the gear system); still the base of old
+## code paths and tools.
+static func roll_affixes(floor_number: int, slot := "") -> Dictionary:
 	if slot == "":
 		slot = SLOTS.pick_random()
 	var item := _roll_with(floor_number, slot, _roll_rarity(floor_number))
@@ -288,14 +292,17 @@ static func is_special(effect: String) -> bool:
 	return effect in SPECIAL_EFFECTS
 
 
-## "Rare Gloves" etc.
+## "Rare Gloves" etc. ("Rare Gloves  ·  Lv 12" for gear).
 static func kind_text(item: Dictionary) -> String:
-	return "%s %s" % [RARITIES[item.rarity].name, SLOT_NAMES[item.slot]]
+	var kind := "%s %s" % [RARITIES[item.rarity].name, SLOT_NAMES[item.slot]]
+	return kind + ("  ·  Lv %d" % int(item.level) if Gear.is_gear(item) else "")
 
 
 ## The stats a reroll can change: the slot's regular stats, not powers or
 ## specials.
 static func rerollable(item: Dictionary) -> Array:
+	if Gear.is_gear(item) or not AFFIXES.has(item.get("slot", "")):
+		return []  # Gear's stats are fixed by its piece.
 	var normal: Dictionary = AFFIXES[item.slot].normal
 	return item.effects.keys().filter(func(effect: String) -> bool: return normal.has(effect))
 

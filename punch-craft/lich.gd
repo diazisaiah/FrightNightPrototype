@@ -52,8 +52,8 @@ func _ready() -> void:
 		_hp_label.position.y = 3.4
 
 
-func take_hit(raw_damage: float, hit_point: Vector3, push: Vector3, stagger: bool, caption := "", pierce := false, crush := false) -> float:
-	var dealt := super(raw_damage, hit_point, push * (0.4 if is_king else 1.0), stagger, caption, pierce, crush)
+func take_hit(raw_damage: float, hit_point: Vector3, push: Vector3, stagger: bool, caption := "", pierce := false, crush := false, armor_cut := 0.0) -> float:
+	var dealt := super(raw_damage, hit_point, push * (0.4 if is_king else 1.0), stagger, caption, pierce, crush, armor_cut)
 	if is_king:
 		health_changed.emit(maxf(hp, 0.0), max_hp)
 		if not _enraged and hp > 0.0 and hp <= max_hp * 0.5:

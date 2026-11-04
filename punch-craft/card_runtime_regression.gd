@@ -42,6 +42,7 @@ func _run() -> void:
 	await _test_combo_setups()
 	await _test_shift_rolls()
 	await _test_dead_weight()
+	await _test_gear_signatures()
 	await _test_tutorial_fights()
 	await _test_perch_and_blood()
 	await _test_fighter_card_hover()
@@ -649,6 +650,102 @@ func _test_dead_weight() -> void:
 	_check(target._meshes[0].material_overlay != Enemy._weakened_overlay, "The glow goes with the mark")
 	await _free_rig(holder)
 	print("Card runtime: Dead Weight OK")
+
+
+## Gear signatures (2026-11-04, the gear system): Slipknot turns a graze into
+## a plain dodge, Gravewalker cuts damage after a dodge (inside the 75% cap),
+## Bone Breaker's hook counters ignore half the armor, Rhythm shows apart on
+## the combo line and The Long Count comes back every Arena bout.
+func _test_gear_signatures() -> void:
+	var rig := await _make_rig("berserker")
+	var holder: Node3D = rig[0]
+	var player: Player = rig[1]
+	var target: Enemy = (rig[2] as Array)[0]
+	# A plain fighter: no cards or attributes slipping, blocking or halving hits.
+	var info: Dictionary = GameState._classes.berserker
+	info.cards = {}
+	for attribute in Attributes.LIST:
+		info.attributes[attribute] = 0
+	player.invulnerable = false
+	player.active = true
+	var wear := func(effects: Dictionary) -> void:
+		GameState.equipped = {"charm": {"slot": "charm", "rarity": "legendary", "name": "Test Charm", "effects": effects, "uid": 9001}}
+	var defend := func(move: String) -> void:
+		player._defense_cooldown = 0.0
+		player._defense = move
+		player._defense_window = 0.3
+		player._defense_timer = 0.3
+	# Slipknot: a wrong slip grazes, unless the wraps turn it into a plain dodge.
+	wear.call({})
+	player.knuckles = player.max_knuckles
+	defend.call("slip_left")
+	_check(player.receive_attack(10.0, target.global_position, "jab", target) == "grazed", "A wrong slip grazes")
+	wear.call({"slipknot": 1.0, "gravewalker": 0.25, "rhythm": 0.15})
+	player._clear_counter()
+	player._rhythm = 0.0
+	player._gravewalk_time = 0.0
+	player.knuckles = player.max_knuckles
+	defend.call("slip_left")
+	_check(player.receive_attack(10.0, target.global_position, "jab", target) == "dodged" and player.knuckles == player.max_knuckles
+			and player.is_counter_ready(), "Slipknot: the graze counts as a dodge, with a counter")
+	_check(player._rhythm == 0.0 and player._gravewalk_time <= 0.0, "A Slipknot dodge gives no Rhythm or Gravewalker")
+	# Gravewalker: a real dodge cuts the next hits.
+	wear.call({"gravewalker": 0.25})
+	player._gravewalk_time = 0.0
+	player.knuckles = player.max_knuckles
+	player.hurt_knuckles(40.0)
+	var plain := player.max_knuckles - player.knuckles
+	defend.call("slip_right")
+	_check(player.receive_attack(10.0, target.global_position, "jab", target) == "dodged" and player._gravewalk_time > 0.0,
+			"Gravewalker: a dodge starts the cut")
+	player.knuckles = player.max_knuckles
+	player.hurt_knuckles(40.0)
+	var walked := player.max_knuckles - player.knuckles
+	_check(walked > 0.0 and walked < plain * 0.8, "Gravewalker: 25%% less right after a dodge (%.2f vs %.2f)" % [walked, plain])
+	wear.call({"gravewalker": 0.5, "set_damage_reduction": 0.5})
+	player.knuckles = player.max_knuckles
+	player.hurt_knuckles(40.0)
+	_check(is_equal_approx(player.max_knuckles - player.knuckles, maxf(1.0, GameState.mitigate(40.0) * 0.25)),
+			"Damage cuts stop at 75%%, after armor (%.2f taken)" % (player.max_knuckles - player.knuckles))
+	player._gravewalk_time = 0.0
+	# Bone Breaker: hook counters ignore half the armor; other hooks don't.
+	wear.call({})
+	target.max_hp = 1e9
+	target.armor = 0.0
+	# (The dummy keeps its HP and remembers the last hit.)
+	var hook := func(counter: bool) -> float:
+		(target as Dummy)._last_damage = 0.0
+		player._set_combo(0)
+		player._clear_counter()
+		if counter:
+			player._ready_counter("any")
+		player._land_punch("hook", "left", false, false, target)
+		return (target as Dummy)._last_damage
+	var raw: float = hook.call(true)
+	target.armor = raw * 0.8
+	var blocked: float = hook.call(true)
+	wear.call({"bone_breaker": 0.5})
+	var broken: float = hook.call(true)
+	var cold: float = hook.call(false)
+	_check(raw > 0.0 and broken > blocked * 2.0, "Bone Breaker: a hook counter ignores half the armor (%.1f vs %.1f)" % [broken, blocked])
+	_check(cold < broken * 0.6, "Bone Breaker: a hook that isn't a counter doesn't (%.1f)" % cold)
+	target.armor = 0.0
+	# Rhythm: its share of the multiplier, shown apart, under the cap.
+	player._set_combo(3)
+	player._rhythm = 0.3
+	_check(is_equal_approx(player.rhythm_part(), 0.3) and is_equal_approx(player.get_combo_multiplier(), player._base_combo_multiplier() + 0.3),
+			"Rhythm adds its share on top of the combo")
+	player._set_combo(400)
+	_check(is_zero_approx(player.rhythm_part()), "Rhythm adds nothing at the combo cap")
+	player._set_combo(0)
+	player._rhythm = 0.0
+	# The Long Count: ready again for every Arena bout.
+	player._long_count_ready = false
+	player.start_fresh()
+	_check(player._long_count_ready, "The Long Count is ready again each Arena bout")
+	GameState.equipped = {}
+	await _free_rig(holder)
+	print("Card runtime: gear signatures OK")
 
 
 ## The tutorial (2026-10-29): your mode's dodge steps, and its last three

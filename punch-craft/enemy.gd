@@ -380,8 +380,9 @@ func _physics_process(delta: float) -> void:
 ## Applies a punch and returns the damage dealt after armor. stagger cancels
 ## the enemy's current attack; caption (e.g. "COUNTER!") shows above the number.
 ## pierce ignores armor (weak spots).
-## crush also ignores damage reduction (Bone Breaker).
-func take_hit(raw_damage: float, hit_point: Vector3, push: Vector3, stagger: bool, caption := "", pierce := false, crush := false) -> float:
+## crush also ignores damage reduction (Executioner, Checkmate ...); armor_cut
+## ignores that share of what armor is left (Bone Breaker).
+func take_hit(raw_damage: float, hit_point: Vector3, push: Vector3, stagger: bool, caption := "", pierce := false, crush := false, armor_cut := 0.0) -> float:
 	if _dead:
 		return 0.0
 	var head_shot := hit_zone(hit_point) == "head"
@@ -394,7 +395,7 @@ func take_hit(raw_damage: float, hit_point: Vector3, push: Vector3, stagger: boo
 	if is_taunted() and not finisher.is_empty():
 		raw_damage *= TAUNT_TAKEN
 	var worn := armor + (head_armor if head_shot else 0.0)
-	var effective_armor := 0.0 if pierce or crush else worn * (1.0 - GameState.get_armor_pierce())
+	var effective_armor := 0.0 if pierce or crush else worn * (1.0 - GameState.get_armor_pierce()) * (1.0 - armor_cut)
 	var damage := maxf(0.0, raw_damage - effective_armor) * (1.0 - (0.0 if crush else damage_reduction))
 	if hits_to_ko > 0:
 		damage = max_hp / hits_to_ko * (1.5 if caption.contains("COUNTER") else 1.0)

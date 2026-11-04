@@ -78,9 +78,9 @@ func set_level(new_level: int) -> void:
 
 
 # Unlimited HP. Only the ring level gets knocked back (a little).
-func take_hit(raw_damage: float, hit_point: Vector3, push: Vector3, stagger: bool, caption := "", pierce := false, crush := false) -> float:
+func take_hit(raw_damage: float, hit_point: Vector3, push: Vector3, stagger: bool, caption := "", pierce := false, crush := false, armor_cut := 0.0) -> float:
 	var knockback := push * 0.5 if level == RING_LEVEL else Vector3.ZERO
-	var dealt := super(raw_damage, hit_point, knockback, stagger, caption, pierce, crush)
+	var dealt := super(raw_damage, hit_point, knockback, stagger, caption, pierce, crush, armor_cut)
 	hp = max_hp
 	_last_damage = dealt
 	_update_label()

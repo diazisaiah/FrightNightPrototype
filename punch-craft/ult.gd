@@ -239,6 +239,8 @@ func fill() -> void:
 ## Ultimate Surge (a card) gives a quarter back.
 func _spend() -> void:
 	meter = MAX_METER * 0.25 if _card("ult_surge") else 0.0
+	# Haggler (Dead Money Coin): keeps a share of the meter (stacks with Surge).
+	meter = minf(MAX_METER, meter + MAX_METER * GameState.get_effect("haggler"))
 	GameState.ult_share = meter / MAX_METER
 	meter_changed.emit(meter, false)
 	used.emit(GameState.player_class)
