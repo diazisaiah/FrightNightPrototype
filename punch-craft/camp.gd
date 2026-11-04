@@ -1961,12 +1961,12 @@ func _shop_card(index: int, offer: Dictionary) -> Control:
 	if offer.kind == "idle":
 		var preview := IdlePreview.new()
 		preview.idle_id = offer.id
-		preview.custom_minimum_size = Vector2(200, 64)
+		preview.custom_minimum_size = Vector2(240, 96)
 		column.add_child(preview)
 	elif offer.kind == "emote":
 		var stage := EmotePreview.new(GameState.player_class, 3.2)
 		stage.emote_id = offer.id
-		stage.custom_minimum_size = Vector2(200, 124)
+		stage.custom_minimum_size = Vector2(240, 176)
 		column.add_child(stage)
 	elif offer.kind == "skin":
 		var stage := EmotePreview.new(Skins.CATALOG[offer.id].fighter, 3.2, offer.id)
