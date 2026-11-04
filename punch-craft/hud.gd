@@ -447,6 +447,35 @@ func set_class_status(text: String) -> void:
 	_passive_ready = ready
 
 
+## On touch the bottom corners belong to the sticks, so the passive chip and
+## the power tiles move: under the ultimate bar (TouchUi.hud_layout "ult") or
+## under the health bar ("health").
+func _place_for_touch(node: Control, is_chip: bool) -> void:
+	if not TouchUi.enabled:
+		return
+	if TouchUi.hud_layout == "health":
+		node.set_anchors_preset(Control.PRESET_TOP_LEFT)
+		node.grow_horizontal = Control.GROW_DIRECTION_END
+		node.grow_vertical = Control.GROW_DIRECTION_END
+		node.offset_left = 20.0
+		node.offset_right = 20.0
+		node.offset_top = 84.0 if is_chip else 134.0
+		node.offset_bottom = node.offset_top + 40.0
+	else:
+		node.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+		node.grow_vertical = Control.GROW_DIRECTION_BEGIN
+		node.offset_bottom = -24.0
+		node.offset_top = -64.0
+		if is_chip:
+			node.grow_horizontal = Control.GROW_DIRECTION_END
+			node.offset_left = -210.0
+			node.offset_right = -210.0
+		else:
+			node.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+			node.offset_left = 210.0
+			node.offset_right = 210.0
+
+
 func _build_passive_chip() -> void:
 	_passive_chip = PanelContainer.new()
 	_passive_chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -472,6 +501,7 @@ func _build_passive_chip() -> void:
 	_passive_value.add_theme_font_override("font", UiTheme.bold_font())
 	row.add_child(_passive_value)
 	add_child(_passive_chip)
+	_place_for_touch(_passive_chip, true)
 	# Under the pause and dawn screens.
 	move_child(_passive_chip, mini(_pause_panel.get_index(), _summary_panel.get_index()))
 
@@ -491,6 +521,7 @@ func set_power_status(status: Array) -> void:
 		_power_tiles.offset_bottom = -48.0
 		_power_tiles.went_off.connect(func(color: Color) -> void: flash(color, 0.35))
 		add_child(_power_tiles)
+		_place_for_touch(_power_tiles, false)
 		move_child(_power_tiles, mini(_pause_panel.get_index(), _summary_panel.get_index()))
 	_power_tiles.set_status(status)
 

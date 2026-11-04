@@ -27,8 +27,6 @@ const SMALL_RADIUS := 25.0
 ## Finger drag (px) that points the emote wheel all the way; short, because the
 ## EMOTE button sits near the top edge and there's little room to drag up.
 const WHEEL_DRAG := 38.0
-## A quick flick that began in a stick zone still counts as a punch swipe.
-const FLICK_TIME := 0.22
 
 ## Big square buttons along the bottom (dash, run, back step): half a side.
 const SQUARE_HALF := 42.0
@@ -67,6 +65,9 @@ var _sprint_on := false
 var _held_buttons := {}
 ## While EMOTE is held: where the finger has dragged, up to length 1 (the wheel).
 var wheel_vec := Vector2.ZERO
+## Where the passive chip and power tiles sit on touch: "ult" (under the
+## ultimate bar) or "health" (under the health bar). "?hud=health" to try it.
+var hud_layout := "ult"
 ## Desktop test mode ("?touchmouse"): the engine's own emulation is used instead.
 var _mouse_test := false
 ## The finger acting as the mouse in menus (-1: none), and where it last was.
@@ -100,6 +101,10 @@ func _ready() -> void:
 		set_process(false)
 		set_process_input(false)
 		return
+	if OS.has_feature("web"):
+		var query = JavaScriptBridge.eval("window.location.search", true)
+		if query is String and "hud=health" in query:
+			hud_layout = "health"
 	# Try it with a mouse: "--touch-mouse", or "?touchmouse" on a web page.
 	var search_text = JavaScriptBridge.eval("window.location.search", true) if OS.has_feature("web") else ""
 	if "--touch-mouse" in OS.get_cmdline_args() or (search_text is String and "touchmouse" in search_text):
@@ -423,10 +428,11 @@ func _touch_down(index: int, pos: Vector2) -> void:
 		touch.role = "button"
 		touch.button = button
 		_press_button(button)
-	elif _zone("move").has_point(pos) and not _has_role("move"):
-		touch.role = "move"
-	elif _zone("look").has_point(pos) and not _has_role("look"):
-		touch.role = "look"
+	elif _zone("move").has_point(pos):
+		# A stick zone never throws a punch or dodge; a second finger there does nothing.
+		touch.role = "move" if not _has_role("move") else "none"
+	elif _zone("look").has_point(pos):
+		touch.role = "look" if not _has_role("look") else "none"
 	_touches[index] = touch
 
 
@@ -460,12 +466,6 @@ func _touch_up(index: int, pos: Vector2) -> void:
 				_punch(touch.side, "jab" if touch.side == "left" else "cross")
 		"button":
 			_release_button(touch.button)
-		"move", "look":
-			# A quick flick that started on a stick still throws the punch.
-			var flick: Vector2 = pos - touch.origin
-			var quick: float = Time.get_ticks_msec() / 1000.0 - float(touch.t)
-			if quick <= FLICK_TIME and flick.length() >= SWIPE_DISTANCE:
-				_swipe(touch.side, flick)
 
 
 func _has_role(role: String) -> bool:
