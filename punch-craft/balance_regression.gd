@@ -71,8 +71,8 @@ func _test_number_stacks() -> void:
 
 
 ## The True Coffin King's maxed-build tuning (DeadLeagueBoss.TRUE_MAXED) still
-## matches a maxed fighter of each class, within 15% (2026-11-04: wearing true
-## par's own gear, so the gap is upgrades, cards and attributes, not gear).
+## matches a maxed fighter of each class, within 15% (2026-11-04, the balance
+## re-run: in an endgame kit, Progression.endgame_kit).
 func _test_true_king_maxed() -> void:
 	for fighter in GameState.CLASSES:
 		GameState._reset_fields()
@@ -90,7 +90,7 @@ func _test_true_king_maxed() -> void:
 		for id in Cards.deck(fighter):
 			info.cards[id] = Cards.copies(Cards.deck(fighter)[id])
 		GameState.select_power("sigil_fire")
-		for item in Progression.par_gear_items(Progression.TIER_COUNT + 1):
+		for item in Progression.endgame_kit():
 			GameState.equip(item)
 		var now := PowerRating.maxed_over_true_par()
 		var tuned: Vector2 = DeadLeagueBoss.TRUE_MAXED[fighter]

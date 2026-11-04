@@ -2077,7 +2077,7 @@ Prerequisites for the Crypt revamp, and the first Rebalance plan items.
 - **Model gaps to fix:** rate the combo multiplier as sustained (cap reached in about 3 hits), hit-and-run through enemy melee turns, and auto powers (teleport, AoE, knockback). Raise the Crypt's per-floor ramp to match gear growth (about x1.5 POWER a floor).
 - Re-run `balance_report` and the bots against every contender and floor after each change.
 
-## Crypt revamp plan [Planned 2026-11-01; built 2026-11-04 but the balance re-run]
+## Crypt revamp plan [Planned 2026-11-01; built 2026-11-04]
 
 **Goals:** a cleaner, more polished Crypt; real items with sets and looks; better salvage; mimics that are fun to fight.
 
@@ -2220,7 +2220,13 @@ Prerequisites for the Crypt revamp, and the first Rebalance plan items.
 
 **Item cards [Built 2026-11-04] (`ItemCard`, `item_card.gd`):** Crypt drops ("YOU FOUND"), the gilding altar, the merchant and the camp shop's gear show the item's model turning in a little 3D window (lit like the hat popup), its name in its rarity color, what it is, and its stats colored against what's worn. The card's color and effects climb with rarity: common a thin grey frame; uncommon a green frame, a faint glow and a soft light under the item; rare a blue frame, a glow and slow light rays; epic a thick purple frame, a pulsing glow, brighter rays and purple sparkles over the window; legendary a thick gold frame, a strong pulse, bright fast rays, gold sparkles and a light sweep across the card every few seconds. The cards keep animating while a drop pauses the Crypt.
 
-**Open work:** re-run the balance. (Item models, the item and store cards, the gear system with save migration, drop odds, salvage, the economy, room furniture, mimics and the toilet and merchant tie-in are built, 2026-11-04.)
+**Balance re-run [Done 2026-11-04]** (`balance_report.gd` prints the gear sections; it runs again, its autoload calls fixed):
+- **Par and the contender targets are unchanged.** At par (upgrades, attributes, typical cards, par's rare gloves and wraps) the berserker sits at 1.02 / 1.14 / 1.24 / 1.12 / 1.08 of the five contenders' POWER, the counter master (lowest) at 0.71 to 0.90.
+- **Gear's reach:** a typical kit (a random set per slot at the rarity you'd usually keep by then: uncommon, rare, rare, epic; the deepest open floor's middle level) puts the berserker at 0.95 / 1.12 / 1.25 / 1.57x par facing the Headless, Southpaw, Plague Doctor and Coffin King (1.08 to 1.70x the contender). Its damage, knuckles and defense are about what par already counts; the edge is its percent stats (damage %, crit, heavy / head / finisher / boss damage...), which reach +20-50% a piece by level 23. A full best set at the floor's top level reaches 1.3 to 2.7x the contender. Kept as the Crypt's reward; the POWER readouts count your gear, so a geared fighter reads READY or OVERPOWERED. If the late climb is too easy with gear, the two knobs are: count the typical kit (percent stats too) in par and raise the tier-3+ contender targets with it, or slow the percent stats' growth.
+- **The True Coffin King** is tuned to a maxed fighter in an endgame kit (epic level-30 pieces from four sets, no set bonus: `Progression.endgame_kit`): about 60% more HP and 4% more damage than when measured in par's two rare pieces.
+- **Gold and Souls:** a gilded piece at the floor's middle level sells for 40k (common) to 450k (legendary) on floor 8, against ring 5's 5.4M; 81k to 903k on floor 10, against ring 6's 25.9M. Gilding's Souls cost limits how many come home, so the plan's formula stays. Leveling a piece from 1 to 30 is about 240 Souls, as planned.
+
+**Open work:** none; the revamp is built (item models, item and store cards, the gear system with save migration, drop odds, salvage, the economy, room furniture, mimics, the toilet and merchant tie-in, and the balance re-run, 2026-11-04).
 
 ## Mobile build [Idea, planned 2026-11-02]
 

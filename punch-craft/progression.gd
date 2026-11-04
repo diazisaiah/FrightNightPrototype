@@ -281,6 +281,15 @@ static func par_gear_items(tier: int) -> Array:
 	return [Gear.make("deadweight", "gloves", "rare", level), Gear.make("deadweight", "wraps", "rare", level)]
 
 
+## The kit a near-maxed fighter wears by the True Coffin King (the balance
+## re-run, 2026-11-04): epic pieces at level 30 (floor 10's top) from four
+## different sets, so no set bonus. DeadLeagueBoss.TRUE_MAXED is measured in
+## it.
+static func endgame_kit() -> Array:
+	return [Gear.make("drowned", "gloves", "epic", 30), Gear.make("deadweight", "wraps", "epic", 30),
+		Gear.make("grandmaster", "boots", "epic", 30), Gear.make("iron_mike", "charm", "epic", 30)]
+
+
 ## Par at a position on the climb: x = 0 fresh, 1 = facing the Bellman, ...
 ## Past 5 (endless) it keeps growing 25% per step.
 static func par_at(x: float) -> Dictionary:
