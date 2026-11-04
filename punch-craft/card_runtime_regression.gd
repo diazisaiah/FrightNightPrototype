@@ -43,6 +43,7 @@ func _run() -> void:
 	await _test_shift_rolls()
 	await _test_dead_weight()
 	await _test_gear_signatures()
+	await _test_mimic()
 	await _test_tutorial_fights()
 	await _test_perch_and_blood()
 	await _test_fighter_card_hover()
@@ -746,6 +747,33 @@ func _test_gear_signatures() -> void:
 	GameState.equipped = {}
 	await _free_rig(holder)
 	print("Card runtime: gear signatures OK")
+
+
+## Mimics (Crypt revamp, 2026-11-04): shut, nothing gets through; its
+## tongue throws a boxer's punches with the same tells; open, it can be hit;
+## an elite one (a cursed chest you challenged) is a champion.
+func _test_mimic() -> void:
+	var rig := await _make_rig("berserker")
+	var holder: Node3D = rig[0]
+	var player: Player = rig[1]
+	var mimic := (load("res://mimic.tscn") as PackedScene).instantiate() as Mimic
+	mimic.setup(player, false)
+	mimic.position = Vector3(0, 0, -2.0)
+	holder.add_child(mimic)
+	await get_tree().process_frame
+	mimic.set_physics_process(false)
+	_check(mimic.is_shut() and mimic.blocks_punch("cross", false) and mimic.block_caption() == "SHUT TIGHT", "A shut mimic blocks punches")
+	_check(mimic.take_hit(50.0, mimic.global_position + Vector3.UP, Vector3.ZERO, false) == 0.0, "Nothing gets through a shut mimic")
+	mimic._begin_attack("left_hook", Boxer.FIRST_WINDUP["left_hook"])
+	_check(not mimic.is_shut() and mimic.incoming_attack() == "left_hook" and mimic.attack_eta() > Enemy.tell_time(),
+			"An open mimic throws a boxer's punch, with time to read it")
+	var before := mimic.hp
+	mimic.take_hit(30.0, mimic.global_position + Vector3.UP, Vector3.ZERO, false)
+	_check(mimic.hp < before, "An open mimic can be hit")
+	mimic.make_elite_mimic()
+	_check(mimic.elite and mimic.has_meta("elite_mimic") and mimic.has_meta("champion"), "An elite mimic is a champion")
+	await _free_rig(holder)
+	print("Card runtime: mimic OK")
 
 
 ## The tutorial (2026-10-29): your mode's dodge steps, and its last three

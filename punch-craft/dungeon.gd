@@ -98,8 +98,9 @@ const PORCELAIN := Color(0.93, 0.93, 0.9)
 ## Tests and captures: every floor gets the toilet room.
 static var force_toilet := false
 ## Mimics: share of chests that bite (never boss, elite or cursed chests).
-const MIMIC_CHANCE_CHEST_ROOM := 0.25
-const MIMIC_CHANCE_DROPPED := 0.15
+## (2026-11-04: rarer, now that a shut mimic shrugs off punches.)
+const MIMIC_CHANCE_CHEST_ROOM := 0.12
+const MIMIC_CHANCE_DROPPED := 0.08
 const MIMIC_WAKE_DISTANCE := 2.6
 ## Cursed chests: share of ordinary chests, from this floor.
 const CURSED_CHANCE := 0.15
@@ -118,13 +119,10 @@ const SILVER_PER_KILL := 1
 const SILVER_ELITE := 5
 const SILVER_MIMIC := 5
 const SILVER_BOSS := 15
-const WARE_PRICES := {"uncommon": 12, "rare": 25, "epic": 45, "legendary": 90, "cursed": 40}
-const MERCHANT_LEGENDARY_CHANCE := 0.04
 const HEAL_PRICE := 15
 const HEAL_FRACTION := 0.4
 ## Shrines take this share of max knuckle HP for a blessing.
 const SHRINE_COST := 0.25
-const SALVAGE_COINS := {"common": 8, "uncommon": 15, "rare": 30, "epic": 60, "legendary": 120, "cursed": 50, "blessed": 0}
 const INTERACT_DISTANCE := 2.4
 const FALL_LIMIT := -20.0
 
@@ -143,6 +141,8 @@ var _hazards: Node3D
 var _start_floor := 1
 ## Chest rerolls left this floor (Loaded Dice).
 var _dice_left := 0
+## What to do with the answer to the open question (_ask).
+var _choice_handler := Callable()
 ## Rooms on this floor: {cell, type ("start", "fight", "chest", "boss"),
 ## depth, size, center, doors: [Vector2i], state, ...}.
 var _rooms: Array[Dictionary] = []
@@ -223,6 +223,7 @@ func _ready() -> void:
 	get_tree().create_timer(1.5, false).timeout.connect(_gild_tip)
 	_hud.item_decided.connect(_on_item_decided)
 	_hud.item_option_chosen.connect(_on_item_option)
+	_hud.choice_made.connect(_on_choice_made)
 	_hud.set_knuckles(_player.knuckles, _player.max_knuckles)
 	_hud.set_combo(0, 1.0)
 	_hud.set_equipment(GameState.equipped)
@@ -809,8 +810,8 @@ func _on_enemy_died(enemy: Enemy) -> void:
 	_player.heal(_player.kill_heal(enemy))
 	_update_info()
 	if kind == "mimic":
-		# Beaten, it coughs up the real thing.
-		_place_chest(Vector3(enemy.global_position.x, 0, enemy.global_position.z), "elite")
+		# Beaten, it coughs up the real thing (an elite one, its prize).
+		_place_chest(Vector3(enemy.global_position.x, 0, enemy.global_position.z), "prize" if enemy.has_meta("elite_mimic") else "elite")
 	if _run_over or _current_room.is_empty() or _current_room.state != "fighting":
 		return
 	if enemy.is_boss:
@@ -910,7 +911,8 @@ func _update_info() -> void:
 # --- Chests, items and stairs -----------------------------------------------
 
 ## quality "" = a normal chest (which may turn out cursed, or be a mimic);
-## "boss" / "elite" roll better; "cursed" holds a cursed item.
+## "boss" / "elite" roll one rarity up; "cursed" is an elite mimic (a fight
+## you can choose); "prize" is what one leaves (top level, one rarity up).
 func _place_chest(at: Vector3, quality: String, mimic_chance := MIMIC_CHANCE_DROPPED, yaw := 0.0) -> void:
 	if quality == "" and randf() < CURSED_CHANCE:
 		quality = "cursed"
@@ -942,6 +944,20 @@ func _place_chest(at: Vector3, quality: String, mimic_chance := MIMIC_CHANCE_DRO
 		chain.emission_energy_multiplier = 2.0
 		for x in [-0.3, 0.3]:
 			chest.add_child(_mesh(Enemy._box(Vector3(0.06, 0.95, 0.78)), chain, Vector3(x, 0.45, 0)))
+		# ... and obviously an elite mimic: teeth at the seam, eyes on the lid.
+		var bone := _material("bone", Color(0.75, 0.72, 0.62))
+		for x in [-0.36, -0.18, 0.18, 0.36]:
+			chest.add_child(_mesh(Enemy._box(Vector3(0.06, 0.08, 0.04)), bone, Vector3(x, 0.62, -0.37)))
+		var eye := _material("mimic_eye", Color(0.75, 0.3, 1.0))
+		eye.emission_enabled = true
+		eye.emission = Color(0.75, 0.3, 1.0)
+		eye.emission_energy_multiplier = 3.0
+		for side in [-1.0, 1.0]:
+			lid.add_child(_mesh(Enemy._box(Vector3(0.09, 0.05, 0.02)), eye, Vector3(0.22 * side, 0.16, -0.71)))
+	elif quality == "prize":
+		# What an elite mimic coughs up: a brighter, golden glow.
+		glow.light_color = Color(1.0, 0.78, 0.3)
+		glow.light_energy = 2.2
 	_add_solid(chest, Vector3(1.1, 0.9, 0.7), Vector3(0, 0.45, 0))
 	_interactables.append({"node": chest, "kind": "chest", "quality": quality, "lid": lid, "glow": glow,
 			"used": false, "mimic": mimic, "twitch": randf_range(1.0, 3.0)})
@@ -982,7 +998,7 @@ func _update_interaction() -> void:
 			thing.twitch = randf_range(1.5, 4.0)
 			var lid: Node3D = thing.lid
 			var tween := lid.create_tween()
-			tween.tween_property(lid, "rotation:x", -0.18, 0.06)
+			tween.tween_property(lid, "rotation:x", 0.18, 0.06)
 			tween.tween_property(lid, "rotation:x", 0.0, 0.1)
 		if node.global_position.distance_to(_player.global_position) < MIMIC_WAKE_DISTANCE:
 			_wake_mimic(thing)
@@ -1004,7 +1020,10 @@ func _update_interaction() -> void:
 	if Input.is_action_just_pressed("interact"):
 		match _target.kind:
 			"chest":
-				_open_chest(_target)
+				if _target.quality == "cursed":
+					_ask_elite_mimic(_target)
+				else:
+					_open_chest(_target)
 			"merchant":
 				_merchant_grunt()
 				_open_merchant()
@@ -1021,7 +1040,7 @@ func _update_interaction() -> void:
 func _prompt_for(thing: Dictionary) -> String:
 	match thing.kind:
 		"chest":
-			return _use("Open cursed chest") if thing.quality == "cursed" else _use("Open chest")
+			return _use("Inspect the chained chest") if thing.quality == "cursed" else _use("Open chest")
 		"merchant":
 			return _use("Trade with the merchant")
 		"shrine":
@@ -1034,8 +1053,32 @@ func _prompt_for(thing: Dictionary) -> String:
 	return _use("Descend, or leave the Crypt")
 
 
-## A chest that was a Mimic all along: the room seals and it stands up.
-func _wake_mimic(thing: Dictionary) -> void:
+## A cursed chest is an elite mimic (Crypt revamp, 2026-11-04): fight it for
+## a top-of-the-floor piece one rarity up, or leave it be.
+func _ask_elite_mimic(thing: Dictionary) -> void:
+	_hud.set_prompt("")
+	_ask("A CHAINED CHEST", "This is obviously a mimic, but a strong one...\n\nBeat it for a top-level piece, one rarity up.",
+			["Challenge it", "Back away"], func(index: int) -> void:
+				if index == 0 and not thing.used:
+					_wake_mimic(thing, true))
+
+
+## Asks the player something (HUD.show_choice); handler gets the option's index.
+func _ask(title: String, body: String, options: Array, handler: Callable) -> void:
+	_choice_handler = handler
+	_hud.show_choice(title, body, options)
+
+
+func _on_choice_made(index: int) -> void:
+	var handler := _choice_handler
+	_choice_handler = Callable()
+	if handler.is_valid():
+		handler.call(index)
+
+
+## A chest that was a Mimic all along (or an elite one you challenged): the
+## room seals and it stands up.
+func _wake_mimic(thing: Dictionary, elite := false) -> void:
 	thing.used = true
 	var node: Node3D = thing.node
 	var at := Vector3(node.global_position.x, 0.1, node.global_position.z)
@@ -1053,9 +1096,11 @@ func _wake_mimic(thing: Dictionary) -> void:
 	_to_spawn = 0
 	_seal_doors(room)
 	_player.on_room_start()
-	_hud.announce("It's a MIMIC!")
-	Sfx.play_at("growl", at, 4.0, 1.4)
-	_spawn_enemy({"kind": "mimic", "armored": false}, at)
+	_hud.announce("An ELITE MIMIC!" if elite else "It's a MIMIC!")
+	Sfx.play_at("growl", at, 4.0, 1.25 if elite else 1.4)
+	var mimic := _spawn_enemy({"kind": "mimic", "armored": false}, at)
+	if elite and mimic is Mimic:
+		(mimic as Mimic).make_elite_mimic()
 
 
 func _open_chest(chest: Dictionary) -> void:
@@ -1063,13 +1108,14 @@ func _open_chest(chest: Dictionary) -> void:
 	_hud.set_prompt("")
 	var lid: Node3D = chest.lid
 	var tween := lid.create_tween()
-	tween.tween_property(lid, "rotation:x", -1.9, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	# (+x swings it up and back on its hinge; it used to sink into the chest.)
+	tween.tween_property(lid, "rotation:x", 1.9, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	var glow: OmniLight3D = chest.glow
 	glow.light_energy = 3.0
 	Sfx.play("coin")
-	# Boss chests are rare or better, elite chests uncommon or better, and
-	# either can hold a legendary from floor 2. Cursed chests hold cursed items.
-	var item := Items.roll_cursed(_floor) if chest.quality == "cursed" else Items.roll_for_chest(_floor, chest.quality)
+	# Boss and elite chests roll one rarity up (Gear.roll); an elite mimic's
+	# prize is a top-level piece, one rarity up.
+	var item := Items.roll_cursed(_floor) if chest.quality in ["cursed", "prize"] else Items.roll_for_chest(_floor, chest.quality)
 	_items_found += 1
 	_pending_item = item
 	_offer_thing = chest
@@ -1115,7 +1161,7 @@ func _on_item_option() -> void:
 	if _dice_left <= 0 or chest.is_empty() or not chest.has("quality"):
 		return
 	_dice_left -= 1
-	var item := Items.roll_cursed(_floor) if chest.quality == "cursed" else Items.roll_for_chest(_floor, chest.quality)
+	var item := Items.roll_cursed(_floor) if chest.quality in ["cursed", "prize"] else Items.roll_for_chest(_floor, chest.quality)
 	_pending_item = item
 	Sfx.play("coin", -4.0, 1.3)
 	_show_chest_offer(item)

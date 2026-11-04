@@ -2077,7 +2077,7 @@ Prerequisites for the Crypt revamp, and the first Rebalance plan items.
 - **Model gaps to fix:** rate the combo multiplier as sustained (cap reached in about 3 hits), hit-and-run through enemy melee turns, and auto powers (teleport, AoE, knockback). Raise the Crypt's per-floor ramp to match gear growth (about x1.5 POWER a floor).
 - Re-run `balance_report` and the bots against every contender and floor after each change.
 
-## Crypt revamp plan [Planned 2026-11-01; gear, drops, economy and room furniture built 2026-11-04]
+## Crypt revamp plan [Planned 2026-11-01; gear, drops, economy, room furniture and mimics built 2026-11-04]
 
 **Goals:** a cleaner, more polished Crypt; real items with sets and looks; better salvage; mimics that are fun to fight.
 
@@ -2192,9 +2192,10 @@ Prerequisites for the Crypt revamp, and the first Rebalance plan items.
 - **Old saves:** every kept item becomes the nearest set piece: its slot, the set its stats lean to (`ItemModels.set_for`), its rarity (cursed becomes epic, an unknown one rare) and level floor x 3 - 1.
 - **Balance:** par's gear is real gear now: rare Deadweight Knuckles (damage) and Bindings (knuckles, defense) at the middle level of the deepest Crypt floor open when facing each contender (floor 2 for the Headless up to floor 8 for the Coffin King; true par at level 29). Par POWER is 395 / 1,026 / 2,525 / 5,252 / 11,490 against the unchanged targets of 500 / 1,150 / 2,645 / 6,084 / 13,993. The True Coffin King's maxed-build tuning (`TRUE_MAXED`) is measured with the maxed fighter in true par's gear, so his HP and damage follow geared players. A full legendary level-30 set roughly triples a maxed fighter's POWER; the balance re-run looks at that.
 
-**Mimics and elite mimics:**
+**Mimics and elite mimics [Built 2026-11-04]:**
 - Mimics are less common, invincible while closed, and periodically open to show a mouth with a boxer tongue that throws a punch combo like other enemies; open, it's vulnerable but deadly.
 - Elite mimics replace cursed chests: a mimic reskin with champion effects and stats. Interacting shows "this is obviously a mimic, but a strong one..." with two choices: challenge it anyway, or back away. Beating it drops a max-level item for that floor, rolled from the one-rarity-up pool.
+- **As built:** mimics are rarer (12% of chest-room chests, 8% of dropped ones). A woken mimic stands up shut: punches clang off ("SHUT TIGHT", the combo breaks like a shield), and so do powers and Thorns. Every 2-3 s it claims a turn, closes in and opens: the lid swings up and back and a tongue in a red boxing glove throws a 2-3 punch combo (jab, cross, hooks, uppercut) with the boxers' timings, tell flash and glove glow in the dodge's color, read and dodged the same way. Open it takes hits; after the combo it gapes for about a second (two if you dodged the whole combo; a counter cuts the combo short and leaves it gaping), then snaps shut. The tongue's root sits above the rim, so it never passes through the chest. Cursed chests (purple chains, teeth at the seam, purple eyes) ask "A CHAINED CHEST: This is obviously a mimic, but a strong one..." with Challenge it / Back away (`HUD.show_choice`). Challenged, the room seals and an elite mimic stands up: a champion (two traits, champion health, aura and pay), gold corners and purple chains, 4-punch combos, shut 30% less. Beaten, it leaves a golden prize chest: a top-of-the-floor level piece, one rarity up. Chest lids now swing up and back when opened (they used to sink into the chest).
 
 **Toilet and merchant tie-in:** a toilet spawns in the merchant room 10% of the time, even before the player has the poop emote (today the toilet room needs the "overexerted" emote and is 1% a floor); clog it and the merchant calls the plumber; once you beat the plumber he says "just go, I'll take care of it myself." Toilet rooms overall should also be more common. The player can go into the toilet room any time.
 - **Ask about the toilet:** when a merchant spawned with a toilet, talking to him shows an extra button to ask about it. The player says "why do you have a toilet... undead people can't poop." The merchant groans ("ughhhhhhhh... groooooannn"). Then the player says "oh yeah, he's undead."
@@ -2218,7 +2219,7 @@ Prerequisites for the Crypt revamp, and the first Rebalance plan items.
 
 **Item cards [Built 2026-11-04] (`ItemCard`, `item_card.gd`):** Crypt drops ("YOU FOUND"), the gilding altar, the merchant and the camp shop's gear show the item's model turning in a little 3D window (lit like the hat popup), its name in its rarity color, what it is, and its stats colored against what's worn. The card's color and effects climb with rarity: common a thin grey frame; uncommon a green frame, a faint glow and a soft light under the item; rare a blue frame, a glow and slow light rays; epic a thick purple frame, a pulsing glow, brighter rays and purple sparkles over the window; legendary a thick gold frame, a strong pulse, bright fast rays, gold sparkles and a light sweep across the card every few seconds. The cards keep animating while a drop pauses the Crypt.
 
-**Open work, in order:** mimics and elite mimics, the toilet and merchant tie-in, then re-run the balance. (Item models, the item and store cards, the gear system with save migration, drop odds, salvage, the economy and room furniture are built, 2026-11-04.)
+**Open work, in order:** the toilet and merchant tie-in, then re-run the balance. (Item models, the item and store cards, the gear system with save migration, drop odds, salvage, the economy, room furniture and mimics are built, 2026-11-04.)
 
 ## Mobile build [Idea, planned 2026-11-02]
 

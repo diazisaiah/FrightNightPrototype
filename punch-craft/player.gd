@@ -1554,9 +1554,10 @@ func _land_punch(type: String, hand: String, _dashing := false, airborne := fals
 		DamagePopup.spawn(get_parent(), "PHASED", Color(0.7, 0.75, 1.0), 36, hit_point)
 		return
 	if target.blocks_punch(type, counter_ready):
-		# Into a Shieldbearer's shield: the combo breaks and it still costs.
+		# Into a Shieldbearer's shield (or a shut Mimic): the combo breaks and
+		# it still costs.
 		Sfx.play("block", -2.0, 0.9)
-		DamagePopup.spawn(get_parent(), "SHIELD", Color(0.75, 0.75, 0.8), 40, hit_point)
+		DamagePopup.spawn(get_parent(), target.block_caption(), Color(0.75, 0.75, 0.8), 40, hit_point)
 		_set_combo(0)
 		punch_landed.emit("blocked", false)
 		_pay_for_punch(PUNCHES[type], false, type)

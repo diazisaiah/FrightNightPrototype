@@ -19,6 +19,8 @@ signal item_option_chosen
 signal gild_chosen(item: Dictionary)
 ## The Crypt merchant's shop: a ware's index, or -1 for the heal.
 signal ware_chosen(index: int)
+## show_choice's answer: the index of the option picked.
+signal choice_made(index: int)
 
 ## The Rhythm bonus on the combo line (the Drowned set's seafoam).
 const RHYTHM_COLOR := Color(0.32, 0.85, 0.78)
@@ -1218,6 +1220,43 @@ func show_merchant(wares: Array, heal: Dictionary, silver: int) -> void:
 		get_tree().paused = false
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED)
 	column.add_child(done)
+	_can_pause = false
+	get_tree().paused = true
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	_item_panel.show()
+
+
+## A choice in a box (an elite mimic's challenge, the merchant's toilet ...):
+## a title, a line or two and a button per option. Pauses the run until one
+## is picked (choice_made).
+func show_choice(title: String, body: String, options: Array) -> void:
+	for child in _item_panel.get_children():
+		child.queue_free()
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 16)
+	_item_panel.add_child(column)
+	column.add_child(UiTheme.heading(title, 30))
+	var text := Label.new()
+	text.text = body
+	text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	text.custom_minimum_size = Vector2(520, 0)
+	text.add_theme_font_size_override("font_size", 19)
+	column.add_child(text)
+	var buttons := HBoxContainer.new()
+	buttons.alignment = BoxContainer.ALIGNMENT_CENTER
+	buttons.add_theme_constant_override("separation", 14)
+	column.add_child(buttons)
+	for i in options.size():
+		var button := Button.new()
+		button.text = String(options[i])
+		button.custom_minimum_size = Vector2(210, 46)
+		button.pressed.connect(func() -> void:
+			_close_item_panel()
+			choice_made.emit(i))
+		buttons.add_child(button)
+		if i == 0:
+			button.grab_focus.call_deferred()
 	_can_pause = false
 	get_tree().paused = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE

@@ -994,6 +994,11 @@ func blocks_punch(_punch_type: String, _counter: bool) -> bool:
 	return false
 
 
+## What a blocked punch says ("SHIELD"; a shut Mimic's "SHUT TIGHT").
+func block_caption() -> String:
+	return "SHIELD"
+
+
 ## Share of a punch's damage that gets through a shield (1 = no shield).
 func shield_damage_scale(_punch_type: String, _counter: bool) -> float:
 	return 1.0
