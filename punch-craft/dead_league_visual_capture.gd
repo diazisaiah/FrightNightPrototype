@@ -27,12 +27,16 @@ func _ready() -> void:
 			var parts := argument.trim_prefix("--stage=").split(",")
 			await _capture_stage(int(parts[0]), float(parts[1]) if parts.size() > 1 else 0.0, float(parts[2]) if parts.size() > 2 else 0.0)
 			return
-		elif argument == "--steer":
+		elif argument.begins_with("--steer"):
+			if argument.begins_with("--steer="):
+				_open_division(int(argument.trim_prefix("--steer=")))
 			await _steer_test()
 			return
 		elif argument.begins_with("--world="):
-			# The Arena from a free camera: --world=X,Y,Z,YAW,PITCH[,NAME].
+			# The Arena from a free camera: --world=X,Y,Z,YAW,PITCH[,NAME[,DIVISION]].
 			var parts := argument.trim_prefix("--world=").split(",")
+			if parts.size() > 6:
+				_open_division(int(parts[6]))
 			await _capture_world(Vector3(float(parts[0]), float(parts[1]), float(parts[2])), float(parts[3]), float(parts[4]), parts[5] if parts.size() > 5 else "view")
 			return
 		elif argument.begins_with("--action="):
@@ -165,25 +169,44 @@ func _steer_test() -> void:
 		zombie.global_position = center + out * (solid.z + 1.0)
 		var reached := false
 		var closest := INF
+		var inside := false
 		var time := 0.0
-		while time < 6.0:
+		var limit: float = 6.0 + solid.z * 1.5
+		var trace := OS.get_environment("STEER_TRACE") == str(tested + 1)
+		while time < limit:
 			await get_tree().physics_frame
 			time += get_physics_process_delta_time()
+			var probe := PhysicsPointQueryParameters3D.new()
+			probe.position = zombie.global_position + Vector3(0, 0.9, 0)
+			probe.collision_mask = Scenery.PROP_LAYER
+			if not zombie.get_world_3d().direct_space_state.intersect_point(probe, 1).is_empty():
+				inside = true
+			if trace and fmod(time, 0.5) < get_physics_process_delta_time():
+				print("  t %.1f zombie (%.2f, %.2f) avoid %s detour %.2f" % [time, zombie.global_position.x, zombie.global_position.z, zombie.get("_avoid"), zombie.get("_detour_time")])
 			player.global_position = center - out * (solid.z + 2.5)
 			closest = minf(closest, Vector2(zombie.global_position.x - center.x, zombie.global_position.z - center.z).length())
-			if zombie.global_position.distance_to(player.global_position) < 1.7:
+			var past := Vector3(zombie.global_position.x - center.x, 0, zombie.global_position.z - center.z).dot(out) < 0.0
+			if past and zombie.global_position.distance_to(player.global_position) < 2.8:
 				reached = true
 				break
 		tested += 1
-		if closest < solid.z:
+		if inside:
 			reached = false  # Walked through it.
 		if not reached:
 			failed += 1
 		print("STEER %s at (%.1f, %.1f) r %.1f: %s in %.1f s, closest %.2f" % ["PASS" if reached else "FAIL", solid.x, solid.y, solid.z, "reached" if reached else "stuck", time, closest])
 		zombie.queue_free()
 		await get_tree().physics_frame
+	print("STEER RESULT (division %d)" % int(subject.get("_division")))
 	print("STEER RESULT: %d / %d props passed" % [tested - failed, tested])
 	get_tree().quit(1 if failed > 0 else 0)
+
+
+## Every seal broken (test save only), so the Arena opens on division.
+func _open_division(division: int) -> void:
+	for tier in Progression.TIERS:
+		GameState.dead_league_clears[tier.contender] = true
+	GameState.arena_division = division
 
 
 func _capture_world(at: Vector3, yaw: float, pitch: float, name: String) -> void:

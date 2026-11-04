@@ -287,8 +287,8 @@ func lantern_post(frame: Transform3D, glass: Color) -> Vector3:
 
 
 ## A strip of flagstones from a to b (world space on the floor), width wide.
-func path(a: Vector3, b: Vector3, width: float, rng: RandomNumberGenerator) -> void:
-	var tones := [stone(Color(0.3, 0.29, 0.3)), stone(Color(0.24, 0.23, 0.24))]
+func path(a: Vector3, b: Vector3, width: float, rng: RandomNumberGenerator, colors := [Color(0.3, 0.29, 0.3), Color(0.24, 0.23, 0.24)]) -> void:
+	var tones := [stone(colors[0]), stone(colors[1])]
 	var along := b - a
 	var length := along.length()
 	var dir := along / length

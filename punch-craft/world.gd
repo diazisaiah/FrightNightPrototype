@@ -811,7 +811,10 @@ func _build_decorations() -> void:
 	if _theme.id != "graveyard":
 		# The deeper divisions have their own places (ArenaScenery).
 		($Ground/Mesh as MeshInstance3D).material_override = Look.block_material(_theme.ground)
-		_torches.append_array(ArenaScenery.build(_theme, _decorations, rng))
+		var place := ArenaScenery.build(_theme, _decorations, rng)
+		for light in place.lights:
+			_torches.append(light)
+		_solids = place.solids
 		_place_hazards(rng)
 		return
 	# The Gravedigger Division: a laid-out cemetery (GraveyardScenery).
@@ -835,6 +838,8 @@ func _place_hazards(rng: RandomNumberGenerator) -> void:
 		tries += 1
 		var spot := Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(8.0, ARENA_RADIUS - 6.0)
 		if spots.any(func(other: Vector2) -> bool: return other.distance_to(spot) < 7.0):
+			continue
+		if not _clear_of_props(spot, 2.8):
 			continue
 		spots.append(spot)
 	for spot in spots:

@@ -207,6 +207,10 @@ var _detour_side := 1.0
 var _detour_time := 0.0
 var _avoid := Vector3.ZERO
 var _avoid_check := 0.0
+## Which way round the prop it's going (+1 / -1 round its centre) and how
+## long it keeps to that once the prop is out of the way.
+var _avoid_turn := 0.0
+var _avoid_hold := 0.0
 var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 ## How many melee enemies may attack at once (set by the level: 1 early, 2 later).
 static var max_attackers := 1
@@ -577,12 +581,16 @@ func _steer(desired: Vector3, delta: float) -> Vector3:
 	return (desired.normalized() * 0.25 + side_step).normalized() * desired.length()
 
 
-## A statue or oak ahead: walk along its side (the side nearer where it's
-## heading; head-on, the side it last detoured) instead of into it.
+## A statue, wall or booth ahead: walk along its face instead of into it,
+## going round it one way (picked once: the way the target lies, else the
+## nearer end) until it's out of the way, so long props don't make it dither.
 func _avoid_props(desired: Vector3, delta: float) -> Vector3:
 	if collision_mask & Scenery.PROP_LAYER == 0 or desired.length_squared() < 0.01 or not is_inside_tree():
 		return desired
 	_avoid_check -= delta
+	_avoid_hold -= delta
+	if _avoid_hold <= 0.0:
+		_avoid_turn = 0.0
 	if _avoid_check <= 0.0:
 		_avoid_check = AVOID_EVERY
 		_avoid = Vector3.ZERO
@@ -591,14 +599,22 @@ func _avoid_props(desired: Vector3, delta: float) -> Vector3:
 		var query := PhysicsRayQueryParameters3D.create(from, from + direction * (AVOID_LOOK + body_radius()), Scenery.PROP_LAYER)
 		var hit := get_world_3d().direct_space_state.intersect_ray(query)
 		if not hit.is_empty():
+			var prop := hit.collider as Node3D
+			var centre: Vector3 = prop.global_position if prop else hit.position
+			var radial := Vector3(global_position.x - centre.x, 0, global_position.z - centre.z)
+			var round_dir := Vector3.UP.cross(radial).normalized()
+			if _avoid_turn == 0.0:
+				var toward := direction.dot(round_dir)
+				if absf(toward) < 0.1:
+					var off := Vector3(hit.position.x - centre.x, 0, hit.position.z - centre.z)
+					toward = off.dot(round_dir)
+				_avoid_turn = signf(toward) if absf(toward) > 0.01 else _detour_side
 			var normal: Vector3 = hit.normal
 			var tangent := Vector3(normal.x, 0, normal.z).cross(Vector3.UP).normalized()
-			var lean := tangent.dot(direction)
-			if absf(lean) < 0.15:
-				tangent *= _detour_side
-			elif lean < 0.0:
+			if tangent.dot(round_dir * _avoid_turn) < 0.0:
 				tangent = -tangent
 			_avoid = tangent
+			_avoid_hold = 0.8
 	if _avoid == Vector3.ZERO:
 		return desired
 	return (desired.normalized() * 0.3 + _avoid).normalized() * desired.length()
