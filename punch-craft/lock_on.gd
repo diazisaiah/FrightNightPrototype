@@ -60,7 +60,8 @@ func _ready() -> void:
 func _process(_delta: float) -> void:
 	# Pause menus and popups freeze the player, so the reticle hides itself.
 	var layer := _reticle.get_parent() as CanvasLayer
-	layer.visible = not get_tree().paused
+	# Same once the run is over (results screen): the player goes inactive.
+	layer.visible = not get_tree().paused and player.active
 
 
 ## The strength in use right now: "off", "soft", "blend" or "hard".
@@ -229,7 +230,7 @@ func _choose() -> void:
 
 
 func _draw_reticle() -> void:
-	if get_tree().paused:
+	if get_tree().paused or not player.active:
 		return
 	if target == null or level() == "off" or not is_instance_valid(target) or target.is_dead():
 		return
