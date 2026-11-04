@@ -4,7 +4,7 @@ class_name GraveyardScenery
 ##   - a clear plaza in the middle, ringed by a flagstone path;
 ##   - four flagstone paths out to the fence (the north-east one ends at the
 ##     gate), lantern posts along them;
-##   - between the paths, a quadrant each: a weeping angel near the plaza,
+##   - between the paths, a quadrant each: a block-man statue near the plaza,
 ##     two family plots, two big dead oaks and an obelisk, then a mausoleum;
 ##   - the outer edge: lone graves, smaller oaks and the iron fence.
 ## Angels, obelisks, oaks and mausoleums are solid to you AND monsters
@@ -82,7 +82,7 @@ static func build(parent: Node3D, rng: RandomNumberGenerator) -> Dictionary:
 	var plots: Array[Vector3] = []
 	for q in 4:
 		var mid := 90.0 * q
-		_solid(parent, solids, kit_angel(kit, _polar(16.0, mid), q), 0.8)
+		_solid(parent, solids, kit_statue(kit, _polar(16.0, mid), q), 0.95)
 		for side in [-1.0, 1.0]:
 			kit.grave(_facing_in(_polar(15.0, mid + side * 11.0)), rng.randi_range(0, 4), rng.randi_range(0, 2))
 			kit.plot(_facing_in(_polar(22.5, mid + side * 15.0)), 5.6, 5.0, rng)
@@ -142,8 +142,8 @@ static func build(parent: Node3D, rng: RandomNumberGenerator) -> Dictionary:
 	return {"lights": lights, "solids": solids}
 
 
-static func kit_angel(kit: PropKit, at: Vector3, tone: int) -> Vector3:
-	kit.angel(_facing_middle(at), tone)
+static func kit_statue(kit: PropKit, at: Vector3, tone: int) -> Vector3:
+	kit.block_man(_facing_middle(at), tone)
 	return at
 
 

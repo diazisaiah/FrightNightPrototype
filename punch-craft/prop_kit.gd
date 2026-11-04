@@ -208,26 +208,29 @@ func plot(frame: Transform3D, w: float, d: float, rng: RandomNumberGenerator) ->
 			grave(frame * Transform3D(Basis.from_euler(tilt), Vector3(x, 0, z)), rng.randi_range(0, 4), rng.randi_range(0, 2))
 
 
-## A weeping angel on a plinth, wings folded, head bowed; about 3.4 m.
-func angel(frame: Transform3D, tone := 0) -> void:
+## A big, simple block-man statue on a stepped plinth, standing straight
+## with fists at his sides; about 4.6 m. All square blocks, no fiddly angles
+## (the weeping angels read as a mess at night, 2026-11-04).
+func block_man(frame: Transform3D, tone := 0) -> void:
 	var rock := grave_tone(tone)
 	var dark := grave_tone(tone + 2)
-	box_in(frame, Vector3(1.5, 0.35, 1.5), Vector3(0, 0.175, 0), dark)
-	box_in(frame, Vector3(1.15, 0.9, 1.15), Vector3(0, 0.8, 0), rock)
-	box_in(frame, Vector3(1.35, 0.15, 1.35), Vector3(0, 1.32, 0), dark)
-	box_in(frame, Vector3(0.6, 0.3, 0.02), Vector3(0, 0.85, -0.58), dark)
-	# Robe, wider at the hem.
-	box_in(frame, Vector3(0.8, 0.5, 0.6), Vector3(0, 1.65, 0), rock)
-	box_in(frame, Vector3(0.66, 0.6, 0.48), Vector3(0, 2.2, 0), rock)
-	box_in(frame, Vector3(0.56, 0.4, 0.42), Vector3(0, 2.68, 0), rock)
-	# Bowed head and the hands raised to the face.
-	box_in(frame, Vector3(0.3, 0.32, 0.3), Vector3(0, 3.02, -0.1), rock, Vector3(0.45, 0, 0))
+	box_in(frame, Vector3(1.9, 0.3, 1.9), Vector3(0, 0.15, 0), dark)
+	box_in(frame, Vector3(1.5, 0.8, 1.5), Vector3(0, 0.7, 0), rock)
+	box_in(frame, Vector3(1.7, 0.15, 1.7), Vector3(0, 1.17, 0), dark)
+	box_in(frame, Vector3(0.8, 0.3, 0.04), Vector3(0, 0.75, -0.76), dark)
+	var base := 1.25
 	for side in [-1.0, 1.0]:
-		box_in(frame, Vector3(0.14, 0.5, 0.14), Vector3(side * 0.24, 2.65, -0.22), rock, Vector3(-0.9, 0, side * 0.3))
-		# Folded wings rising behind the shoulders.
-		box_in(frame, Vector3(0.12, 1.3, 0.5), Vector3(side * 0.32, 2.75, 0.3), rock, Vector3(0.25, 0, side * 0.18))
-		box_in(frame, Vector3(0.1, 0.8, 0.35), Vector3(side * 0.42, 3.35, 0.38), rock, Vector3(0.1, 0, side * 0.35))
-		box_in(frame, Vector3(0.1, 0.9, 0.4), Vector3(side * 0.3, 1.95, 0.42), dark, Vector3(0.35, 0, side * 0.1))
+		box_in(frame, Vector3(0.42, 0.18, 0.62), Vector3(side * 0.27, base + 0.09, -0.06), rock)
+		box_in(frame, Vector3(0.38, 1.2, 0.42), Vector3(side * 0.27, base + 0.78, 0), rock)
+	box_in(frame, Vector3(0.96, 0.35, 0.5), Vector3(0, base + 1.5, 0), dark)
+	box_in(frame, Vector3(1.1, 1.05, 0.58), Vector3(0, base + 2.2, 0), rock)
+	box_in(frame, Vector3(1.4, 0.32, 0.6), Vector3(0, base + 2.6, 0), rock)
+	for side in [-1.0, 1.0]:
+		box_in(frame, Vector3(0.32, 1.1, 0.36), Vector3(side * 0.74, base + 1.95, 0), rock)
+		box_in(frame, Vector3(0.38, 0.36, 0.42), Vector3(side * 0.74, base + 1.25, 0), dark)
+	box_in(frame, Vector3(0.3, 0.2, 0.3), Vector3(0, base + 2.85, 0), rock)
+	box_in(frame, Vector3(0.62, 0.66, 0.6), Vector3(0, base + 3.27, 0), rock)
+	box_in(frame, Vector3(0.66, 0.1, 0.64), Vector3(0, base + 3.25, 0), dark)
 
 
 ## A tall obelisk on a stepped base; about 5 m.

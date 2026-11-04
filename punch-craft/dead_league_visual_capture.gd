@@ -139,7 +139,7 @@ func _capture_stage(index: int, yaw: float, pitch: float) -> void:
 	await _capture("res://dead_league_stage_%d_%d_capture.png" % [index, int(yaw)])
 
 
-## Monsters get round the Graveyard's solid props: for each angel / obelisk /
+## Monsters get round the Arena's solid props: for each statue / obelisk /
 ## oak, a zombie stands right behind it with you right in front, and must
 ## reach you within 6 s. Prints PASS / FAIL per prop and quits 1 on a fail.
 func _steer_test() -> void:
