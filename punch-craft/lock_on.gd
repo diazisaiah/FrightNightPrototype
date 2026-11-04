@@ -126,7 +126,7 @@ func steer(delta: float) -> void:
 ## locked one, if it is in reach and roughly in front. May step you toward it.
 func punch_target(reach: float) -> Enemy:
 	var lv := level()
-	if target == null or lv == "off" or target.is_dead():
+	if target == null or lv == "off" or not _valid(target):
 		return null
 	var cfg: Dictionary = LEVELS[lv]
 	var to := target.global_position - player.global_position
@@ -174,12 +174,18 @@ func _candidates() -> Array[Enemy]:
 	var list: Array[Enemy] = []
 	for node in get_tree().get_nodes_in_group("enemies"):
 		var enemy := node as Enemy
-		if enemy == null or not is_instance_valid(enemy) or not enemy.is_inside_tree() or enemy.is_dead() or not enemy.visible:
+		if not _valid(enemy):
 			continue
 		if enemy.global_position.distance_to(player.global_position) <= ACQUIRE:
 			list.append(enemy)
 	list.sort_custom(func(a: Enemy, b: Enemy) -> bool: return _score(a) < _score(b))
 	return list
+
+
+## Alive, in the scene, shown and running (the tutorial's dummy steps out of
+## the ring for the live fights: hidden and switched off).
+func _valid(enemy: Enemy) -> bool:
+	return enemy != null and is_instance_valid(enemy) and enemy.is_inside_tree() and not enemy.is_dead() 			and enemy.is_visible_in_tree() and enemy.can_process() and enemy.is_in_group("enemies")
 
 
 func _score(enemy: Enemy) -> float:
@@ -198,7 +204,7 @@ func _score(enemy: Enemy) -> float:
 
 
 func _choose() -> void:
-	if target != null and (not is_instance_valid(target) or target.is_dead() or not target.is_inside_tree()):
+	if target != null and not _valid(target):
 		target = null
 		_manual = false
 		_pick_t = NEXT_BEAT

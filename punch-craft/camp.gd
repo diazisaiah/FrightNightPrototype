@@ -1951,6 +1951,13 @@ func _shop_card(index: int, offer: Dictionary) -> Control:
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 4)
 	card.add_child(column)
+	# Emotes and hand idles: with the taller cards beside them, the preview and
+	# its name sit centered between the card's top and the buy button.
+	var centered: bool = offer.kind in ["emote", "idle"]
+	if centered:
+		var top_gap := Control.new()
+		top_gap.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		column.add_child(top_gap)
 	if offer.kind == "idle":
 		var preview := IdlePreview.new()
 		preview.idle_id = offer.id
@@ -1984,8 +1991,12 @@ func _shop_card(index: int, offer: Dictionary) -> Control:
 	var detail := _label(lines, 12, UiTheme.GOOD if offer.kind == "gear" else UiTheme.MUTED)
 	detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	detail.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	detail.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	detail.size_flags_vertical = Control.SIZE_SHRINK_BEGIN if centered else Control.SIZE_EXPAND_FILL
 	column.add_child(detail)
+	if centered:
+		var bottom_gap := Control.new()
+		bottom_gap.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		column.add_child(bottom_gap)
 	var buy := Button.new()
 	buy.custom_minimum_size.y = 36
 	if offer.sold:
