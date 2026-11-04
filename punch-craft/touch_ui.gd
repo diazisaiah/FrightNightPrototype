@@ -37,9 +37,9 @@ const GAP := 12.0
 
 ## id: [action or method, label, shape ("c" circle, "s" square), radius or half side, arrow]
 const BUTTONS := {
-	"interact": ["interact", "USE", "c", BUTTON_RADIUS, ""],
-	"ultimate": ["ultimate", "ULT", "star", BUTTON_RADIUS + 12.0, ""],
-	"jump": ["jump", "JUMP", "s", BUTTON_RADIUS, ""],
+	"interact": ["interact", "USE", "c", SQUARE_HALF - 2.0, ""],
+	"ultimate": ["ultimate", "ULT", "star", SQUARE_HALF + 6.0, ""],
+	"jump": ["jump", "JUMP", "s", SQUARE_HALF, ""],
 	"dash": ["dash", "DASH", "s", SQUARE_HALF, "up"],
 	"sprint": ["sprint", "RUN", "s", SQUARE_HALF, "up2"],
 	"back_step": ["back_step", "BACK", "s", SQUARE_HALF, "down"],
@@ -80,6 +80,10 @@ var _fingers := {}
 var _pinch_gap := 0.0
 ## Recent finger paths for the punch trails: [{pts, age}] once a finger lifts.
 var _fading: Array = []
+## A down swipe waiting to see if the other thumb joins (back step).
+var _pending_down := ""
+var _pending_down_t := 0.0
+const BACK_STEP_WINDOW := 0.11
 var _box := StyleBoxFlat.new()
 const TRAIL_FADE := 0.3
 const TRAIL_POINTS := 22
@@ -142,6 +146,10 @@ func _process(delta: float) -> void:
 		return
 	_size = get_viewport().get_visible_rect().size
 	_apply_sticks()
+	if _pending_down != "" and Time.get_ticks_msec() / 1000.0 - _pending_down_t > BACK_STEP_WINDOW:
+		if _player:
+			_player.touch_dodge(_pending_down, "roll")
+		_pending_down = ""
 	for fade in _fading:
 		fade.age += delta
 	_fading = _fading.filter(func(f: Dictionary) -> bool: return f.age < TRAIL_FADE)
@@ -192,29 +200,26 @@ func _button_center(id: String) -> Vector2:
 	var s := _scale()
 	var sq := SQUARE_HALF * s
 	var edge := 26.0 + sq
-	var bottom_y := _size.y * 0.64 - 14.0 - sq  # Just above the stick zones.
-	var jump_y := bottom_y - sq - GAP - BUTTON_RADIUS * s
-	var ult_r := _half("ultimate")
-	var p := Vector2.ZERO  # Distance from the right edge, y.
+	var step := sq * 2.0 + GAP
+	var y := _size.y * 0.64 - 14.0 - sq  # One row, just above the stick zones.
+	# Left side, left to right: BACK, DASH, JUMP (above the move stick).
+	# Right side, left to right: ULT, USE, RUN (above the look stick).
 	match id:
-		"dash":
-			p = Vector2(edge, bottom_y)
-		"sprint":
-			p = Vector2(edge + sq * 2.0 + GAP, bottom_y)
 		"back_step":
-			p = Vector2(edge + (sq * 2.0 + GAP) * 2.0, bottom_y)
+			return _mirror_x(Vector2(edge, y), true)
+		"dash":
+			return _mirror_x(Vector2(edge + step, y), true)
 		"jump":
-			p = Vector2(edge, jump_y)
-		"ultimate":
-			p = Vector2(edge + BUTTON_RADIUS * s + GAP + ult_r, jump_y - 8.0)
+			return _mirror_x(Vector2(edge + step * 2.0, y), true)
+		"sprint":
+			return _mirror_x(Vector2(_size.x - edge, y), false)
 		"interact":
-			# Left side, above the move stick (so the mirror puts it on the right).
-			return _mirror_x(Vector2(26.0 + BUTTON_RADIUS * s, jump_y), true)
-		_:
-			# Small buttons along the top right, left of the coin counter.
-			var step: int = TOP_STEP[id]
-			return Vector2(_size.x - 150.0 - step * (SMALL_RADIUS * s * 2.0 + 12.0), 64.0)
-	return _mirror_x(Vector2(_size.x - p.x, p.y), false)
+			return _mirror_x(Vector2(_size.x - edge - step, y), false)
+		"ultimate":
+			return _mirror_x(Vector2(_size.x - edge - step * 2.0, y), false)
+	# Small buttons along the top right, left of the coin counter.
+	var slot: int = TOP_STEP[id]
+	return Vector2(_size.x - 150.0 - slot * (SMALL_RADIUS * s * 2.0 + 12.0), 64.0)
 
 
 ## Left-handed layout: everything flips sideways.
@@ -482,6 +487,16 @@ func _swipe(side: String, delta: Vector2) -> void:
 	var kind := swipe_kind(side, delta)
 	if kind == "hook" or kind == "uppercut":
 		_punch(side, kind)
+	elif kind == "roll" and _player:
+		# Both thumbs swiping down together is the back step, so a down swipe
+		# waits a moment to see if the other side joins in.
+		var now := Time.get_ticks_msec() / 1000.0
+		if _pending_down != "" and _pending_down != side and now - _pending_down_t <= BACK_STEP_WINDOW:
+			_pending_down = ""
+			_player.touch_move("back_step")
+		else:
+			_pending_down = side
+			_pending_down_t = now
 	elif _player:
 		_player.touch_dodge(side, kind)
 

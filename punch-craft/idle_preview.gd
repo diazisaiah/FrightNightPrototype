@@ -28,7 +28,7 @@ func _ready() -> void:
 	environment.environment.ambient_light_color = Color(0.55, 0.55, 0.62)
 	viewport.add_child(environment)
 	var camera := Camera3D.new()
-	camera.fov = 70.0
+	camera.fov = 48.0
 	camera.position = Vector3(0, 0.08, 0.12)
 	viewport.add_child(camera)
 	_fists = Fists.new()

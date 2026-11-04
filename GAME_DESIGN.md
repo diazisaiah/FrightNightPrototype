@@ -2289,6 +2289,8 @@ A possible phone / tablet version. Nothing is built. It comes after the current 
 
 **Touch tweaks [Built, 2026-11-04, mobile 0.1.5]:** the look stick stays while locked on, greyed and marked UP / DOWN (the lock owns the sideways turn; the stick adds a vertical bias, +-0.6 rad, `LockOn.pitch_bias`). ULT is a 12-point star that glows and pulses when the ultimate is ready; JUMP is a square; LOCK sits next to EMOTE.
 
+**Touch layout v3 [Built, 2026-11-05, mobile 0.1.10, to try]:** one row of three on each side above the sticks. Left, left to right: BACK, DASH, JUMP. Right, left to right: ULT, USE, RUN. Swiping down with both thumbs at once is the back step (a single down swipe waits 0.11 s to see if the other thumb joins, then rolls). Hand idle previews zoomed in (fov 48).
+
 **Touch layer v1 [Built, 2026-11-04, before lock-on]:** `touch_ui.gd` (autoload `TouchUi`), live only while a fight runs (a Player that is active, the game not paused; menus use normal touch-as-mouse). It sends the same actions as keys and pads, plus `Player.touch_punch(hand, type)`, `touch_dodge(side, kind)` and `touch_move(move)`.
 - Floating sticks in the bottom corners (left moves, right looks, no lock-on yet). The rest of each half is that hand's punch zone: tap = jab / cross, swipe in = hook, up = uppercut, away = slip, down = roll (Junior Mode picks the dodge for both). A swipe fires at 46 px, a tap on release.
 - Buttons: left column USE, BACK (back step), RUN (sprint toggle, drops when the stick is released); right column ULT, JUMP, DASH; MAP, EMOTE, pause (II) at the top right.
