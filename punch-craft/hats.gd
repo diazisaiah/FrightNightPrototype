@@ -29,7 +29,7 @@ const LEGENDARIES := ["yonker_brim", "yonker_no_brim", "brim_no_yonker", "no_yon
 ## and the hats check_awards hands out.
 const TROPHIES := ["coffin_crown", "fire_cap", "gale_flattop", "storm_ears", "iron_mask", "frost_tiara",
 	"doom_mask", "blood_hairline", "quake_headband", "golden_quills", "bald_cap", "speed_mask", "wig_white",
-	"fat_plumber_cap", "tall_plumber_cap", "very_tall_plumber_cap", "very_fat_plumber_cap"]
+	"fat_plumber_cap", "tall_plumber_cap", "very_tall_plumber_cap", "very_fat_plumber_cap", "bluetooth_headpiece"]
 ## The plumber quest's caps (the Hot Plumber Hat first): all five for the
 ## overalls skin and the jump emote.
 const PLUMBER_CAPS := ["fire_cap", "fat_plumber_cap", "tall_plumber_cap", "very_tall_plumber_cap", "very_fat_plumber_cap"]
@@ -149,6 +149,11 @@ const CATALOG := {
 		"desc": "Won by landing one punch for 10,000+."},
 	"speed_mask": {"name": "Speedster Cowl", "rarity": "legendary", "effects": {"move_speed": 0.08, "punch_speed": 0.06},
 		"desc": "Won with big move and punch speed. Was here a second ago."},
+	# The merchant's toilet (2026-11-04): off the plumber he called on you.
+	# Shows the POWER of what you're looking at (Scouter) and translates the
+	# merchant.
+	"bluetooth_headpiece": {"name": "Fancy Bluetooth Headpiece", "rarity": "epic", "effects": {}, "preview": 2.2,
+		"desc": "Checks power levels and can translate anything!"},
 	# The plumber quest.
 	"fat_plumber_cap": {"name": "Fat Plumber Cap", "rarity": "epic", "effects": {"defense": 5.0, "damage_percent": 0.03},
 		"desc": "Off the plumber you made clean up after you."},
@@ -276,6 +281,8 @@ static func build(id: String, u: float, head := {}) -> Node3D:
 	var hat := Node3D.new()
 	hat.name = "Hat"
 	match id:
+		"bluetooth_headpiece":
+			_scouter(hat, u)
 		"party_hat":
 			for i in 5:
 				var w := 0.62 - i * 0.13
@@ -960,6 +967,25 @@ static func _speed_cowl(hat: Node3D, u: float) -> void:
 		_b(hat, u, Vector3(0.05, 0.2, 0.05), Vector3(0.64 * side, -0.08, 0.02), gold, Vector3(0, 0, 0.6 * side))
 		_b(hat, u, Vector3(0.05, 0.2, 0.05), Vector3(0.66 * side, -0.22, 0.02), gold, Vector3(0, 0, -0.6 * side))
 		_b(hat, u, Vector3(0.05, 0.2, 0.05), Vector3(0.68 * side, -0.36, 0.02), gold, Vector3(0, 0, 0.6 * side))
+
+
+## The Fancy Bluetooth Headpiece: a scouter clipped over the left ear, its
+## arm round past the cheek to a green lens in front of the left eye, a blue
+## light on the ear piece. Clear of the head all round.
+static func _scouter(hat: Node3D, u: float) -> void:
+	var shell := Color(0.92, 0.93, 0.96)
+	var gold := Color(0.95, 0.75, 0.3)
+	# The ear piece on the side of the head, a gold band, the hook behind the
+	# ear and the light.
+	_b(hat, u, Vector3(0.14, 0.32, 0.3), Vector3(-0.57, -0.3, 0.02), shell, Vector3.ZERO, false, 0.3)
+	_b(hat, u, Vector3(0.15, 0.06, 0.31), Vector3(-0.57, -0.15, 0.02), gold, Vector3.ZERO, false, 0.7)
+	_b(hat, u, Vector3(0.06, 0.22, 0.06), Vector3(-0.53, -0.16, 0.2), shell)
+	_b(hat, u, Vector3(0.03, 0.06, 0.06), Vector3(-0.65, -0.38, 0.1), Color(0.25, 0.55, 1.0), Vector3.ZERO, true)
+	# The arm forward past the cheek, across in front of the face, the lens.
+	_b(hat, u, Vector3(0.04, 0.05, 0.46), Vector3(-0.57, -0.24, -0.33), shell, Vector3.ZERO, false, 0.3)
+	_b(hat, u, Vector3(0.3, 0.04, 0.04), Vector3(-0.43, -0.24, -0.58), shell, Vector3.ZERO, false, 0.3)
+	_b(hat, u, Vector3(0.26, 0.18, 0.02), Vector3(-0.2, -0.25, -0.6), Color(0.06, 0.62, 0.16), Vector3.ZERO, true)
+	_b(hat, u, Vector3(0.28, 0.02, 0.03), Vector3(-0.2, -0.155, -0.6), gold, Vector3.ZERO, false, 0.7)
 
 
 ## One block of a hat: size and position in head widths.

@@ -191,15 +191,21 @@ func _preview(tint: Color) -> Control:
 	holder.add_child(_hat)
 	# Centered on its blocks: masks and helmets hang down below the head
 	# top (their origin) and were cut off under the window. Very tall ones
-	# shrink to fit.
+	# shrink to fit; small ones can ask to be shown bigger ("preview").
 	var bounds := _bounds(_hat, Transform3D.IDENTITY)
 	if bounds.size != Vector3.ZERO:
-		var fit := minf(1.0, 1.1 / bounds.size.y)
+		var fit := minf(1.0, 1.1 / bounds.size.y) * float(Hats.info(_id).get("preview", 1.0))
 		var center := Node3D.new()
 		center.scale = Vector3.ONE * fit
 		center.position.y = 0.42 - bounds.get_center().y * fit
 		holder.remove_child(_hat)
-		center.add_child(_hat)
+		# It turns about the middle of its blocks, not the head top (a
+		# clip-on headpiece sits off to one side).
+		var spin := Node3D.new()
+		center.add_child(spin)
+		spin.add_child(_hat)
+		_hat.position = Vector3(-bounds.get_center().x, 0.0, -bounds.get_center().z)
+		_hat = spin
 		holder.add_child(center)
 	Hats.sparkles(holder, tint, 0.9)
 	var camera := Camera3D.new()

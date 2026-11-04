@@ -91,7 +91,10 @@ const SHRINE_ROOM := Vector2(12, 12)
 ## room with nothing in it but a toilet. Poop in it TOILET_CLOG times and it
 ## clogs, and an angry plumber comes for you (Crown-arena tough, in the Fat
 ## Plumber Cap).
-const TOILET_CHANCE := 0.01
+## (2026-11-04: any time, 5% a floor; the merchant keeps one 10% of the
+## time. Only the poop emote can clog one.)
+const TOILET_CHANCE := 0.05
+const MERCHANT_TOILET_CHANCE := 0.1
 const TOILET_ROOM := Vector2(10, 10)
 const TOILET_CLOG := 3
 const PORCELAIN := Color(0.93, 0.93, 0.9)
@@ -224,6 +227,7 @@ func _ready() -> void:
 	_hud.item_decided.connect(_on_item_decided)
 	_hud.item_option_chosen.connect(_on_item_option)
 	_hud.choice_made.connect(_on_choice_made)
+	_hud.merchant_asked.connect(_on_merchant_asked)
 	_hud.set_knuckles(_player.knuckles, _player.max_knuckles)
 	_hud.set_combo(0, 1.0)
 	_hud.set_equipment(GameState.equipped)
@@ -410,7 +414,7 @@ func _generate_layout() -> void:
 		var wanted: Array = SIDE_ROOMS.duplicate()
 		if randf() < SHRINE_CHANCE:
 			wanted.append("shrine")
-		if force_toilet or (Achievements.emote_unlocked("overexerted") and randf() < TOILET_CHANCE):
+		if force_toilet or randf() < TOILET_CHANCE:
 			wanted.append("toilet")
 		var placed := 0
 		var hosts := _rooms.slice(1, MAIN_ROOMS - 1)
@@ -468,6 +472,7 @@ func _shape_rooms() -> void:
 				room.size = CHEST_ROOM
 			"merchant":
 				room.size = MERCHANT_ROOM
+				room.toilet = force_toilet or randf() < MERCHANT_TOILET_CHANCE
 			"shrine":
 				room.size = SHRINE_ROOM
 			"toilet":
@@ -740,6 +745,7 @@ func _spawn_enemy(entry: Dictionary, at: Vector3) -> Enemy:
 	enemy.setup(_player, entry.armored, entry.scaling if entry.has("scaling") else night_only if is_boss_kind else _scaling(_current_room))
 	if is_boss_kind:
 		enemy.windup_pad = Progression.boss_windup_pad(Progression.crypt_boss_tier(_floor))
+		enemy.set_meta("power", PowerRating.crypt_floor_boss_power(_floor) * Progression.crypt_endless_growth(_floor, 1.0))
 	enemy.set_meta("kind", kind)
 	enemy.position = at
 	enemy.arena_center = _current_room.center
@@ -809,6 +815,12 @@ func _on_enemy_died(enemy: Enemy) -> void:
 	GameState.add_xp(xp)
 	_player.heal(_player.kill_heal(enemy))
 	_update_info()
+	if enemy.has_meta("plumber"):
+		# Beaten, he gives up. The one the merchant called leaves his
+		# Fancy Bluetooth Headpiece (the first time).
+		_hud.say("PLUMBER", "Just go, I'll take care of it myself.", Color(0.55, 0.7, 1.0), 3.0)
+		if enemy.get_meta("plumber") == "merchant":
+			Hats.award(get_tree(), "bluetooth_headpiece")
 	if kind == "mimic":
 		# Beaten, it coughs up the real thing (an elite one, its prize).
 		_place_chest(Vector3(enemy.global_position.x, 0, enemy.global_position.z), "prize" if enemy.has_meta("elite_mimic") else "elite")
@@ -1456,7 +1468,7 @@ func _build_merchant(room: Dictionary) -> void:
 	flask.add_child(_mesh(Enemy._box(Vector3(0.07, 0.08, 0.07)), potion, Vector3(0, 0.14, 0)))
 	flask.add_child(_mesh(Enemy._box(Vector3(0.08, 0.04, 0.08)), wood, Vector3(0, 0.2, 0)))
 	_merchant = {"root": root, "head": head, "jaw": jaw, "hands": hands, "wares": wares, "flask": flask,
-			"heal_used": false, "grunt_in": 0.0, "near": false, "jaw_time": 0.0, "time": 0.0}
+			"heal_used": false, "grunt_in": 0.0, "near": false, "jaw_time": 0.0, "time": 0.0, "toilet": room.get("toilet", false)}
 	_interactables.append({"node": table, "kind": "merchant", "used": false})
 
 
@@ -1518,7 +1530,28 @@ func _merchant_grunt(pitch := 1.0) -> void:
 
 func _open_merchant() -> void:
 	var wares: Array = _merchant.wares.map(func(ware: Dictionary) -> Dictionary: return {"item": ware.item, "price": ware.price, "sold": ware.sold})
-	_hud.show_merchant(wares, {"price": HEAL_PRICE, "percent": roundi(HEAL_FRACTION * 100), "used": _merchant.heal_used}, _silver)
+	_hud.show_merchant(wares, {"price": HEAL_PRICE, "percent": roundi(HEAL_FRACTION * 100), "used": _merchant.heal_used}, _silver,
+			"Ask about the toilet" if _merchant.get("toilet", false) else "")
+
+
+## "Why do you have a toilet... undead people can't poop." He groans; with
+## the Fancy Bluetooth Headpiece on, you get the translation.
+func _on_merchant_asked() -> void:
+	var translated := GameState.worn_hat == "bluetooth_headpiece"
+	var lines := [
+		["YOU", "Why do you have a toilet... undead people can't poop.", Color.WHITE],
+		["MERCHANT (TRANSLATED)", "I just need some time for myself, ya know?", Color(0.6, 1.0, 0.55)] if translated \
+				else ["MERCHANT", "Ughhhhhhhh... groooooannn.", Color(0.75, 0.9, 0.6)],
+		["YOU", "The merchant is so real for that." if translated else "Oh yeah, he's undead.", Color.WHITE],
+	]
+	for i in lines.size():
+		var line: Array = lines[i]
+		get_tree().create_timer(i * 2.6, false).timeout.connect(func() -> void:
+			if not is_inside_tree():
+				return
+			_hud.say(line[0], line[1], line[2], 2.1)
+			if String(line[0]).begins_with("MERCHANT"):
+				_merchant_grunt(0.8 if not translated else 1.0))
 
 
 func _on_ware_chosen(index: int) -> void:
@@ -1574,9 +1607,15 @@ func _build_shrine(room: Dictionary) -> void:
 ## A toilet in the middle of an empty room, under one bare bulb. Poops
 ## dropped near it go in (PoopFx); TOILET_CLOG of them and it clogs.
 func _build_toilet(room: Dictionary) -> void:
+	_place_toilet(room.center, randi_range(0, 3) * PI / 2.0, room, true)
+
+
+## A toilet (its tank at local +Z): in the toilet room under its bulb, or in
+## the merchant's corner.
+func _place_toilet(at: Vector3, yaw: float, room: Dictionary, bulb_over := false) -> void:
 	var toilet := StaticBody3D.new()
-	toilet.position = room.center
-	toilet.rotation.y = randi_range(0, 3) * PI / 2.0
+	toilet.position = at
+	toilet.rotation.y = yaw
 	_level.add_child(toilet)
 	toilet.add_to_group("toilet")
 	var porcelain := _material("porcelain", PORCELAIN, 0.1)
@@ -1591,13 +1630,14 @@ func _build_toilet(room: Dictionary) -> void:
 	# The water: rises and browns as it clogs.
 	var water := _mesh(Enemy._box(Vector3(0.44, 0.02, 0.5)), Enemy._material(Color(0.5, 0.7, 0.85), 0.0), Vector3(0, 0.46, -0.06))
 	toilet.add_child(water)
-	var bulb := OmniLight3D.new()
-	bulb.light_color = Color(1.0, 0.92, 0.75)
-	bulb.light_energy = 2.2
-	bulb.omni_range = 8.0
-	bulb.position = room.center + Vector3(0, 3.4, 0)
-	_level.add_child(bulb)
-	_level.add_child(_mesh(Enemy._box(Vector3(0.14, 0.18, 0.14)), Enemy._glow_material(Color(1.0, 0.92, 0.7)), bulb.position))
+	if bulb_over:
+		var bulb := OmniLight3D.new()
+		bulb.light_color = Color(1.0, 0.92, 0.75)
+		bulb.light_energy = 2.2
+		bulb.omni_range = 8.0
+		bulb.position = room.center + Vector3(0, 3.4, 0)
+		_level.add_child(bulb)
+		_level.add_child(_mesh(Enemy._box(Vector3(0.14, 0.18, 0.14)), Enemy._glow_material(Color(1.0, 0.92, 0.7)), bulb.position))
 	toilet.set_meta("bowl", Vector3(0, 0.46, -0.06))
 	toilet.set_meta("on_poop", _on_toilet_poop.bind(toilet, water, room))
 
@@ -1630,6 +1670,9 @@ func _on_toilet_poop(toilet: Node3D, water: MeshInstance3D, room: Dictionary) ->
 	_seal_doors(room)
 	_player.on_room_start()
 	_hud.announce("YOU CLOGGED IT!")
+	if room.type == "merchant" and not _merchant.is_empty():
+		_merchant_grunt(1.4)
+		_hud.say("MERCHANT", "PLUMBERRRRRRR!", Color(0.75, 0.9, 0.6), 2.2)
 	var scaling := Progression.enemy_scaling(maxf(_position(), Progression.arena_position(5, 1)),
 			maxf(Progression.crypt_difficulty(_floor, _start_floor), Progression.arena_difficulty(5, 1)))
 	scaling.hat = "fat_plumber_cap"
@@ -1641,6 +1684,7 @@ func _on_toilet_poop(toilet: Node3D, water: MeshInstance3D, room: Dictionary) ->
 	var plumber := _spawn_enemy({"kind": "zombie", "armored": false, "scaling": scaling}, Vector3(spot.x, 0.1, spot.z))
 	plumber.make_champion(["Brutal", "Hulking"])
 	plumber.display_name = "Angry Plumber"
+	plumber.set_meta("plumber", room.type)
 	plumber._update_label()
 	_hud.announce_small("The plumber is NOT happy.", Color(0.9, 0.2, 0.15))
 
@@ -2194,6 +2238,12 @@ func _dress_stalls(room: Dictionary) -> void:
 	_add_mesh(Enemy._box(side.abs() * 3.1 + back.abs() * 1.9 + Vector3(0, 0.02, 0)), cloth, rug_at + Vector3(0, 0.016, 0))
 	var shop: Vector3 = room.center + back * 2.8
 	room.keep_out.append([Vector2(shop.x - room.center.x, shop.z - room.center.z), 2.4])
+	if room.get("toilet", false):
+		# His own toilet, by the back wall beside him (2026-11-04). Undead
+		# can't poop. So why?
+		var spot: Vector3 = room.center + back * (_extent(room, back) - 0.75) + side * 2.6
+		_place_toilet(spot, atan2(back.x, back.z), room)
+		room.keep_out.append([Vector2(spot.x - room.center.x, spot.z - room.center.z), 1.3])
 	var wood := _material("crate", Color(0.36, 0.25, 0.14))
 	var dark := _material("beam", Color(0.16, 0.1, 0.06))
 	var sack := _material("sack", Color(0.5, 0.42, 0.3))

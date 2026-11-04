@@ -21,6 +21,8 @@ signal gild_chosen(item: Dictionary)
 signal ware_chosen(index: int)
 ## show_choice's answer: the index of the option picked.
 signal choice_made(index: int)
+## The merchant's "Ask about the toilet" (only when he has one).
+signal merchant_asked
 
 ## The Rhythm bonus on the combo line (the Drowned set's seafoam).
 const RHYTHM_COLOR := Color(0.32, 0.85, 0.78)
@@ -215,6 +217,8 @@ func _style_hud() -> void:
 			_knuckle_ticks.draw_line(Vector2(x, 3), Vector2(x, _knuckle_ticks.size.y - 3), Color(0, 0, 0, 0.35), 2.0))
 	for label in [_announcement, _wave_label, _combo_label, _counter_label]:
 		label.add_theme_font_override("font", UiTheme.display_font())
+	# The Fancy Bluetooth Headpiece's readout under the crosshair.
+	add_child(Scouter.new())
 	_rhythm_label = Label.new()
 	_rhythm_label.add_theme_font_override("font", UiTheme.display_font())
 	_rhythm_label.add_theme_font_size_override("font_size", _combo_label.get_theme_font_size("font_size"))
@@ -1161,7 +1165,7 @@ func show_gild_menu(entries: Array, silver: int) -> void:
 
 ## The Crypt merchant's table. wares: [{item, price, sold}]; heal: {price,
 ## percent, used}. Each card has its price; Done closes it.
-func show_merchant(wares: Array, heal: Dictionary, silver: int) -> void:
+func show_merchant(wares: Array, heal: Dictionary, silver: int, ask_text := "") -> void:
 	for child in _item_panel.get_children():
 		child.queue_free()
 	var column := VBoxContainer.new()
@@ -1210,6 +1214,15 @@ func show_merchant(wares: Array, heal: Dictionary, silver: int) -> void:
 	patch_up.pressed.connect(func() -> void: ware_chosen.emit(-1))
 	kit.add_child(patch_up)
 	cards.add_child(kit)
+	if ask_text != "":
+		var ask := Button.new()
+		ask.text = ask_text
+		ask.custom_minimum_size = Vector2(240, 44)
+		ask.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		ask.pressed.connect(func() -> void:
+			_close_item_panel()
+			merchant_asked.emit())
+		column.add_child(ask)
 	var done := Button.new()
 	done.text = "Done"
 	done.custom_minimum_size = Vector2(200, 44)

@@ -26,6 +26,7 @@ func _run() -> void:
 	_test_seals_and_gear()
 	_test_gear()
 	_test_room_furniture()
+	_test_toilet_and_headpiece()
 	_test_hats_and_tony()
 	_test_web_optimization_structure()
 	_test_browser_audio_guard()
@@ -823,6 +824,25 @@ func _test_room_furniture() -> void:
 				clear = false
 	dungeon.free()
 	_check(clear and placed > 30, "Room props keep out of the door lanes and the fight's clear middle (%d placed)" % placed)
+
+
+## The merchant's toilet (Crypt revamp, 2026-11-04): 10% of merchants keep
+## one and toilet rooms come 5% a floor, emote or not; the Fancy Bluetooth
+## Headpiece is won (never dropped), gives no stats, and reads a fresh zombie
+## at a fresh fighter's POWER (bosses read their own).
+func _test_toilet_and_headpiece() -> void:
+	var dungeon: GDScript = load("res://dungeon.gd")
+	_check(is_equal_approx(dungeon.MERCHANT_TOILET_CHANCE, 0.1) and is_equal_approx(dungeon.TOILET_CHANCE, 0.05),
+			"A merchant keeps a toilet 10% of the time; toilet rooms 5% a floor")
+	var hat := Hats.info("bluetooth_headpiece")
+	_check(not hat.is_empty() and (hat.effects as Dictionary).is_empty() and "bluetooth_headpiece" in Hats.TROPHIES,
+			"The Fancy Bluetooth Headpiece is a won hat with no stat boost")
+	var zombie: Enemy = (load("res://zombie.tscn") as PackedScene).instantiate()
+	_check(PowerRating.monster_power(zombie) == roundi(PowerRating.neutral_par_power(0)),
+			"A fresh zombie reads a fresh fighter's POWER (%d)" % PowerRating.monster_power(zombie))
+	zombie.set_meta("power", 6084)
+	_check(PowerRating.monster_power(zombie) == 6084, "A boss reads its own POWER on the headpiece")
+	zombie.free()
 
 
 func _weighted_kind(types: Dictionary, progress: float) -> String:

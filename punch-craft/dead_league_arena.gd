@@ -175,6 +175,9 @@ func _spawn_boss() -> void:
 	if _true:
 		_boss.empower(_round)
 	_boss.setup(_player, false)
+	# What the Fancy Bluetooth Headpiece reads (the menu's POWER).
+	if not _true:
+		_boss.set_meta("power", PowerRating.contender(GameState.dead_league_bout))
 	_boss.position = BOSS_POSITION
 	_boss.arena_center = RING_CENTER
 	_boss.arena_limit = RING_HALF_SIZE - 0.6

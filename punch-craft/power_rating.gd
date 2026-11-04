@@ -427,6 +427,22 @@ static func _monster_weight(stats: Array) -> float:
 	return sqrt(stats[0] / MONSTERS.zombie[0] * stats[1] / MONSTERS.zombie[1])
 
 
+## One monster's POWER, as the Fancy Bluetooth Headpiece reads it (Scouter):
+## how its HP and hit compare with a fresh zombie's (20 HP, 6 a hit: a fresh
+## fighter's POWER), square-rooted like POWER is. Bosses that carry their own
+## ("power": contenders, Crypt floor bosses) read that.
+static func monster_power(enemy: Enemy) -> int:
+	if enemy.has_meta("power"):
+		return roundi(float(enemy.get_meta("power")))
+	var hit := float(MONSTERS.zombie[1])
+	var base = enemy.get("attack_damage")
+	if base != null:
+		hit = float(base)
+	hit *= enemy.damage_multiplier
+	var tough := sqrt(maxf(enemy.max_hp, 1.0) / MONSTERS.zombie[0] * maxf(hit, 0.1) / MONSTERS.zombie[1])
+	return roundi(neutral_par_power(0) * tough)
+
+
 ## Par's POWER at tier t with no class (0 = a fresh fighter).
 static func neutral_par_power(tier: int) -> float:
 	if not _neutral_cache.has(tier):
