@@ -30,6 +30,9 @@ const DEFAULTS := {
 	"bindings": {},
 	# Controllers: your own button bindings, look speed, invert, rumble.
 	"pad_bindings": {}, "stick_sensitivity": 1.0, "invert_y": false, "vibration": true,
+	# Touch screens (TouchUi): button size, how see-through the controls are,
+	# the left-handed layout (move on the right, look on the left), look speed.
+	"touch_scale": 1.0, "touch_opacity": 1.0, "touch_swap": false, "touch_look_speed": 1.0,
 }
 
 var values := DEFAULTS.duplicate()

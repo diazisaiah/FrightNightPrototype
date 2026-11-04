@@ -52,6 +52,8 @@ var _move_vec := Vector2.ZERO
 var _look_vec := Vector2.ZERO
 var _sprint_on := false
 var _held_buttons := {}
+## While EMOTE is held: where the finger has dragged, up to length 1 (the wheel).
+var wheel_vec := Vector2.ZERO
 
 
 func _ready() -> void:
@@ -114,28 +116,40 @@ func _find_player() -> Player:
 
 # --- Layout --------------------------------------------------------------------------
 
-func _left_zone() -> Rect2:
-	return Rect2(0, _size.y * 0.5, _size.x * 0.27, _size.y * 0.5)
+## Settings: button size, and the left-handed layout (mirrored).
+func _scale() -> float:
+	return float(Settings.get_value("touch_scale"))
 
 
-func _right_zone() -> Rect2:
-	return Rect2(_size.x * 0.73, _size.y * 0.5, _size.x * 0.27, _size.y * 0.5)
+func _swapped() -> bool:
+	return bool(Settings.get_value("touch_swap"))
+
+
+## The corner zone where a stick starts: "move" is the left one, "look" the
+## right one (the other way round when left-handed).
+func _zone(role: String) -> Rect2:
+	var left_side := (role == "move") != _swapped()
+	var width := _size.x * 0.27
+	return Rect2(0 if left_side else _size.x - width, _size.y * 0.5, width, _size.y * 0.5)
 
 
 func _button_center(id: String) -> Vector2:
 	var spec: Array = BUTTONS[id]
+	var edge := 36.0 + float(spec[3]) * _scale()
 	match spec[1]:
 		"L":
-			return Vector2(58.0 + 12.0, _size.y * float(spec[2]) + 60.0)
+			var x := edge if not _swapped() else _size.x - edge
+			return Vector2(x, _size.y * float(spec[2]) + 60.0)
 		"R":
-			return Vector2(_size.x - 70.0, _size.y * float(spec[2]) + 60.0)
+			var x := _size.x - edge if not _swapped() else edge
+			return Vector2(x, _size.y * float(spec[2]) + 60.0)
 	# Map, emote and pause in a row at the top right, left of the ULT button.
 	return Vector2(_size.x - 135.0 - (1.0 - float(spec[2])) * 60.0, 50.0)
 
 
 func _button_at(pos: Vector2) -> String:
 	for id in BUTTONS:
-		if pos.distance_to(_button_center(id)) <= float(BUTTONS[id][3]) + 10.0:
+		if pos.distance_to(_button_center(id)) <= float(BUTTONS[id][3]) * _scale() + 10.0:
 			return id
 	return ""
 
@@ -164,9 +178,9 @@ func _touch_down(index: int, pos: Vector2) -> void:
 		touch.role = "button"
 		touch.button = button
 		_press_button(button)
-	elif _left_zone().has_point(pos) and not _has_role("move"):
+	elif _zone("move").has_point(pos) and not _has_role("move"):
 		touch.role = "move"
-	elif _right_zone().has_point(pos) and not _has_role("look"):
+	elif _zone("look").has_point(pos) and not _has_role("look"):
 		touch.role = "look"
 	_touches[index] = touch
 
@@ -230,11 +244,12 @@ func _punch(side: String, type: String) -> void:
 func _stick_vector(role: String) -> Vector2:
 	for touch in _touches.values():
 		if touch.role == role:
-			var v: Vector2 = (touch.pos - touch.start) / STICK_RADIUS
+			var radius := STICK_RADIUS * _scale()
+			var v: Vector2 = (touch.pos - touch.start) / radius
 			if v.length() > 1.0:
 				v = v.normalized()
 				# The base follows the thumb so a long drag keeps working.
-				touch.start = touch.pos - v * STICK_RADIUS
+				touch.start = touch.pos - v * radius
 			return v
 	return Vector2.ZERO
 
@@ -242,8 +257,19 @@ func _stick_vector(role: String) -> Vector2:
 func _apply_sticks() -> void:
 	_move_vec = _stick_vector("move")
 	_look_vec = _stick_vector("look")
+	if Settings.get_value("invert_y"):
+		_look_vec.y = -_look_vec.y
+	wheel_vec = _emote_drag()
 	_set_axes("move_left", "move_right", "move_forward", "move_back", _move_vec)
 	_set_axes("look_left", "look_right", "look_up", "look_down", _look_vec)
+
+
+## The finger on the EMOTE button, dragged: the wheel points where it went.
+func _emote_drag() -> Vector2:
+	for touch in _touches.values():
+		if touch.role == "button" and touch.button == "emote":
+			return ((touch.pos - touch.start) / (90.0 * _scale())).limit_length(1.0)
+	return Vector2.ZERO
 
 
 func _set_axes(left: String, right: String, up: String, down: String, v: Vector2) -> void:
@@ -320,11 +346,12 @@ func _release_all() -> void:
 
 func _draw_controls() -> void:
 	var font := ThemeDB.fallback_font
-	_draw_stick("move", _left_zone(), "MOVE")
-	_draw_stick("look", _right_zone(), "LOOK")
+	_canvas.modulate = Color(1, 1, 1, float(Settings.get_value("touch_opacity")))
+	_draw_stick("move", _zone("move"), "MOVE")
+	_draw_stick("look", _zone("look"), "LOOK")
 	for id in BUTTONS:
 		var center := _button_center(id)
-		var radius: float = BUTTONS[id][3]
+		var radius: float = float(BUTTONS[id][3]) * _scale()
 		var pressed: bool = _held_buttons.has(id) or (id == "sprint" and _sprint_on)
 		for touch in _touches.values():
 			if touch.role == "button" and touch.button == id:
@@ -347,11 +374,12 @@ func _draw_stick(role: String, zone: Rect2, label: String) -> void:
 	for touch in _touches.values():
 		if touch.role == role:
 			base = touch.start
-			knob_offset = (touch.pos - touch.start).limit_length(STICK_RADIUS)
+			knob_offset = (touch.pos - touch.start).limit_length(STICK_RADIUS * _scale())
 	var idle := knob_offset == Vector2.ZERO
-	_canvas.draw_circle(base, STICK_RADIUS, Color(1, 1, 1, 0.05 if idle else 0.09))
-	_canvas.draw_arc(base, STICK_RADIUS, 0.0, TAU, 48, Color(1, 1, 1, 0.22 if idle else 0.45), 2.0)
-	_canvas.draw_circle(base + knob_offset, 34.0, Color(1, 1, 1, 0.16 if idle else 0.38))
+	var radius := STICK_RADIUS * _scale()
+	_canvas.draw_circle(base, radius, Color(1, 1, 1, 0.05 if idle else 0.09))
+	_canvas.draw_arc(base, radius, 0.0, TAU, 48, Color(1, 1, 1, 0.22 if idle else 0.45), 2.0)
+	_canvas.draw_circle(base + knob_offset, 34.0 * _scale(), Color(1, 1, 1, 0.16 if idle else 0.38))
 	if idle:
 		var font := ThemeDB.fallback_font
 		var width := font.get_string_size(label, HORIZONTAL_ALIGNMENT_CENTER, -1, 12).x

@@ -386,7 +386,7 @@ func _step_keys(step: Dictionary) -> Array:
 ## whether you're on a controller.
 func _refresh_keys() -> void:
 	if _skip_cap:
-		_skip_cap.get_child(0).text = Controls.key_name("map") if Controls.pad() else "T"
+		_skip_cap.get_child(0).text = Controls.key_name("map") if Controls.pad() or Controls.touch() else "T"
 	if _step >= 0:
 		_fill_keys(_step_keys(_plan[_step]), _plan[_step].get("cue", ""))
 	elif _practice and _practice.visible:
@@ -720,7 +720,7 @@ func _build_coach() -> void:
 	box.add_child(_coach_warning)
 	var skip := HBoxContainer.new()
 	skip.add_theme_constant_override("separation", 8)
-	_skip_cap = _keycap("T")
+	_skip_cap = _keycap(Controls.key_name("map") if Controls.pad() or Controls.touch() else "T")
 	skip.add_child(_skip_cap)
 	var skip_text := _coach_label(14, UiTheme.MUTED)
 	skip_text.text = "Skip the tutorial"
@@ -743,8 +743,10 @@ func _build_coach() -> void:
 func _side_card() -> PanelContainer:
 	var card := PanelContainer.new()
 	card.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	card.offset_left = 20.0
-	card.offset_right = 400.0
+	# On a touch screen, clear of the left column of buttons.
+	var shift := 100.0 if Controls.touch() else 0.0
+	card.offset_left = 20.0 + shift
+	card.offset_right = 400.0 + shift
 	card.offset_top = 104.0
 	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	card.add_theme_stylebox_override("panel", UiTheme.card(18.0))
@@ -827,10 +829,11 @@ func _update_info() -> void:
 	for child in _practice_rows.get_children():
 		child.queue_free()
 	var telegraph: String = Dummy.TELEGRAPHS[_dummy.telegraph - 1].name
-	if Controls.pad():
-		# On a controller, the map button cycles the dummy's level.
+	if Controls.pad() or Controls.touch():
+		# On a controller or a touch screen, the map button cycles the dummy's level.
 		_practice_row(Controls.key_name("map"), "DUMMY LEVEL %d" % _dummy.level, Dummy.LEVEL_DESCRIPTIONS[_dummy.level - 1])
-		_practice_row("Keyboard", "TELEGRAPH", telegraph.get_slice("  (", 0) + "  (Up / Down)")
+		if Controls.pad():
+			_practice_row("Keyboard", "TELEGRAPH", telegraph.get_slice("  (", 0) + "  (Up / Down)")
 		return
 	_practice_row("1 - %d" % Dummy.MAX_LEVEL, "DUMMY LEVEL %d" % _dummy.level, Dummy.LEVEL_DESCRIPTIONS[_dummy.level - 1])
 	_practice_row("UP / DOWN", "TELEGRAPH", telegraph.get_slice("  (", 0))

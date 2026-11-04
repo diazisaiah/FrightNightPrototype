@@ -14,7 +14,7 @@ const TABS := [["SOUND", "note"], ["CONTROLS", "glove"], ["DISPLAY", "sun"], ["S
 ## Each choice setting's options as [title, detail] tiles.
 const CHOICES := {
 	"assist_mode": {
-		"junior": ["Weenie Hut Junior", "Q / E dodges, the game picks how"],
+		"junior": ["Weenie Hut Junior", "One dodge input, the game picks how"],
 		"pro": ["Pro Gamer", "Slip, roll and back step yourself"],
 	},
 	"punch_mode": {
@@ -158,19 +158,29 @@ func _ready() -> void:
 	_toggle(sound, "muted", "skull", "Mute all sound", "Silence, even the bell")
 
 	var controls := _page(pages, "CONTROLS")
-	_slider(controls, "mouse_sensitivity", "crosshair", "Mouse sensitivity", "How fast you look around", 0.25, 3.0, 0.05, "x%.2f", 1.0)
-	_slider(controls, "fov", "eye", "Field of view", "How wide you see", 60.0, 100.0, 1.0, "%d", 1.0)
-	_choice(controls, "assist_mode", "slip", "Mode", "How dodging works")
-	_choice(controls, "punch_mode", "crossed_gloves", "Hooks and uppercuts", "How you throw them")
-	_choice(controls, "dodge_mode", "swoosh", "Rolls and back step", "Pro Gamer Mode keys, and the dash")
-	_choice(controls, "slip_mode", "wing_boot", "Slips", "Pro Gamer Mode keys")
+	if Controls.touch():
+		_slider(controls, "fov", "eye", "Field of view", "How wide you see", 60.0, 100.0, 1.0, "%d", 1.0)
+		_choice(controls, "assist_mode", "slip", "Mode", "How dodging works")
+		_slider(controls, "touch_scale", "crosshair", "Button size", "Sticks and buttons", 0.7, 1.5, 0.05, "x%.2f", 1.0)
+		_slider(controls, "touch_opacity", "eye", "Button opacity", "Lower to see more of the fight", 0.2, 1.0, 0.05, "%d%%", 100.0)
+		_slider(controls, "touch_look_speed", "crosshair", "Look speed", "How fast the look stick turns you", 0.3, 3.0, 0.05, "x%.2f", 1.0)
+		_toggle(controls, "touch_swap", "swoosh", "Left-handed layout", "Move on the right, look on the left")
+		_toggle(controls, "invert_y", "eye", "Invert look", "Drag up to look down")
+	else:
+		_slider(controls, "mouse_sensitivity", "crosshair", "Mouse sensitivity", "How fast you look around", 0.25, 3.0, 0.05, "x%.2f", 1.0)
+		_slider(controls, "fov", "eye", "Field of view", "How wide you see", 60.0, 100.0, 1.0, "%d", 1.0)
+		_choice(controls, "assist_mode", "slip", "Mode", "How dodging works")
 	_scheme_note = _label("", 14, UiTheme.BAD)
 	_scheme_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	controls.add_child(_scheme_note)
-	_slider(controls, "stick_sensitivity", "crosshair", "Controller look speed", "How fast the right stick turns you", 0.3, 3.0, 0.05, "x%.2f", 1.0)
-	_toggle(controls, "invert_y", "eye", "Invert controller look", "Push up to look down")
-	_toggle(controls, "vibration", "quake", "Controller vibration", "Rumble when you get hit")
-	_build_bindings(controls)
+	if not Controls.touch():
+		_choice(controls, "punch_mode", "crossed_gloves", "Hooks and uppercuts", "How you throw them")
+		_choice(controls, "dodge_mode", "swoosh", "Rolls and back step", "Pro Gamer Mode keys, and the dash")
+		_choice(controls, "slip_mode", "wing_boot", "Slips", "Pro Gamer Mode keys")
+		controls.add_child(_scheme_note)
+		_slider(controls, "stick_sensitivity", "crosshair", "Controller look speed", "How fast the right stick turns you", 0.3, 3.0, 0.05, "x%.2f", 1.0)
+		_toggle(controls, "invert_y", "eye", "Invert controller look", "Push up to look down")
+		_toggle(controls, "vibration", "quake", "Controller vibration", "Rumble when you get hit")
+		_build_bindings(controls)
 
 	var display := _page(pages, "DISPLAY")
 	_slider(display, "screen_shake", "quake", "Screen shake", "Shake on big hits", 0.0, 1.0, 0.05, "%d%%", 100.0)

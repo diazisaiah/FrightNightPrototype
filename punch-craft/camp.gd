@@ -89,7 +89,7 @@ func _camp_tips() -> void:
 	first.finished.connect(func() -> void:
 		_show_cosmetic("Hats")
 		Tutorial.open(self, "hat_rack_tour", "THE HAT RACK",
-				"Every hat gives a small boost that's yours for good, worn or not.\n\nClick a hat to wear it, and hold %s in a fight to emote and show it off." % Controls.key_name("emote"),
+				"Every hat gives a small boost that's yours for good, worn or not.\n\n%s a hat to wear it, and hold %s in a fight to emote and show it off." % [Controls.tap_word(), Controls.key_name("emote")],
 				_hat_grid, Callable(), false, true))
 
 
@@ -1479,10 +1479,10 @@ func _build_emote_page() -> Control:
 	row.add_child(column)
 	_emote_title = UiTheme.title_label("EMOTES", 26, UiTheme.GOLD)
 	column.add_child(_emote_title)
-	var tip := _label("Click to preview. Hold %s in a fight for the wheel." % Controls.key_name("emote"), 13, UiTheme.MUTED)
+	var tip := _label("%s to preview. Hold %s in a fight for the wheel." % [Controls.tap_word(), Controls.key_name("emote")], 13, UiTheme.MUTED)
 	column.add_child(tip)
 	Controls.watch(tip, func() -> void:
-		tip.text = "Click to preview. Hold %s in a fight for the wheel." % Controls.key_name("emote"))
+		tip.text = "%s to preview. Hold %s in a fight for the wheel." % [Controls.tap_word(), Controls.key_name("emote")])
 	var scroll := KeptScroll.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -1625,10 +1625,10 @@ func _build_hat_rack() -> Control:
 	_hat_title = UiTheme.title_label("HAT RACK", 26, UiTheme.GOLD)
 	_hat_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(_hat_title)
-	var tip := _label("Click a hat to wear it. Hold %s in a fight to emote and see it." % Controls.key_name("emote"), 13, UiTheme.MUTED)
+	var tip := _label("%s a hat to wear it. Hold %s in a fight to emote and see it." % [Controls.tap_word(), Controls.key_name("emote")], 13, UiTheme.MUTED)
 	column.add_child(tip)
 	Controls.watch(tip, func() -> void:
-		tip.text = "Click a hat to wear it. Hold %s in a fight to emote and see it." % Controls.key_name("emote"))
+		tip.text = "%s a hat to wear it. Hold %s in a fight to emote and see it." % [Controls.tap_word(), Controls.key_name("emote")])
 	var scroll := KeptScroll.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED

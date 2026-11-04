@@ -1194,7 +1194,7 @@ func _build_mode_offer() -> void:
 	panel.add_child(column)
 	column.add_child(UiTheme.heading("HOW DO YOU DODGE?", 40, BLOOD.lightened(0.25)))
 	for mode in [
-		["junior", "WEENIE HUT JUNIOR MODE", "Q / E dodge. The game picks the right move."],
+		["junior", "WEENIE HUT JUNIOR MODE", ("Swipe out or down to dodge." if Controls.touch() else "Q / E dodge.") + " The game picks the right move."],
 		["pro", "PRO GAMER MODE", "Slip, roll and back step yourself."],
 	]:
 		var pick := Button.new()

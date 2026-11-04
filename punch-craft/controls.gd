@@ -131,7 +131,61 @@ static func direct_punches() -> bool:
 ## True when you pick the hand of a hook or uppercut: Shift / Ctrl (or Z) + click,
 ## or a controller (hold LT / RT with jab or cross).
 static func hand_heavies() -> bool:
-	return pad() or not direct_punches()
+	return pad() or touch() or not direct_punches()
+
+
+## The touch layer (TouchUi) is on: a phone or tablet. Hints name its buttons
+## and gestures ("Swipe in", "JUMP") instead of keys.
+static func touch() -> bool:
+	return TouchUi.enabled
+
+
+## "Tap" on a touch screen, "Click" otherwise.
+static func tap_word() -> String:
+	return "Tap" if touch() else "Click"
+
+
+static func touch_name(action: String) -> String:
+	match action:
+		"move_forward", "move_back", "move_left", "move_right":
+			return "Left stick"
+		"look_left", "look_right", "look_up", "look_down":
+			return "Right stick"
+		"sprint":
+			return "RUN"
+		"jump":
+			return "JUMP"
+		"punch_left":
+			return "Tap left"
+		"punch_right":
+			return "Tap right"
+		"punch_hook":
+			return "Swipe in"
+		"punch_uppercut":
+			return "Swipe up"
+		"slip_left":
+			return "Swipe out left"
+		"slip_right":
+			return "Swipe out right"
+		"roll_left_key":
+			return "Swipe down left"
+		"roll_right_key":
+			return "Swipe down right"
+		"back_step_key":
+			return "BACK"
+		"dash_key":
+			return "DASH"
+		"ultimate":
+			return "ULT"
+		"interact":
+			return "USE"
+		"map":
+			return "MAP"
+		"emote":
+			return "EMOTE"
+		"pause":
+			return "II"
+	return "-"
 
 
 static func bindings() -> Dictionary:
@@ -333,6 +387,8 @@ static func _primary_pad(action: String) -> InputEvent:
 ## What hints show for an action: its controller button while a controller is
 ## in use, otherwise its key ("Space", "Q", "Mouse 4"); "-" when unbound.
 static func key_name(action: String) -> String:
+	if touch():
+		return touch_name(action)
 	return pad_name(action) if pad() else kb_name(action)
 
 
@@ -475,6 +531,8 @@ static func _bound(action: String) -> bool:
 static func text(move: String) -> String:
 	var left := key_name("slip_left")
 	var right := key_name("slip_right")
+	if touch():
+		return _touch_text(move)
 	match move:
 		"jab":
 			return key_name("punch_left")
@@ -538,6 +596,42 @@ static func text(move: String) -> String:
 	return move
 
 
+## text() on a touch screen: gestures for the punches and dodges, the button
+## names for the rest. A swipe goes from the hand's side of the screen: "in" is
+## toward the middle, "out" away from it.
+static func _touch_text(move: String) -> String:
+	match move:
+		"jab":
+			return "Tap left"
+		"cross":
+			return "Tap right"
+		"sprint":
+			return "RUN"
+		"look":
+			return "Right stick"
+		"move":
+			return "Left stick"
+		"hook":
+			return "Swipe in"
+		"uppercut":
+			return "Swipe up"
+		"slip":
+			return "Swipe out"
+		"roll":
+			return "Swipe out" if junior() else "Swipe down"
+		"back_step":
+			return "Swipe out" if junior() else "BACK"
+		"ultimate":
+			return "ULT"
+		"map":
+			return "MAP"
+		"dash":
+			return "DASH"
+		"jump":
+			return "JUMP"
+	return move
+
+
 ## How a hook or uppercut is thrown on the keyboard ("Shift + click", or its key).
 static func kb_hint(move: String) -> String:
 	var action := "punch_" + move
@@ -581,6 +675,9 @@ static func fill(hint: String) -> String:
 
 ## The bottom-of-screen controls line.
 static func summary() -> String:
+	if touch():
+		var dodge := "swipe out dodge" if junior() else "swipe out slip  |  swipe down roll  |  BACK back step"
+		return "tap jab / cross  |  swipe in hook  |  swipe up uppercut  |  %s  |  DASH  |  JUMP  |  ULT  |  USE  |  hold EMOTE" % dodge
 	var parts: Array[String] = ["%s sprint" % key_name("sprint"), "%s/%s jab/cross" % [key_name("punch_left"), key_name("punch_right")]]
 	parts.append("%s hook" % text("hook"))
 	parts.append("%s uppercut" % text("uppercut"))
@@ -597,6 +694,16 @@ static func summary() -> String:
 
 ## [what, keys] rows for the pause menu's Controls tab.
 static func rows() -> Array:
+	if touch():
+		var list := [["Move", "Left stick"], ["Look", "Right stick"], ["Sprint", "RUN  (tap to toggle)"],
+				["Jab  /  Cross", "Tap left / Tap right"], ["Hook", "Swipe in"], ["Uppercut", "Swipe up"]]
+		if junior():
+			list.append(["Dodge", "Swipe out or down"])
+		else:
+			list.append_array([["Slip", "Swipe out"], ["Roll", "Swipe down"], ["Back step", "BACK"]])
+		list.append_array([["Dash", "DASH"], ["Jump", "JUMP"], ["Ultimate", "ULT"], ["Use", "USE"],
+				["Emote  (hold, drag to pick)", "EMOTE"], ["Map", "MAP"], ["Pause", "II"]])
+		return list
 	var move := "%s %s %s %s" % [key_name("move_forward"), key_name("move_left"), key_name("move_back"), key_name("move_right")]
 	if pad():
 		move = "Left stick"
@@ -653,6 +760,18 @@ static func cue_hint(attack: String) -> String:
 
 ## One defense's keys in the current Pro scheme, e.g. "Space+D roll right".
 static func _move_keys(move: String) -> String:
+	if touch():
+		match move:
+			"slip_left":
+				return "Swipe out left"
+			"slip_right":
+				return "Swipe out right"
+			"roll_left":
+				return "Swipe down left"
+			"roll_right":
+				return "Swipe down right"
+			"back_step":
+				return "BACK"
 	match move:
 		"slip_left":
 			return "%s slip left" % key_name("slip_left")

@@ -547,7 +547,7 @@ func _stick_look(delta: float) -> void:
 	if look == Vector2.ZERO:
 		return
 	look *= look.length()
-	var speed: float = STICK_LOOK_SPEED * float(Settings.get_value("stick_sensitivity")) * delta
+	var speed: float = STICK_LOOK_SPEED * float(Settings.get_value("touch_look_speed" if TouchUi.active() else "stick_sensitivity")) * delta
 	rotate_y(-look.x * speed)
 	_camera.rotate_x(-look.y * speed * 0.7 * (-1.0 if Settings.get_value("invert_y") else 1.0))
 	_camera.rotation.x = clampf(_camera.rotation.x, deg_to_rad(-89), deg_to_rad(89))
@@ -1085,6 +1085,8 @@ func _steer_wheel(delta: float) -> void:
 	_wheel_time += delta
 	_wheel.visible = _wheel_time > 0.12 or _wheel.selected >= 0
 	var stick := Input.get_vector("look_left", "look_right", "look_up", "look_down", 0.2)
+	if TouchUi.active():
+		stick = TouchUi.wheel_vec  # The direction your finger drags from the EMOTE button.
 	if stick.length() > 0.5:
 		_wheel.steer(stick * EmoteWheel.RADIUS)
 
