@@ -36,6 +36,8 @@ var _session := false
 var _pick_t := 0.0
 var _nudge_t := 99.0
 var _reticle: Control
+## Looking up or down with the stick while locked (radians added to the aim).
+var pitch_bias := 0.0
 
 
 func _ready() -> void:
@@ -84,6 +86,7 @@ func steer(delta: float) -> void:
 		if target != null:
 			target = null
 			_manual = false
+		pitch_bias = 0.0
 		_reticle.queue_redraw()
 		return
 	_pick_t -= delta
@@ -91,6 +94,8 @@ func steer(delta: float) -> void:
 		_pick_t = PICK_EVERY
 		_choose()
 	_reticle.queue_redraw()
+	if target == null:
+		pitch_bias = 0.0
 	if target == null or player.ult.busy() or player.emote != "":
 		return
 	var cfg: Dictionary = LEVELS[lv]
@@ -110,7 +115,7 @@ func steer(delta: float) -> void:
 		var step := yaw_error * (1.0 - exp(-float(cfg.turn) * strength * delta))
 		var cap := deg_to_rad(float(cfg.max)) * delta
 		player.rotate_y(clampf(step, -cap, cap))
-	var want_pitch := clampf(atan2(to.y - from.y, flat.length()), -0.9, 0.9)
+	var want_pitch := clampf(atan2(to.y - from.y, flat.length()) + pitch_bias, -0.9, 0.9)
 	var pitch_error := want_pitch - camera.rotation.x
 	if absf(pitch_error) > deg_to_rad(1.0):
 		camera.rotation.x += pitch_error * (1.0 - exp(-float(cfg.turn) * 0.6 * strength * delta))

@@ -551,9 +551,14 @@ func _stick_look(delta: float) -> void:
 	var look := Input.get_vector("look_left", "look_right", "look_up", "look_down", 0.15)
 	if look == Vector2.ZERO:
 		return
-	lock.nudge()
 	look *= look.length()
 	var speed: float = STICK_LOOK_SPEED * float(Settings.get_value("touch_look_speed" if TouchUi.active() else "stick_sensitivity")) * delta
+	if lock.in_combat():
+		# Locked on: the view follows the enemy sideways, but you can still
+		# tilt it up and down.
+		lock.pitch_bias = clampf(lock.pitch_bias - look.y * speed * 0.7 * (-1.0 if Settings.get_value("invert_y") else 1.0), -0.6, 0.6)
+		return
+	lock.nudge()
 	rotate_y(-look.x * speed)
 	_camera.rotate_x(-look.y * speed * 0.7 * (-1.0 if Settings.get_value("invert_y") else 1.0))
 	_camera.rotation.x = clampf(_camera.rotation.x, deg_to_rad(-89), deg_to_rad(89))

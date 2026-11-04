@@ -38,8 +38,8 @@ const GAP := 12.0
 ## id: [action or method, label, shape ("c" circle, "s" square), radius or half side, arrow]
 const BUTTONS := {
 	"interact": ["interact", "USE", "c", BUTTON_RADIUS, ""],
-	"ultimate": ["ultimate", "ULT", "c", BUTTON_RADIUS + 4.0, ""],
-	"jump": ["jump", "JUMP", "c", BUTTON_RADIUS, ""],
+	"ultimate": ["ultimate", "ULT", "star", BUTTON_RADIUS + 12.0, ""],
+	"jump": ["jump", "JUMP", "s", BUTTON_RADIUS, ""],
 	"dash": ["dash", "DASH", "s", SQUARE_HALF, "up"],
 	"sprint": ["sprint", "RUN", "s", SQUARE_HALF, "up2"],
 	"back_step": ["back_step", "BACK", "s", SQUARE_HALF, "down"],
@@ -49,7 +49,7 @@ const BUTTONS := {
 	"pause": ["pause", "II", "c", SMALL_RADIUS, ""],
 }
 ## Where the small buttons sit in the top row (steps left of PAUSE).
-const TOP_STEP := {"pause": 0, "emote": 1, "map": 2, "lock": 3}
+const TOP_STEP := {"pause": 0, "emote": 1, "lock": 2, "map": 3}
 
 ## True when touch controls are turned on for this run.
 var enabled := false
@@ -194,7 +194,7 @@ func _button_center(id: String) -> Vector2:
 	var edge := 26.0 + sq
 	var bottom_y := _size.y * 0.64 - 14.0 - sq  # Just above the stick zones.
 	var jump_y := bottom_y - sq - GAP - BUTTON_RADIUS * s
-	var ult_r := (BUTTON_RADIUS + 4.0) * s
+	var ult_r := _half("ultimate")
 	var p := Vector2.ZERO  # Distance from the right edge, y.
 	match id:
 		"dash":
@@ -420,7 +420,7 @@ func _touch_down(index: int, pos: Vector2) -> void:
 		_press_button(button)
 	elif _zone("move").has_point(pos) and not _has_role("move"):
 		touch.role = "move"
-	elif _zone("look").has_point(pos) and not _has_role("look") and not _combat():
+	elif _zone("look").has_point(pos) and not _has_role("look"):
 		touch.role = "look"
 	_touches[index] = touch
 
@@ -604,9 +604,8 @@ func _draw_controls() -> void:
 	var font := ThemeDB.fallback_font
 	var color := GameState.fighter_color()
 	_canvas.modulate = Color(1, 1, 1, float(Settings.get_value("touch_opacity")))
-	_draw_stick("move", _zone("move"), "MOVE", color)
-	if not _combat():
-		_draw_stick("look", _zone("look"), "LOOK", color)
+	_draw_stick("move", _zone("move"), "MOVE", color, false)
+	_draw_stick("look", _zone("look"), "LOOK" if not _combat() else "UP / DOWN", color, _combat())
 	for id in BUTTONS:
 		if not _button_shown(id):
 			continue
@@ -631,7 +630,23 @@ func _draw_button(id: String, pressed: bool, color: Color, font: Font) -> void:
 		fill.a = 0.62
 		edge = color.lightened(0.55)
 		edge.a = 1.0
-	if spec[2] == "s":
+	if spec[2] == "star":
+		var ready := _player != null and _player.ult != null and _player.ult.is_full()
+		var pulse := 0.5 + 0.5 * sin(Time.get_ticks_msec() * 0.008)
+		if ready:
+			# A glow: soft stars growing outward, breathing.
+			for i in 4:
+				var halo := color.lightened(0.4)
+				halo.a = (0.16 - i * 0.03) * (0.6 + 0.8 * pulse)
+				_canvas.draw_colored_polygon(_star(center, half * (1.18 + i * 0.1), 12), halo)
+			fill = color
+			fill.a = 0.75
+			edge = Color(1, 0.95, 0.7, 1.0)
+		var outline := _star(center, half, 12)
+		_canvas.draw_colored_polygon(outline, fill)
+		outline.append(outline[0])
+		_canvas.draw_polyline(outline, edge, 3.0, true)
+	elif spec[2] == "s":
 		_box.bg_color = fill
 		_box.border_color = edge
 		_box.set_border_width_all(3)
@@ -673,6 +688,16 @@ func _draw_button(id: String, pressed: bool, color: Color, font: Font) -> void:
 
 ## The punch fingers: a glow in your fighter's colour with a fading trail, and
 ## the trails of fingers that just lifted.
+## A star with this many points (outer radius, inner about 0.74 of it).
+func _star(center: Vector2, radius: float, points: int) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	for i in points * 2:
+		var r := radius if i % 2 == 0 else radius * 0.74
+		var a := -PI * 0.5 + PI * float(i) / float(points)
+		out.append(center + Vector2(cos(a), sin(a)) * r)
+	return out
+
+
 func _draw_trails(color: Color) -> void:
 	for touch in _touches.values():
 		if touch.role == "punch":
@@ -695,7 +720,7 @@ func _trail(points: Array, color: Color, strength: float) -> void:
 		_canvas.draw_line(points[i - 1], points[i], c, 3.0 + 14.0 * k, true)
 
 
-func _draw_stick(role: String, zone: Rect2, label: String, color: Color) -> void:
+func _draw_stick(role: String, zone: Rect2, label: String, color: Color, dim := false) -> void:
 	var base := zone.position + zone.size * Vector2(0.5, 0.58)
 	var knob_offset := Vector2.ZERO
 	for touch in _touches.values():
@@ -704,6 +729,9 @@ func _draw_stick(role: String, zone: Rect2, label: String, color: Color) -> void
 			knob_offset = (touch.pos - touch.start).limit_length(STICK_RADIUS * _scale())
 	var idle := knob_offset == Vector2.ZERO
 	var radius := STICK_RADIUS * _scale()
+	if dim:
+		# Locked on: only up and down work, so it greys out.
+		color = color.lerp(Color(0.6, 0.6, 0.65), 0.75)
 	var ring := color.lightened(0.2)
 	var well := color.darkened(0.7)
 	well.a = 0.18 if idle else 0.3
