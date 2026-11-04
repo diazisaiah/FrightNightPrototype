@@ -453,6 +453,8 @@ var _wheel: EmoteWheel
 ## How long the emote key has been held (-1: the wheel is closed).
 var _wheel_time := -1.0
 var _wheel_pad := false
+## The lock-on camera (lock_on.gd).
+var lock: LockOn
 
 @onready var _camera: Camera3D = $Camera3D
 @onready var _punch_ray: RayCast3D = $Camera3D/PunchRay
@@ -482,6 +484,9 @@ func _ready() -> void:
 	powers = PowerPlay.new()
 	powers.player = self
 	add_child(powers)
+	lock = LockOn.new()
+	lock.player = self
+	add_child(lock)
 	# Speed lines: the Blur's long combos, the Stray's momentum and Hype Train.
 	if GameState.player_class in ["combo_master", "free_runner"]:
 		_speed_lines = MoveFx.speed_lines(_camera, GameState.fighter_color().lightened(0.3))
@@ -546,6 +551,7 @@ func _stick_look(delta: float) -> void:
 	var look := Input.get_vector("look_left", "look_right", "look_up", "look_down", 0.15)
 	if look == Vector2.ZERO:
 		return
+	lock.nudge()
 	look *= look.length()
 	var speed: float = STICK_LOOK_SPEED * float(Settings.get_value("touch_look_speed" if TouchUi.active() else "stick_sensitivity")) * delta
 	rotate_y(-look.x * speed)
@@ -570,6 +576,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		if emote != "":
 			_orbit_emote_cam(event.relative * sensitivity)
 			return
+		lock.nudge()
 		rotate_y(-event.relative.x * sensitivity)
 		_camera.rotate_x(-event.relative.y * sensitivity)
 		_camera.rotation.x = clampf(_camera.rotation.x, deg_to_rad(-89), deg_to_rad(89))
@@ -605,6 +612,7 @@ func _process(delta: float) -> void:
 		var look := Input.get_vector("look_left", "look_right", "look_up", "look_down", 0.15)
 		_orbit_emote_cam(look * STICK_LOOK_SPEED * float(Settings.get_value("stick_sensitivity")) * delta)
 	else:
+		lock.steer(delta)
 		_stick_look(delta)
 	if emote != "" and _live_input() and _emote_interrupted():
 		_stop_emote()
@@ -1571,6 +1579,11 @@ func _land_punch(type: String, hand: String, _dashing := false, airborne := fals
 		_punch_ray.force_raycast_update()
 		target = _punch_ray.get_collider() as Enemy
 		hit_point = _punch_ray.get_collision_point()
+	if target == null:
+		# Locked on: close enough and roughly facing it is a hit.
+		target = lock.punch_target(-_punch_ray.target_position.z)
+		if target:
+			hit_point = target.aim_point()
 	if target == null and _dash_style == "spear":
 		var line := _enemies_in_line(_spear_reach(), SPEAR_JAB_WIDTH)
 		if not line.is_empty():

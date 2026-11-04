@@ -38,6 +38,7 @@ const BUTTONS := {
 	"ultimate": ["ultimate", "R", 0.18, BUTTON_RADIUS + 4.0, "ULT"],
 	"jump": ["jump", "R", 0.34, BUTTON_RADIUS, "JUMP"],
 	"dash": ["dash", "R", 0.50, BUTTON_RADIUS, "DASH"],
+	"lock": ["lock_cycle", "T", -2.0, SMALL_RADIUS, "LOCK"],
 	"map": ["map", "T", -1.0, SMALL_RADIUS, "MAP"],
 	"emote": ["emote", "T", 0.0, SMALL_RADIUS, "EMOTE"],
 	"pause": ["pause", "T", 1.0, SMALL_RADIUS, "II"],
@@ -171,8 +172,23 @@ func _button_center(id: String) -> Vector2:
 	return Vector2(_size.x - 135.0 - (1.0 - float(spec[2])) * 60.0, 64.0)
 
 
+## LOCK only shows when the lock-on camera is on.
+func _button_shown(id: String) -> bool:
+	if id != "lock":
+		return true
+	return _player != null and _player.lock != null and _player.lock.level() != "off"
+
+
+## Locked onto an enemy: the view follows it, so the look stick goes away and
+## the whole screen is punch zones.
+func _combat() -> bool:
+	return _player != null and _player.lock != null and _player.lock.in_combat()
+
+
 func _button_at(pos: Vector2) -> String:
 	for id in BUTTONS:
+		if not _button_shown(id):
+			continue
 		if pos.distance_to(_button_center(id)) <= float(BUTTONS[id][3]) * _scale() + 10.0:
 			return id
 	return ""
@@ -250,7 +266,7 @@ func _touch_down(index: int, pos: Vector2) -> void:
 		_press_button(button)
 	elif _zone("move").has_point(pos) and not _has_role("move"):
 		touch.role = "move"
-	elif _zone("look").has_point(pos) and not _has_role("look"):
+	elif _zone("look").has_point(pos) and not _has_role("look") and not _combat():
 		touch.role = "look"
 	_touches[index] = touch
 
@@ -376,6 +392,9 @@ func _press_button(id: String) -> void:
 		"dash":
 			if _player:
 				_player.touch_move("forward_dash")
+		"lock":
+			if _player:
+				_player.lock.cycle()
 		"jump", "ultimate", "interact", "map", "pause", "emote":
 			_held_buttons[id] = true
 			_send_action(BUTTONS[id][0], true)
@@ -425,11 +444,14 @@ func _draw_controls() -> void:
 	var font := ThemeDB.fallback_font
 	_canvas.modulate = Color(1, 1, 1, float(Settings.get_value("touch_opacity")))
 	_draw_stick("move", _zone("move"), "MOVE")
-	_draw_stick("look", _zone("look"), "LOOK")
+	if not _combat():
+		_draw_stick("look", _zone("look"), "LOOK")
 	for id in BUTTONS:
+		if not _button_shown(id):
+			continue
 		var center := _button_center(id)
 		var radius: float = float(BUTTONS[id][3]) * _scale()
-		var pressed: bool = _held_buttons.has(id) or (id == "sprint" and _sprint_on)
+		var pressed: bool = _held_buttons.has(id) or (id == "sprint" and _sprint_on) or (id == "lock" and _combat())
 		for touch in _touches.values():
 			if touch.role == "button" and touch.button == id:
 				pressed = true

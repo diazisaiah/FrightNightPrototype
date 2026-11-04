@@ -34,6 +34,13 @@ const CHOICES := {
 		"qe": ["Q / E", "Slip left / right"],
 		"qe_side": ["Q / E + side buttons", "Back left, front right"],
 	},
+	"lock_on": {
+		"auto": ["Auto", "On for touch, off elsewhere"],
+		"off": ["Off", "Aim yourself"],
+		"soft": ["Soft", "A light pull"],
+		"blend": ["Blend", "Turns on its own"],
+		"hard": ["Hard", "Locks and holds"],
+	},
 	"render_scale": {
 		"auto": ["Auto", "Fits your screen"],
 		"full": ["Full", "Sharpest"],
@@ -161,6 +168,7 @@ func _ready() -> void:
 	if Controls.touch():
 		_slider(controls, "fov", "eye", "Field of view", "How wide you see", 60.0, 100.0, 1.0, "%d", 1.0)
 		_choice(controls, "assist_mode", "slip", "Mode", "How dodging works")
+		_choice(controls, "lock_on", "crosshair", "Lock-on", "The view follows an enemy")
 		_slider(controls, "touch_scale", "crosshair", "Button size", "Sticks and buttons", 0.7, 1.5, 0.05, "x%.2f", 1.0)
 		_slider(controls, "touch_opacity", "eye", "Button opacity", "Lower to see more of the fight", 0.2, 1.0, 0.05, "%d%%", 100.0)
 		_slider(controls, "touch_look_speed", "crosshair", "Look speed", "How fast the look stick turns you", 0.3, 3.0, 0.05, "x%.2f", 1.0)
@@ -170,6 +178,7 @@ func _ready() -> void:
 		_slider(controls, "mouse_sensitivity", "crosshair", "Mouse sensitivity", "How fast you look around", 0.25, 3.0, 0.05, "x%.2f", 1.0)
 		_slider(controls, "fov", "eye", "Field of view", "How wide you see", 60.0, 100.0, 1.0, "%d", 1.0)
 		_choice(controls, "assist_mode", "slip", "Mode", "How dodging works")
+		_choice(controls, "lock_on", "crosshair", "Lock-on", "The view follows an enemy. F picks targets")
 	_scheme_note = _label("", 14, UiTheme.BAD)
 	_scheme_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	if not Controls.touch():

@@ -33,6 +33,9 @@ const DEFAULTS := {
 	# Touch screens (TouchUi): button size, how see-through the controls are,
 	# the left-handed layout (move on the right, look on the left), look speed.
 	"touch_scale": 1.0, "touch_opacity": 1.0, "touch_swap": false, "touch_look_speed": 1.0,
+	# Lock-on camera (LockOn): "auto" (blend on touch, off elsewhere), "off",
+	# "soft", "blend" or "hard". F cycles targets by hand.
+	"lock_on": "auto",
 }
 
 var values := DEFAULTS.duplicate()

@@ -482,6 +482,11 @@ func _clear_doom() -> void:
 		_refresh_overlay()
 
 
+## Where the lock-on camera looks: the upper body by default.
+func aim_point() -> Vector3:
+	return global_position + Vector3(0, head_height * 0.85, 0)
+
+
 func is_dead() -> bool:
 	return _dead
 

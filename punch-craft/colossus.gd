@@ -17,6 +17,11 @@ const ENRAGED_COLOSSUS_COMBOS := [["sweep", "slam"], ["slam", "sweep", "slam"], 
 var _core: StandardMaterial3D
 
 
+## Lock-on looks at the glowing core, its weak spot.
+func aim_point() -> Vector3:
+	return global_position + Vector3(0, (CORE_LOW + CORE_HIGH) * 0.5 * _body.scale.y, 0)
+
+
 func take_hit(raw_damage: float, hit_point: Vector3, push: Vector3, stagger: bool, caption := "", pierce := false, crush := false, armor_cut := 0.0) -> float:
 	# The core sits in the ribcage, well above the player's eye line: aim up.
 	var height := to_local(hit_point).y / _body.scale.y
