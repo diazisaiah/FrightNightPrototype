@@ -37,7 +37,7 @@ const GAP := 12.0
 
 ## id: [action or method, label, shape ("c" circle, "s" square), radius or half side, arrow]
 const BUTTONS := {
-	"interact": ["interact", "USE", "c", SQUARE_HALF - 2.0, ""],
+	"interact": ["interact", "USE", "s", SQUARE_HALF, ""],
 	"ultimate": ["ultimate", "ULT", "star", SQUARE_HALF + 6.0, ""],
 	"jump": ["jump", "JUMP", "s", SQUARE_HALF, ""],
 	"dash": ["dash", "DASH", "s", SQUARE_HALF, "up"],
@@ -616,11 +616,10 @@ func _release_all() -> void:
 # --- Drawing -------------------------------------------------------------------------
 
 func _draw_controls() -> void:
-	var font := ThemeDB.fallback_font
-	var color := GameState.fighter_color()
+	var accent := _vivid(GameState.fighter_color())
 	_canvas.modulate = Color(1, 1, 1, float(Settings.get_value("touch_opacity")))
-	_draw_stick("move", _zone("move"), "MOVE", color, false)
-	_draw_stick("look", _zone("look"), "LOOK" if not _combat() else "UP / DOWN", color, _combat())
+	_draw_stick("move", _zone("move"), "MOVE", accent, false)
+	_draw_stick("look", _zone("look"), "LOOK" if not _combat() else "UP / DOWN", accent, _combat())
 	for id in BUTTONS:
 		if not _button_shown(id):
 			continue
@@ -628,77 +627,202 @@ func _draw_controls() -> void:
 		for touch in _touches.values():
 			if touch.role == "button" and touch.button == id:
 				pressed = true
-		_draw_button(id, pressed, color, font)
-	_draw_trails(color)
+		_draw_button(id, pressed, accent)
+	_draw_trails(accent)
 
 
-func _draw_button(id: String, pressed: bool, color: Color, font: Font) -> void:
+# --- Look: taped-glove style. Dark leather tinted with the fighter's colour,
+# stitched edges, a strip of athletic tape carrying each label. The fighter's
+# colour is pushed to full saturation for stitching, icons and caps. ----------------------
+
+const TAPE := Color(0.94, 0.9, 0.8)
+const TAPE_INK := Color(0.2, 0.13, 0.1)
+
+
+## The fighter's colour at full strength.
+func _vivid(color: Color) -> Color:
+	return Color.from_hsv(color.h, clampf(color.s * 1.15 + 0.1, 0.0, 1.0), 1.0)
+
+
+func _leather(accent: Color, light: float) -> Color:
+	return Color.from_hsv(accent.h, clampf(accent.s * 0.8, 0.0, 1.0), light)
+
+
+## A rounded rectangle as a polygon (radius = half the short side: a circle).
+func _rrect(rect: Rect2, radius: float, segments := 6) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	var r := minf(radius, minf(rect.size.x, rect.size.y) * 0.5)
+	var corners := [
+		[rect.position + Vector2(rect.size.x - r, r), -PI * 0.5],
+		[rect.position + Vector2(rect.size.x - r, rect.size.y - r), 0.0],
+		[rect.position + Vector2(r, rect.size.y - r), PI * 0.5],
+		[rect.position + Vector2(r, r), PI],
+	]
+	for corner in corners:
+		for k in segments + 1:
+			var a: float = float(corner[1]) + (PI * 0.5) * float(k) / float(segments)
+			out.append((corner[0] as Vector2) + Vector2(cos(a), sin(a)) * r)
+	return out
+
+
+## A dashed line along a closed outline, like stitching.
+func _stitch(points: PackedVector2Array, color: Color, width := 1.6, dash := 4.0, gap := 3.5) -> void:
+	var run := 0.0
+	var drawing := true
+	for i in points.size():
+		var from := points[i]
+		var to := points[(i + 1) % points.size()]
+		var length := from.distance_to(to)
+		var travelled := 0.0
+		while travelled < length:
+			var span := (dash if drawing else gap) - run
+			var step := minf(span, length - travelled)
+			if drawing:
+				_canvas.draw_line(from.lerp(to, travelled / length), from.lerp(to, (travelled + step) / length), color, width, true)
+			travelled += step
+			run += step
+			if run >= (dash if drawing else gap) - 0.01:
+				run = 0.0
+				drawing = not drawing
+
+
+## Leather: a soft shadow, a top-to-bottom gradient, a dark edge.
+func _leather_panel(rect: Rect2, radius: float, accent: Color, pressed: bool) -> void:
+	var points := _rrect(rect, radius)
+	_canvas.draw_colored_polygon(_rrect(Rect2(rect.position + Vector2(0, 4), rect.size), radius), Color(0, 0, 0, 0.4))
+	var top := _leather(accent, 0.34)
+	var bottom := _leather(accent, 0.16)
+	if pressed:
+		top = accent
+		bottom = accent.darkened(0.35)
+	var colors := PackedColorArray()
+	for point in points:
+		colors.append(top.lerp(bottom, clampf((point.y - rect.position.y) / rect.size.y, 0.0, 1.0)))
+	_canvas.draw_polygon(points, colors)
+	var loop := points.duplicate()
+	loop.append(points[0])
+	_canvas.draw_polyline(loop, accent.darkened(0.55), 2.0, true)
+	var inset := _rrect(rect.grow(-4.5), maxf(radius - 4.5, 2.0))
+	_stitch(inset, accent.lightened(0.2) if not pressed else TAPE, 1.6)
+
+
+## The tape strip across the lower part of a button, a touch crooked.
+func _tape_strip(center: Vector2, width: float, height: float, label: String, size: int, accent: Color) -> void:
+	var angle := deg_to_rad(-3.0)
+	var half := Vector2(width, height) * 0.5
+	var pts := PackedVector2Array()
+	for corner in [Vector2(-half.x, -half.y), Vector2(half.x, -half.y), Vector2(half.x, half.y), Vector2(-half.x, half.y)]:
+		pts.append(center + corner.rotated(angle))
+	_canvas.draw_colored_polygon(pts, TAPE.lerp(accent, 0.08))
+	_canvas.draw_line(pts[3], pts[2], Color(0, 0, 0, 0.25), 1.5, true)
+	_canvas.draw_line(pts[0], pts[1], Color(1, 1, 1, 0.35), 1.0, true)
+	var font := UiTheme.display_font()
+	var text_width := font.get_string_size(label, HORIZONTAL_ALIGNMENT_CENTER, -1, size).x
+	_canvas.draw_set_transform(center + Vector2(0, size * 0.34).rotated(angle), angle, Vector2.ONE)
+	_canvas.draw_string(font, Vector2(-text_width * 0.5, 0), label, HORIZONTAL_ALIGNMENT_LEFT, -1, size, TAPE_INK)
+	_canvas.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+
+## A fat arrow, pointing up (down when flip is true).
+func _arrow(center: Vector2, size: float, flip: bool, ink: Color) -> void:
+	var pts := PackedVector2Array([Vector2(0, -size), Vector2(size * 0.85, size * 0.05), Vector2(size * 0.34, size * 0.05),
+			Vector2(size * 0.34, size * 0.9), Vector2(-size * 0.34, size * 0.9), Vector2(-size * 0.34, size * 0.05),
+			Vector2(-size * 0.85, size * 0.05)])
+	for i in pts.size():
+		pts[i] = center + Vector2(pts[i].x, -pts[i].y if flip else pts[i].y)
+	_canvas.draw_colored_polygon(pts, ink)
+
+
+func _chevron(center: Vector2, size: float, ink: Color, width: float) -> void:
+	_canvas.draw_polyline(PackedVector2Array([center + Vector2(-size, size * 0.4), center + Vector2(0, -size * 0.5),
+			center + Vector2(size, size * 0.4)]), ink, width, true)
+
+
+func _draw_button(id: String, pressed: bool, accent: Color) -> void:
 	var spec: Array = BUTTONS[id]
 	var center := _button_center(id)
 	var half := _half(id)
-	var fill := color.darkened(0.7)
-	fill.a = 0.5
-	var edge := color.lightened(0.2)
-	edge.a = 0.9
-	if pressed:
-		fill = color
-		fill.a = 0.62
-		edge = color.lightened(0.55)
-		edge.a = 1.0
-	if spec[2] == "star":
-		var ready := _player != null and _player.ult != null and _player.ult.is_full()
-		var pulse := 0.5 + 0.5 * sin(Time.get_ticks_msec() * 0.008)
-		if ready:
-			# A glow: soft stars growing outward, breathing.
-			for i in 4:
-				var halo := color.lightened(0.4)
-				halo.a = (0.16 - i * 0.03) * (0.6 + 0.8 * pulse)
-				_canvas.draw_colored_polygon(_star(center, half * (1.18 + i * 0.1), 12), halo)
-			fill = color
-			fill.a = 0.75
-			edge = Color(1, 0.95, 0.7, 1.0)
-		var outline := _star(center, half, 12)
-		_canvas.draw_colored_polygon(outline, fill)
-		outline.append(outline[0])
-		_canvas.draw_polyline(outline, edge, 3.0, true)
-	elif spec[2] == "s":
-		_box.bg_color = fill
-		_box.border_color = edge
-		_box.set_border_width_all(3)
-		_box.set_corner_radius_all(int(half * 0.35))
-		_canvas.draw_style_box(_box, Rect2(center - Vector2(half, half), Vector2(half, half) * 2.0))
-	else:
-		_canvas.draw_circle(center, half, fill)
-		_canvas.draw_arc(center, half, 0.0, TAU, 40, edge, 3.0, true)
-	var ink := Color(1, 1, 1, 0.95)
+	var shape: String = spec[2]
 	var label: String = spec[1]
 	if id == "map":
 		label = _map_label()
-	var arrow: String = spec[4]
-	if arrow != "":
-		var unit := half * 0.34
-		var up := arrow != "down"
-		var rows: Array = [-unit * 0.15, unit * 0.9] if arrow == "up2" else [unit * 0.1]
-		for y in rows:
-			var tip := Vector2(0, (-unit if up else unit) * 0.6)
-			var pts := PackedVector2Array([Vector2(-unit, -tip.y * 0.1 + (unit * 0.6 if up else -unit * 0.6)) + Vector2(0, y - unit * 0.55),
-					tip + Vector2(0, y - unit * 0.55), Vector2(unit, (unit * 0.6 if up else -unit * 0.6)) + Vector2(0, y - unit * 0.55)])
-			for i in pts.size():
-				pts[i] += center + Vector2(0, -half * 0.12)
-			_canvas.draw_polyline(pts, ink, maxf(4.0, half * 0.1), true)
-		var small := 11
-		var width := font.get_string_size(label, HORIZONTAL_ALIGNMENT_CENTER, -1, small).x
-		_canvas.draw_string(font, center + Vector2(-width * 0.5, half * 0.78), label,
-				HORIZONTAL_ALIGNMENT_LEFT, -1, small, Color(1, 1, 1, 0.75))
-	elif id == "pause":
-		var bar := Vector2(5, half * 0.7)
-		_canvas.draw_rect(Rect2(center + Vector2(-8, -bar.y * 0.5), bar), ink)
-		_canvas.draw_rect(Rect2(center + Vector2(3, -bar.y * 0.5), bar), ink)
-	else:
-		var fs := 15 if half > 30.0 else 11
-		var width := font.get_string_size(label, HORIZONTAL_ALIGNMENT_CENTER, -1, fs).x
-		_canvas.draw_string(font, center + Vector2(-width * 0.5, fs * 0.36), label,
-				HORIZONTAL_ALIGNMENT_LEFT, -1, fs, ink)
+	if pressed:
+		center += Vector2(0, 2)
+	if shape == "star":
+		_draw_ult(center, half, accent, pressed)
+		return
+	var icon := accent if not pressed else _leather(accent, 0.12)
+	if shape == "c":
+		_draw_tape_disc(id, center, half, label, accent, pressed)
+		return
+	_leather_panel(Rect2(center - Vector2(half, half), Vector2(half, half) * 2.0), half * 0.3, accent, pressed)
+	var up_pos := center + Vector2(0, -half * 0.24)
+	match id:
+		"dash":
+			_arrow(up_pos, half * 0.36, false, icon)
+		"back_step":
+			_arrow(up_pos, half * 0.36, true, icon)
+		"sprint":
+			_chevron(up_pos + Vector2(0, -half * 0.12), half * 0.3, icon, 4.5)
+			_chevron(up_pos + Vector2(0, half * 0.2), half * 0.3, icon, 4.5)
+		"jump":
+			_chevron(up_pos + Vector2(0, -half * 0.02), half * 0.32, icon, 4.5)
+			_canvas.draw_line(up_pos + Vector2(-half * 0.28, half * 0.3), up_pos + Vector2(half * 0.28, half * 0.3), icon, 3.5, true)
+		"interact":
+			_canvas.draw_arc(up_pos, half * 0.26, 0.0, TAU, 20, icon, 3.5, true)
+			_canvas.draw_circle(up_pos, half * 0.09, icon)
+	_tape_strip(center + Vector2(0, half * 0.5), half * 2.0 + 4.0, half * 0.5, label, 13, accent)
+
+
+## The small round buttons: a disc of tape ringed in the fighter's colour.
+func _draw_tape_disc(id: String, center: Vector2, radius: float, label: String, accent: Color, pressed: bool) -> void:
+	_canvas.draw_circle(center + Vector2(0, 3), radius, Color(0, 0, 0, 0.4))
+	_canvas.draw_circle(center, radius, accent if pressed else TAPE.lerp(accent, 0.08))
+	_canvas.draw_arc(center, radius - 1.5, 0.0, TAU, 32, accent.darkened(0.1), 3.0, true)
+	var ink := TAPE_INK if not pressed else _leather(accent, 0.12)
+	if id == "pause":
+		var bar := Vector2(radius * 0.2, radius * 0.7)
+		_canvas.draw_rect(Rect2(center + Vector2(-radius * 0.34, -bar.y * 0.5), bar), ink)
+		_canvas.draw_rect(Rect2(center + Vector2(radius * 0.14, -bar.y * 0.5), bar), ink)
+		return
+	var font := UiTheme.display_font()
+	var size := 12
+	var width := font.get_string_size(label, HORIZONTAL_ALIGNMENT_CENTER, -1, size).x
+	_canvas.draw_string(font, center + Vector2(-width * 0.5, size * 0.34), label, HORIZONTAL_ALIGNMENT_LEFT, -1, size, ink)
+
+
+## The ultimate: a stitched leather star with a tape rim and a meter ring
+## that fills as it charges; ready, it blazes in the fighter's colour.
+func _draw_ult(center: Vector2, half: float, accent: Color, pressed: bool) -> void:
+	var ready := _player != null and _player.ult != null and _player.ult.is_full()
+	var pulse := 0.5 + 0.5 * sin(Time.get_ticks_msec() * 0.008)
+	var charge := clampf(GameState.ult_share, 0.0, 1.0)
+	if ready:
+		for i in 4:
+			var halo := accent.lightened(0.3)
+			halo.a = (0.22 - i * 0.045) * (0.6 + 0.8 * pulse)
+			_canvas.draw_colored_polygon(_star(center, half * (1.2 + i * 0.1), 12), halo)
+	_canvas.draw_colored_polygon(_star(center + Vector2(0, 4), half, 12), Color(0, 0, 0, 0.4))
+	var body := _leather(accent, 0.2)
+	if ready or pressed:
+		body = accent.darkened(0.1)
+	_canvas.draw_colored_polygon(_star(center, half, 12), body)
+	var outline := _star(center, half, 12)
+	_canvas.draw_polyline(_closed(outline), TAPE, 3.0, true)
+	_stitch(_star(center, half * 0.8, 12), accent.lightened(0.2) if not (ready or pressed) else TAPE, 1.6)
+	var inner := half * 0.52
+	_canvas.draw_arc(center, inner, 0.0, TAU, 32, Color(0, 0, 0, 0.5), 5.0, true)
+	if charge > 0.0:
+		_canvas.draw_arc(center, inner, -PI * 0.5, -PI * 0.5 + TAU * charge, 32, accent, 5.0, true)
+	var font := UiTheme.display_font()
+	var width := font.get_string_size("ULT", HORIZONTAL_ALIGNMENT_CENTER, -1, 14).x
+	_canvas.draw_string(font, center + Vector2(-width * 0.5, 5), "ULT", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, TAPE if not ready else TAPE_INK)
+
+
+func _closed(points: PackedVector2Array) -> PackedVector2Array:
+	var loop := points.duplicate()
+	loop.append(points[0])
+	return loop
 
 
 ## The punch fingers: a glow in your fighter's colour with a fading trail, and
@@ -735,7 +859,7 @@ func _trail(points: Array, color: Color, strength: float) -> void:
 		_canvas.draw_line(points[i - 1], points[i], c, 3.0 + 14.0 * k, true)
 
 
-func _draw_stick(role: String, zone: Rect2, label: String, color: Color, dim := false) -> void:
+func _draw_stick(role: String, zone: Rect2, label: String, accent: Color, dim := false) -> void:
 	var base := zone.position + zone.size * Vector2(0.5, 0.58)
 	var knob_offset := Vector2.ZERO
 	for touch in _touches.values():
@@ -746,20 +870,21 @@ func _draw_stick(role: String, zone: Rect2, label: String, color: Color, dim := 
 	var radius := STICK_RADIUS * _scale()
 	if dim:
 		# Locked on: only up and down work, so it greys out.
-		color = color.lerp(Color(0.6, 0.6, 0.65), 0.75)
-	var ring := color.lightened(0.2)
-	var well := color.darkened(0.7)
-	well.a = 0.18 if idle else 0.3
-	ring.a = 0.4 if idle else 0.85
-	_canvas.draw_circle(base, radius, well)
-	_canvas.draw_arc(base, radius, 0.0, TAU, 48, ring, 3.0, true)
-	var knob := color
-	knob.a = 0.35 if idle else 0.8
-	_canvas.draw_circle(base + knob_offset, 34.0 * _scale(), knob)
-	ring.a = 0.8 if not idle else 0.5
-	_canvas.draw_arc(base + knob_offset, 34.0 * _scale(), 0.0, TAU, 28, ring, 2.0, true)
+		accent = accent.lerp(Color(0.62, 0.62, 0.66), 0.75)
+	# A leather disc ringed with stitching; the cap is the fighter's colour.
+	_canvas.draw_circle(base, radius, Color(_leather(accent, 0.18), 0.5 if idle else 0.68))
+	var ring := PackedVector2Array()
+	for i in 56:
+		ring.append(base + Vector2.from_angle(i * TAU / 56.0) * (radius - 4.5))
+	_stitch(ring, Color(accent.lightened(0.15), 0.75 if not idle else 0.5), 1.8, 5.0, 4.0)
+	_canvas.draw_arc(base, radius, 0.0, TAU, 56, Color(accent.darkened(0.5), 0.9), 2.0, true)
+	var knob_center := base + knob_offset
+	var knob_radius := 32.0 * _scale()
+	_canvas.draw_circle(knob_center + Vector2(0, 4), knob_radius, Color(0, 0, 0, 0.4))
+	_canvas.draw_circle(knob_center, knob_radius, Color(accent, 0.95 if not idle else 0.8))
+	_canvas.draw_circle(knob_center + Vector2(-4, -6), knob_radius * 0.55, Color(accent.lightened(0.45), 0.55))
+	_canvas.draw_arc(knob_center, knob_radius, 0.0, TAU, 32, accent.darkened(0.4), 2.0, true)
 	if idle:
-		var font := ThemeDB.fallback_font
+		var font := UiTheme.display_font()
 		var width := font.get_string_size(label, HORIZONTAL_ALIGNMENT_CENTER, -1, 12).x
-		_canvas.draw_string(font, base + Vector2(-width * 0.5, 4), label,
-				HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(1, 1, 1, 0.55))
+		_canvas.draw_string(font, knob_center + Vector2(-width * 0.5, 4), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, _leather(accent, 0.12))
