@@ -206,7 +206,7 @@ func _button_center(id: String) -> Vector2:
 		"jump":
 			p = Vector2(edge, jump_y)
 		"ultimate":
-			p = Vector2(edge, jump_y - BUTTON_RADIUS * s - GAP - ult_r)
+			p = Vector2(edge + BUTTON_RADIUS * s + GAP + ult_r, jump_y - 8.0)
 		"interact":
 			# Left side, above the move stick (so the mirror puts it on the right).
 			return _mirror_x(Vector2(26.0 + BUTTON_RADIUS * s, jump_y), true)
