@@ -56,6 +56,9 @@ var _true := false
 var _partner: DeadLeagueBoss
 var _tagged := false
 var _floor: InsanoFloor
+## The contender's stage (DeadLeagueStages): its crowd and bell, if any.
+var _crowd: Crowd
+var _bell: Node3D
 
 @onready var _player: Player = $Player
 @onready var _hud: Hud = $HUD
@@ -74,10 +77,18 @@ func _ready() -> void:
 	Enemy.max_attackers = 1
 	$Moon.shadow_enabled = Settings.get_value("shadows") and not Settings.use_web_profile()
 	Look.tune_environment($WorldEnvironment.environment, "ring")
-	_build_torches()
 	_build_ring()
-	_build_graveyard()
-	Look.batch_meshes($Decorations, true)
+	var stage := DeadLeagueStages.build(DeadLeagueRules.boss(GameState.dead_league_bout).id, self, RING_CENTER)
+	if stage.is_empty():
+		_build_torches()
+		_build_graveyard()
+		Look.batch_meshes($Decorations, true)
+	else:
+		for light in stage.lights:
+			_torches.append(light)
+		_crowd = stage.crowd
+		_bell = stage.bell
+	_build_spotlight()
 	_connect_hud()
 	_player.damage_taken.connect(func(amount: float) -> void: _damage_taken += amount)
 	_player.dodged.connect(_on_dodged)
@@ -104,6 +115,7 @@ func _ready() -> void:
 		return
 	_player.active = true
 	_hud.announce("ROUND 1")
+	_round_start_fx(false)
 	_taunt()
 	if is_instance_valid(_boss):
 		_boss.set_physics_process(true)
@@ -311,6 +323,8 @@ func _on_boss_died(_enemy: Enemy) -> void:
 		_hud.hide_boss()
 		Sfx.play("bell")
 		_hud.announce("K.O.!")
+		_cheer(1.0)
+		_swing_bell()
 		var profile := DeadLeagueRules.boss(GameState.dead_league_bout)
 		await get_tree().create_timer(0.9).timeout
 		if not is_inside_tree():
@@ -325,6 +339,7 @@ func _on_boss_died(_enemy: Enemy) -> void:
 	_player.active = false
 	_hud.hide_boss()
 	_hud.announce("ROUND %d WON" % _round)
+	_cheer(1.0)
 	_round += 1
 	await get_tree().create_timer(ROUND_BREAK).timeout
 	if not is_inside_tree() or _bout_finished:
@@ -333,6 +348,7 @@ func _on_boss_died(_enemy: Enemy) -> void:
 	_player.global_position = Vector3(0, 0.1, 0)
 	_player.rotation = Vector3.ZERO
 	_hud.announce("ROUND %d" % _round)
+	_round_start_fx(true)
 	_taunt()
 	_spawn_boss()
 
@@ -341,6 +357,7 @@ func _on_knuckles_broken() -> void:
 	if _bout_finished:
 		return
 	_bout_finished = true
+	_cheer(0.9)  # Monsters: they cheer when you go down too.
 	if _floor:
 		_floor.stop()
 	_hud.knockout_fade()
@@ -475,6 +492,7 @@ func _on_punch_connected(type: String, kind: String) -> void:
 		_punch_types[type] = true
 	if kind == "counter":
 		_counters += 1
+		_cheer(0.35)
 
 
 func _rematch() -> void:
@@ -588,7 +606,10 @@ func _build_graveyard() -> void:
 			light.position = cage + Vector3(0, 0.5, 0)
 			decor.add_child(light)
 	Scenery.mist(decor, RING_CENTER + Vector3(0, 0.3, 0), Vector3(26, 0.3, 26), 14 if web else 30)
-	# A spotlight straight down on the canvas, so the fighters read clearly.
+
+
+## A spotlight straight down on the canvas, so the fighters read clearly.
+func _build_spotlight() -> void:
 	var spot := SpotLight3D.new()
 	spot.position = RING_CENTER + Vector3(0, 8.0, 1.0)
 	spot.rotation = Vector3(-PI / 2.0 + 0.1, 0, 0)
@@ -597,6 +618,28 @@ func _build_graveyard() -> void:
 	spot.light_energy = 2.2
 	spot.light_color = Color(1.0, 0.92, 0.82)
 	add_child(spot)
+
+
+## A round's bell: the stage's bell swings and the crowd stirs. The VS card
+## already rang it for round 1.
+func _round_start_fx(ring: bool) -> void:
+	if ring and _bell:
+		Sfx.play("bell", -4.0)
+	_swing_bell()
+	_cheer(0.5)
+
+
+func _cheer(strength: float) -> void:
+	if is_instance_valid(_crowd):
+		_crowd.cheer(strength)
+
+
+func _swing_bell() -> void:
+	if not is_instance_valid(_bell):
+		return
+	var tween := _bell.create_tween()
+	for angle in [0.32, -0.26, 0.18, -0.11, 0.05, 0.0]:
+		tween.tween_property(_bell, "rotation:x", angle, 0.42).set_trans(Tween.TRANS_SINE)
 
 
 func _add_mesh(parent: Node3D, mesh: PrimitiveMesh, material: Material, pos: Vector3) -> void:

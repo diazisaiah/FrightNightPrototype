@@ -21,6 +21,12 @@ func _ready() -> void:
 			versus_class = parts[0]
 			if parts.size() > 1:
 				versus_index = clampi(int(parts[1]), 0, DeadLeagueRules.BOSS_COUNT - 1)
+		elif argument.begins_with("--stage="):
+			# A contender's stage with the contender out of the way:
+			# --stage=BOSS[,YAW_DEGREES[,PITCH_DEGREES]].
+			var parts := argument.trim_prefix("--stage=").split(",")
+			await _capture_stage(int(parts[0]), float(parts[1]) if parts.size() > 1 else 0.0, float(parts[2]) if parts.size() > 2 else 0.0)
+			return
 		elif argument.begins_with("--action="):
 			var parts := argument.trim_prefix("--action=").split(",", false, 2)
 			action_class = parts[0]
@@ -94,6 +100,31 @@ func _ready() -> void:
 			await get_tree().process_frame
 	var output := "res://dead_league_grade_capture.png" if grade else ("res://dead_league_arena_capture.png" if arena else "res://dead_league_menu_capture.png")
 	await _capture(output)
+
+
+func _capture_stage(index: int, yaw: float, pitch: float) -> void:
+	GameState.dead_league_bout = clampi(index, 0, DeadLeagueRules.BOSS_COUNT - 1)
+	var subject: Node = (load("res://dead_league_arena.tscn") as PackedScene).instantiate()
+	add_child(subject)
+	var player: Player = subject.get_node("Player")
+	player.invulnerable = true
+	for frame in 280:
+		await get_tree().process_frame
+	var boss: Node3D = subject.get("_boss")
+	if is_instance_valid(boss):
+		boss.visible = false
+		boss.process_mode = Node.PROCESS_MODE_DISABLED
+	player.rotation.y = deg_to_rad(yaw)
+	var camera := get_viewport().get_camera_3d()
+	if camera:
+		camera.rotation.x = deg_to_rad(pitch)
+	for frame in 6:
+		await get_tree().process_frame
+	print("STAGE %d: %d draw calls, %d objects, %d primitives" % [index,
+		RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME),
+		RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_OBJECTS_IN_FRAME),
+		RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME)])
+	await _capture("res://dead_league_stage_%d_%d_capture.png" % [index, int(yaw)])
 
 
 func _settle() -> void:
