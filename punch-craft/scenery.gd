@@ -228,7 +228,8 @@ static func rocks(parent: Node3D, rng: RandomNumberGenerator, count := 4) -> voi
 
 
 ## Thousands of grass blades and dirt flecks over a disc, as one MultiMesh.
-static func grass(parent: Node3D, radius: float, count: int, rng: RandomNumberGenerator, keep_clear := 0.0) -> void:
+## skip(Vector2) -> bool keeps blades off places (paths, plots).
+static func grass(parent: Node3D, radius: float, count: int, rng: RandomNumberGenerator, keep_clear := 0.0, skip := Callable()) -> void:
 	var blade := BoxMesh.new()
 	blade.size = Vector3(0.03, 0.28, 0.03)
 	var material := StandardMaterial3D.new()
@@ -240,9 +241,15 @@ static func grass(parent: Node3D, radius: float, count: int, rng: RandomNumberGe
 	multimesh.transform_format = MultiMesh.TRANSFORM_3D
 	multimesh.use_colors = true
 	multimesh.mesh = blade
-	multimesh.instance_count = count
+	var spots: Array[Vector2] = []
 	for i in count:
 		var spot := Vector2.from_angle(rng.randf() * TAU) * sqrt(rng.randf_range(keep_clear * keep_clear / (radius * radius), 1.0)) * radius
+		if skip.is_valid() and skip.call(spot):
+			continue
+		spots.append(spot)
+	multimesh.instance_count = spots.size()
+	for i in spots.size():
+		var spot := spots[i]
 		var scale := Vector3(1, rng.randf_range(0.5, 1.6), 1)
 		var basis := Basis.from_euler(Vector3(rng.randf_range(-0.3, 0.3), rng.randf() * TAU, rng.randf_range(-0.3, 0.3))).scaled(scale)
 		multimesh.set_instance_transform(i, Transform3D(basis, Vector3(spot.x, 0.08 * scale.y, spot.y)))

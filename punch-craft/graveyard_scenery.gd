@@ -27,7 +27,7 @@ static func build(parent: Node3D, rng: RandomNumberGenerator) -> Dictionary:
 	var lights: Array = []
 	var solids: Array = []
 	Scenery.night_sky(parent, rng)
-	Scenery.grass(parent, RADIUS + 8.0, 5000 if web else 14000, rng, PLAZA * 0.5)
+	Scenery.grass(parent, RADIUS + 8.0, 5000 if web else 14000, rng, PLAZA * 0.5, _paved.bind(web))
 	# Bare earth and dark patches, and stones in the grass.
 	var dirt := kit.stone(Scenery.DIRT)
 	var dark_grass := kit.stone(Scenery.GRASS.darkened(0.45))
@@ -37,6 +37,8 @@ static func build(parent: Node3D, rng: RandomNumberGenerator) -> Dictionary:
 	var pebble := kit.stone(Scenery.STONE.darkened(0.3))
 	for i in (40 if web else 90):
 		var spot := _polar(rng.randf_range(PLAZA, RADIUS + 3.0), rng.randf() * 360.0)
+		if _paved(Vector2(spot.x, spot.z), web):
+			continue
 		var size := rng.randf_range(0.12, 0.35)
 		kit.box(Vector3(size, size * 0.6, size * rng.randf_range(0.7, 1.3)), spot + Vector3(0, size * 0.25, 0), pebble, Vector3(0, rng.randf() * TAU, rng.randf_range(-0.2, 0.2)))
 
@@ -207,6 +209,26 @@ static func _facing_middle(at: Vector3) -> Transform3D:
 ## A frame at at whose +X points away from the middle (lantern arms).
 static func _facing_out(at: Vector3) -> Transform3D:
 	return Transform3D(Basis(Vector3.UP, -atan2(at.z, at.x)), at)
+
+
+## On the flagstones or inside a family plot (no grass or pebbles there).
+static func _paved(spot: Vector2, web: bool) -> bool:
+	var r := spot.length()
+	if absf(r - (PLAZA + 0.8)) < 1.05:
+		return true
+	if r > PLAZA:
+		for angle in PATHS:
+			var along := Vector2.from_angle(deg_to_rad(angle))
+			if along.dot(spot) > 0.0 and absf(along.cross(spot)) < 1.35:
+				return true
+	for q in 4:
+		var plots := [_polar(22.5, 90.0 * q - 15.0), _polar(22.5, 90.0 * q + 15.0)]
+		if web and q % 2 == 1:
+			plots.append(_polar(38.5, 90.0 * q))
+		for plot in plots:
+			if spot.distance_to(Vector2(plot.x, plot.z)) < 3.1:
+				return true
+	return false
 
 
 static func _near_path(degrees: float, margin: float) -> bool:
