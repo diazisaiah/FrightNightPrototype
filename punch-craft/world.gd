@@ -125,11 +125,6 @@ const ELITE_BAR := 2
 const CHAMPION_BAR := 3
 const ENDLESS_ELITE := 30
 const ENDLESS_CHAMPION := 75
-const TORCH_COUNT := 8
-const DEAD_TREE_COUNT := 28
-const GRAVESTONE_COUNT := 30
-const GRAVE_PLOTS := 9
-const CRYPT_COUNT := 5
 
 var _night_kills := 0
 var _milestone := 0
@@ -145,6 +140,8 @@ var _run_coins := 0
 var _run_xp := 0
 var _run_over := false
 var _torches: Array[OmniLight3D] = []
+## Solid props, Vector3(x, z, radius), so nothing spawns inside one.
+var _solids: Array = []
 var _torch_time := 0.0
 ## The bout within the division (the old "night"; bout 1 of the first
 ## division keeps the gentle first-night rules).
@@ -501,6 +498,11 @@ func _start_boss() -> void:
 	forward.y = 0.0
 	var spot := _player.global_position + forward.normalized() * BOSS_SPAWN_DISTANCE
 	spot = Vector3(spot.x, 0.1, spot.z).limit_length(ARENA_RADIUS)
+	# Not inside a statue: slide toward the middle until it's clear.
+	for attempt in 12:
+		if _clear_of_props(Vector2(spot.x, spot.z), 2.0):
+			break
+		spot = spot.move_toward(Vector3(0, 0.1, 0), 1.5)
 	_spawn_enemy({"kind": "boss", "armored": not _first_night()}, Vector3(spot.x, 0.1, spot.z))
 	var escorts: Array = FIRST_NIGHT.escorts if _first_night() else BOSS_ESCORTS
 	for i in escorts.size():
@@ -524,7 +526,7 @@ func _spawn_point() -> Vector3:
 	var player_pos := Vector2(_player.global_position.x, _player.global_position.z)
 	for attempt in 20:
 		var point := player_pos + Vector2.from_angle(randf() * TAU) * randf_range(SPAWN_DISTANCE_MIN, SPAWN_DISTANCE_MAX)
-		if point.length() <= ARENA_RADIUS:
+		if point.length() <= ARENA_RADIUS and _clear_of_props(point, 1.0):
 			return Vector3(point.x, 0.1, point.y)
 	var edge := Vector2.from_angle(randf() * TAU) * ARENA_RADIUS
 	return Vector3(edge.x, 0.1, edge.y)
@@ -801,8 +803,8 @@ func _go_to_camp() -> void:
 
 # --- Scenery ----------------------------------------------------------------
 
-## Dead trees, gravestones and torches. Scenery has no collision so it never
-## traps the player or enemies.
+## The division's place. In the Graveyard the big props are solid to you and
+## monsters (_solids keeps spawns clear of them).
 func _build_decorations() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 6661 + _night
@@ -812,73 +814,12 @@ func _build_decorations() -> void:
 		_torches.append_array(ArenaScenery.build(_theme, _decorations, rng))
 		_place_hazards(rng)
 		return
-	var web := Settings.use_web_profile()
-	var grave_plots := 5 if web else GRAVE_PLOTS
-	var lone_graves := 14 if web else GRAVESTONE_COUNT
-	var dead_trees := 12 if web else DEAD_TREE_COUNT
-	var crypts := 3 if web else CRYPT_COUNT
-	var rock_clusters := 14 if web else 30
-	var torches := 4 if web else TORCH_COUNT
-	var wood := Enemy._material(Color(0.25, 0.17, 0.1))
+	# The Gravedigger Division: a laid-out cemetery (GraveyardScenery).
 	($Ground/Mesh as MeshInstance3D).material_override = Look.block_material(Color(0.14, 0.17, 0.12))
-	Scenery.night_sky(_decorations, rng)
-	Scenery.ground_patches(_decorations, ARENA_RADIUS, 36 if web else 70, rng)
-	Scenery.grass(_decorations, ARENA_RADIUS + 8.0, 6000 if web else 14000, rng)
-
-	# Plots of graves in rows, around a clear middle.
-	for plot in grave_plots:
-		var center := Vector2.from_angle(TAU * plot / grave_plots + rng.randf_range(-0.2, 0.2)) * rng.randf_range(11.0, ARENA_RADIUS - 4.0)
-		var facing := rng.randf() * TAU
-		var rows := rng.randi_range(2, 3)
-		var columns := rng.randi_range(3, 5)
-		for row in rows:
-			for column in columns:
-				if rng.randf() < 0.18:
-					continue
-				var offset := Vector2((column - columns / 2.0) * 1.5, row * 2.4).rotated(facing)
-				var node := _decoration_at(center + offset)
-				node.rotation.y = -facing
-				Scenery.gravestone(node, rng.randi_range(0, 5), rng)
-	# Lone graves scattered about.
-	for i in lone_graves:
-		var node := _decoration_at(_random_scenery_spot(7.0))
-		Scenery.gravestone(node, rng.randi_range(0, 5), rng)
-
-	for i in dead_trees:
-		var node := _decoration_at(_random_scenery_spot(9.0))
-		Scenery.dead_tree(node, rng, rng.randf_range(3.5, 7.0))
-	for i in crypts:
-		var spot := Vector2.from_angle(TAU * i / crypts + rng.randf_range(-0.3, 0.3)) * rng.randf_range(ARENA_RADIUS - 10.0, ARENA_RADIUS + 2.0)
-		var node := _decoration_at(spot)
-		node.rotation.y = atan2(-spot.x, -spot.y) + PI
-		Scenery.crypt(node, rng)
-	for i in rock_clusters:
-		Scenery.rocks(_decoration_at(_random_scenery_spot(5.0)), rng, rng.randi_range(2, 5))
-	# An iron fence ringing the graveyard.
-	var sides := 12
-	var fence_radius := ARENA_RADIUS + 4.0
-	for i in sides:
-		var a := TAU * i / sides
-		var b := TAU * (i + 1) / sides
-		var from := Vector2.from_angle(a) * fence_radius
-		var to := Vector2.from_angle(b) * fence_radius
-		var run := Scenery.fence(_decorations, from.distance_to(to))
-		run.position = Vector3(from.x, 0, from.y)
-		run.rotation.y = -atan2(to.y - from.y, to.x - from.x)
-
-	# Ground mist, wisps and the torches.
-	Scenery.mist(_decorations, Vector3(0, 0.5, 0), Vector3(ARENA_RADIUS, 0.3, ARENA_RADIUS), 35 if web else 90)
-	Scenery.wisps(_decorations, Vector3(0, 1.4, 0), Vector3(ARENA_RADIUS * 0.8, 1.0, ARENA_RADIUS * 0.8), Color(0.45, 1.0, 0.75), 20 if web else 50)
-	for i in torches:
-		var spot := Vector2.from_angle(TAU * i / torches) * randf_range(10.0, 30.0)
-		var torch := _decoration_at(spot)
-		torch.add_child(_mesh(Enemy._box(Vector3(0.1, 1.6, 0.1)), wood, Vector3(0, 0.8, 0)))
-		torch.add_child(_mesh(Enemy._box(Vector3(0.2, 0.06, 0.2)), wood, Vector3(0, 1.58, 0)))
-		Look.flame(torch, Vector3(0, 1.7, 0))
-		var light := Look.fire_light(Color(1.0, 0.6, 0.25), 2.2, 10.0)
-		light.position.y = 1.95
-		torch.add_child(light)
+	var built := GraveyardScenery.build(_decorations, rng)
+	for light in built.lights:
 		_torches.append(light)
+	_solids = built.solids
 
 
 ## The deeper divisions' hazards (Themes): toxic puddles or fire vents across
@@ -903,24 +844,11 @@ func _place_hazards(rng: RandomNumberGenerator) -> void:
 		add_child(hazard)
 
 
-func _decoration_at(spot: Vector2) -> Node3D:
-	var node := Node3D.new()
-	node.position = Vector3(spot.x, 0, spot.y)
-	node.rotation.y = randf() * TAU
-	_decorations.add_child(node)
-	return node
-
-
-func _random_scenery_spot(min_distance: float) -> Vector2:
-	return Vector2.from_angle(randf() * TAU) * randf_range(min_distance, ARENA_RADIUS + 3.0)
-
-
-func _mesh(mesh: PrimitiveMesh, material: Material, pos: Vector3) -> MeshInstance3D:
-	mesh.material = material
-	var instance := MeshInstance3D.new()
-	instance.mesh = mesh
-	instance.position = pos
-	return instance
+func _clear_of_props(point: Vector2, margin: float) -> bool:
+	for solid in _solids:
+		if point.distance_to(Vector2(solid.x, solid.y)) < solid.z + margin:
+			return false
+	return true
 
 
 func _flicker_torches(delta: float) -> void:

@@ -719,7 +719,12 @@ func _set_theme(id: String) -> void:
 	var theme: Dictionary = Themes.ARENA.filter(func(t: Dictionary) -> bool: return t.id == id)[0]
 	_theme_node = Node3D.new()
 	$Decorations.add_child(_theme_node)
-	if id != "graveyard":
+	if id == "graveyard":
+		# The laid-out cemetery with its solid statues, oaks and mausoleums.
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 6662
+		GraveyardScenery.build(_theme_node, rng)
+	else:
 		ArenaScenery.build(theme, _theme_node, RandomNumberGenerator.new())
 	Themes.apply_environment($WorldEnvironment.environment, theme, $Moon)
 	Sfx.play_music(theme.music)

@@ -15,7 +15,7 @@ var _stuck := false
 
 func _ready() -> void:
 	collision_layer = 0
-	collision_mask = 3  # World and player.
+	collision_mask = 3 | Scenery.PROP_LAYER  # World, player, and big props (cover).
 	var shape := CollisionShape3D.new()
 	var box := BoxShape3D.new()
 	box.size = Vector3(0.08, 0.08, 0.6)

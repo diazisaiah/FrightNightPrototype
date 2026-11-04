@@ -61,6 +61,10 @@ const BLEED_TIME := 6.0
 ## Walking into something for this long makes an enemy step around it.
 const STUCK_TIME := 0.25
 const DETOUR_TIME := 1.0
+## Looking ahead for big props (Scenery.PROP_LAYER): how far past its own
+## edge, and how often it looks.
+const AVOID_LOOK := 1.6
+const AVOID_EVERY := 0.1
 ## Each body shot adds this much "body damage" (0-1), which fades over time
 ## and slows everything the enemy does, up to MAX_BODY_SLOW.
 const BODY_DAMAGE_PER_HIT := 0.2
@@ -201,6 +205,8 @@ var _stuck_time := 0.0
 ## round until that's blocked too.
 var _detour_side := 1.0
 var _detour_time := 0.0
+var _avoid := Vector3.ZERO
+var _avoid_check := 0.0
 var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 ## How many melee enemies may attack at once (set by the level: 1 early, 2 later).
 static var max_attackers := 1
@@ -241,6 +247,9 @@ func setup(target: Player, is_armored: bool, scaling := {}) -> void:
 
 func _ready() -> void:
 	add_to_group("enemies")
+	# Big arena props block monsters too (anything that walks into the world).
+	if collision_mask != 0:
+		collision_mask |= Scenery.PROP_LAYER
 	# The body sits on a pivot at the feet, so knock_down can topple it
 	# while the monster's own animation keeps posing the body.
 	_topple = Node3D.new()
@@ -560,11 +569,39 @@ func _special_look(color: Color, energy: float) -> void:
 
 ## Walking into a wall or block: slide sideways around it for a moment.
 func _steer(desired: Vector3, delta: float) -> Vector3:
+	desired = _avoid_props(desired, delta)
 	if _detour_time <= 0.0 or desired.length_squared() < 0.01:
 		return desired
 	_detour_time -= delta
 	var side_step := Vector3(-desired.z, 0, desired.x).normalized() * _detour_side
 	return (desired.normalized() * 0.25 + side_step).normalized() * desired.length()
+
+
+## A statue or oak ahead: walk along its side (the side nearer where it's
+## heading; head-on, the side it last detoured) instead of into it.
+func _avoid_props(desired: Vector3, delta: float) -> Vector3:
+	if collision_mask & Scenery.PROP_LAYER == 0 or desired.length_squared() < 0.01 or not is_inside_tree():
+		return desired
+	_avoid_check -= delta
+	if _avoid_check <= 0.0:
+		_avoid_check = AVOID_EVERY
+		_avoid = Vector3.ZERO
+		var direction := Vector3(desired.x, 0, desired.z).normalized()
+		var from := global_position + Vector3(0, 0.6, 0)
+		var query := PhysicsRayQueryParameters3D.create(from, from + direction * (AVOID_LOOK + body_radius()), Scenery.PROP_LAYER)
+		var hit := get_world_3d().direct_space_state.intersect_ray(query)
+		if not hit.is_empty():
+			var normal: Vector3 = hit.normal
+			var tangent := Vector3(normal.x, 0, normal.z).cross(Vector3.UP).normalized()
+			var lean := tangent.dot(direction)
+			if absf(lean) < 0.15:
+				tangent *= _detour_side
+			elif lean < 0.0:
+				tangent = -tangent
+			_avoid = tangent
+	if _avoid == Vector3.ZERO:
+		return desired
+	return (desired.normalized() * 0.3 + _avoid).normalized() * desired.length()
 
 
 func _check_stuck(desired: Vector3, delta: float) -> void:

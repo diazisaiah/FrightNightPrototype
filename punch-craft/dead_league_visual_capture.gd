@@ -27,6 +27,14 @@ func _ready() -> void:
 			var parts := argument.trim_prefix("--stage=").split(",")
 			await _capture_stage(int(parts[0]), float(parts[1]) if parts.size() > 1 else 0.0, float(parts[2]) if parts.size() > 2 else 0.0)
 			return
+		elif argument == "--steer":
+			await _steer_test()
+			return
+		elif argument.begins_with("--world="):
+			# The Arena from a free camera: --world=X,Y,Z,YAW,PITCH[,NAME].
+			var parts := argument.trim_prefix("--world=").split(",")
+			await _capture_world(Vector3(float(parts[0]), float(parts[1]), float(parts[2])), float(parts[3]), float(parts[4]), parts[5] if parts.size() > 5 else "view")
+			return
 		elif argument.begins_with("--action="):
 			var parts := argument.trim_prefix("--action=").split(",", false, 2)
 			action_class = parts[0]
@@ -125,6 +133,89 @@ func _capture_stage(index: int, yaw: float, pitch: float) -> void:
 		RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_OBJECTS_IN_FRAME),
 		RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME)])
 	await _capture("res://dead_league_stage_%d_%d_capture.png" % [index, int(yaw)])
+
+
+## Monsters get round the Graveyard's solid props: for each angel / obelisk /
+## oak, a zombie stands right behind it with you right in front, and must
+## reach you within 6 s. Prints PASS / FAIL per prop and quits 1 on a fail.
+func _steer_test() -> void:
+	var subject: Node = (load("res://world.tscn") as PackedScene).instantiate()
+	add_child(subject)
+	for frame in 30:
+		await get_tree().process_frame
+	var player: Player = subject.get_node("Player")
+	player.invulnerable = true
+	for enemy in get_tree().get_nodes_in_group("enemies"):
+		enemy.queue_free()
+	subject.set("_spawn_timer", 9999.0)
+	subject.set_process(false)
+	var solids: Array = subject.get("_solids")
+	var failed := 0
+	var tested := 0
+	for solid in solids:
+		if Vector2(solid.x, solid.y).length() > 35.0:
+			continue
+		var center := Vector3(solid.x, 0.1, solid.y)
+		var out := center.normalized()
+		player.global_position = center - out * (solid.z + 2.5)
+		player.velocity = Vector3.ZERO
+		var zombie: Enemy = (load("res://zombie.tscn") as PackedScene).instantiate()
+		zombie.setup(player, false)
+		subject.get_node("Enemies").add_child(zombie)
+		zombie.global_position = center + out * (solid.z + 1.0)
+		var reached := false
+		var closest := INF
+		var time := 0.0
+		while time < 6.0:
+			await get_tree().physics_frame
+			time += get_physics_process_delta_time()
+			player.global_position = center - out * (solid.z + 2.5)
+			closest = minf(closest, Vector2(zombie.global_position.x - center.x, zombie.global_position.z - center.z).length())
+			if zombie.global_position.distance_to(player.global_position) < 1.7:
+				reached = true
+				break
+		tested += 1
+		if closest < solid.z:
+			reached = false  # Walked through it.
+		if not reached:
+			failed += 1
+		print("STEER %s at (%.1f, %.1f) r %.1f: %s in %.1f s, closest %.2f" % ["PASS" if reached else "FAIL", solid.x, solid.y, solid.z, "reached" if reached else "stuck", time, closest])
+		zombie.queue_free()
+		await get_tree().physics_frame
+	print("STEER RESULT: %d / %d props passed" % [tested - failed, tested])
+	get_tree().quit(1 if failed > 0 else 0)
+
+
+func _capture_world(at: Vector3, yaw: float, pitch: float, name: String) -> void:
+	var subject: Node = (load("res://world.tscn") as PackedScene).instantiate()
+	add_child(subject)
+	for frame in 90:
+		await get_tree().process_frame
+	var player: Player = subject.get_node("Player")
+	player.invulnerable = true
+	player.process_mode = Node.PROCESS_MODE_DISABLED
+	player.visible = false
+	for node in subject.get_children():
+		if node is CanvasLayer:
+			node.visible = false
+	if pitch < -30.0:
+		# Overhead: no fog, so the whole layout shows.
+		for node in subject.find_children("*", "WorldEnvironment", true, false):
+			(node as WorldEnvironment).environment.fog_enabled = false
+	var camera := Camera3D.new()
+	camera.fov = 70.0
+	camera.far = 400.0
+	subject.add_child(camera)
+	camera.global_position = at
+	camera.rotation = Vector3(deg_to_rad(pitch), deg_to_rad(yaw), 0)
+	camera.make_current()
+	for frame in 8:
+		await get_tree().process_frame
+	print("WORLD %s: %d draw calls, %d objects, %d primitives" % [name,
+		RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME),
+		RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_OBJECTS_IN_FRAME),
+		RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME)])
+	await _capture("res://world_%s_capture.png" % name)
 
 
 func _settle() -> void:

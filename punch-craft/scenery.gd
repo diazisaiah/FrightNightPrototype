@@ -28,6 +28,11 @@ static func box(parent: Node3D, size: Vector3, pos: Vector3, material: Material,
 ## they piled up behind a crypt or the Bone Division's pillars while you hit
 ## them from the other side; one endless run went 400 knockouts that way).
 const LAYER := 8
+## Big arena props that block monsters too (2026-11-04, the places update):
+## statues, oaks, obelisks, mausoleums. Monsters mask this layer and steer
+## round it (Enemy._avoid_props); arrows stick in it. Fences and buildings
+## stay LAYER only.
+const PROP_LAYER := 16
 ## Scenery walls reach this high, so nobody stands on a roof out of reach.
 const WALL_HEIGHT := 8.0
 
@@ -36,10 +41,10 @@ const WALL_HEIGHT := 8.0
 ## an upright cylinder) of collision under parent, on LAYER, WALL_HEIGHT tall
 ## from its base. Buildings and fences get one; small props (graves, rocks,
 ## crates) stay walk-through so nobody snags on clutter.
-static func solid(parent: Node3D, size: Vector3, pos: Vector3, rot := Vector3.ZERO, radius := 0.0) -> StaticBody3D:
+static func solid(parent: Node3D, size: Vector3, pos: Vector3, rot := Vector3.ZERO, radius := 0.0, blocks_monsters := false) -> StaticBody3D:
 	var body := StaticBody3D.new()
 	body.set_meta("prop", true)
-	body.collision_layer = LAYER
+	body.collision_layer = LAYER | (PROP_LAYER if blocks_monsters else 0)
 	body.collision_mask = 0
 	var height := maxf(size.y, WALL_HEIGHT)
 	body.position = pos + Vector3(0, (height - size.y) / 2.0, 0)
@@ -190,7 +195,7 @@ static func _box_batch(parent: Node3D, material: Material, transforms: Array[Tra
 
 ## A small family crypt: walls, a peaked roof, a dark door and a stone urn
 ## on the gable (no crosses, by the house rule). Solid.
-static func crypt(parent: Node3D, rng: RandomNumberGenerator) -> Node3D:
+static func crypt(parent: Node3D, rng: RandomNumberGenerator, blocks_monsters := false) -> Node3D:
 	var root := Node3D.new()
 	parent.add_child(root)
 	var stone := Look.block_material(STONE.darkened(rng.randf_range(0.05, 0.25)))
@@ -210,7 +215,7 @@ static func crypt(parent: Node3D, rng: RandomNumberGenerator) -> Node3D:
 	box(root, Vector3(0.3, 0.12, 0.3), Vector3(0, 3.86, 1.4), stone)
 	box(root, Vector3(0.22, 0.3, 0.22), Vector3(0, 4.07, 1.4), stone)
 	box(root, Vector3(0.12, 0.1, 0.12), Vector3(0, 4.27, 1.4), stone)
-	solid(root, Vector3(3.3, 3.8, 3.9), Vector3(0, 1.9, 0.05))
+	solid(root, Vector3(3.3, 3.8, 3.9), Vector3(0, 1.9, 0.05), Vector3.ZERO, 0.0, blocks_monsters)
 	return root
 
 

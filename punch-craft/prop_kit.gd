@@ -135,3 +135,168 @@ func brazier(frame: Transform3D, iron_color := Color(0.1, 0.09, 0.1)) -> Vector3
 	box_in(frame, Vector3(0.7, 0.2, 0.7), Vector3(0, 1.1, 0), iron)
 	box_in(frame, Vector3(0.5, 0.06, 0.5), Vector3(0, 1.22, 0), stone(Color(0.15, 0.06, 0.03)))
 	return frame * Vector3(0, 1.32, 0)
+
+
+# --- Graveyard pieces (the Gravedigger Division) ------------------------------------
+
+## Three shared gravestone tones, so a whole graveyard batches into a few
+## draw calls (Scenery.gravestone makes a material per stone).
+func grave_tone(index: int) -> Material:
+	return stone([Scenery.STONE.darkened(0.08), Scenery.STONE.darkened(0.25).lerp(Scenery.MOSS, 0.2), Scenery.STONE.darkened(0.4)][index % 3])
+
+
+## A small walk-through gravestone, kind 0-5 like Scenery.gravestone, with its
+## dirt mound in front (+Z).
+func grave(frame: Transform3D, kind: int, tone: int) -> void:
+	var rock := grave_tone(tone)
+	var dark := grave_tone(tone + 2)
+	match kind:
+		0:
+			box_in(frame, Vector3(0.62, 0.8, 0.16), Vector3(0, 0.4, 0), rock)
+			box_in(frame, Vector3(0.48, 0.12, 0.16), Vector3(0, 0.86, 0), rock)
+			box_in(frame, Vector3(0.3, 0.08, 0.16), Vector3(0, 0.96, 0), rock)
+			box_in(frame, Vector3(0.36, 0.3, 0.02), Vector3(0, 0.52, 0.08), dark)
+		1:
+			box_in(frame, Vector3(0.4, 0.2, 0.3), Vector3(0, 0.1, 0), rock)
+			box_in(frame, Vector3(0.14, 1.2, 0.14), Vector3(0, 0.8, 0), rock)
+			box_in(frame, Vector3(0.62, 0.14, 0.14), Vector3(0, 1.08, 0), rock)
+		2:
+			box_in(frame, Vector3(0.55, 0.22, 0.55), Vector3(0, 0.11, 0), dark)
+			box_in(frame, Vector3(0.28, 1.2, 0.28), Vector3(0, 0.8, 0), rock)
+			box_in(frame, Vector3(0.18, 0.18, 0.18), Vector3(0, 1.48, 0), rock, Vector3(0, PI / 4, 0))
+		3:
+			box_in(frame, Vector3(0.6, 0.5, 0.15), Vector3(0, 0.25, 0), rock)
+			box_in(frame, Vector3(0.38, 0.28, 0.15), Vector3(-0.1, 0.62, 0), rock, Vector3(0, 0, 0.4))
+			box_in(frame, Vector3(0.4, 0.12, 0.3), Vector3(0.1, 0.06, 0.4), rock, Vector3(0, 0.6, 0.2))
+		4:
+			box_in(frame, Vector3(0.34, 0.24, 0.26), Vector3(0, 0.12, 0), dark)
+			box_in(frame, Vector3(0.12, 1.3, 0.12), Vector3(0, 0.88, 0), rock)
+			box_in(frame, Vector3(0.56, 0.12, 0.12), Vector3(0, 1.18, 0), rock)
+			for i in 8:
+				var a := TAU * i / 8.0
+				box_in(frame, Vector3(0.08, 0.08, 0.1), Vector3(cos(a) * 0.2, 1.18 + sin(a) * 0.2, 0), rock)
+		_:
+			box_in(frame, Vector3(0.7, 0.45, 1.3), Vector3(0, 0.225, 0.5), rock)
+			box_in(frame, Vector3(0.8, 0.08, 1.4), Vector3(0, 0.49, 0.5), dark)
+	if kind != 5:
+		box_in(frame, Vector3(0.75, 0.12, 1.4), Vector3(0, 0.03, 0.85), stone(Scenery.DIRT))
+
+
+## A family plot: a low stone curb round w x d (walk-through), dirt inside,
+## and rows of graves facing +Z.
+func plot(frame: Transform3D, w: float, d: float, rng: RandomNumberGenerator) -> void:
+	var curb := grave_tone(1)
+	box_in(frame, Vector3(w, 0.06, d), Vector3(0, 0.02, 0), stone(Scenery.DIRT.lightened(0.08)))
+	for side in [-1.0, 1.0]:
+		box_in(frame, Vector3(w + 0.3, 0.3, 0.3), Vector3(0, 0.15, side * d / 2.0), curb)
+		box_in(frame, Vector3(0.3, 0.3, d), Vector3(side * w / 2.0, 0.15, 0), curb)
+		box_in(frame, Vector3(0.45, 0.6, 0.45), Vector3(side * w / 2.0, 0.3, -d / 2.0), curb)
+		box_in(frame, Vector3(0.3, 0.2, 0.3), Vector3(side * w / 2.0, 0.7, -d / 2.0), grave_tone(0))
+	var columns := maxi(1, int(w / 1.4))
+	var rows := maxi(1, int(d / 2.4))
+	for row in rows:
+		for column in columns:
+			if rng.randf() < 0.15:
+				continue
+			var x := -w / 2.0 + w * (column + 0.5) / columns
+			var z := -d / 2.0 + 0.5 + row * 2.4
+			var tilt := Vector3(rng.randf_range(-0.06, 0.06), rng.randf_range(-0.1, 0.1), rng.randf_range(-0.08, 0.08))
+			grave(frame * Transform3D(Basis.from_euler(tilt), Vector3(x, 0, z)), rng.randi_range(0, 4), rng.randi_range(0, 2))
+
+
+## A weeping angel on a plinth, wings folded, head bowed; about 3.4 m.
+func angel(frame: Transform3D, tone := 0) -> void:
+	var rock := grave_tone(tone)
+	var dark := grave_tone(tone + 2)
+	box_in(frame, Vector3(1.5, 0.35, 1.5), Vector3(0, 0.175, 0), dark)
+	box_in(frame, Vector3(1.15, 0.9, 1.15), Vector3(0, 0.8, 0), rock)
+	box_in(frame, Vector3(1.35, 0.15, 1.35), Vector3(0, 1.32, 0), dark)
+	box_in(frame, Vector3(0.6, 0.3, 0.02), Vector3(0, 0.85, -0.58), dark)
+	# Robe, wider at the hem.
+	box_in(frame, Vector3(0.8, 0.5, 0.6), Vector3(0, 1.65, 0), rock)
+	box_in(frame, Vector3(0.66, 0.6, 0.48), Vector3(0, 2.2, 0), rock)
+	box_in(frame, Vector3(0.56, 0.4, 0.42), Vector3(0, 2.68, 0), rock)
+	# Bowed head and the hands raised to the face.
+	box_in(frame, Vector3(0.3, 0.32, 0.3), Vector3(0, 3.02, -0.1), rock, Vector3(0.45, 0, 0))
+	for side in [-1.0, 1.0]:
+		box_in(frame, Vector3(0.14, 0.5, 0.14), Vector3(side * 0.24, 2.65, -0.22), rock, Vector3(-0.9, 0, side * 0.3))
+		# Folded wings rising behind the shoulders.
+		box_in(frame, Vector3(0.12, 1.3, 0.5), Vector3(side * 0.32, 2.75, 0.3), rock, Vector3(0.25, 0, side * 0.18))
+		box_in(frame, Vector3(0.1, 0.8, 0.35), Vector3(side * 0.42, 3.35, 0.38), rock, Vector3(0.1, 0, side * 0.35))
+		box_in(frame, Vector3(0.1, 0.9, 0.4), Vector3(side * 0.3, 1.95, 0.42), dark, Vector3(0.35, 0, side * 0.1))
+
+
+## A tall obelisk on a stepped base; about 5 m.
+func obelisk(frame: Transform3D, tone := 0) -> void:
+	var rock := grave_tone(tone)
+	var dark := grave_tone(tone + 2)
+	box_in(frame, Vector3(1.6, 0.3, 1.6), Vector3(0, 0.15, 0), dark)
+	box_in(frame, Vector3(1.2, 0.5, 1.2), Vector3(0, 0.55, 0), rock)
+	box_in(frame, Vector3(0.7, 3.6, 0.7), Vector3(0, 2.6, 0), rock)
+	box_in(frame, Vector3(0.52, 0.52, 0.52), Vector3(0, 4.55, 0), rock, Vector3(PI / 4, 0, PI / 4))
+	box_in(frame, Vector3(0.8, 0.12, 0.8), Vector3(0, 0.86, 0), dark)
+	box_in(frame, Vector3(0.4, 0.5, 0.02), Vector3(0, 1.6, -0.36), dark)
+
+
+## A big dead oak: a thick trunk, roots, and heavy crooked boughs.
+func oak(frame: Transform3D, rng: RandomNumberGenerator, height := 6.0) -> void:
+	var bark := stone(Scenery.BARK.lightened(0.06))
+	var dark := stone(Scenery.BARK)
+	var y := 0.0
+	var x := 0.0
+	var width := 0.75
+	var band := 0
+	while y < height * 0.6:
+		var segment := rng.randf_range(0.6, 1.0)
+		box_in(frame, Vector3(width, segment, width), Vector3(x, y + segment / 2.0, 0), bark if band % 2 == 0 else dark, Vector3(0, rng.randf() * 0.5, 0))
+		y += segment
+		x += rng.randf_range(-0.08, 0.08)
+		width *= 0.9
+		band += 1
+	for i in 5:
+		var a := TAU * i / 5.0 + rng.randf() * 0.5
+		box_in(frame, Vector3(0.24, 0.24, 1.1), Vector3(cos(a) * 0.5, 0.1, sin(a) * 0.5), dark, Vector3(0.15, -a + PI / 2.0, 0))
+	for i in rng.randi_range(4, 6):
+		var yaw := TAU * i / 5.0 + rng.randf_range(-0.3, 0.3)
+		var lean := rng.randf_range(0.55, 1.05)
+		var length := rng.randf_range(1.8, 3.2)
+		var base := Vector3(x, y * rng.randf_range(0.7, 1.0), 0)
+		var bough := Transform3D(Basis.from_euler(Vector3(0, yaw, lean)), base)
+		box_in(frame * bough, Vector3(0.22, length, 0.22), Vector3(0, length / 2.0, 0), bark)
+		for t in 2:
+			var twig := Transform3D(Basis.from_euler(Vector3(0, rng.randf() * TAU, rng.randf_range(-0.9, 0.9))), Vector3(0, length * rng.randf_range(0.55, 0.95), 0))
+			var twig_length := length * rng.randf_range(0.35, 0.55)
+			box_in(frame * bough * twig, Vector3(0.09, twig_length, 0.09), Vector3(0, twig_length / 2.0, 0), dark)
+
+
+## An iron lantern post; returns where its glass is.
+func lantern_post(frame: Transform3D, glass: Color) -> Vector3:
+	var iron := metal(Scenery.IRON, 0.6)
+	box_in(frame, Vector3(0.3, 0.3, 0.3), Vector3(0, 0.15, 0), grave_tone(2))
+	box_in(frame, Vector3(0.1, 2.5, 0.1), Vector3(0, 1.45, 0), iron)
+	box_in(frame, Vector3(0.6, 0.07, 0.07), Vector3(0.25, 2.62, 0), iron)
+	var at := Vector3(0.5, 2.3, 0)
+	box_in(frame, Vector3(0.28, 0.06, 0.28), at + Vector3(0, 0.22, 0), iron)
+	box_in(frame, Vector3(0.24, 0.05, 0.24), at + Vector3(0, -0.2, 0), iron)
+	box_in(frame, Vector3(0.17, 0.32, 0.17), at, glow(glass, 3.0))
+	return frame * at
+
+
+## A strip of flagstones from a to b (world space on the floor), width wide.
+func path(a: Vector3, b: Vector3, width: float, rng: RandomNumberGenerator) -> void:
+	var tones := [stone(Color(0.3, 0.29, 0.3)), stone(Color(0.24, 0.23, 0.24))]
+	var along := b - a
+	var length := along.length()
+	var dir := along / length
+	var across := dir.cross(Vector3.UP)
+	var yaw := atan2(dir.x, dir.z)
+	var t := 0.0
+	while t < length:
+		var lane := -width / 2.0 + 0.4
+		while lane < width / 2.0:
+			if rng.randf() < 0.88:
+				var size := Vector3(rng.randf_range(0.55, 0.75), 0.05, rng.randf_range(0.55, 0.75))
+				var spot := a + dir * (t + rng.randf_range(-0.05, 0.05)) + across * (lane + rng.randf_range(-0.06, 0.06))
+				box(size, Vector3(spot.x, 0.02, spot.z), tones[rng.randi() % 2], Vector3(0, yaw + rng.randf_range(-0.12, 0.12), 0))
+			lane += 0.8
+		t += 0.8
