@@ -10,6 +10,7 @@ var _want := {}
 
 
 func _ready() -> void:
+	focus_mode = Control.FOCUS_NONE  # No gold focus frame round a clicked list.
 	for bar in [get_v_scroll_bar(), get_h_scroll_bar()]:
 		_want[bar] = bar.value
 		bar.value_changed.connect(_on_value.bind(bar))

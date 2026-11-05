@@ -333,18 +333,35 @@ func _show_pause_page(page: String) -> void:
 var _hidden_for_pause: Array = []
 
 
+func _on_item_panel_visibility() -> void:
+	if _item_panel.visible:
+		_hide_fight_ui_behind()
+	elif not get_tree().paused or not _pause_panel.visible:
+		_restore_fight_ui()
+
+
+func _hide_fight_ui_behind() -> void:
+	if not _hidden_for_pause.is_empty():
+		return
+	for child in get_children():
+		if child is CanvasItem and child.visible and child != _pause_panel and child != _item_panel.get_parent() 				and not child.is_ancestor_of(_pause_panel) and not child.is_ancestor_of(_item_panel):
+			child.visible = false
+			_hidden_for_pause.append(child)
+
+
+func _restore_fight_ui() -> void:
+	for node in _hidden_for_pause:
+		if is_instance_valid(node):
+			node.visible = true
+	_hidden_for_pause.clear()
+
+
 func set_paused(paused: bool) -> void:
 	get_tree().paused = paused
-	if paused and _hidden_for_pause.is_empty():
-		for child in get_children():
-			if child is CanvasItem and child.visible and child != _pause_panel and child != _item_panel.get_parent() 					and not child.is_ancestor_of(_pause_panel):
-				child.visible = false
-				_hidden_for_pause.append(child)
-	elif not paused:
-		for node in _hidden_for_pause:
-			if is_instance_valid(node):
-				node.visible = true
-		_hidden_for_pause.clear()
+	if paused:
+		_hide_fight_ui_behind()
+	else:
+		_restore_fight_ui()
 	_pause_panel.visible = paused
 	# The big floor/bout announcement would show through the menu.
 	_announcement.visible = not paused
@@ -1394,7 +1411,7 @@ func show_gild_menu(entries: Array, silver: int) -> void:
 		var item: Dictionary = entry.item
 		button.pressed.connect(func() -> void: gild_chosen.emit(item))
 		box.add_child(button)
-		box.add_child(_item_card(entry.item, "GILDED" if entry.gilded else "BOUND"))
+		box.add_child(_item_card(entry.item, "GILDED" if entry.gilded else "BOUND", {}, true))
 		cards.add_child(box)
 	var done := Button.new()
 	done.text = "Done"
@@ -1437,7 +1454,7 @@ func show_merchant(wares: Array, heal: Dictionary, silver: int, ask_text := "") 
 		IconLabel.on_button(buy, "Sold" if ware.sold else "Buy   %d {silver}" % ware.price)
 		buy.pressed.connect(func() -> void: ware_chosen.emit(i))
 		box.add_child(buy)
-		box.add_child(_item_card(ware.item, "SOLD" if ware.sold else "FOR SALE", GameState.equipped.get(ware.item.slot, {})))
+		box.add_child(_item_card(ware.item, "SOLD" if ware.sold else "FOR SALE", GameState.equipped.get(ware.item.slot, {}), true))
 		cards.add_child(box)
 	var kit := VBoxContainer.new()
 	kit.add_theme_constant_override("separation", 6)
@@ -1565,8 +1582,8 @@ func _close_item_panel() -> void:
 ## A gear card (ItemCard: the item's model turning, its rarity's colors and
 ## effects). compare: the worn item to color the lines against (green = better,
 ## red = worse, gold = special).
-func _item_card(item: Dictionary, tag: String, compare := {}) -> Control:
-	return ItemCard.make(item, tag, compare)
+func _item_card(item: Dictionary, tag: String, compare := {}, small := false) -> Control:
+	return ItemCard.make(item, tag, compare, small)
 
 
 func _build_crypt_ui() -> void:
@@ -1600,6 +1617,9 @@ func _build_crypt_ui() -> void:
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(center)
 	_item_panel = PanelContainer.new()
+	# The fight UI steps aside whenever an item popup is open (2026-11-06),
+	# as it does for the pause menu.
+	_item_panel.visibility_changed.connect(_on_item_panel_visibility)
 	_item_panel.add_theme_stylebox_override("panel", UiTheme.card(24.0))
 	center.add_child(_item_panel)
 	_item_panel.hide()

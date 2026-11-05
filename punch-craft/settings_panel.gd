@@ -640,7 +640,9 @@ func _tile(title: String, detail: String, group: ButtonGroup) -> Button:
 	detail_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	texts.add_child(detail_label)
 	tile.toggled.connect(func(on: bool) -> void:
-		name_label.add_theme_color_override("font_color", UiTheme.GOLD.lightened(0.3) if on else UiTheme.TEXT))
+		name_label.add_theme_color_override("font_color", UiTheme.GOLD.lightened(0.3) if on else UiTheme.TEXT)
+		# The chosen tile's small text stays readable on the gold (2026-11-06).
+		detail_label.add_theme_color_override("font_color", Color(0.93, 0.89, 0.82) if on else UiTheme.MUTED))
 	return tile
 
 

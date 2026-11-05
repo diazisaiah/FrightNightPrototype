@@ -23,7 +23,7 @@ static func show_on(tree: SceneTree, title: String, subtitle: String) -> void:
 
 func _build(title: String, subtitle: String) -> void:
 	var card := PanelContainer.new()
-	card.add_theme_stylebox_override("panel", UiTheme.raised(Color(UiTheme.PANEL, 0.96), UiTheme.GOLD, 2, 12, 14.0))
+	card.add_theme_stylebox_override("panel", UiTheme.card(14.0))  # The one popup card (2026-11-06).
 	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(card)
 	var column := VBoxContainer.new()

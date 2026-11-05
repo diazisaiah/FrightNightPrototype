@@ -10,7 +10,7 @@ extends Control
 
 const PAGES := ["Attributes", "Upgrades", "Armory", "Cosmetics", "Shop", "Bounties"]
 ## What the rail calls each page.
-const RAIL_NAMES := {"Attributes": "Fighter", "Upgrades": "Upgrades", "Armory": "Gear",
+const RAIL_NAMES := {"Attributes": "Fighter", "Upgrades": "Upgrades", "Armory": "Armory",
 	"Cosmetics": "Style", "Shop": "Shop", "Bounties": "Bounties"}
 const RAIL_ICONS := {"Home": "flame", "Attributes": "glove", "Upgrades": "sigil", "Armory": "helmet",
 	"Cosmetics": "crown", "Shop": "bag", "Bounties": "wanted"}

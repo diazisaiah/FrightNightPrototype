@@ -1282,7 +1282,7 @@ func _build_mode_offer() -> void:
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 14)
 	panel.add_child(column)
-	column.add_child(UiTheme.heading("HOW DO YOU DODGE?", 40, BLOOD.lightened(0.25)))
+	column.add_child(UiTheme.heading("HOW DO YOU DODGE?", 40))
 	for mode in [
 		["junior", "WEENIE HUT JUNIOR MODE", ("Swipe out or down to dodge." if Controls.touch() else "Q / E dodge.") + " The game picks the right move."],
 		["pro", "PRO GAMER MODE", "Slip, roll and back step yourself."],
@@ -1328,7 +1328,7 @@ func _build_tutorial_offer() -> void:
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 14)
 	panel.add_child(column)
-	column.add_child(UiTheme.heading("LEARN TO FIGHT THE DEAD?", 40, BLOOD.lightened(0.25)))
+	column.add_child(UiTheme.heading("LEARN TO FIGHT THE DEAD?", 40))
 	var text := _card_label("The basics on a dummy, then a few real monsters.", 18, UiTheme.TEXT)
 	text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	text.custom_minimum_size.x = 540
