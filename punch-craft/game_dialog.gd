@@ -28,7 +28,7 @@ func _build(title: String, body: String, buttons: Array) -> void:
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	dim.add_child(center)
 	var card := PanelContainer.new()
-	card.add_theme_stylebox_override("panel", UiTheme.raised(Color(0.06, 0.055, 0.08, 0.98), Color(UiTheme.GOLD, 0.55), 2, 12, 26.0, 18))
+	card.add_theme_stylebox_override("panel", UiTheme.card(26.0))
 	card.custom_minimum_size.x = 460
 	center.add_child(card)
 	var column := VBoxContainer.new()
@@ -72,6 +72,6 @@ func _build(title: String, body: String, buttons: Array) -> void:
 	card.scale = Vector2(0.92, 0.92)
 	card.modulate.a = 0.0
 	var tween := create_tween().set_parallel()
-	tween.tween_property(dim, "color:a", 0.6, 0.2)
+	tween.tween_property(dim, "color:a", UiTheme.POPUP_DIM, 0.2)
 	tween.tween_property(card, "modulate:a", 1.0, 0.18)
 	tween.tween_property(card, "scale", Vector2.ONE, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)

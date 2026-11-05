@@ -86,7 +86,7 @@ func _ready() -> void:
 
 func _build_card() -> void:
 	_card = PanelContainer.new()
-	_card.add_theme_stylebox_override("panel", UiTheme.raised(Color(UiTheme.PANEL, 0.97), UiTheme.GOLD, 2, 12, 20.0))
+	_card.add_theme_stylebox_override("panel", UiTheme.card(20.0))
 	_card.custom_minimum_size.x = CARD_WIDTH
 	add_child(_card)
 	var column := VBoxContainer.new()

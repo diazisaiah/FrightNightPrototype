@@ -493,7 +493,7 @@ func _build_ui() -> void:
 
 	_overlay = ColorRect.new()
 	_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_overlay.color = Color(0, 0, 0, 0.78)
+	_overlay.color = Color(0, 0, 0, UiTheme.POPUP_DIM)
 	_overlay.visible = false
 	_ui.add_child(_overlay)
 	_build_class_panel()

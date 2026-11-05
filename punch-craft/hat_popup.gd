@@ -61,7 +61,7 @@ func _build() -> void:
 	var tint := Hats.color(_id)
 	var duplicate := GameState.hats.has(_id)
 	var dim := ColorRect.new()
-	dim.color = Color(0, 0, 0, 0.65)
+	dim.color = Color(0, 0, 0, UiTheme.POPUP_DIM)
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(dim)
 	var center := CenterContainer.new()

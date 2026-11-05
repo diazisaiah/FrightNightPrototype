@@ -911,7 +911,7 @@ func _open_loadout() -> void:
 	_loadout_layer.layer = 50
 	add_child(_loadout_layer)
 	var dim := ColorRect.new()
-	dim.color = Color(0, 0, 0, 0.72)
+	dim.color = Color(0, 0, 0, UiTheme.POPUP_DIM)
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_loadout_layer.add_child(dim)
 	dim.gui_input.connect(func(event: InputEvent) -> void:
@@ -921,14 +921,17 @@ func _open_loadout() -> void:
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	dim.add_child(center)
+	var popup := PanelContainer.new()
+	popup.add_theme_stylebox_override("panel", UiTheme.card(20.0))
+	center.add_child(popup)
 	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 14)
-	center.add_child(column)
-	var heading := UiTheme.title_label("LOADOUT  ·  %s" % GameState.fighter_name().to_upper(), 40, UiTheme.GOLD)
+	column.add_theme_constant_override("separation", 10)
+	popup.add_child(column)
+	var heading := UiTheme.title_label("LOADOUT  ·  %s" % GameState.fighter_name().to_upper(), 30, UiTheme.GOLD)
 	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(heading)
 	for slot in ["passive", "ultimate"]:
-		var label := UiTheme.title_label(slot.to_upper(), 20, UiTheme.MUTED)
+		var label := UiTheme.title_label(slot.to_upper(), 16, UiTheme.MUTED)
 		column.add_child(label)
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 12)
@@ -942,7 +945,7 @@ func _open_loadout() -> void:
 	var done := Button.new()
 	done.text = "Done"
 	done.theme_type_variation = "PrimaryButton"
-	done.custom_minimum_size = Vector2(180, 48)
+	done.custom_minimum_size = Vector2(180, 44)
 	done.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	done.pressed.connect(_close_loadout)
 	column.add_child(done)
@@ -962,10 +965,10 @@ func _refresh_idles() -> void:
 		card.custom_minimum_size = Vector2(230, 170)
 		# Equipped: lit in the fighter's colour with a gold rim. The rest sit grey
 		# and dim (a gold-tinted fighter like Tony made them all look equipped).
-		card.add_theme_stylebox_override("normal", UiTheme.raised(Color(tint.darkened(0.78), 0.98) if equipped else Color(0.06, 0.05, 0.08, 0.96),
-			UiTheme.GOLD if equipped else Color(1, 1, 1, 0.16), 3 if equipped else 2, 12))
-		card.add_theme_stylebox_override("hover", UiTheme.raised(Color(tint.darkened(0.75), 0.98), tint.lightened(0.2), 3, 12))
-		card.add_theme_stylebox_override("pressed", UiTheme.raised(Color(tint.darkened(0.75), 0.98), tint.lightened(0.2), 3, 12))
+		card.add_theme_stylebox_override("normal", UiTheme.raised(Color(tint.darkened(0.78), 0.8) if equipped else Color(0.06, 0.05, 0.08, 0.68),
+			UiTheme.GOLD if equipped else Color(1, 1, 1, 0.16), 2, 10))
+		card.add_theme_stylebox_override("hover", UiTheme.raised(Color(tint.darkened(0.75), 0.85), tint.lightened(0.2), 2, 10))
+		card.add_theme_stylebox_override("pressed", UiTheme.raised(Color(tint.darkened(0.75), 0.85), tint.lightened(0.2), 2, 10))
 		var inside := VBoxContainer.new()
 		inside.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		inside.offset_left = 8
@@ -999,13 +1002,14 @@ func _close_loadout() -> void:
 func _ability_card(slot: String, entry: Dictionary, equipped: bool) -> Button:
 	var tint: Color = GameState.fighter_color()
 	var card := Button.new()
-	card.custom_minimum_size = Vector2(250, 230)
+	card.custom_minimum_size = Vector2(250, 204)
 	# Equipped: lit in the fighter's colour with a gold rim. The rest sit grey
 	# and dim (a gold-tinted fighter like Tony made them all look equipped).
-	card.add_theme_stylebox_override("normal", UiTheme.raised(Color(tint.darkened(0.78), 0.98) if equipped else Color(0.06, 0.05, 0.08, 0.96),
-		UiTheme.GOLD if equipped else Color(1, 1, 1, 0.16), 3 if equipped else 2, 12))
-	card.add_theme_stylebox_override("hover", UiTheme.raised(Color(tint.darkened(0.75), 0.98), tint.lightened(0.2), 3, 12))
-	card.add_theme_stylebox_override("pressed", UiTheme.raised(Color(tint.darkened(0.75), 0.98), tint.lightened(0.2), 3, 12))
+	# (2026-11-05: translucent and thinner, like the camp's cards.)
+	card.add_theme_stylebox_override("normal", UiTheme.raised(Color(tint.darkened(0.78), 0.8) if equipped else Color(0.06, 0.05, 0.08, 0.68),
+		UiTheme.GOLD if equipped else Color(1, 1, 1, 0.16), 2, 10))
+	card.add_theme_stylebox_override("hover", UiTheme.raised(Color(tint.darkened(0.75), 0.85), tint.lightened(0.2), 2, 10))
+	card.add_theme_stylebox_override("pressed", UiTheme.raised(Color(tint.darkened(0.75), 0.85), tint.lightened(0.2), 2, 10))
 	var inside := VBoxContainer.new()
 	inside.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	inside.offset_left = 14
@@ -1538,7 +1542,7 @@ func _pick(title: String, options: Array, callback: Callable, subtitle := "") ->
 	layer.layer = 50
 	add_child(layer)
 	var dim := ColorRect.new()
-	dim.color = Color(0, 0, 0, 0.7)
+	dim.color = Color(0, 0, 0, UiTheme.POPUP_DIM)
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	layer.add_child(dim)
 	var close := func() -> void: layer.queue_free()
@@ -1552,7 +1556,7 @@ func _pick(title: String, options: Array, callback: Callable, subtitle := "") ->
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 22)
 	center.add_child(column)
-	var heading := UiTheme.title_label(title, 48, UiTheme.GOLD)
+	var heading := UiTheme.title_label(title, 40, UiTheme.GOLD)
 	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(heading)
 	if subtitle != "":

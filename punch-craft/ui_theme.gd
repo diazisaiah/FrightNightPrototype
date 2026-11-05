@@ -85,8 +85,18 @@ static func heading(text: String, size := 40, color := GOLD) -> Label:
 
 ## The card every menu sits on: near-black, a gold edge and a soft shadow
 ## (the Dead League panel, results and dialogs use the same one).
+## How dark the screen goes behind any popup (2026-11-05: one value for all).
+const POPUP_DIM := 0.62
+
+
+## The one card every popup sits on (pause, settings, dialogs, the tips, loadout,
+## item offers): solid, dark, leaning a little toward your fighter's color, with
+## a thin border in it, like the camp's top bar.
 static func card(padding := 22.0) -> StyleBoxFlat:
-	return raised(Color(0.05, 0.045, 0.07, 0.97), Color(GOLD, 0.55), 2, 12, padding, 16)
+	var tint := GameState.fighter_color()
+	var style := raised(Color(0.05, 0.045, 0.07).lerp(tint.darkened(0.75), 0.22), Color(tint, 0.5), 2, 12, padding, 16)
+	style.bg_color.a = 0.98
+	return style
 
 
 ## A section heading inside a card: small display caps over a thin gold rule.

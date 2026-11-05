@@ -481,7 +481,7 @@ func _show_results() -> void:
 	_ui.process_mode = Node.PROCESS_MODE_ALWAYS
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	var dim := ColorRect.new()
-	dim.color = Color(0, 0, 0, 0.6)
+	dim.color = Color(0, 0, 0, UiTheme.POPUP_DIM)
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_ui.add_child(dim)
 	var center := CenterContainer.new()

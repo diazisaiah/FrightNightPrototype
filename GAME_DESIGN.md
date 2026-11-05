@@ -2850,3 +2850,6 @@ Shop look: mastery bar with its XP, rarity odds as pills, five even cards in a r
 
 ### Top bar and rail themed per fighter (2026-11-05)
 The top bar is solid (it anchors the camp), its dark base leaning toward the fighter's color with a stripe of it along the bottom; the rail matches (stripe down its right side), and the lit page glows in that color instead of gold. The bar reads "The Mauler:  Lvl 1" in the fighter's color, with the XP bar in it too. FRIGHT NIGHT in the corner is subtly alive (TitleWordmark): letters bob a pixel or two on a slow wave, the red breathes, and now and then one letter flickers.
+
+### One popup style (2026-11-05)
+Every popup (pause, settings, dialogs, tips, loadout, item offers, hat popup, credits, drills, title overlays) sits on UiTheme.card(): solid dark leaning toward the fighter's color with a thin border in it, over one shared dim (UiTheme.POPUP_DIM 0.62). Ability and idle cards are translucent with a 2px border like the camp pages. Menu page cards (Shop, Style, Armory, Bounties) float with no panel.

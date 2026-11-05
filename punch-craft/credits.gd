@@ -17,7 +17,7 @@ static func open(parent: Node) -> Credits:
 
 func _ready() -> void:
 	var dim := ColorRect.new()
-	dim.color = Color(0, 0, 0, 0.7)
+	dim.color = Color(0, 0, 0, UiTheme.POPUP_DIM)
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(dim)
 	var center := CenterContainer.new()
