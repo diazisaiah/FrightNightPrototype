@@ -85,6 +85,7 @@ static var _knob: ImageTexture
 func _ready() -> void:
 	theme = UiTheme.make()
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	WebField.suspended = false
 	var view := get_viewport_rect().size
 	custom_minimum_size = Vector2(minf(960.0, view.x - 40.0), minf(620.0, view.y - 40.0))
 	add_theme_stylebox_override("panel", UiTheme.card(0.0))
@@ -281,6 +282,7 @@ func _redeem(code: String) -> String:
 		GameState.unlock_catalyst()
 		fighter = "elementalist"
 	if fighter != "":
+		WebField.suspended = true  # No text box over the unlock screen.
 		var screen := TonyUnlock.open(get_tree(), fighter)
 		# The title's fighter picker was built without him: rebuild it.
 		var scene := get_tree().current_scene
@@ -343,6 +345,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _close() -> void:
+	WebField.suspended = true
 	_stop_listening()
 	Sfx.play("whoosh", -8.0, 1.3)
 	closed.emit()
@@ -834,6 +837,7 @@ func _on_load_pressed() -> void:
 		_code_note.add_theme_color_override("font_color", UiTheme.BAD)
 		Sfx.play("deny", -6.0)
 		return
+	WebField.suspended = true  # The title reloads from the new save.
 	_code_note.text = "Loaded."
 	_code_note.add_theme_color_override("font_color", UiTheme.GOOD)
 	Sfx.play("unlock", -4.0)

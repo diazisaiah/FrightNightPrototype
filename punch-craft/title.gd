@@ -65,6 +65,9 @@ const MAX_ROW := 5
 const CARD_SLIDE_TIME := 0.45
 var _cards := {}
 var _card_left := 0.0
+## How far the fighter screen is shifted right of its 1280-wide layout, to sit
+## in the middle on screens wider than 16:9 (2026-11-05).
+var _class_ox := 0.0
 ## Cards shrink when five fighters share the row.
 var _card_scale := 1.0
 ## The fighter whose card is open ("" while all four show).
@@ -758,7 +761,8 @@ func _build_class_panel() -> void:
 	_class_heading.add_theme_constant_override("outline_size", 12)
 	_class_heading.add_theme_font_override("font", UiTheme.display_font())
 	_class_heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_class_heading.position = Vector2(0, 30)
+	_class_ox = maxf(0.0, (get_viewport().get_visible_rect().size.x - 1280.0) / 2.0)
+	_class_heading.position = Vector2(_class_ox, 30)
 	_class_heading.size = Vector2(1280, 56)
 	_class_panel.add_child(_class_heading)
 
@@ -776,7 +780,7 @@ func _build_class_panel() -> void:
 	for id in ids:
 		var row := i / columns
 		var in_row := mini(columns, ids.size() - row * columns)
-		var start_x := (1280.0 - width * in_row - CARD_GAP * (in_row - 1)) / 2.0
+		var start_x := _class_ox + (1280.0 - width * in_row - CARD_GAP * (in_row - 1)) / 2.0
 		var card := _fighter_card(id)
 		card.scale = Vector2.ONE * _card_scale
 		card.position = Vector2(start_x + (i % columns) * (width + CARD_GAP), CARD_TOP + row * (height + CARD_GAP))
@@ -784,7 +788,8 @@ func _build_class_panel() -> void:
 		_class_panel.add_child(card)
 		i += 1
 	# A picked card slides to the left edge, full size, beside its details.
-	_card_left = (1280.0 - width * columns - CARD_GAP * (columns - 1)) / 2.0 if rows == 1 else 24.0
+	_card_left = _class_ox + ((1280.0 - width * columns - CARD_GAP * (columns - 1)) / 2.0 if rows == 1 else 24.0)
+	get_viewport().size_changed.connect(_recentre_classes)
 
 	_class_back = Button.new()
 	_class_back.text = "Back"
@@ -1141,6 +1146,23 @@ func _go_to(scene: String) -> void:
 	Loading.go(scene)
 
 
+## The screen got wider or narrower (a phone turning, a window resized): slide
+## the fighter screen to stay centred.
+func _recentre_classes() -> void:
+	var now := maxf(0.0, (get_viewport().get_visible_rect().size.x - 1280.0) / 2.0)
+	var delta := now - _class_ox
+	if is_zero_approx(delta) or _class_panel == null:
+		return
+	_class_ox = now
+	_class_heading.position.x += delta
+	_card_left += delta
+	for id in _cards:
+		_cards[id].home.x += delta
+		(_cards[id].panel as Control).position.x += delta
+	if _detail:
+		_detail.position.x += delta
+
+
 func _open_classes() -> void:
 	_refresh_class()
 	_reset_picker()
@@ -1159,6 +1181,7 @@ func _open_credits() -> void:
 
 
 func _open_settings() -> void:
+	WebField.suspended = false
 	_overlay.visible = true
 	_settings_holder.visible = true
 	_settings_holder.modulate.a = 0.0

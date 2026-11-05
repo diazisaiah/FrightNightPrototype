@@ -80,6 +80,9 @@ const JS := """
 })();
 """
 
+## True while Settings is closed or a screen sits over it (a redeemed code, a
+## loaded save): every HTML input hides, so none lingers over the next screen.
+static var suspended := false
 static var _next_id := 0
 static var _ready_js := false
 
@@ -107,7 +110,7 @@ func _ready() -> void:
 func _process(_delta: float) -> void:
 	if not _web:
 		return
-	var shown := is_visible_in_tree()
+	var shown := is_visible_in_tree() and not suspended
 	var view := get_viewport().get_visible_rect().size
 	var rect := get_global_rect()
 	if text != _seen:
