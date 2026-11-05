@@ -289,7 +289,7 @@ func _build_pause_tabs() -> void:
 	var title: Label = box.get_node("Title")
 	title.text = "PAUSED"
 	title.add_theme_font_override("font", UiTheme.display_font())
-	title.add_theme_font_size_override("font_size", 56)
+	title.add_theme_font_size_override("font_size", 46)
 	title.add_theme_color_override("font_color", UiTheme.GOLD)
 	var tabs := HBoxContainer.new()
 	tabs.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -308,7 +308,7 @@ func _build_pause_tabs() -> void:
 		_tab_buttons[page] = tab
 	_pause_menu = box
 	_controls_page = VBoxContainer.new()
-	_controls_page.add_theme_constant_override("separation", 6)
+	_controls_page.add_theme_constant_override("separation", 5)
 	box.add_child(_controls_page)
 	_show_pause_page("MENU")
 
@@ -319,12 +319,29 @@ func _show_pause_page(page: String) -> void:
 		if child is Button:
 			child.visible = page == "MENU" and child.get_meta("shown", true)
 	_controls_page.visible = page == "CONTROLS"
+	# The controls list is two columns, so the card widens for it.
+	_pause_menu.custom_minimum_size.x = 760 if page == "CONTROLS" else 400
 	if page == "CONTROLS":
 		show_controls()
 
 
+## What the pause menu hid (2026-11-05): the bout counter, health, coins and
+## the rest used to float in front of the card.
+var _hidden_for_pause: Array = []
+
+
 func set_paused(paused: bool) -> void:
 	get_tree().paused = paused
+	if paused and _hidden_for_pause.is_empty():
+		for child in get_children():
+			if child is CanvasItem and child.visible and child != _pause_panel and child != _item_panel.get_parent() 					and not child.is_ancestor_of(_pause_panel):
+				child.visible = false
+				_hidden_for_pause.append(child)
+	elif not paused:
+		for node in _hidden_for_pause:
+			if is_instance_valid(node):
+				node.visible = true
+		_hidden_for_pause.clear()
 	_pause_panel.visible = paused
 	# The big floor/bout announcement would show through the menu.
 	_announcement.visible = not paused
@@ -1056,20 +1073,52 @@ func show_controls() -> void:
 		return
 	for child in _controls_page.get_children():
 		child.queue_free()
-	for row in Controls.rows():
-		var line := HBoxContainer.new()
-		var what := Label.new()
-		what.text = row[0]
-		what.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		what.add_theme_font_size_override("font_size", 19)
-		what.add_theme_color_override("font_color", UiTheme.MUTED)
-		line.add_child(what)
-		var keys := Label.new()
-		keys.text = row[1]
-		keys.add_theme_font_override("font", UiTheme.bold_font())
-		keys.add_theme_font_size_override("font_size", 19)
-		line.add_child(keys)
-		_controls_page.add_child(line)
+	# Grouped, each control's keys in a key-cap pill (2026-11-05).
+	var groups := [["MOVEMENT", ["Move", "Look", "Sprint", "Jump", "Dash"]],
+			["FIGHTING", ["Jab", "Hook", "Uppercut", "Dodge", "Slip", "Roll", "Back step", "Ultimate"]],
+			["OTHER", []]]
+	var rows := Controls.rows()
+	# Two columns: movement and the rest on the left, fighting on the right.
+	var columns := HBoxContainer.new()
+	columns.add_theme_constant_override("separation", 36)
+	_controls_page.add_child(columns)
+	var left := VBoxContainer.new()
+	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	left.add_theme_constant_override("separation", 4)
+	var right := VBoxContainer.new()
+	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	right.add_theme_constant_override("separation", 4)
+	columns.add_child(left)
+	columns.add_child(right)
+	for group in groups:
+		var mine: Array = rows.filter(func(row: Array) -> bool:
+			var label: String = row[0]
+			if group[1].is_empty():
+				return not groups.slice(0, 2).any(func(other: Array) -> bool: return other[1].any(func(prefix: String) -> bool: return label.begins_with(prefix)))
+			return group[1].any(func(prefix: String) -> bool: return label.begins_with(prefix)))
+		if mine.is_empty():
+			continue
+		var column: VBoxContainer = right if group[0] == "FIGHTING" else left
+		var heading := UiTheme.title_label(group[0], 15, UiTheme.MUTED)
+		column.add_child(heading)
+		for row in mine:
+			var line := HBoxContainer.new()
+			line.add_theme_constant_override("separation", 12)
+			var what := Label.new()
+			what.text = String(row[0]).replace("  /  ", " / ")
+			what.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			what.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			what.add_theme_font_size_override("font_size", 17)
+			line.add_child(what)
+			var cap := PanelContainer.new()
+			cap.add_theme_stylebox_override("panel", UiTheme.box(Color(1, 1, 1, 0.07), Color(GameState.fighter_color(), 0.5), 1, 7, 4.0))
+			var keys := Label.new()
+			keys.text = row[1]
+			keys.add_theme_font_override("font", UiTheme.bold_font())
+			keys.add_theme_font_size_override("font_size", 16)
+			cap.add_child(keys)
+			line.add_child(cap)
+			column.add_child(line)
 
 
 # --- Crypt: prompts, equipment and found items -------------------------------

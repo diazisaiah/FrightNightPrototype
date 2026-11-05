@@ -268,6 +268,15 @@ func _load() -> void:
 	# to the new default dodge scheme, Space + direction, once.
 	if not file.has_section_key("settings", "assist_mode"):
 		values["dodge_mode"] = DEFAULTS["dodge_mode"]
+	# 2026-11-05: the scroll-wheel and side-button punches, the Space and Tab / R
+	# dodge schemes and the side-button slips were cut (rebind keys instead);
+	# anyone on one goes back to the default.
+	if values["punch_mode"] in ["wheel", "side_buttons"]:
+		values["punch_mode"] = DEFAULTS["punch_mode"]
+	if values["dodge_mode"] in ["space", "keys"]:
+		values["dodge_mode"] = DEFAULTS["dodge_mode"]
+	if values["slip_mode"] != "qe":
+		values["slip_mode"] = "qe"
 	# 2026-11-02: Shift + Q / E rolls became the default; settings still on the
 	# old default (Space + direction) move over once.
 	if int(file.get_value("settings", "controls_version", 1)) < 2:

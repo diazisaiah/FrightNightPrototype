@@ -17,22 +17,16 @@ const CHOICES := {
 		"junior": ["Weenie Hut Junior", "One dodge input, the game picks how"],
 		"pro": ["Pro Gamer", "Slip, roll and back step yourself"],
 	},
+	# (2026-11-05: the scroll wheel, mouse side buttons, Space and Tab / R
+	# schemes and the side-button slips are gone; rebind keys in the list below.)
 	"punch_mode": {
 		"modifiers": ["Shift / Ctrl + click", "Hold a key, then punch"],
 		"shift_z": ["Shift / Z + click", "Z uppercuts, no Ctrl"],
-		"wheel": ["Scroll wheel", "Down hook, up uppercut"],
-		"side_buttons": ["Mouse side buttons", "Front hook, back uppercut"],
 	},
 	"dodge_mode": {
 		"shift_qe": ["Shift + Q / E", "Rolls; Shift + S or double-tap S back step"],
 		"ctrl": ["Ctrl + A / D / S", "Hold Ctrl with a direction"],
-		"space": ["Space + A / D / S / W", "Jump moves to C"],
 		"double_tap": ["Double-tap A / D / S", "Tap a direction twice"],
-		"keys": ["Tab / R", "Roll left / right, ultimate on T"],
-	},
-	"slip_mode": {
-		"qe": ["Q / E", "Slip left / right"],
-		"qe_side": ["Q / E + side buttons", "Back left, front right"],
 	},
 	"lock_on": {
 		"auto": ["Auto", "On for touch, off elsewhere"],
@@ -41,10 +35,19 @@ const CHOICES := {
 		"blend": ["Blend", "Turns on its own"],
 		"hard": ["Hard", "Locks and holds"],
 	},
-	"render_scale": {
-		"auto": ["Auto", "Fits your screen"],
-		"full": ["Full", "Sharpest"],
-		"low": ["Low", "Fastest"],
+}
+## Settings that move several values at once (2026-11-05): [title, detail,
+## {key: value} to set, keys to match when lighting the tile].
+const PRESETS := {
+	"effects": {
+		"full": ["Full", "Shake and slow motion", {"screen_shake": 1.0, "slow_motion": 1.0}, ["screen_shake", "slow_motion"]],
+		"less": ["Less", "Half of each", {"screen_shake": 0.5, "slow_motion": 0.5}, ["screen_shake", "slow_motion"]],
+		"off": ["Off", "None", {"screen_shake": 0.0, "slow_motion": 0.0}, ["screen_shake", "slow_motion"]],
+	},
+	"graphics": {
+		"auto": ["Auto", "Fits your screen", {"render_scale": "auto", "post_effects": true, "shadows": true}, ["render_scale"]],
+		"high": ["High", "Sharpest", {"render_scale": "full", "post_effects": true, "shadows": true}, ["render_scale"]],
+		"low": ["Low", "Fastest", {"render_scale": "low", "post_effects": false, "shadows": false}, ["render_scale"]],
 	},
 }
 
@@ -66,8 +69,8 @@ var _code_box: LineEdit
 var _load_button: Button
 var _load_armed := false
 var _code_note: Label
-## Only shows when two control choices collide.
-var _scheme_note: Label
+## The presets' tiles, by preset id.
+var _presets := {}
 ## Key bindings: the list of rows (rebuilt when the mode changes), the
 ## action waiting for a key, and its button.
 var _bind_list: VBoxContainer
@@ -162,7 +165,6 @@ func _ready() -> void:
 	_slider(sound, "effects", "burst", "Effects", "Punches, hits and the crowd", 0.0, 1.0, 0.05, "%d%%", 100.0)
 	_slider(sound, "music", "note", "Music", "The soundtrack", 0.0, 1.0, 0.05, "%d%%", 100.0)
 	_slider(sound, "ambience", "wind", "Ambience", "Wind and the night", 0.0, 1.0, 0.05, "%d%%", 100.0)
-	_toggle(sound, "muted", "skull", "Mute all sound", "Silence, even the bell")
 
 	var controls := _page(pages, "CONTROLS")
 	if Controls.touch():
@@ -179,25 +181,20 @@ func _ready() -> void:
 		_slider(controls, "fov", "eye", "Field of view", "How wide you see", 60.0, 100.0, 1.0, "%d", 1.0)
 		_choice(controls, "assist_mode", "slip", "Mode", "How dodging works")
 		_choice(controls, "lock_on", "crosshair", "Lock-on", "The view follows an enemy. F picks targets")
-	_scheme_note = _label("", 14, UiTheme.BAD)
-	_scheme_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	if not Controls.touch():
 		_choice(controls, "punch_mode", "crossed_gloves", "Hooks and uppercuts", "How you throw them")
-		_choice(controls, "dodge_mode", "swoosh", "Rolls and back step", "Pro Gamer Mode keys, and the dash")
-		_choice(controls, "slip_mode", "wing_boot", "Slips", "Pro Gamer Mode keys")
-		controls.add_child(_scheme_note)
-		_slider(controls, "stick_sensitivity", "crosshair", "Controller look speed", "How fast the right stick turns you", 0.3, 3.0, 0.05, "x%.2f", 1.0)
-		_toggle(controls, "invert_y", "eye", "Invert controller look", "Push up to look down")
-		_toggle(controls, "vibration", "quake", "Controller vibration", "Rumble when you get hit")
+		_choice(controls, "dodge_mode", "swoosh", "Rolls and back step", "Pro Gamer Mode only")
+		_toggle(controls, "invert_y", "eye", "Invert look", "Push up to look down")
+		# Controller rows only when one's plugged in.
+		if not Input.get_connected_joypads().is_empty():
+			_slider(controls, "stick_sensitivity", "crosshair", "Controller look speed", "How fast the right stick turns you", 0.3, 3.0, 0.05, "x%.2f", 1.0)
+			_toggle(controls, "vibration", "quake", "Controller vibration", "Rumble when you get hit")
 		_build_bindings(controls)
 
 	var display := _page(pages, "DISPLAY")
-	_slider(display, "screen_shake", "quake", "Screen shake", "Shake on big hits", 0.0, 1.0, 0.05, "%d%%", 100.0)
-	_slider(display, "slow_motion", "hourglass", "Slow motion", "Hit freezes and slow-mo on counters and knockouts. 0 turns both off", 0.0, 1.0, 0.05, "%d%%", 100.0)
+	_preset(display, "effects", "quake", "Screen effects", "Shake on big hits, slow motion on counters and knockouts")
+	_preset(display, "graphics", "spark", "Graphics", "Low runs faster if the game struggles")
 	_toggle(display, "fullscreen", "chevrons", "Fullscreen", "Fill the whole screen")
-	_choice(display, "render_scale", "spark", "3D resolution", "Lower runs faster")
-	_toggle(display, "post_effects", "moon", "Film effects", "Grain, vignette and color grade")
-	_toggle(display, "shadows", "flame", "Torch shadows", "Turn off if the game runs slowly")
 
 	if show_save_data:
 		var data := _page(pages, "SAVE DATA")
@@ -493,7 +490,10 @@ func _choice(page: Control, key: String, icon: String, title: String, hint: Stri
 	head.add_theme_constant_override("separation", 14)
 	column.add_child(head)
 	_row_head(head, icon, title, hint, UiTheme.GOLD)
-	var options: Dictionary = CHOICES[key]
+	var options: Dictionary = CHOICES[key].duplicate()
+	# Auto is "off" with a keyboard and mouse, so it isn't a tile there.
+	if key == "lock_on" and not Controls.touch():
+		options.erase("auto")
 	var grid := GridContainer.new()
 	grid.columns = 3 if options.size() == 3 else 2
 	grid.add_theme_constant_override("h_separation", 10)
@@ -510,6 +510,36 @@ func _choice(page: Control, key: String, icon: String, title: String, hint: Stri
 		grid.add_child(tile)
 		tiles[id] = tile
 	_controls[key] = {"tiles": tiles}
+
+
+## A choice whose tiles each set several settings (PRESETS).
+func _preset(page: Control, id: String, icon: String, title: String, hint: String) -> void:
+	var card := _card(page)
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 12)
+	card.add_child(column)
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 14)
+	column.add_child(head)
+	_row_head(head, icon, title, hint, UiTheme.GOLD)
+	var options: Dictionary = PRESETS[id]
+	var grid := GridContainer.new()
+	grid.columns = 3
+	grid.add_theme_constant_override("h_separation", 10)
+	column.add_child(grid)
+	var group := ButtonGroup.new()
+	var tiles := {}
+	for option in options:
+		var entry: Array = options[option]
+		var tile := _tile(entry[0], entry[1], group)
+		tile.pressed.connect(func() -> void:
+			for key in entry[2]:
+				Settings.set_value(key, entry[2][key])
+			Sfx.play("tick", -8.0)
+			_refresh())
+		grid.add_child(tile)
+		tiles[option] = tile
+	_presets[id] = tiles
 
 
 func _tile(title: String, detail: String, group: ButtonGroup) -> Button:
@@ -638,14 +668,25 @@ func _stop_listening() -> void:
 
 func _refresh() -> void:
 	_fill_bindings()
-	if _scheme_note:
-		var clash: bool = Settings.get_value("punch_mode") == "side_buttons" and Settings.get_value("slip_mode") == "qe_side"
-		_scheme_note.text = "Side buttons are on hooks and uppercuts, so slips stay on Q / E." if clash else ""
-		_scheme_note.visible = clash
+	for preset in _presets:
+		for option in _presets[preset]:
+			var entry: Array = PRESETS[preset][option]
+			var lit := true
+			for key in entry[3]:
+				var want = entry[2][key]
+				var have = Settings.get_value(key)
+				if want is float:
+					lit = lit and is_equal_approx(float(have), want)
+				else:
+					lit = lit and have == want
+			_presets[preset][option].set_pressed_no_signal(lit)
+			_presets[preset][option].toggled.emit(lit)
 	for key in _controls:
 		var control: Dictionary = _controls[key]
 		if control.has("tiles"):
 			var current = Settings.get_value(key)
+			if key == "lock_on" and current == "auto" and not control.tiles.has("auto"):
+				current = "off"
 			for id in control.tiles:
 				control.tiles[id].set_pressed_no_signal(id == current)
 				control.tiles[id].toggled.emit(id == current)

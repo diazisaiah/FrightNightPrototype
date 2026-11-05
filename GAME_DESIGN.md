@@ -2853,3 +2853,6 @@ The top bar is solid (it anchors the camp), its dark base leaning toward the fig
 
 ### One popup style (2026-11-05)
 Every popup (pause, settings, dialogs, tips, loadout, item offers, hat popup, credits, drills, title overlays) sits on UiTheme.card(): solid dark leaning toward the fighter's color with a thin border in it, over one shared dim (UiTheme.POPUP_DIM 0.62). Ability and idle cards are translucent with a 2px border like the camp pages. Menu page cards (Shop, Style, Armory, Bounties) float with no panel.
+
+### Settings and pause trim (2026-11-05)
+Cut: Mute all sound (Master at 0 does it), the scroll-wheel and mouse-side-button punches, the Space and Tab / R dodge schemes, the side-button slips (rebind keys instead; old saves on them go back to the defaults), the desktop Auto lock-on tile (it is Off there), and the controller rows unless a controller is plugged in. Merged: Screen shake + Slow motion into "Screen effects" (Full / Less / Off), and 3D resolution + Film effects + Torch shadows into "Graphics" (Auto / High / Low). Invert look is one toggle. The pause menu hides the HUD behind it (the bout counter used to float over the card), and its Controls tab is grouped (Movement / Fighting / Other) in two columns with key-cap pills.
