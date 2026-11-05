@@ -2235,6 +2235,14 @@ Prerequisites for the Crypt revamp, and the first Rebalance plan items.
 
 **Open work:** none; the revamp is built (item models, item and store cards, the gear system with save migration, drop odds, salvage, the economy, room furniture, mimics, the toilet and merchant tie-in, and the balance re-run, 2026-11-04).
 
+## New-player onboarding [Built 2026-11-05]
+
+- **The tutorial pays nothing** (it used to pay for your first upgrade with an "Enough for your first upgrade" line).
+- **After the tutorial (or skipping it):** camp's ARENA tip on the Arena button: "To make money, you need to duke it out with the undead!" (Its button was never wired before, so this tip had never shown.)
+- **After your first Arena fight (won or knocked out):** the YOUR FIRST UPGRADE tip on the Buy button. Short of the cheapest upgrade, camp tops your coins up to it first and the tip opens with "Oh, you're broke? Fine, I'll spare some change."
+- **The Dead League is locked until you win an Arena bout:** greyed with a padlock; pressing it says "Beat your first Arena bout to prove your worth." Once open, its tip says "You proved your worth: the Dead League is open." then explains the contenders and seals. Older saves with a bout won or a seal broken are open.
+- `dead_league_visual_capture.tscn -- --onboard=arena|broke|won|locked` renders each stage on the test save.
+
 ## Places and UI update plan [Planned, 2026-11-04]
 
 The arenas, the Dead League backdrop and the menus have barely changed since the start. This update gives every place more detail and solid props, gives each Dead League boss its own stage with a crowd, puts the fighters around the camp fire, and replaces the stock Godot widgets with a custom UI kit.

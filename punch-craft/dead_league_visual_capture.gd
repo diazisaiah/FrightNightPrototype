@@ -47,6 +47,41 @@ func _ready() -> void:
 				await get_tree().process_frame
 			await _capture("res://tutorial_touch_capture.png")
 			return
+		elif argument.begins_with("--onboard="):
+			# The camp's onboarding on a test save: --onboard=arena (tutorial
+			# just done), broke (first Arena fight lost, no coins), won (a bout
+			# won, first upgrade bought), locked (press the locked League).
+			if not GameState.save_path.begins_with("user://test"):
+				push_error("--onboard only runs on a test save")
+				get_tree().quit(1)
+				return
+			var state := argument.trim_prefix("--onboard=")
+			process_mode = Node.PROCESS_MODE_ALWAYS  # Tips and dialogs may pause.
+			GameState._reset_fields()
+			GameState.tips_seen = {}
+			GameState.tutorial_done = true
+			GameState.onboarded = true
+			GameState.resources["coins"] = 0
+			if state in ["broke", "won", "locked"]:
+				GameState.tips_seen["arena_intro"] = true
+				GameState.tips_seen["arena_done"] = true
+			if state == "won":
+				GameState.tips_seen["first_upgrade"] = true
+				GameState.arena_bouts = {"1": 1}
+				GameState.nights_cleared = 1
+				GameState.upgrade_levels = {"wrapped_knuckles": 1}
+			var camp: Node = (load("res://camp.tscn") as PackedScene).instantiate()
+			add_child(camp)
+			for frame in 90:
+				await get_tree().process_frame
+			print("ONBOARD %s: coins %d, league open %s, paused %s" % [state, int(GameState.resources.get("coins", 0)), camp.call("_league_open"), get_tree().paused])
+			if state == "locked":
+				Tutorial._active = null
+				camp.call("_start_dead_league")
+				for frame in 20:
+					await get_tree().process_frame
+			await _capture("res://onboard_%s_capture.png" % state)
+			return
 		elif argument == "--camp":
 			# The camp's upgrade page as you see it.
 			add_child((load("res://camp.tscn") as PackedScene).instantiate())

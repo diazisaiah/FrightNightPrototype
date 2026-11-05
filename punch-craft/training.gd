@@ -485,15 +485,10 @@ func _complete_step() -> void:
 	if _step + 1 < _plan.size():
 		_start_step(_step + 1)
 	else:
-		# The first time through, it pays for your first upgrade.
-		var first := not GameState.tutorial_done
-		var pay := GameState.cheapest_upgrade() if first else 0
-		if pay > 0:
-			GameState.add_resource("coins", pay)
+		# (No pay any more, 2026-11-05: camp tops you up for your first upgrade
+		# after your first Arena fight, if you need it.)
 		_finish_tutorial()
 		_hud.announce("Tutorial complete")
-		if pay > 0:
-			_hud.announce_small("+%d {coins}   ·   Enough for your first upgrade" % pay, UiTheme.GOLD)
 
 
 func _finish_tutorial() -> void:

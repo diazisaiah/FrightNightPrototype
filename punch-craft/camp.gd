@@ -93,14 +93,14 @@ func _camp_tips() -> void:
 				_hat_grid, Callable(), false, true))
 
 
-## New players (2026-10-29): the Arena (right after the tutorial, 2026-11-03),
-## your first upgrade (the tutorial paid for it), then the Dead League (once
-## you've finished an Arena bout); your first attribute points. True if one opened.
+## New players (2026-11-05): the Arena (after the tutorial, or skipping it);
+## your first upgrade once your first Arena fight is over (topped up with
+## spare change if you can't afford it); the Dead League once you've won an
+## Arena bout (it's locked till then); your first attribute points. True if
+## one opened.
 func _onboarding_tips() -> bool:
 	if GameState.tutorial_done and not _arena_done():
-		var arena := _arena_tip()
-		if arena:
-			arena.finished.connect(_upgrade_tip.bind(true))
+		if _arena_tip():
 			return true
 	if _upgrade_tip(false):
 		return true
@@ -111,6 +111,13 @@ func _onboarding_tips() -> bool:
 				"Every level gives %d points to spend in Attributes. Each point is a small boost, and 10, 20 and 30 in one attribute unlock a perk." % Attributes.POINTS_PER_LEVEL,
 				_tab_buttons["Attributes"], Callable(), false) != null
 	return false
+
+
+## The Dead League opens once you've won an Arena bout (2026-11-05). Older
+## saves with any bout won or seal broken are open.
+func _league_open() -> bool:
+	return GameState.nights_cleared > 0 or not GameState.arena_bouts.is_empty() \
+			or GameState.dead_league_clears.values().has(true)
 
 
 ## True once an Arena bout has ended (win or knockout). Older saves count by
@@ -128,27 +135,35 @@ func _arena_tip() -> Tutorial:
 	if _arena_button == null:
 		return null
 	return Tutorial.open(self, "arena_intro", "THE ARENA",
-			"To make money for upgrades and to level up, you gotta duke it out with the undead!\n\nStep into the Arena.",
+			"To make money, you need to duke it out with the undead!\n\nStep into the Arena.",
 			_arena_button, Callable(), false)
 
 
-func _upgrade_tip(chain: bool) -> bool:
+## After your first Arena fight (won or not), your first upgrade. Short of
+## the coins, camp spares the change.
+func _upgrade_tip(_chain: bool) -> bool:
 	var cheapest := GameState.cheapest_upgrade()
-	if GameState.upgrade_levels.is_empty() and cheapest > 0 and GameState.resources.get("coins", 0) >= cheapest:
-		var upgrade := Tutorial.open(self, "first_upgrade", "YOUR FIRST UPGRADE",
-				"Coins buy upgrades on this web, and they work for every fighter. The tutorial paid for your first one: buy it.",
-				_details["upgrade"].buy, func() -> bool: return not GameState.upgrade_levels.is_empty(), false)
-		if upgrade:
-			upgrade.finished.connect(_league_tip.bind(true))
-			return true
+	if not _arena_done() or not GameState.upgrade_levels.is_empty() or cheapest <= 0 or Tutorial.seen("first_upgrade"):
+		return false
+	var coins: int = GameState.resources.get("coins", 0)
+	var broke := coins < cheapest
+	if broke:
+		GameState.add_resource("coins", cheapest - coins)
+	var upgrade := Tutorial.open(self, "first_upgrade", "YOUR FIRST UPGRADE",
+			("Oh, you're broke? Fine, I'll spare some change.\n\n" if broke else "")
+			+ "Coins buy upgrades on this web, and they work for every fighter. Buy your first one.",
+			_details["upgrade"].buy, func() -> bool: return not GameState.upgrade_levels.is_empty(), false)
+	if upgrade:
+		upgrade.finished.connect(_league_tip.bind(true))
+		return true
 	return false
 
 
 func _league_tip(chain: bool) -> bool:
-	if _league_button == null or not _arena_done():
+	if _league_button == null or not _league_open():
 		return false
 	return Tutorial.open(self, "dead_league", "THE DEAD LEAGUE",
-			"Five contenders, one at a time. Challenge the next one whenever you like, as often as you like.\n\nBeating them is how you progress: each win breaks a seal, opening the next Arena division, new upgrades and more.",
+			"You proved your worth: the Dead League is open.\n\nFive contenders, one at a time. Challenge the next one whenever you like, as often as you like.\n\nBeating them is how you progress: each win breaks a seal, opening the next Arena division, new upgrades and more.",
 			_league_button, Callable(), false, chain) != null
 
 
@@ -370,6 +385,23 @@ func _build_tabs() -> Control:
 	league.pressed.connect(_start_dead_league)
 	tabs.add_child(league)
 	_league_button = league
+	if not _league_open():
+		# Locked: dim, with a padlock, until you win an Arena bout.
+		league.tooltip_text = "Win your first Arena bout to open it."
+		league.add_theme_color_override("font_color", UiTheme.MUTED)
+		league.add_theme_color_override("font_hover_color", UiTheme.MUTED)
+		league.text = "      Dead League"
+		var lock := Control.new()
+		lock.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		lock.set_anchors_preset(Control.PRESET_CENTER_LEFT)
+		lock.position = Vector2(12, -9)
+		lock.size = Vector2(16, 18)
+		lock.draw.connect(func() -> void:
+			lock.draw_arc(Vector2(8, 7), 5.0, PI, TAU, 12, UiTheme.MUTED, 2.5, true)
+			lock.draw_line(Vector2(3, 7), Vector2(3, 9), UiTheme.MUTED, 2.5)
+			lock.draw_line(Vector2(13, 7), Vector2(13, 9), UiTheme.MUTED, 2.5)
+			lock.draw_rect(Rect2(1, 9, 14, 9), UiTheme.MUTED))
+		league.add_child(lock)
 	for mode in [["Arena", _pick_division], ["Crypt", _pick_crypt_floors]]:
 		var start := Button.new()
 		start.text = mode[0]
@@ -378,6 +410,8 @@ func _build_tabs() -> Control:
 		start.add_theme_font_size_override("font_size", 18)
 		start.pressed.connect(mode[1])
 		tabs.add_child(start)
+		if mode[0] == "Arena":
+			_arena_button = start
 		# Locked things stay hidden: the Crypt appears with the Bellman's seal,
 		# wearing a NEW badge until the first descent.
 		if mode[0] == "Crypt":
@@ -1276,6 +1310,9 @@ func _start_training() -> void:
 
 
 func _start_dead_league() -> void:
+	if not _league_open():
+		GameDialog.open(self, "THE DEAD LEAGUE", "Beat your first Arena bout to prove your worth.")
+		return
 	GameState.save_game()
 	Loading.go("res://dead_league_menu.tscn")
 

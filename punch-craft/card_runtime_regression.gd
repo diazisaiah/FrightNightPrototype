@@ -839,18 +839,17 @@ func _test_tutorial_fights() -> void:
 	training._start_step(first_fight + 2)
 	await get_tree().process_frame
 	_check(training._fighters.size() == 1 and training._fighters[0] is Brawler, "Fight 3: a brawler")
-	# Finishing it the first time pays for your first upgrade; again, nothing.
-	var cheapest := GameState.cheapest_upgrade()
+	# Finishing it pays nothing (2026-11-05: camp spares the change after your
+	# first Arena fight instead).
 	var coins: int = GameState.resources.get("coins", 0)
 	training._complete_step()
 	await get_tree().create_timer(Training.STEP_PAUSE + 0.3, false).timeout
-	_check(cheapest > 0 and GameState.tutorial_done and GameState.resources.get("coins", 0) == coins + cheapest,
-			"Finishing the tutorial pays for the first upgrade (%d)" % cheapest)
+	_check(GameState.tutorial_done and GameState.resources.get("coins", 0) == coins, "Finishing the tutorial pays nothing")
 	_check(training._fighters.is_empty() and training._dummy.visible and training._ring.visible and player.fixed_hit == 0.0, "Leaving the fights brings the dummy and the ring back")
 	training._start_step(training._plan.size() - 1)
 	training._complete_step()
 	await get_tree().create_timer(Training.STEP_PAUSE + 0.3, false).timeout
-	_check(GameState.resources.get("coins", 0) == coins + cheapest, "Finishing it again pays nothing")
+	_check(GameState.resources.get("coins", 0) == coins, "Finishing it again pays nothing")
 	training.queue_free()
 	await get_tree().process_frame
 	print("Card runtime: tutorial fights OK")
