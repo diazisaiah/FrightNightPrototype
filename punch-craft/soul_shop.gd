@@ -6,7 +6,8 @@ class_name SoulShop
 ## every fight.) Achievements still unlock their emotes for free; buying one
 ## skips ahead.
 
-const EMOTE_SLOTS := 2
+## One emote per stock (2026-11-05; it was two).
+const EMOTE_SLOTS := 1
 const GEAR_SLOTS := 3
 const EMOTE_PRICE := 8
 ## Hand idles (IdleAnims.SHOP).
@@ -64,6 +65,9 @@ static func _stale() -> bool:
 	# Stock from before hand idles were sold.
 	var unowned_idles := IdleAnims.SHOP.any(func(id: String) -> bool: return not GameState.idles_bought.has(id))
 	if unowned_idles and not GameState.shop_stock.any(func(offer: Dictionary) -> bool: return offer.kind == "idle"):
+		return true
+	# Stock from when two emotes were sold.
+	if GameState.shop_stock.filter(func(offer: Dictionary) -> bool: return offer.kind == "emote").size() > EMOTE_SLOTS:
 		return true
 	# Stock from before skins were sold.
 	if not _skins_for_sale().is_empty() and not GameState.shop_stock.any(func(offer: Dictionary) -> bool: return offer.kind == "skin"):

@@ -2834,3 +2834,4 @@ An itch player called out "a half second pause on every hit". Two causes:
 
 ### Soul Shop layout (built 2026-11-05)
 The Shop page has no big panel: cards float over the camp. Every offer is the same size (gear too, as an icon card with its effects), with All / Emotes / Gear / Idles / Skins filter pills.
+Cosmetics (emote, idle, skin, fighter) sit on the top row, gear on the second; every Buy button sits under its card, outside the frame. One emote per stock. Gear cards are compact ItemCards (turning model kept). Skipping the tutorial from the title still gets the Arena tip.

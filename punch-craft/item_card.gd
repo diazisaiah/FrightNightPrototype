@@ -28,10 +28,17 @@ const FX := {
 	"legendary": {"border": 3, "glow": 22, "pulse": 0.5, "rays": 16, "ray_alpha": 0.17, "spin": 0.32, "sparkles": 30, "sweep": true},
 }
 const SWEEP_EVERY := 3.2
+const COMPACT_WIDTH := 188.0
+const COMPACT_STAGE := Vector2(168, 104)
 
 var item := {}
 var tag := ""
 var compare := {}
+## The camp shop's smaller card (2026-11-05): same turning model and rarity
+## effects, narrower, with the text a size down.
+var compact := false
+## The height the card is held to (the shop's even cards).
+var min_height := 0.0
 
 var _rarity := "common"
 var _tint := Color.WHITE
@@ -46,8 +53,9 @@ var _sweep: Control
 ## A card for item, headed by tag ("NEW", "WORN NOW", "FOR SALE" ...).
 ## compare: the worn item its stats are colored against (green better, red
 ## worse, gold special).
-static func make(for_item: Dictionary, heading: String, against := {}) -> ItemCard:
+static func make(for_item: Dictionary, heading: String, against := {}, small := false) -> ItemCard:
 	var card := ItemCard.new()
+	card.compact = small
 	card.item = for_item
 	card.tag = heading
 	card.compare = against
@@ -61,14 +69,14 @@ func _ready() -> void:
 	if not FX.has(_rarity):
 		_rarity = "epic" if _rarity == "cursed" else "rare"
 	_tint = Items.rarity_color(item)
-	custom_minimum_size = Vector2(WIDTH, 0)
+	custom_minimum_size = Vector2(COMPACT_WIDTH if compact else WIDTH, min_height)
 	var fx: Dictionary = FX[_rarity]
 	_style = StyleBoxFlat.new()
-	_style.bg_color = _tint.darkened(0.88)
+	_style.bg_color = Color(_tint.darkened(0.88), 0.68) if compact else _tint.darkened(0.88)
 	_style.border_color = _tint if _rarity != "common" else Color(_tint, 0.6)
 	_style.set_border_width_all(int(fx.border))
 	_style.set_corner_radius_all(10)
-	_style.set_content_margin_all(14)
+	_style.set_content_margin_all(8 if compact else 14)
 	_style.shadow_color = Color(_tint, 0.45)
 	_style.shadow_size = int(fx.glow)
 	add_theme_stylebox_override("panel", _style)
@@ -77,13 +85,13 @@ func _ready() -> void:
 	add_child(column)
 	column.add_child(_header())
 	column.add_child(_stage(fx))
-	var name_label := _label(String(item.get("name", "")), 22, _tint.lightened(0.15))
+	var name_label := _label(String(item.get("name", "")), 16 if compact else 22, _tint.lightened(0.15))
 	name_label.add_theme_font_override("font", UiTheme.display_font())
 	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	column.add_child(name_label)
-	var kind := _label(Items.kind_text(item), 14, Color(1, 1, 1, 0.7))
+	var kind := _label(Items.kind_text(item), 11 if compact else 14, Color(1, 1, 1, 0.7))
 	column.add_child(kind)
-	if Gear.is_gear(item):
+	if Gear.is_gear(item) and not compact:
 		column.add_child(_set_line())
 	_add_stats(column)
 	if fx.sweep:
@@ -128,7 +136,7 @@ func _header() -> Control:
 ## turning in its own little 3D world.
 func _stage(fx: Dictionary) -> Control:
 	var stage := Control.new()
-	stage.custom_minimum_size = STAGE
+	stage.custom_minimum_size = _stage_size()
 	stage.clip_contents = true
 	var back := Panel.new()
 	back.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -144,6 +152,10 @@ func _stage(fx: Dictionary) -> Control:
 	if int(fx.sparkles) > 0:
 		stage.add_child(_sparkles_2d(int(fx.sparkles)))
 	return stage
+
+
+func _stage_size() -> Vector2:
+	return COMPACT_STAGE if compact else STAGE
 
 
 func _viewport() -> Control:
@@ -236,9 +248,9 @@ func _sparkles_2d(amount: int) -> CPUParticles2D:
 	sparkles.amount = amount
 	sparkles.lifetime = 1.6
 	sparkles.preprocess = 1.6
-	sparkles.position = STAGE / 2.0
+	sparkles.position = _stage_size() / 2.0
 	sparkles.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
-	sparkles.emission_rect_extents = STAGE / 2.0
+	sparkles.emission_rect_extents = _stage_size() / 2.0
 	sparkles.gravity = Vector2(0, -18)
 	sparkles.initial_velocity_min = 4.0
 	sparkles.initial_velocity_max = 20.0
@@ -276,7 +288,7 @@ func _add_stats(column: VBoxContainer) -> void:
 	var worn: Dictionary = compare.get("effects", {})
 	var effects: Dictionary = item.get("effects", {})
 	for entry in Items.effect_entries(item):
-		var line := _label(entry[0], 16, UiTheme.TEXT)
+		var line := _label(entry[0], 12 if compact else 16, UiTheme.TEXT)
 		line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		var effect: String = entry[1]
 		if Items.is_special(effect):

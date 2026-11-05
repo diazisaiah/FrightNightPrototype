@@ -62,6 +62,8 @@ func _ready() -> void:
 			GameState.tutorial_done = true
 			GameState.onboarded = true
 			GameState.resources["coins"] = 0
+			if state == "skipped":
+				GameState.tutorial_done = false  # Skipped from the title screen.
 			if state in ["broke", "won", "locked"]:
 				GameState.tips_seen["arena_intro"] = true
 				GameState.tips_seen["arena_done"] = true

@@ -123,7 +123,8 @@ func _camp_tips() -> void:
 ## Arena bout (it's locked till then); your first attribute points. True if
 ## one opened.
 func _onboarding_tips() -> bool:
-	if GameState.tutorial_done and not _arena_done():
+	# (Skipping the tutorial from the title screen counts: onboarded, not done.)
+	if (GameState.tutorial_done or GameState.onboarded) and not _arena_done():
 		if _arena_tip():
 			return true
 	if _upgrade_tip(false):
@@ -2139,14 +2140,16 @@ func _bounty_card(index: int, bounty: Dictionary) -> Control:
 
 # --- Soul Shop -------------------------------------------------------------------------
 
-var _shop_grid: HFlowContainer
+var _shop_grid: HFlowContainer  # Cosmetics: emotes, idles, skins, fighters (top row).
+var _shop_gear: HFlowContainer  # Gear (second row).
 var _shop_reroll: Button
 var _shop_restock: Label
 var _shop_free_shown := false
 const SHOP_FILTERS := {"All": [], "Emotes": ["emote"], "Gear": ["gear"], "Idles": ["idle"], "Skins": ["skin", "fighter"]}
 var _shop_filter := "All"
 var _shop_pills := {}
-const SHOP_CARD := Vector2(188, 244)
+const SHOP_CARD := Vector2(188, 290)
+const SHOP_BUY := 44.0
 
 
 func _build_shop_page() -> Control:
@@ -2199,28 +2202,36 @@ func _build_shop_page() -> Control:
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	column.add_child(scroll)
+	var rows := VBoxContainer.new()
+	rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	rows.add_theme_constant_override("separation", 12)
+	scroll.add_child(rows)
 	_shop_grid = HFlowContainer.new()
-	_shop_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_shop_grid.alignment = FlowContainer.ALIGNMENT_CENTER
-	_shop_grid.add_theme_constant_override("h_separation", 12)
-	_shop_grid.add_theme_constant_override("v_separation", 12)
-	scroll.add_child(_shop_grid)
+	_shop_gear = HFlowContainer.new()
+	for flow in [_shop_grid, _shop_gear]:
+		flow.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		flow.alignment = FlowContainer.ALIGNMENT_CENTER
+		flow.add_theme_constant_override("h_separation", 12)
+		flow.add_theme_constant_override("v_separation", 12)
+		rows.add_child(flow)
 	return panel
 
 
 func _refresh_shop() -> void:
 	if _shop_grid == null:
 		return
-	for child in _shop_grid.get_children():
-		child.queue_free()
+	for flow in [_shop_grid, _shop_gear]:
+		for child in flow.get_children():
+			flow.remove_child(child)
+			child.queue_free()
 	var offers := SoulShop.stock()
 	var kinds: Array = SHOP_FILTERS[_shop_filter]
 	for filter_name in _shop_pills:
 		_shop_pills[filter_name].set_pressed_no_signal(filter_name == _shop_filter)
 	for i in offers.size():
 		if kinds.is_empty() or offers[i].kind in kinds:
-			_shop_grid.add_child(_shop_card(i, offers[i]))
-	if _shop_grid.get_child_count() == 0:
+			(_shop_gear if offers[i].kind == "gear" else _shop_grid).add_child(_shop_card(i, offers[i]))
+	if _shop_grid.get_child_count() + _shop_gear.get_child_count() == 0:
 		_shop_grid.add_child(_label("Nothing here today.", 16, UiTheme.MUTED))
 	var free := SoulShop.free_refresh_ready()
 	_shop_reroll.text = "Refresh  (free)" if free else "Refresh  (%d Souls)" % SoulShop.reroll_price()
@@ -2262,6 +2273,8 @@ func _tick_shop() -> void:
 
 
 func _shop_card(index: int, offer: Dictionary) -> Control:
+	if offer.kind == "gear":
+		return _gear_shop_card(index, offer)
 	var tint := UiTheme.SIGIL
 	var title := ""
 	var what := ""
@@ -2294,7 +2307,8 @@ func _shop_card(index: int, offer: Dictionary) -> Control:
 			tint = GameState.fighter_color(offer.id)
 			lines = GameState.CLASSES[offer.id].tagline
 	var card := PanelContainer.new()
-	card.custom_minimum_size = SHOP_CARD
+	card.custom_minimum_size = SHOP_CARD - Vector2(0, SHOP_BUY)
+	card.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	card.add_theme_stylebox_override("panel", UiTheme.box(Color(tint.darkened(0.8), 0.68), Color(tint, 0.8), 2, 10, 8.0))
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 4)
@@ -2362,8 +2376,44 @@ func _shop_card(index: int, offer: Dictionary) -> Control:
 			if offer.kind == "gear":
 				_refresh_armory()
 			_refresh_shop())
-	column.add_child(buy)
-	return card
+	return _with_buy(card, buy)
+
+
+## A shop card with its Buy button under it, outside the frame, all one size.
+func _with_buy(card: Control, buy: Button) -> Control:
+	var holder := VBoxContainer.new()
+	holder.custom_minimum_size = SHOP_CARD
+	holder.add_theme_constant_override("separation", 6)
+	holder.add_child(card)
+	buy.custom_minimum_size.y = 38
+	holder.add_child(buy)
+	return holder
+
+
+## A gear offer: the ItemCard's turning model and rarity effects (compact, so it
+## matches the other offers' size) with the Buy button under it.
+func _gear_shop_card(index: int, offer: Dictionary) -> Control:
+	var item: Dictionary = offer.item
+	var card := ItemCard.make(item, "SOLD" if offer.sold else "FOR SALE", GameState.equipped.get(item.slot, {}), true)
+	card.min_height = SHOP_CARD.y - SHOP_BUY
+	card.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	var buy := Button.new()
+	buy.custom_minimum_size.y = 36
+	if offer.sold:
+		buy.text = "SOLD"
+		buy.disabled = true
+	elif GameState.souls < int(offer.price):
+		buy.text = "%d Souls" % int(offer.price)
+		buy.disabled = true
+	else:
+		buy.text = "Buy  ·  %d Souls" % int(offer.price)
+		buy.theme_type_variation = "PrimaryButton"
+	buy.pressed.connect(func() -> void:
+		if SoulShop.buy(index):
+			Sfx.play("unlock", -6.0, 1.2)
+			_refresh_armory()
+			_refresh_shop())
+	return _with_buy(card, buy)
 
 
 ## Reroll: pick which stat to change, then see what it became.
