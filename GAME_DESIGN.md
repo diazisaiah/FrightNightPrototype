@@ -2235,7 +2235,9 @@ Prerequisites for the Crypt revamp, and the first Rebalance plan items.
 
 **Open work:** none; the revamp is built (item models, item and store cards, the gear system with save migration, drop odds, salvage, the economy, room furniture, mimics, the toilet and merchant tie-in, and the balance re-run, 2026-11-04).
 
-## Camp pass 2: rail, Fighter page, hidden modes [Planned 2026-11-05]
+## Camp pass 2: rail, Fighter page, hidden modes [Built 2026-11-05, mobile 0.1.32]
+
+**Built (the user picked the Ring, asked for the fighter zoomed out so no node covers his head):** `attribute_ring.gd` (`AttributeRing`): the live voxel fighter (EmotePreview at distance 7.0) in the middle, five glowing nodes round an ellipse with name, `n / 30` pill and three perk dots (10 / 20 / 30, lit when earned); tap a node for its perks and a Spend button in the detail panel, tap the fighter for the stats sheet. `camp.gd`: Fighter = ATTRIBUTES | DECK switch (the Deck page lives inside it; the Fighter rail badge counts attribute points plus card draws, the DECK switch the draws), Loadout / Change fighter / Reset along the top; rail without Deck, buttons share the height equally, Bounties named again, new icons; "Camp" text gone; Crypt and Dead League cards are hidden until unlocked and pulse in when they unlock (the padlock dialog is gone). Dailies stay on Home. Captures: `--scene=res://camp.tscn,NAME,PAGE,TAB,ATTRIBUTE`, `CAPTURE_POINTS=N`.
 
 The user's notes after seeing Home + Play on mobile: they like it, but the Attributes page "looks like a Godot ui game", the rail buttons need even spacing and nicer icons, the "Camp" text goes, Crypt and Dead League stay hidden until unlocked, and the upgrade web's transparent look should carry onto the fighter screens.
 
