@@ -2868,3 +2868,12 @@ Settings > Display > Fight HUD: New (default) or OG; it takes effect the next fi
 
 ### Fighter picker (2026-11-06)
 The title menu entry is FIGHTER (was CLASS). Cards: the name and chip in the fighter's color, the three traits with their short lines. The picked fighter's panel is dyed translucent leather in their color (tagline, stat bars, ULTIMATE, Back / Choose). Camp's Change fighter opens this picker straight away (GameState.title_opens_fighters), and Back there returns to camp. The Answer's clip no longer shows a 999 insta-kill: the Perfect Counter lands 30 ("PERFECT COUNTER!"), and its caption says 2.5x damage.
+
+### Roadmap: three big ones (added 2026-11-06, planned, not built)
+**A. Title screen in the Dead League.** The graveyard ring is replaced by the Dead League stage of the boss the player is on (the next unbeaten one, or the last once all five seals are broken; DeadLeagueStages.build + that boss's BossRig). The boss hops around and shadowboxes in it on a loop (the Mauler-style punch and footwork clips BossRig already has), the camera drifts as it does now, and the menu stays where it is. The FRIGHT NIGHT wordmark takes the boss's accent color (DeadLeagueRules.boss(i).accent), and so does its glow. Phone: batched props only and the web draw-call budget, with the old graveyard as the fallback if a phone can't hold it. Check with a capture per boss.
+
+**B. Loading screen = a still of the title.** The boot loader still shows the first version of the first boss. It becomes a pre-rendered still of that title scene (one JPG per boss, art/ui/title_boss_N.jpg, captured from A), with the wordmark in the boss's color and the usual tip line. Pre-rendered on purpose: nothing 3D has to be built while the game is loading. Needs A first.
+
+**C. Projectile warning when locked on.** A side-of-screen warning for anything flying at you (arrows, fireballs, spell bolts, sniper shots) while lock-on is on. A small chevron plate on the edge of the screen the shot is coming from, which swells as it closes in and starts to glow and pulse red when it's time to slip. Projectiles join a "projectiles" group and report time to hit and their slip window; a HUD node (ProjectileWarn) reads them each frame. Off-screen shots point by bearing like a damage indicator. Same on phones. Tune with scripted shots from each side and from behind.
+
+Suggested order: A, then B (it reuses A's stages), then C (gameplay, needs playtesting).
