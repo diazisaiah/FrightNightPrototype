@@ -12,6 +12,9 @@ signal attacked(from: Vector3)
 ## Emitted when the right defense dodges an attack. move is a DEFENSES key,
 ## prefixed "clean_" for a clean (late, precise) dodge; also "jump" and "ghost".
 signal dodged(move: String)
+## Emitted when you jump, dash forward or start a back step, dodge or not
+## (the tutorial's touch steps count them).
+signal performed(move: String)
 ## Emitted when a timed defense was the wrong one and the attack grazed.
 signal grazed
 ## Exact knuckle HP lost to an enemy attack (not punch stamina costs).
@@ -724,6 +727,7 @@ func _physics_process(delta: float) -> void:
 	if active:
 		if _jump_requested and is_on_floor():
 			velocity.y = JUMP_VELOCITY * (1.0 + GameState.get_effect("jump_bonus")) * _stomp_jump()
+			performed.emit("jump")
 		_jump_requested = false
 		if _suppressed_move != "" and not Input.is_action_pressed(_suppressed_move):
 			_suppressed_move = ""
@@ -1302,6 +1306,7 @@ func _forward_dash() -> void:
 	_dash.y = 0.0
 	dash_time = 0.3
 	cards.on_dash()
+	performed.emit("forward_dash")
 	Sfx.play("whoosh", -6.0, 0.7)
 	if _fov_tween:
 		_fov_tween.kill()
@@ -1371,6 +1376,7 @@ func _try_defense(move: String) -> void:
 		_moved_at = Time.get_ticks_msec() / 1000.0
 	_animate_defense(move)
 	Sfx.play("whoosh", -6.0, 0.8 if move.begins_with("slip") else 0.6)
+	performed.emit(move)
 
 
 ## After a back step's window (or as soon as it dodges), glide back to where

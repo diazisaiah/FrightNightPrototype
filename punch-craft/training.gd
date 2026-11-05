@@ -29,7 +29,8 @@ const SINGLE_HOOKS := [["left_hook"], ["right_hook"]]
 ## back_step/dodge (any), counter, combo (a 2+ hit combo fully dodged), ko.
 ## Each step: a short line, the keys as keycap chips ([keys, what]), and the
 ## glove color it teaches ("cue"). <move> tokens become the player's keys.
-## The plan is STEPS_START, then the dodge steps for your mode, then STEPS_END.
+## The plan is STEPS_START (on a touch screen with STEPS_TOUCH after MOVE),
+## then the dodge steps for your mode, then STEPS_END.
 const STEPS_START := [
 	{"title": "MOVE", "goals": {"move": 5}, "dummy": "passive",
 		"text": "Walk around the ring.",
@@ -44,6 +45,18 @@ const STEPS_START := [
 		"text": "Throw each combo in order. The longer the combo, the harder you hit.",
 		"drills": [["jab", "cross", "hook"], ["jab", "cross", "hook", "uppercut"]],
 		"keys": [["<jab>", "Jab"], ["<cross>", "Cross"], ["<hook>", "Hook"], ["<uppercut>", "Uppercut"]]},
+]
+## Touch screens only (2026-11-05): RUN, JUMP and the two-thumb swipes have no
+## buttons of their own to discover, so they get steps. Events: run (meters
+## moved with RUN on), jump, dash (performed, dodge or not).
+const STEPS_TOUCH := [
+	{"title": "RUN AND JUMP", "goals": {"run": 6, "jump": 2}, "dummy": "passive",
+		"text": "Tap RUN to keep running; tap it again to walk. Tap JUMP to jump.",
+		"keys": [["RUN", "Run on / off"], ["JUMP", "Jump"]]},
+	# (The back step has its own steps later: BACK STEP, TAKE TURNS.)
+	{"title": "DASH", "goals": {"dash": 2}, "dummy": "passive",
+		"text": "Swipe up with both thumbs at once to dash in.",
+		"keys": [["<dash>", "Dash"]]},
 ]
 ## Weenie Hut Junior Mode: one key a side picks the dodge for you.
 const STEPS_JUNIOR := [
@@ -160,6 +173,7 @@ func _ready() -> void:
 	_player.class_event.connect(_hud.show_class_event)
 	_player.knuckles_broken.connect(_on_knuckles_broken)
 	_player.dodged.connect(_on_dodged)
+	_player.performed.connect(_on_performed)
 	_player.punch_connected.connect(_on_punch_connected)
 	_player.ult.used.connect(func(_c: String) -> void: _add_progress("ult"))
 	_player.attacked.connect(_on_attacked.unbind(1))
@@ -224,11 +238,13 @@ func _set_dummy_level(level: int) -> void:
 
 func _process(delta: float) -> void:
 	_torch_time += delta
-	if _step >= 0 and not _step_done and _plan[_step].goals.has("move"):
+	if _step >= 0 and not _step_done and (_plan[_step].goals.has("move") or _plan[_step].goals.has("run")):
 		var moved := _player.global_position - _last_position
 		moved.y = 0.0
 		_last_position = _player.global_position
 		_add_progress("move", moved.length())
+		if Input.is_action_pressed("sprint"):
+			_add_progress("run", moved.length())
 	for i in _torches.size():
 		_torches[i].light_energy = 2.2 + sin(_torch_time * 11.0 + i * 1.7) * 0.25
 
@@ -246,7 +262,9 @@ func _on_knuckles_broken() -> void:
 
 ## The steps for your control mode.
 static func plan() -> Array:
-	return STEPS_START + (STEPS_JUNIOR if Controls.junior() else STEPS_PRO) + STEPS_END
+	# The touch steps go straight after MOVE: they're moving too.
+	var start: Array = STEPS_START.slice(0, 1) + (STEPS_TOUCH if Controls.touch() else []) + STEPS_START.slice(1)
+	return start + (STEPS_JUNIOR if Controls.junior() else STEPS_PRO) + STEPS_END
 
 
 func _start_step(index: int) -> void:
@@ -416,7 +434,7 @@ func _update_goals() -> void:
 		var need: int = goals[goal]
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 6)
-		var name_label := UiTheme.title_label(("Move" if goal == "move" else _goal_name(goal)).to_upper(), 18,
+		var name_label := UiTheme.title_label(("Move" if goal == "move" else "Run" if goal == "run" else _goal_name(goal)).to_upper(), 18,
 				DONE_COLOR if have >= need else UiTheme.TEXT)
 		name_label.custom_minimum_size.x = 150
 		row.add_child(name_label)
@@ -453,6 +471,8 @@ func _goal_name(goal: String) -> String:
 			return "Combos"
 		"ko":
 			return "Knockouts"
+		"dash":
+			return "Dashes"
 	return goal.capitalize() + "s"
 
 
@@ -515,6 +535,15 @@ func _on_dodged(move: String) -> void:
 			_add_progress("slip")
 	elif move == "back_step":
 		_add_progress("back_step")
+
+
+## Jumps, dashes and back steps done (the touch steps), dodge or not.
+func _on_performed(move: String) -> void:
+	match move:
+		"jump":
+			_add_progress("jump")
+		"forward_dash":
+			_add_progress("dash")
 
 
 func _on_punch_connected(type: String, kind: String) -> void:

@@ -150,8 +150,6 @@ func _process(delta: float) -> void:
 			_send_pointer(_menu_pos, 0, false, true)  # Don't leave a press hanging.
 			_menu_finger = -1
 		_fingers.clear()
-		if live:
-			_show_gesture_tip()
 		if not live:
 			_release_all()
 		elif _sprint_on:
@@ -174,15 +172,6 @@ func _process(delta: float) -> void:
 		fade.age += delta
 	_fading = _fading.filter(func(f: Dictionary) -> bool: return f.age < TRAIL_FADE)
 	_canvas.queue_redraw()
-
-
-## The first few fights: a reminder of the gestures that replaced buttons.
-func _show_gesture_tip() -> void:
-	var shown := int(Settings.get_value("touch_tips_shown"))
-	if shown >= 3:
-		return
-	Settings.set_value("touch_tips_shown", shown + 1)
-	Toast.show_on(get_tree(), "TOUCH MOVES", "Double swipe up: dash   ·   Double swipe down: back step\nHold a finger still: use   ·   Tap the ULT bar when it glows")
 
 
 ## True when the touch layer is what you are playing with right now.

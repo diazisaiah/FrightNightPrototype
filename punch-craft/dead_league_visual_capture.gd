@@ -27,6 +27,26 @@ func _ready() -> void:
 			var parts := argument.trim_prefix("--stage=").split(",")
 			await _capture_stage(int(parts[0]), float(parts[1]) if parts.size() > 1 else 0.0, float(parts[2]) if parts.size() > 2 else 0.0)
 			return
+		elif argument == "--tutorial-touch":
+			# The touch tutorial's plan, its dash / back step step completing
+			# from real performed signals, and a still of the RUN AND JUMP card.
+			var training: Node = (load("res://training.tscn") as PackedScene).instantiate()
+			add_child(training)
+			for frame in 60:
+				await get_tree().process_frame
+			var plan: Array = Training.plan()
+			print("TUTORIAL PLAN: ", ", ".join(plan.map(func(step: Dictionary) -> String: return step.title)))
+			var dash_step := plan.find(plan.filter(func(step: Dictionary) -> bool: return step.title == "DASH")[0])
+			training.call("_start_step", dash_step)
+			var player: Player = training.get_node("Player")
+			for move in ["forward_dash", "forward_dash"]:
+				player.performed.emit(move)
+			print("TUTORIAL DASH STEP DONE: ", training.get("_step_done"))
+			training.call("_start_step", dash_step - 1)
+			for frame in 30:
+				await get_tree().process_frame
+			await _capture("res://tutorial_touch_capture.png")
+			return
 		elif argument == "--camp":
 			# The camp's upgrade page as you see it.
 			add_child((load("res://camp.tscn") as PackedScene).instantiate())
