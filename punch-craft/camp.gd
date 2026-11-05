@@ -8,12 +8,12 @@ extends Control
 ## Shop and Attributes (with the Loadout and changing fighter). Built in code
 ## from the data in GameState.
 
-const PAGES := ["Attributes", "Upgrades", "Deck", "Armory", "Cosmetics", "Shop", "Bounties"]
+const PAGES := ["Attributes", "Upgrades", "Armory", "Cosmetics", "Shop", "Bounties"]
 ## What the rail calls each page.
-const RAIL_NAMES := {"Attributes": "Fighter", "Upgrades": "Upgrades", "Deck": "Deck", "Armory": "Gear",
-	"Cosmetics": "Style", "Shop": "Shop", "Bounties": "Goals"}
-const RAIL_ICONS := {"Home": "crown", "Attributes": "fist", "Upgrades": "sigil", "Deck": "dice", "Armory": "helmet",
-	"Cosmetics": "star", "Shop": "bag", "Bounties": "wanted"}
+const RAIL_NAMES := {"Attributes": "Fighter", "Upgrades": "Upgrades", "Armory": "Gear",
+	"Cosmetics": "Style", "Shop": "Shop", "Bounties": "Bounties"}
+const RAIL_ICONS := {"Home": "flame", "Attributes": "glove", "Upgrades": "sigil", "Armory": "helmet",
+	"Cosmetics": "crown", "Shop": "bag", "Bounties": "wanted"}
 const RAIL_WIDTH := 112.0
 const PLAY_WIDTH := 400.0
 const WORLD := preload("res://world.gd")
@@ -38,11 +38,21 @@ var _arena_button: Button
 var _pages := {}
 var _trees := {}
 var _details := {}
-var _attribute_rows := {}
 var _sheet: GridContainer
-var _attributes_title: Label
+var _sheet_scroll: ScrollContainer
 var _reset_button: Button
 var _deck: DeckPage
+## The Fighter page: the ring, which attribute is picked ("" = the fighter),
+## its detail, the ATTRIBUTES | DECK switch and the views it flips between.
+var _ring: AttributeRing
+var _attr_selected := "power"
+var _attr_detail: VBoxContainer
+var _points_pill: PanelContainer
+var _points_label: Label
+var _fighter_buttons: HBoxContainer
+var _fighter_views := {}
+var _fighter_tab_buttons := {}
+var _deck_switch: Button
 ## Home: the play column (and its cards' lines, refreshed with the camp).
 var _home: Control
 var _mode_lines := {}
@@ -273,9 +283,6 @@ func _build_ui() -> void:
 	_home.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	page_area.add_child(_home)
 	_add_page(page_area, "Upgrades", _build_tree_page("upgrade"))
-	_deck = DeckPage.new()
-	_deck.draw_requested.connect(_open_draw)
-	_add_page(page_area, "Deck", _deck)
 	_add_page(page_area, "Armory", _build_armory_page())
 	_add_page(page_area, "Cosmetics", _build_cosmetics_page())
 	_add_page(page_area, "Bounties", _build_bounty_page())
@@ -316,7 +323,6 @@ func _build_header() -> Control:
 	var titles := VBoxContainer.new()
 	titles.add_theme_constant_override("separation", -2)
 	titles.add_child(UiTheme.title_label("FRIGHT NIGHT", 30, UiTheme.BLOOD.lightened(0.15)))
-	titles.add_child(_label("Camp", 14, UiTheme.MUTED))
 	row.add_child(titles)
 
 	var progress := VBoxContainer.new()
@@ -393,7 +399,10 @@ func _build_rail() -> Control:
 		button.toggle_mode = true
 		button.button_group = group
 		button.theme_type_variation = "TabButton"
-		button.custom_minimum_size = Vector2(0, 64)
+		# Equal shares of the rail's height, so hidden pages (Gear, Bounties)
+		# re-spread the rest instead of leaving gaps.
+		button.custom_minimum_size = Vector2(0, 60)
+		button.size_flags_vertical = Control.SIZE_EXPAND_FILL
 		button.text = ""
 		button.tooltip_text = RAIL_NAMES.get(page, page)
 		button.pressed.connect(_show_page.bind(page))
@@ -404,7 +413,7 @@ func _build_rail() -> Control:
 		stack.add_theme_constant_override("separation", 2)
 		var icon := IconView.new()
 		icon.icon = RAIL_ICONS[page]
-		icon.custom_minimum_size = Vector2(34, 34)
+		icon.custom_minimum_size = Vector2(40, 40)
 		icon.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		icon.tile_color = Color.TRANSPARENT
@@ -565,8 +574,16 @@ func _set_mode(id: String, line: String, done: int, total: int, open: bool) -> v
 		pip.add_theme_stylebox_override("panel", UiTheme.box(UiTheme.GOLD if i < done else Color(1, 1, 1, 0.18), Color.TRANSPARENT, 0, 3))
 		pips.add_child(pip)
 	(parts.go as Control).visible = open
-	(parts.art as CanvasItem).modulate = Color.WHITE if open else Color(0.45, 0.45, 0.5)
-	(parts.card as Button).tooltip_text = "" if open else line
+	# Locked ones are hidden, not greyed (the Arena card is always there).
+	var card: Button = parts.card
+	var appearing := open and not card.visible and _shown_once
+	if id != "arena":
+		card.visible = open
+	if appearing:
+		card.pivot_offset = card.size / 2.0
+		var pulse := card.create_tween()
+		pulse.tween_property(card, "scale", Vector2(1.06, 1.06), 0.2)
+		pulse.tween_property(card, "scale", Vector2.ONE, 0.35).set_trans(Tween.TRANS_BACK)
 
 
 ## A small pulsing "NEW" tag on a button's corner.
@@ -595,7 +612,10 @@ func _new_badge(text := "NEW") -> Control:
 ## Something waiting on a tab (card draws, attribute points): a pulsing
 ## count on its corner, like Daily's READY.
 func _set_tab_count(page: String, count: int) -> void:
-	var button: Button = _tab_buttons[page]
+	_set_count_on(_tab_buttons[page], count)
+
+
+func _set_count_on(button: Button, count: int) -> void:
 	var old := button.get_node_or_null("Count")
 	if old:
 		old.free()
@@ -622,6 +642,9 @@ func _show_page(page_name: String) -> void:
 		var label: Label = _tab_buttons[page].get_meta("label", null)
 		if label:
 			label.add_theme_color_override("font_color", UiTheme.GOLD if on else UiTheme.TEXT)
+		var icon: IconView = _tab_buttons[page].get_meta("icon", null)
+		if icon:
+			icon.color = UiTheme.GOLD if on else Color(0.74, 0.71, 0.8)
 	if page_name == "Cosmetics":
 		_show_cosmetic(_cosmetic_tab)
 
@@ -1041,56 +1064,41 @@ func _refresh_detail(kind: String) -> void:
 
 # --- Attributes ------------------------------------------------------------------
 
-## Fighter: the Loadout and changing fighter over the attributes page.
+## Fighter (camp pass 2): ATTRIBUTES | DECK over the page. Attributes is the
+## ring (AttributeRing) with its detail beside it; Deck is the deck page.
 func _build_fighter_page() -> Control:
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 10)
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 10)
-	column.add_child(row)
-	var title := UiTheme.title_label(GameState.fighter_name().to_upper(), 28, UiTheme.GOLD)
-	row.add_child(title)
+	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 10)
+	column.add_child(top)
+	top.add_child(_fighter_switch())
+	_points_pill = PanelContainer.new()
+	_points_pill.add_theme_stylebox_override("panel", UiTheme.box(Color(0.54, 0.29, 0.9, 0.22), Color(0.54, 0.29, 0.9, 0.7), 1, 16, 6.0))
+	_points_pill.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_points_label = UiTheme.title_label("", 15, Color(0.85, 0.72, 1.0))
+	_points_label.add_theme_constant_override("outline_size", 0)
+	_points_pill.add_child(_points_label)
+	top.add_child(_points_pill)
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(spacer)
+	top.add_child(spacer)
+	_fighter_buttons = HBoxContainer.new()
+	_fighter_buttons.add_theme_constant_override("separation", 10)
+	top.add_child(_fighter_buttons)
 	if _ability_choices() > 2:
 		_loadout_button = Button.new()
 		_loadout_button.text = "Loadout"
 		_loadout_button.tooltip_text = "Pick your fighter's passive and ultimate."
 		_loadout_button.pressed.connect(_open_loadout)
-		row.add_child(_loadout_button)
+		_fighter_buttons.add_child(_loadout_button)
 	var change := Button.new()
 	change.text = "Change fighter"
 	change.tooltip_text = "Pick another fighter on the title screen."
 	change.pressed.connect(func() -> void:
 		GameState.save_game()
 		Loading.go("res://title.tscn"))
-	row.add_child(change)
-	var page := _build_attributes_page()
-	page.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	column.add_child(page)
-	return column
-
-
-func _build_attributes_page() -> Control:
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 14)
-
-	var left := PanelContainer.new()
-	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(left)
-	var scroll := KeptScroll.new()
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	left.add_child(scroll)
-	var list := VBoxContainer.new()
-	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	list.add_theme_constant_override("separation", 8)
-	scroll.add_child(list)
-	var top := HBoxContainer.new()
-	list.add_child(top)
-	_attributes_title = UiTheme.title_label("ATTRIBUTES", 26, UiTheme.GOLD)
-	_attributes_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	top.add_child(_attributes_title)
+	_fighter_buttons.add_child(change)
 	_reset_button = Button.new()
 	_reset_button.tooltip_text = "Every attribute point back."
 	_reset_button.pressed.connect(func() -> void:
@@ -1098,103 +1106,191 @@ func _build_attributes_page() -> Control:
 			Sfx.play("coin", -6.0, 0.8)
 		else:
 			_chips.coins.deny())
-	top.add_child(_reset_button)
-	for attribute in Attributes.LIST:
-		var info: Dictionary = Attributes.LIST[attribute]
-		var tint: Color = info.color
-		var card := PanelContainer.new()
-		card.add_theme_stylebox_override("panel", UiTheme.box(UiTheme.PANEL_LIGHT, Color(tint, 0.35), 1, 10, 10.0))
-		var body := VBoxContainer.new()
-		body.add_theme_constant_override("separation", 6)
-		card.add_child(body)
-		var head := HBoxContainer.new()
-		head.add_theme_constant_override("separation", 12)
-		body.add_child(head)
-		var icon := IconView.new()
-		icon.icon = info.icon
-		icon.color = tint
-		icon.custom_minimum_size = Vector2(44, 44)
-		head.add_child(icon)
-		var texts := VBoxContainer.new()
-		texts.alignment = BoxContainer.ALIGNMENT_CENTER
-		texts.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		texts.add_child(_label(info.name, 18))
-		texts.add_child(_label("Every point: " + info.text, 13, UiTheme.MUTED))
-		head.add_child(texts)
-		var value := _label("0", 24, UiTheme.GOLD)
-		value.custom_minimum_size.x = 76
-		value.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		value.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		head.add_child(value)
-		var plus := Button.new()
-		plus.text = "+"
-		plus.custom_minimum_size = Vector2(44, 44)
-		plus.add_theme_font_size_override("font_size", 22)
-		plus.pressed.connect(func() -> void:
-			if GameState.spend_attribute(attribute):
-				Sfx.play("clear", -8.0, 1.2))
-		head.add_child(plus)
-		# The perks at 10, 20 and 30 points.
-		var perks := HBoxContainer.new()
-		perks.add_theme_constant_override("separation", 8)
-		body.add_child(perks)
-		var perk_labels := []
-		for i in info.perks.size():
-			var perk: Array = info.perks[i]
-			var cell := PanelContainer.new()
-			cell.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			cell.size_flags_stretch_ratio = 1.0
-			var cell_box := VBoxContainer.new()
-			cell_box.add_theme_constant_override("separation", 0)
-			cell.add_child(cell_box)
-			var perk_name := _label("%d  ·  %s" % [Attributes.PERK_AT[i], perk[1]], 13)
-			perk_name.add_theme_font_override("font", UiTheme.bold_font())
-			cell_box.add_child(perk_name)
-			var perk_text := _label(perk[2], 11, UiTheme.MUTED)
-			perk_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			perk_text.custom_minimum_size.x = 150
-			cell_box.add_child(perk_text)
-			perks.add_child(cell)
-			perk_labels.append([cell, perk_name, perk_text, Attributes.PERK_AT[i]])
-		list.add_child(card)
-		_attribute_rows[attribute] = {"value": value, "plus": plus, "perks": perk_labels, "tint": tint}
-
-	var right := PanelContainer.new()
-	right.custom_minimum_size.x = DETAIL_WIDTH
-	row.add_child(right)
-	var sheet_box := VBoxContainer.new()
-	sheet_box.add_theme_constant_override("separation", 10)
-	right.add_child(sheet_box)
-	sheet_box.add_child(UiTheme.title_label("YOUR FIGHTER", 26, UiTheme.GOLD))
+	_fighter_buttons.add_child(_reset_button)
+	var stack := Control.new()
+	stack.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	column.add_child(stack)
+	var attributes := HBoxContainer.new()
+	attributes.add_theme_constant_override("separation", 14)
+	attributes.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	stack.add_child(attributes)
+	var canvas := PanelContainer.new()
+	canvas.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	canvas.add_theme_stylebox_override("panel", UiTheme.raised(Color(0.02, 0.02, 0.04, 0.28), Color(UiTheme.GOLD, 0.18), 1, 12))
+	attributes.add_child(canvas)
+	_ring = AttributeRing.new()
+	_ring.picked.connect(func(attribute: String) -> void:
+		_attr_selected = attribute
+		_refresh_attr_detail())
+	canvas.add_child(_ring)
+	var detail := PanelContainer.new()
+	detail.custom_minimum_size.x = DETAIL_WIDTH
+	detail.add_theme_stylebox_override("panel", UiTheme.raised(Color(0.055, 0.05, 0.07, 0.72), Color(UiTheme.GOLD, 0.2), 1, 12, 18.0))
+	attributes.add_child(detail)
+	_attr_detail = VBoxContainer.new()
+	_attr_detail.add_theme_constant_override("separation", 10)
+	detail.add_child(_attr_detail)
 	_sheet = GridContainer.new()
 	_sheet.columns = 2
 	_sheet.add_theme_constant_override("h_separation", 16)
 	_sheet.add_theme_constant_override("v_separation", 6)
-	sheet_box.add_child(_sheet)
+	_sheet_scroll = KeptScroll.new()
+	_sheet_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_sheet_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_sheet_scroll.add_child(_sheet)
+	_fighter_views["attributes"] = attributes
+	_deck = DeckPage.new()
+	_deck.draw_requested.connect(_open_draw)
+	_deck.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	stack.add_child(_deck)
+	_fighter_views["deck"] = _deck
+	_set_fighter_tab("attributes")
+	return column
+
+
+## The ATTRIBUTES | DECK switch: a pill with the open side filled gold.
+func _fighter_switch() -> Control:
+	var pill := PanelContainer.new()
+	pill.add_theme_stylebox_override("panel", UiTheme.box(Color(0.03, 0.025, 0.04, 0.7), UiTheme.BORDER, 1, 22, 4.0))
+	pill.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 2)
+	pill.add_child(row)
+	var group := ButtonGroup.new()
+	for tab in [["attributes", "ATTRIBUTES"], ["deck", "DECK"]]:
+		var button := Button.new()
+		button.text = tab[1]
+		button.toggle_mode = true
+		button.button_group = group
+		button.add_theme_font_override("font", UiTheme.display_font())
+		button.add_theme_font_size_override("font_size", 18)
+		button.add_theme_constant_override("outline_size", 0)
+		var flat := UiTheme.box(Color.TRANSPARENT, Color.TRANSPARENT, 0, 18, 0.0)
+		flat.content_margin_left = 18
+		flat.content_margin_right = 18
+		flat.content_margin_top = 6
+		flat.content_margin_bottom = 5
+		var lit := UiTheme.box(UiTheme.GOLD, Color.TRANSPARENT, 0, 18, 0.0)
+		lit.content_margin_left = 18
+		lit.content_margin_right = 18
+		lit.content_margin_top = 6
+		lit.content_margin_bottom = 5
+		for state in ["normal", "hover", "disabled", "focus"]:
+			button.add_theme_stylebox_override(state, flat)
+		for state in ["pressed", "hover_pressed"]:
+			button.add_theme_stylebox_override(state, lit)
+		button.add_theme_color_override("font_color", UiTheme.MUTED)
+		button.add_theme_color_override("font_hover_color", UiTheme.TEXT)
+		for state in ["font_pressed_color", "font_hover_pressed_color"]:
+			button.add_theme_color_override(state, Color(0.14, 0.09, 0.02))
+		button.pressed.connect(_set_fighter_tab.bind(tab[0]))
+		row.add_child(button)
+		_fighter_tab_buttons[tab[0]] = button
+		if tab[0] == "deck":
+			_deck_switch = button
+	return pill
+
+
+func _set_fighter_tab(tab: String) -> void:
+	for id in _fighter_views:
+		_fighter_views[id].visible = id == tab
+	for id in _fighter_tab_buttons:
+		_fighter_tab_buttons[id].set_pressed_no_signal(id == tab)
+	if _fighter_buttons:
+		_fighter_buttons.visible = tab == "attributes"
+	if _points_pill:
+		_points_pill.visible = tab == "attributes" and GameState.attribute_points > 0
+
+
+## Opens Fighter on its Deck tab (the draw offer, tips).
+func _show_deck() -> void:
+	_show_page("Attributes")
+	_set_fighter_tab("deck")
+
+
+## The detail beside the ring: the picked attribute's perks and a spend
+## button, or the fighter's stats when they are picked.
+func _refresh_attr_detail() -> void:
+	if _attr_detail == null:
+		return
+	for child in _attr_detail.get_children():
+		_attr_detail.remove_child(child)
+		if child != _sheet_scroll:
+			child.queue_free()
+	if _attr_selected == "" or not Attributes.LIST.has(_attr_selected):
+		_attr_detail.add_child(UiTheme.title_label(GameState.fighter_name().to_upper(), 28, UiTheme.GOLD))
+		_attr_detail.add_child(_label("Level %d  ·  %s" % [GameState.level, GameState.CLASSES[GameState.player_class].name], 14, UiTheme.MUTED))
+		_attr_detail.add_child(_sheet_scroll)
+		return
+	var info: Dictionary = Attributes.LIST[_attr_selected]
+	var tint: Color = info.color
+	var have := int(GameState.attributes.get(_attr_selected, 0))
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 12)
+	_attr_detail.add_child(head)
+	var icon := IconView.new()
+	icon.icon = info.icon
+	icon.color = tint
+	icon.custom_minimum_size = Vector2(46, 46)
+	head.add_child(icon)
+	var names := VBoxContainer.new()
+	names.add_theme_constant_override("separation", -2)
+	names.add_child(UiTheme.title_label(String(info.name).to_upper(), 28, tint.lightened(0.1)))
+	names.add_child(_label("%d / %d points" % [have, Attributes.MAX], 14, UiTheme.MUTED))
+	head.add_child(names)
+	_attr_detail.add_child(_label("Every point: " + info.text, 14, Color(0.84, 0.81, 0.88)))
+	for i in info.perks.size():
+		var perk: Array = info.perks[i]
+		var need: int = Attributes.PERK_AT[i]
+		var on := have >= need
+		var box := PanelContainer.new()
+		box.add_theme_stylebox_override("panel", UiTheme.box(Color(tint.darkened(0.8), 0.9) if on else Color(0, 0, 0, 0.3), Color(tint, 0.85 if on else 0.12), 1, 8, 10.0))
+		var inner := VBoxContainer.new()
+		inner.add_theme_constant_override("separation", 2)
+		box.add_child(inner)
+		var line := HBoxContainer.new()
+		inner.add_child(line)
+		var perk_name := UiTheme.title_label(String(perk[1]), 17, UiTheme.TEXT if on else UiTheme.MUTED)
+		perk_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		line.add_child(perk_name)
+		line.add_child(_label("EARNED" if on else "AT %d" % need, 12, tint.lightened(0.2) if on else UiTheme.MUTED))
+		var text := _label(String(perk[2]), 13, UiTheme.TEXT if on else UiTheme.MUTED.darkened(0.15))
+		text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		inner.add_child(text)
+		_attr_detail.add_child(box)
 	var spacer := Control.new()
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	sheet_box.add_child(spacer)
-	return row
+	_attr_detail.add_child(spacer)
+	var points := GameState.attribute_points
+	var spend := Button.new()
+	spend.theme_type_variation = "PrimaryButton"
+	spend.custom_minimum_size = Vector2(0, 46)
+	spend.add_theme_font_size_override("font_size", 18)
+	spend.text = "Spend a point  ·  %d left" % points
+	spend.disabled = points <= 0 or have >= Attributes.MAX
+	var which := _attr_selected
+	spend.pressed.connect(func() -> void:
+		if GameState.spend_attribute(which):
+			Sfx.play("clear", -8.0, 1.2))
+	_attr_detail.add_child(spend)
+
+
 
 
 func _refresh_attributes() -> void:
 	var points := GameState.attribute_points
-	_attributes_title.text = "ATTRIBUTES  ·  %d TO SPEND" % points if points > 0 else "ATTRIBUTES"
 	var spent := 0
-	for attribute in _attribute_rows:
-		var row: Dictionary = _attribute_rows[attribute]
-		var have := int(GameState.attributes.get(attribute, 0))
-		spent += have
-		row.value.text = "%d / %d" % [have, Attributes.MAX]
-		row.plus.disabled = points <= 0 or have >= Attributes.MAX
-		for perk in row.perks:
-			var on: bool = have >= int(perk[3])
-			perk[0].add_theme_stylebox_override("panel", UiTheme.box(Color(row.tint.darkened(0.72), 0.95) if on else Color(0, 0, 0, 0.3), Color(row.tint, 0.7 if on else 0.15), 1, 6, 6.0))
-			perk[1].add_theme_color_override("font_color", row.tint.lightened(0.2) if on else UiTheme.MUTED)
-			perk[2].add_theme_color_override("font_color", UiTheme.TEXT if on else UiTheme.MUTED.darkened(0.2))
+	for attribute in Attributes.LIST:
+		spent += int(GameState.attributes.get(attribute, 0))
+	if _ring:
+		_ring.refresh()
+	if _points_label:
+		_points_label.text = "%d POINT%s TO SPEND" % [points, "" if points == 1 else "S"]
+		_points_pill.visible = points > 0 and _fighter_views.get("attributes", null) != null and _fighter_views["attributes"].visible
 	var cost := Attributes.reset_cost()
 	_reset_button.text = "Reset  ·  %d coins" % cost
 	_reset_button.disabled = spent == 0
+	_refresh_attr_detail()
 
 
 func _refresh_sheet() -> void:
@@ -1265,8 +1361,10 @@ func _refresh() -> void:
 			tree.selected_id = GameState.tree(kind).keys()[0]
 			tree.refresh()
 		_refresh_detail(kind)
-	_set_tab_count("Deck", GameState.usable_draws())
-	_set_tab_count("Attributes", GameState.attribute_points)
+	# The Fighter button counts everything waiting: attribute points and card draws.
+	_set_tab_count("Attributes", GameState.attribute_points + GameState.usable_draws())
+	if _deck_switch:
+		_set_count_on(_deck_switch, GameState.usable_draws())
 	_refresh_home()
 	_refresh_attributes()
 	_refresh_sheet()
@@ -1500,7 +1598,6 @@ func _start_training() -> void:
 
 func _start_dead_league() -> void:
 	if not _league_open():
-		GameDialog.open(self, "THE DEAD LEAGUE", "Beat your first Arena bout to prove your worth.")
 		return
 	GameState.save_game()
 	Loading.go("res://dead_league_menu.tscn")

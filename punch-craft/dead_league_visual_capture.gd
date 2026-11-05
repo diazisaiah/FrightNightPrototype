@@ -97,15 +97,70 @@ func _ready() -> void:
 				GameState.nights_cleared = 2
 				GameState.resources["coins"] = 1240
 				GameState.draws = 0
+				GameState.crypt_reveal_pending = false
+				GameState.upgrade_notice = ""
+				if OS.get_environment("CAPTURE_POINTS") != "":
+					GameState.attribute_points = int(OS.get_environment("CAPTURE_POINTS"))
+					GameState.draws = 0
 			var node: Node = (load(parts[0]) as PackedScene).instantiate()
 			add_child(node)
 			for frame in 90:
 				await get_tree().process_frame
+			if OS.get_environment("CAPTURE_DEBUG") == "1":
+				var menus: Control = node.get("_menus")
+				print("DEBUG menus: ", menus, " ", menus.modulate if menus else "-", " ", menus.visible if menus else "-", " children ", menus.get_child_count() if menus else -1, " crypt_reveal ", GameState.crypt_reveal_pending)
 			if parts.size() > 2 and node.has_method("_show_page"):
 				node.call("_show_page", parts[2])
+				if OS.get_environment("CAPTURE_POINTS") != "":
+					for key in {"power": 12, "grit": 8, "speed": 5, "technique": 3}:
+						GameState.attributes[key] = {"power": 12, "grit": 8, "speed": 5, "technique": 3}[key]
+					node.call("_refresh")
+				if parts.size() > 3 and node.has_method("_set_fighter_tab"):
+					node.call("_set_fighter_tab", parts[3])
+				if parts.size() > 4:
+					node.set("_attr_selected", parts[4])
+					node.call("_refresh_attr_detail")
+					node.get("_ring").set("selected", parts[4])
 				for frame in 20:
 					await get_tree().process_frame
 			await _capture("res://scene_%s_capture.png" % (parts[1] if parts.size() > 1 else "view"))
+			return
+		elif argument.begins_with("--fighter="):
+			# A fighter standing, on a transparent background: --fighter=CLASS.
+			var id := argument.trim_prefix("--fighter=")
+			var viewport := SubViewport.new()
+			viewport.size = Vector2i(600, 900)
+			viewport.transparent_bg = true
+			viewport.own_world_3d = true
+			viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+			add_child(viewport)
+			var light := DirectionalLight3D.new()
+			light.rotation = Vector3(-0.6, 0.5, 0)
+			light.light_energy = 1.1
+			viewport.add_child(light)
+			var env := WorldEnvironment.new()
+			env.environment = Environment.new()
+			env.environment.background_mode = Environment.BG_CLEAR_COLOR
+			env.environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+			env.environment.ambient_light_color = Color(0.5, 0.5, 0.6)
+			viewport.add_child(env)
+			var body := FighterBody.new(id, "auto")
+			body.build_budget_ms = 40
+			body.rotation.y = -0.45
+			viewport.add_child(body)
+			var camera := Camera3D.new()
+			camera.fov = 30.0
+			camera.position = Vector3(0, 0.95, -5.4)
+			camera.look_at_from_position(camera.position, Vector3(0, 0.86, 0))
+			viewport.add_child(camera)
+			for frame in 240:
+				await get_tree().process_frame
+			RenderingServer.force_draw()
+			await get_tree().process_frame
+			var image := viewport.get_texture().get_image()
+			image.save_png(ProjectSettings.globalize_path("res://fighter_%s_capture.png" % id))
+			print("FIGHTER CAPTURE: ", id)
+			get_tree().quit()
 			return
 		elif argument == "--camp":
 			# The camp's upgrade page as you see it.
