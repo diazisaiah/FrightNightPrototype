@@ -2379,6 +2379,13 @@ A possible phone / tablet version. Nothing is built. It comes after the current 
 
 **Touch HUD [Built, 2026-11-05, mobile 0.1.16]:** the passive chip and power tiles sit under the ultimate bar (chosen over under the health bar, which stays available as `?hud=health`), clear of the stick corners. Stick zones never throw a punch or dodge: no flicks from a stick, and a second finger in a stick zone does nothing.
 
+**Touch layout v4: fewer buttons [Built, 2026-11-05, mobile 0.1.26]:** the buttons covered a big chunk of the screen and the tutorial. DASH, BACK, USE and the ULT button are gone:
+- **Dash:** both thumbs swipe up at once ("Double swipe up"); **back step:** both down ("Double swipe down"). A single up swipe waits 0.07 s to see if the other thumb joins, then throws the uppercut (as the down swipe already did for the roll).
+- **Use:** hold a finger still in a punch zone for 0.45 s: a ring fills round it, USE shows, and interact stays pressed until it lifts.
+- **Ultimate:** a badge at the bottom middle, just above the HUD's ultimate name and bar: small and grey with ULT while charging; charged, it grows, blazes with a pulsing aura and rings and says TAP.
+- **RUN and JUMP:** squares on the inner side of the move and look sticks, level with them (mirrored left-handed).
+- **Telling the player:** every hint, the tutorial's back step, the pause menu's Controls tab and the controls line name the gestures ("Double swipe up", "Double swipe down", "Hold", "Tap ULT"); the first three fights show a TOUCH MOVES toast with all four (setting `touch_tips_shown`). The practice coach card no longer shifts right for the old button column.
+
 **Touch layer v1 [Built, 2026-11-04, before lock-on]:** `touch_ui.gd` (autoload `TouchUi`), live only while a fight runs (a Player that is active, the game not paused; menus use normal touch-as-mouse). It sends the same actions as keys and pads, plus `Player.touch_punch(hand, type)`, `touch_dodge(side, kind)` and `touch_move(move)`.
 - Floating sticks in the bottom corners (left moves, right looks, no lock-on yet). The rest of each half is that hand's punch zone: tap = jab / cross, swipe in = hook, up = uppercut, away = slip, down = roll (Junior Mode picks the dodge for both). A swipe fires at 46 px, a tap on release.
 - Buttons: left column USE, BACK (back step), RUN (sprint toggle, drops when the stick is released); right column ULT, JUMP, DASH; MAP, EMOTE, pause (II) at the top right.

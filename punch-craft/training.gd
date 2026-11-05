@@ -743,8 +743,8 @@ func _build_coach() -> void:
 func _side_card() -> PanelContainer:
 	var card := PanelContainer.new()
 	card.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	# On a touch screen, clear of the left column of buttons.
-	var shift := 100.0 if Controls.touch() else 0.0
+	# (The touch buttons no longer run up the left side, 2026-11-05.)
+	var shift := 0.0
 	card.offset_left = 20.0 + shift
 	card.offset_right = 400.0 + shift
 	card.offset_top = 104.0

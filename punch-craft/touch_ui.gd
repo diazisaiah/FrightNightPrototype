@@ -9,8 +9,13 @@ extends CanvasLayer
 ##   tap = straight (left jab, right cross); swipe toward the midline = hook;
 ##   up = uppercut; away from the midline = slip; down = roll. A swipe fires
 ##   the moment it passes SWIPE_DISTANCE; a tap fires on release.
-## - Round buttons: sprint (toggle), back step, interact, jump, dash,
-##   ultimate, plus map / emote / pause across the top.
+## - Both thumbs swiping down at once: back step; both up at once: dash
+##   (2026-11-05, the DASH and BACK buttons went: they covered the screen and
+##   the tutorial).
+## - Hold a finger still in a punch zone: use (doors, chests, stairs).
+## - RUN (toggle) and JUMP sit beside the sticks, on their inner sides; the
+##   ultimate is a badge at the bottom middle that blazes and says TAP when
+##   it's charged. Map / emote / pause / lock across the top.
 ## It sends the same actions keys and pads do (move_*, look_*, jump, ...) and
 ## calls Player.touch_punch / touch_dodge for the gestures, so every combo
 ## rule stays the same.
@@ -28,19 +33,21 @@ const SMALL_RADIUS := 25.0
 ## EMOTE button sits near the top edge and there's little room to drag up.
 const WHEEL_DRAG := 38.0
 
-## Big square buttons along the bottom (dash, run, back step): half a side.
-const SQUARE_HALF := 42.0
+## The square buttons beside the sticks (RUN, JUMP): half a side.
+const SQUARE_HALF := 36.0
+## The ultimate badge's radius: charging, and charged (it grows).
+const ULT_RADIUS := 30.0
+const ULT_READY_RADIUS := 44.0
+## A finger held this still this long in a punch zone uses (interact).
+const HOLD_TIME := 0.45
 ## Gap between buttons.
 const GAP := 12.0
 
 ## id: [action or method, label, shape ("c" circle, "s" square), radius or half side, arrow]
 const BUTTONS := {
-	"interact": ["interact", "USE", "s", SQUARE_HALF, ""],
-	"ultimate": ["ultimate", "ULT", "star", SQUARE_HALF + 6.0, ""],
+	"ultimate": ["ultimate", "ULT", "star", ULT_RADIUS, ""],
 	"jump": ["jump", "JUMP", "s", SQUARE_HALF, ""],
-	"dash": ["dash", "DASH", "s", SQUARE_HALF, "up"],
 	"sprint": ["sprint", "RUN", "s", SQUARE_HALF, "up2"],
-	"back_step": ["back_step", "BACK", "s", SQUARE_HALF, "down"],
 	"lock": ["lock_cycle", "LOCK", "c", SMALL_RADIUS, ""],
 	"map": ["map", "MAP", "c", SMALL_RADIUS, ""],
 	"emote": ["emote", "EMOTE", "c", SMALL_RADIUS, ""],
@@ -81,9 +88,12 @@ var _fingers := {}
 var _pinch_gap := 0.0
 ## Recent finger paths for the punch trails: [{pts, age}] once a finger lifts.
 var _fading: Array = []
-## A down swipe waiting to see if the other thumb joins (back step).
+## A down (or up) swipe waiting to see if the other thumb joins: both thumbs
+## down is the back step, both up the dash; alone it's a roll (uppercut).
 var _pending_down := ""
 var _pending_down_t := 0.0
+var _pending_up := ""
+var _pending_up_t := 0.0
 const BACK_STEP_WINDOW := 0.07
 var _box := StyleBoxFlat.new()
 const TRAIL_FADE := 0.3
@@ -142,6 +152,8 @@ func _process(delta: float) -> void:
 			_send_pointer(_menu_pos, 0, false, true)  # Don't leave a press hanging.
 			_menu_finger = -1
 		_fingers.clear()
+		if live:
+			_show_gesture_tip()
 		if not live:
 			_release_all()
 		elif _sprint_on:
@@ -151,14 +163,28 @@ func _process(delta: float) -> void:
 		return
 	_size = get_viewport().get_visible_rect().size
 	_apply_sticks()
-	if _pending_down != "" and Time.get_ticks_msec() / 1000.0 - _pending_down_t > BACK_STEP_WINDOW:
+	var now := Time.get_ticks_msec() / 1000.0
+	if _pending_down != "" and now - _pending_down_t > BACK_STEP_WINDOW:
 		if _player:
 			_player.touch_dodge(_pending_down, "roll")
 		_pending_down = ""
+	if _pending_up != "" and now - _pending_up_t > BACK_STEP_WINDOW:
+		_punch(_pending_up, "uppercut")
+		_pending_up = ""
+	_check_holds(now)
 	for fade in _fading:
 		fade.age += delta
 	_fading = _fading.filter(func(f: Dictionary) -> bool: return f.age < TRAIL_FADE)
 	_canvas.queue_redraw()
+
+
+## The first few fights: a reminder of the gestures that replaced buttons.
+func _show_gesture_tip() -> void:
+	var shown := int(Settings.get_value("touch_tips_shown"))
+	if shown >= 3:
+		return
+	Settings.set_value("touch_tips_shown", shown + 1)
+	Toast.show_on(get_tree(), "TOUCH MOVES", "Double swipe up: dash   ·   Double swipe down: back step\nHold a finger still: use   ·   Tap ULT when it glows")
 
 
 ## True when the touch layer is what you are playing with right now.
@@ -193,35 +219,35 @@ func _zone(role: String) -> Rect2:
 	return Rect2(0 if left_side else _size.x - width, _size.y * 0.64, width, _size.y * 0.36)
 
 
-## Half the button's size (radius for circles, half a side for squares).
+## Half the button's size (radius for circles, half a side for squares). The
+## ultimate grows when it's charged.
 func _half(id: String) -> float:
+	if id == "ultimate" and _ult_ready():
+		return ULT_READY_RADIUS * _scale()
 	return float(BUTTONS[id][3]) * _scale()
 
 
-## Layout: the right thumb's side has ULT and JUMP stacked over a bottom row of
-## big squares (DASH nearest the edge, RUN beside it, BACK beyond); USE sits
-## on the left above the move stick; the small buttons run along the top.
+func _ult_ready() -> bool:
+	return _player != null and _player.ult != null and _player.ult.is_full()
+
+
+## Layout (2026-11-05): RUN just inside the move stick, JUMP just inside the
+## look stick, both level with the sticks; the ultimate at the bottom middle;
+## the small buttons along the top. The rest of the screen is punch zones.
 func _button_center(id: String) -> Vector2:
 	var s := _scale()
 	var sq := SQUARE_HALF * s
-	var edge := 26.0 + sq
-	var step := sq * 2.0 + GAP
-	var y := _size.y * 0.64 - 14.0 - sq  # One row, just above the stick zones.
-	# Left side, left to right: BACK, DASH, JUMP (above the move stick).
-	# Right side, left to right: ULT, USE, RUN (above the look stick).
+	var stick_y := _size.y * (0.64 + 0.36 * 0.58)
+	var inner := _size.x * 0.22 + GAP + sq
 	match id:
-		"back_step":
-			return _mirror_x(Vector2(edge, y), true)
-		"dash":
-			return _mirror_x(Vector2(edge + step, y), true)
-		"jump":
-			return _mirror_x(Vector2(edge + step * 2.0, y), true)
 		"sprint":
-			return _mirror_x(Vector2(_size.x - edge, y), false)
-		"interact":
-			return _mirror_x(Vector2(_size.x - edge - step, y), false)
+			return _mirror_x(Vector2(inner, stick_y), true)
+		"jump":
+			return _mirror_x(Vector2(_size.x - inner, stick_y), false)
 		"ultimate":
-			return _mirror_x(Vector2(_size.x - edge - step * 2.0, y), false)
+			# Just above the HUD's ultimate name and bar (Hud.bind_ult: they and
+			# the passive chip fill the bottom 150 px of the middle).
+			return Vector2(_size.x * 0.5, _size.y - 156.0 - ULT_READY_RADIUS * s)
 	# Small buttons along the top right, left of the coin counter.
 	var slot: int = TOP_STEP[id]
 	return Vector2(_size.x - 150.0 - slot * (SMALL_RADIUS * s * 2.0 + 12.0), 64.0)
@@ -421,7 +447,7 @@ func _send_pointer(pos: Vector2, kind: int, down: bool, button: bool, rel := Vec
 
 
 func _touch_down(index: int, pos: Vector2) -> void:
-	var touch := {"start": pos, "origin": pos, "pos": pos, "t": Time.get_ticks_msec() / 1000.0, "fired": false,
+	var touch := {"start": pos, "origin": pos, "pos": pos, "t": Time.get_ticks_msec() / 1000.0, "fired": false, "use": false,
 			"role": "punch", "side": "left" if pos.x < _size.x * 0.5 else "right", "trail": [pos]}
 	var button := _button_at(pos)
 	if button != "":
@@ -459,6 +485,8 @@ func _touch_up(index: int, pos: Vector2) -> void:
 	_touches.erase(index)
 	if touch.role == "punch":
 		_fading.append({"pts": touch.trail, "age": 0.0})
+	if touch.use:
+		_send_action("interact", false)
 	match touch.role:
 		"punch":
 			var held: float = Time.get_ticks_msec() / 1000.0 - float(touch.t)
@@ -466,6 +494,25 @@ func _touch_up(index: int, pos: Vector2) -> void:
 				_punch(touch.side, "jab" if touch.side == "left" else "cross")
 		"button":
 			_release_button(touch.button)
+
+
+## A punch finger held still for HOLD_TIME uses (presses interact until it lifts).
+func _check_holds(now: float) -> void:
+	for touch in _touches.values():
+		if touch.role != "punch" or touch.fired or touch.use:
+			continue
+		if now - float(touch.t) >= HOLD_TIME and (touch.pos as Vector2).distance_to(touch.start) <= TAP_DISTANCE:
+			touch.use = true
+			touch.fired = true
+			_send_action("interact", true)
+
+
+## How far a still finger is toward a use (0 until it's clearly a hold).
+func _hold_progress(touch: Dictionary) -> float:
+	if touch.fired or touch.role != "punch" or (touch.pos as Vector2).distance_to(touch.start) > TAP_DISTANCE:
+		return 0.0
+	var held := Time.get_ticks_msec() / 1000.0 - float(touch.t)
+	return clampf((held - TAP_TIME * 0.6) / (HOLD_TIME - TAP_TIME * 0.6), 0.0, 1.0)
 
 
 func _has_role(role: String) -> bool:
@@ -485,12 +532,22 @@ static func swipe_kind(side: String, delta: Vector2) -> String:
 
 func _swipe(side: String, delta: Vector2) -> void:
 	var kind := swipe_kind(side, delta)
-	if kind == "hook" or kind == "uppercut":
+	var now := Time.get_ticks_msec() / 1000.0
+	if kind == "hook":
 		_punch(side, kind)
+	elif kind == "uppercut":
+		# Both thumbs swiping up together is the dash, so an up swipe waits a
+		# moment to see if the other side joins in.
+		if _pending_up != "" and _pending_up != side and now - _pending_up_t <= BACK_STEP_WINDOW:
+			_pending_up = ""
+			if _player:
+				_player.touch_move("forward_dash")
+		else:
+			_pending_up = side
+			_pending_up_t = now
 	elif kind == "roll" and _player:
 		# Both thumbs swiping down together is the back step, so a down swipe
 		# waits a moment to see if the other side joins in.
-		var now := Time.get_ticks_msec() / 1000.0
 		if _pending_down != "" and _pending_down != side and now - _pending_down_t <= BACK_STEP_WINDOW:
 			_pending_down = ""
 			_player.touch_move("back_step")
@@ -561,16 +618,10 @@ func _press_button(id: String) -> void:
 	match id:
 		"sprint":
 			_set_sprint(not _sprint_on)
-		"back_step":
-			if _player:
-				_player.touch_move("back_step")
-		"dash":
-			if _player:
-				_player.touch_move("forward_dash")
 		"lock":
 			if _player:
 				_player.lock.cycle()
-		"jump", "ultimate", "interact", "map", "pause", "emote":
+		"jump", "ultimate", "map", "pause", "emote":
 			_held_buttons[id] = true
 			_send_action(BUTTONS[id][0], true)
 
@@ -607,6 +658,10 @@ func _release_all() -> void:
 		Input.action_release("sprint")  # RUN itself stays toggled (_sprint_on).
 	for id in _held_buttons.keys():
 		_release_button(id)
+	if Input.is_action_pressed("interact"):
+		_send_action("interact", false)
+	_pending_up = ""
+	_pending_down = ""
 	for action in ["move_left", "move_right", "move_forward", "move_back",
 			"look_left", "look_right", "look_up", "look_down"]:
 		if Input.is_action_pressed(action):
@@ -794,14 +849,23 @@ func _draw_tape_disc(id: String, center: Vector2, radius: float, label: String, 
 ## The ultimate: a stitched leather star with a tape rim and a meter ring
 ## that fills as it charges; ready, it blazes in the fighter's colour.
 func _draw_ult(center: Vector2, half: float, accent: Color, pressed: bool) -> void:
-	var ready := _player != null and _player.ult != null and _player.ult.is_full()
+	var ready := _ult_ready()
 	var pulse := 0.5 + 0.5 * sin(Time.get_ticks_msec() * 0.008)
 	var charge := clampf(GameState.ult_share, 0.0, 1.0)
 	if ready:
-		for i in 4:
-			var halo := accent.lightened(0.3)
-			halo.a = (0.22 - i * 0.045) * (0.6 + 0.8 * pulse)
-			_canvas.draw_colored_polygon(_star(center, half * (1.2 + i * 0.1), 12), halo)
+		# A big pulsing aura so it can't be missed, and TAP on it.
+		for i in 6:
+			var halo := accent.lightened(0.35)
+			halo.a = (0.26 - i * 0.04) * (0.55 + 0.9 * pulse)
+			_canvas.draw_circle(center, half * (1.15 + i * 0.16 + pulse * 0.08), halo)
+		for i in 2:
+			var wave := fmod(Time.get_ticks_msec() * 0.0012 + i * 0.5, 1.0)
+			var ring := accent.lightened(0.5)
+			ring.a = 0.8 * (1.0 - wave)
+			_canvas.draw_arc(center, half * (1.0 + wave * 0.9), 0.0, TAU, 40, ring, 3.0, true)
+	else:
+		# Charging: a dim, smaller badge that says ULT.
+		accent = accent.lerp(Color(0.55, 0.55, 0.6), 0.45)
 	_canvas.draw_colored_polygon(_star(center + Vector2(0, 4), half, 12), Color(0, 0, 0, 0.4))
 	var body := _leather(accent, 0.2)
 	if ready or pressed:
@@ -815,8 +879,12 @@ func _draw_ult(center: Vector2, half: float, accent: Color, pressed: bool) -> vo
 	if charge > 0.0:
 		_canvas.draw_arc(center, inner, -PI * 0.5, -PI * 0.5 + TAU * charge, 32, accent, 5.0, true)
 	var font := UiTheme.display_font()
-	var width := font.get_string_size("ULT", HORIZONTAL_ALIGNMENT_CENTER, -1, 14).x
-	_canvas.draw_string(font, center + Vector2(-width * 0.5, 5), "ULT", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, TAPE if not ready else TAPE_INK)
+	var word := "TAP" if ready else "ULT"
+	var size := 22 if ready else 13
+	var width := font.get_string_size(word, HORIZONTAL_ALIGNMENT_CENTER, -1, size).x
+	var at := center + Vector2(-width * 0.5, size * 0.36)
+	_canvas.draw_string_outline(font, at, word, HORIZONTAL_ALIGNMENT_LEFT, -1, size, 4, Color(0, 0, 0, 0.6))
+	_canvas.draw_string(font, at, word, HORIZONTAL_ALIGNMENT_LEFT, -1, size, TAPE if not ready else Color.WHITE)
 
 
 func _closed(points: PackedVector2Array) -> PackedVector2Array:
@@ -846,6 +914,16 @@ func _draw_trails(color: Color) -> void:
 			_canvas.draw_circle(touch.pos, 24.0, glow)
 			glow.a = 0.9
 			_canvas.draw_arc(touch.pos, 24.0, 0.0, TAU, 28, glow, 2.5, true)
+			# Holding still to use: a ring fills round the finger, USE once done.
+			var hold := 1.0 if touch.use else _hold_progress(touch)
+			if hold > 0.0:
+				_canvas.draw_arc(touch.pos, 40.0, -PI * 0.5, -PI * 0.5 + TAU * hold, 36, TAPE, 5.0, true)
+				if touch.use:
+					var font := UiTheme.display_font()
+					var w := font.get_string_size("USE", HORIZONTAL_ALIGNMENT_CENTER, -1, 14).x
+					var at: Vector2 = touch.pos + Vector2(-w * 0.5, -48)
+					_canvas.draw_string_outline(font, at, "USE", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, 4, Color(0, 0, 0, 0.6))
+					_canvas.draw_string(font, at, "USE", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, TAPE)
 	for fade in _fading:
 		_trail(fade.pts, color, 1.0 - float(fade.age) / TRAIL_FADE)
 
