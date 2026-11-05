@@ -155,10 +155,10 @@ func _build() -> void:
 	sparks.scale_amount_curve = shrink
 	_world.add_child(sparks)
 
-	# Log seats.
-	for spot in [Vector3(-1.9, 0, 1.0), Vector3(1.4, 0, -1.8)]:
+	# Log seats, lying round the fire (along it, not pointing at it).
+	for spot in [Vector3(-1.9, 0, 1.0), Vector3(2.12, 0, -1.22)]:
 		var seat := Scenery.box(_world, Vector3(1.8, 0.36, 0.38), spot + Vector3(0, 0.18, 0), log_wood)
-		seat.rotation.y = atan2(spot.x, spot.z) + PI / 2.0
+		seat.rotation.y = atan2(spot.x, spot.z)
 	# The tent.
 	var canvas := Look.block_material(Color(0.42, 0.36, 0.26))
 	var tent := MeshInstance3D.new()

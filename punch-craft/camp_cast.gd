@@ -16,10 +16,13 @@ extends Node3D
 ## sit on. They face the fire, turned by "turn" (radians).
 const SEATS := {
 	"berserker": {"at": Vector3(-1.75, 0, -0.85), "seat": 0.5, "on": "stump"},
-	"wise_guy": {"at": Vector3(-1.1, 0, -1.65), "seat": 0.45, "on": "crate"},
-	"counter_master": {"at": Vector3(0.35, 0, -1.9), "seat": 0.0, "on": ""},
-	"combo_master": {"at": Vector3(1.25, 0, -1.3), "seat": 0.0, "on": ""},
-	"free_runner": {"at": Vector3(-1.85, 0, 0.95), "seat": 0.36, "on": ""},
+	# Tony sits by the Answer, clear of the fire from the camera.
+	"wise_guy": {"at": Vector3(0.17, 0, -1.99), "seat": 0.45, "on": "crate"},
+	"counter_master": {"at": Vector3(0.9, 0, -1.74), "seat": 0.0, "on": ""},
+	# The Blur's back to the log behind him (CampBackdrop's at (2.12, -1.22)).
+	"combo_master": {"at": Vector3(1.65, 0, -0.95), "seat": 0.06, "on": ""},
+	# The Stray on the front edge of the other log, legs in front of it.
+	"free_runner": {"at": Vector3(-1.78, 0, 0.94), "seat": 0.36, "on": ""},
 	"elementalist": {"at": Vector3(0.95, 0, -3.5), "seat": 0.4, "on": "rock", "turn": 0.45},
 }
 ## The arm each gestures with while talking ("" for head only).
@@ -32,6 +35,11 @@ var _speaker := ""
 var _turn_left := 1.5
 var _time := 0.0
 var _look := {}
+## The food in a hand (the Mauler's meat, Tony's sub): aimed at the mouth as
+## it comes up, held up and out otherwise.
+var _food := {}
+## Checking poses in stills: CAMP_CAST_FREEZE=<seconds> holds every clip there.
+var _freeze := float(OS.get_environment("CAMP_CAST_FREEZE")) if OS.get_environment("CAMP_CAST_FREEZE") != "" else -1.0
 
 
 func _ready() -> void:
@@ -57,7 +65,7 @@ func _seat(fighter: String) -> void:
 	if fighter != GameState.player_class:
 		body.wear_hat("")
 	var drop := (float(spot.seat) / body.scale.y + 0.08 - body._hip_height()) * 100.0
-	body.play_clip(Emotes.parse(call("_" + fighter, drop)), randf() * 3.0)
+	body.play_clip(Emotes.parse(call("_" + fighter, drop)), _freeze if _freeze >= 0.0 else randf() * 3.0)
 	_props(fighter, body)
 	bodies[fighter] = body
 	_look[fighter] = 0.0
@@ -75,6 +83,8 @@ func _process(delta: float) -> void:
 		_turn_left = randf_range(TURN.x, TURN.y)
 	for fighter in bodies:
 		var body: FighterBody = bodies[fighter]
+		if _freeze >= 0.0:
+			body._time = _freeze
 		var joints: Dictionary = body._joints
 		if not joints.has("head"):
 			continue
@@ -95,6 +105,25 @@ func _process(delta: float) -> void:
 			var want := clampf(atan2(-local.x, -local.z), -1.1, 1.1)
 			_look[fighter] = lerpf(_look[fighter], want, delta * 3.0)
 		head.rotation.y += _look[fighter]
+		if _food.has(fighter):
+			_aim_food(_food[fighter], body, head)
+
+
+## Points the food (built along -Z from the fist, its tip FOOD_TIP out) at
+## the mouth as the hand comes up, and slides it along that line so the tip
+## stops at the lips instead of going into the face.
+func _aim_food(food: Node3D, body: FighterBody, head: Node3D) -> void:
+	food.position = food.get_meta("grip")
+	var mouth := head.global_transform * Vector3(0, 0.08, -0.2)
+	var at := food.global_position
+	var up_and_out := at + body.global_basis * Vector3(0, 0.3, -1.0)
+	var near := clampf((0.8 - at.distance_to(mouth)) / 0.3, 0.0, 1.0)
+	var target := up_and_out.lerp(mouth, near)
+	if target.distance_to(at) > 0.01:
+		food.look_at(target, Vector3.UP)
+	var tip: float = food.get_meta("tip") * body.scale.x
+	var slide := minf(at.distance_to(mouth) - tip, 0.0) * near
+	food.global_position = at + (mouth - at).normalized() * slide
 
 
 # --- Poses (Emotes clip format: degrees, pos in cm, see Emotes) ---------------------
@@ -115,7 +144,7 @@ static func _sit(drop: float, extra := {}) -> Dictionary:
 static func _berserker(drop: float) -> Dictionary:
 	var base := {"ls": [38, 0, -12], "le": [62, 0, 0]}
 	var rest := {"rs": [38, 0, 10], "re": [78, 0, 0], "rhand": [8, -45, -70, 0]}
-	var bite := {"rs": [70, 0, 10], "re": [110, 0, 0], "rhand": [10, -50, -75, 100]}
+	var bite := {"rs": [70, 0, 10], "re": [110, 0, 0], "rhand": [10, -80, -215, 100]}
 	return _make(4.4, [
 		{"t": 0.0, "pose": _sit(drop, base.merged(rest).merged({"head": [0, 0, 0], "torso": [-8, 0, 0]}))},
 		{"t": 0.9, "pose": _sit(drop, base.merged(bite).merged({"head": [-6, 0, 0], "torso": [-12, 0, 0]}))},
@@ -132,7 +161,7 @@ static func _berserker(drop: float) -> Dictionary:
 ## Tony: the sandwich in both hands, a big bite now and then.
 static func _wise_guy(drop: float) -> Dictionary:
 	var rest := {"ls": [30, 0, -10], "le": [55, 0, 0], "rs": [40, 0, 8], "re": [85, 0, 0], "rhand": [5, -45, -70, 0]}
-	var bite := {"ls": [30, 0, -10], "le": [55, 0, 0], "rs": [72, 0, 8], "re": [115, 0, 0], "rhand": [5, -55, -80, 100]}
+	var bite := {"ls": [30, 0, -10], "le": [55, 0, 0], "rs": [72, 0, 8], "re": [115, 0, 0], "rhand": [5, -75, -175, 100]}
 	return _make(5.2, [
 		{"t": 0.0, "pose": _sit(drop, rest.merged({"head": [0, 0, 0]}))},
 		{"t": 2.2, "pose": _sit(drop, rest.merged({"head": [2, 0, 0]}))},
@@ -156,8 +185,8 @@ static func _counter_master(drop: float) -> Dictionary:
 ## The Blur: leaning back on the log, hands behind his head, one knee up;
 ## now and then a long yawn and a stretch.
 static func _combo_master(drop: float) -> Dictionary:
-	var lounge := {"pos": [0, drop, 4], "lh": [84, 0, -10], "lk": [-6, 0, 0], "rh": [112, 0, 8], "rk": [-84, 0, 0],
-		"torso": [32, 0, 0], "chest": [8, 0, 0], "head": [-22, 0, 0],
+	var lounge := {"pos": [0, drop, 0], "lh": [96, 0, -10], "lk": [-10, 0, 0], "lf": [10, 0, 0], "rh": [118, 0, 8], "rk": [-88, 0, 0],
+		"torso": [26, 0, 0], "chest": [6, 0, 0], "head": [-18, 0, 0],
 		"ls": [150, 0, -40], "le": [110, 0, 0], "rs": [150, 0, 40], "re": [110, 0, 0],
 		"lhand": [-55, 15, 75, 100], "rhand": [55, 15, 75, 100]}
 	var yawn := lounge.merged({"head": [8, 0, 0], "chest": [14, 0, 0],
@@ -245,24 +274,32 @@ func _props(fighter: String, body: FighterBody) -> void:
 	match fighter:
 		"berserker":
 			var meat := Node3D.new()
-			meat.position = hand + Vector3(0, -0.06, -0.1)
-			meat.rotation = Vector3(-1.2, 0, 0)
-			meat.scale = Vector3.ONE * 1.5
+			meat.position = hand
 			joints.re.add_child(meat)
-			_box(meat, Vector3(0.05, 0.36, 0.05), Vector3(0, 0, 0), Color(0.9, 0.87, 0.78))
-			_box(meat, Vector3(0.09, 0.07, 0.09), Vector3(0, -0.2, 0), Color(0.9, 0.87, 0.78))
-			_box(meat, Vector3(0.2, 0.22, 0.18), Vector3(0, 0.17, 0), Color(0.45, 0.2, 0.1))
-			_box(meat, Vector3(0.16, 0.08, 0.2), Vector3(0.03, 0.27, 0), Color(0.6, 0.28, 0.12))
+			# The bone in his glove, the meat out front (-Z), aimed by _aim_food.
+			_box(meat, Vector3(0.06, 0.06, 0.4), Vector3(0, 0, 0.0), Color(0.9, 0.87, 0.78))
+			_box(meat, Vector3(0.11, 0.11, 0.08), Vector3(0, 0, 0.2), Color(0.9, 0.87, 0.78))
+			_box(meat, Vector3(0.26, 0.24, 0.3), Vector3(0, 0, -0.32), Color(0.45, 0.2, 0.1))
+			_box(meat, Vector3(0.2, 0.1, 0.26), Vector3(0.03, 0.1, -0.33), Color(0.6, 0.28, 0.12))
+			meat.set_meta("grip", hand)
+			meat.set_meta("tip", 0.47)
+			_food[fighter] = meat
 		"wise_guy":
 			var sub := Node3D.new()
 			sub.position = hand
-			sub.rotation = Vector3(0, 0, PI / 2.0)
 			joints.re.add_child(sub)
-			_box(sub, Vector3(0.08, 0.32, 0.1), Vector3(0, 0, -0.06), Color(0.78, 0.55, 0.28))
-			_box(sub, Vector3(0.09, 0.3, 0.03), Vector3(0, 0, 0.0), Color(0.85, 0.35, 0.35))
-			_box(sub, Vector3(0.1, 0.3, 0.02), Vector3(0, 0, 0.02), Color(0.4, 0.75, 0.25))
-			_box(sub, Vector3(0.09, 0.29, 0.015), Vector3(0, 0, 0.035), Color(0.95, 0.8, 0.25))
-			_box(sub, Vector3(0.08, 0.32, 0.08), Vector3(0, 0, 0.08), Color(0.8, 0.57, 0.3))
+			# A long sub held at one end, the far end (-Z) toward his mouth.
+			var roll := Node3D.new()
+			roll.position = Vector3(0, 0, -0.2)
+			sub.add_child(roll)
+			_box(roll, Vector3(0.1, 0.06, 0.38), Vector3(0, -0.05, 0), Color(0.78, 0.55, 0.28))
+			_box(roll, Vector3(0.11, 0.03, 0.36), Vector3(0, -0.005, 0), Color(0.85, 0.35, 0.35))
+			_box(roll, Vector3(0.12, 0.02, 0.36), Vector3(0, 0.02, 0), Color(0.4, 0.75, 0.25))
+			_box(roll, Vector3(0.11, 0.015, 0.35), Vector3(0, 0.035, 0), Color(0.95, 0.8, 0.25))
+			_box(roll, Vector3(0.1, 0.06, 0.38), Vector3(0, 0.07, 0), Color(0.8, 0.57, 0.3))
+			sub.set_meta("grip", hand)
+			sub.set_meta("tip", 0.39)
+			_food[fighter] = sub
 		"elementalist":
 			var tome := Node3D.new()
 			tome.position = Vector3(0, 0.06, -0.34)
