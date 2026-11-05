@@ -48,6 +48,18 @@
         "builds/mobile"
       ],
       "port": 8061
+    },
+    {
+      "name": "mobile-build",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8061",
+        "--directory",
+        "builds/mobile"
+      ],
+      "port": 8061
     }
   ]
 }

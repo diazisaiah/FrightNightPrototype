@@ -28,6 +28,10 @@ const CHOICES := {
 		"ctrl": ["Ctrl + A / D / S", "Hold Ctrl with a direction"],
 		"double_tap": ["Double-tap A / D / S", "Tap a direction twice"],
 	},
+	"hud_style": {
+		"new": ["New", "Stitched straps and auras"],
+		"og": ["OG", "The original bars"],
+	},
 	"lock_on": {
 		"auto": ["Auto", "The game helps you aim"],
 		"off": ["Off", "Aim yourself"],
@@ -194,6 +198,7 @@ func _ready() -> void:
 	var display := _page(pages, "DISPLAY")
 	_preset(display, "effects", "quake", "Screen effects", "Shake on big hits, slow motion on counters and knockouts")
 	_preset(display, "graphics", "spark", "Graphics", "Low runs faster if the game struggles")
+	_choice(display, "hud_style", "eye", "Fight HUD", "Takes effect next fight")
 	_toggle(display, "fullscreen", "chevrons", "Fullscreen", "Fill the whole screen")
 
 	if show_save_data:

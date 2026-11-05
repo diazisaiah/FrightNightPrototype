@@ -37,6 +37,8 @@ func _process(delta: float) -> void:
 	var beat := 0.5 + 0.5 * sin(_time * 4.0)
 	for root in _tiles:
 		var tile: Dictionary = _tiles[root]
+		if tile.has("dial"):
+			continue
 		var style: StyleBoxFlat = tile.style
 		if tile.ready:
 			style.shadow_size = int(8 + 6 * beat)
@@ -53,6 +55,15 @@ func _rebuild(roots: Array) -> void:
 		column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		column.add_theme_constant_override("separation", 3)
 		add_child(column)
+		if Settings.new_hud():
+			# The new HUD's round stitched dial (PowerDial), its readout under it.
+			var dial := PowerDial.new()
+			dial.color = color
+			dial.icon = GameState.UPGRADES[root].icon
+			dial.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+			column.add_child(dial)
+			_tiles[root] = {"dial": dial, "glow": dial, "ready": true, "color": color}
+			continue
 		var glow := PanelContainer.new()
 		glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		glow.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
@@ -86,6 +97,13 @@ func _update(tile: Dictionary, entry: Array) -> void:
 		_pop(tile.glow)
 		went_off.emit(color)
 	tile.ready = ready
+	if tile.has("dial"):
+		var dial: PowerDial = tile.dial
+		dial.is_lit = ready
+		dial.charges = entry[3]
+		dial.cooldown = float(entry[4]) if entry.size() > 4 else 0.0
+		dial.label = "" if entry[1] == "READY" else String(entry[1])
+		return
 	var icon: IconView = tile.icon
 	var style: StyleBoxFlat = tile.style
 	icon.color = color if ready else color.darkened(0.45)

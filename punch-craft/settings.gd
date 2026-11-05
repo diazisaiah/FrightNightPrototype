@@ -36,9 +36,17 @@ const DEFAULTS := {
 	# Lock-on camera (LockOn): "auto" (blend on touch, off elsewhere), "off",
 	# "soft", "blend" or "hard". F cycles targets by hand.
 	"lock_on": "auto",
+	# The fight HUD (2026-11-06): "new" (stitched leather) or "og" (the original bars).
+	"hud_style": "new",
 }
 
 var values := DEFAULTS.duplicate()
+
+
+## True for the new stitched fight HUD.
+func new_hud() -> bool:
+	return str(values.get("hud_style", "new")) == "new"
+
 var _web_fullscreen_asked := false
 
 const FULLSCREEN_JS := """

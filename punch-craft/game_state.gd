@@ -1973,6 +1973,11 @@ func fighter_color(class_id := "") -> Color:
 	return CLASSES[player_class if class_id == "" else class_id].color
 
 
+## The fighter's color, darker: the new HUD's bars and belts.
+func fighter_color_dark(class_id := "") -> Color:
+	return fighter_color(class_id).darkened(0.32)
+
+
 func is_player_class(id: String) -> bool:
 	return player_class == id
 

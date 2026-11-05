@@ -915,7 +915,8 @@ func _draw_stick(role: String, zone: Rect2, label: String, accent: Color, dim :=
 	_canvas.draw_circle(knob_center, knob_radius, Color(accent, 0.95 if not idle else 0.8))
 	_canvas.draw_circle(knob_center + Vector2(-4, -6), knob_radius * 0.55, Color(accent.lightened(0.45), 0.55))
 	_canvas.draw_arc(knob_center, knob_radius, 0.0, TAU, 32, accent.darkened(0.4), 2.0, true)
-	if idle:
+	# The new HUD leaves the sticks bare (no MOVE / LOOK text).
+	if idle and not Settings.new_hud():
 		var font := UiTheme.display_font()
 		var width := font.get_string_size(label, HORIZONTAL_ALIGNMENT_CENTER, -1, 12).x
 		_canvas.draw_string(font, knob_center + Vector2(-width * 0.5, 4), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, _leather(accent, 0.12))

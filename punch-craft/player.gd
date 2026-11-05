@@ -368,6 +368,10 @@ var _muscle_timer := 6.0
 var unbroken_time := 0.0
 var _combo_freeze := 0.0
 var _class_status := "-"
+## How full the passive is, 0-1 (1 = ready), for the HUD's chip. -1: a passive
+## with nothing to time (2026-11-06).
+var class_progress := -1.0
+var _cd_peak := {}
 var _pound_cooldown := 0.0
 var _lean_tween: Tween
 ## Time each movement key was last pressed, for double taps.
@@ -2512,6 +2516,35 @@ static func _cooldown_text(seconds: float) -> String:
 	return "OK" if seconds <= 0.0 else "%ds" % ceili(seconds)
 
 
+## 1 - left / the longest it's been this round, so it refills as it counts down.
+func _cd_fraction(key: String, left: float) -> float:
+	if left <= 0.0:
+		_cd_peak[key] = 0.0
+		return 1.0
+	var peak := maxf(float(_cd_peak.get(key, 0.0)), left)
+	_cd_peak[key] = peak
+	return clampf(1.0 - left / peak, 0.0, 1.0)
+
+
+func _passive_progress() -> float:
+	match GameState.passive():
+		"perfect_counter":
+			return _cd_fraction("perfect", _perfect_cooldown)
+		"phantom_step":
+			return _cd_fraction("phantom", _phantom_cooldown)
+		"fuggedaboudit":
+			return _cd_fraction("fugget", _fugget_cooldown)
+		"dash_punches":
+			return minf(_cd_fraction("spear", _spear_cooldown), _cd_fraction("haymaker", _haymaker_cooldown))
+		"dodge_chain":
+			return clampf(_dodge_chain_charge / 3.0, 0.0, 1.0)
+		"rapid_combos":
+			return clampf(float(combo % _shockwave_every()) / float(_shockwave_every()), 0.0, 1.0)
+		"momentum":
+			return clampf(_momentum, 0.0, 1.0)
+	return -1.0
+
+
 func _shockwave_every() -> int:
 	return SHOCKWAVE_EVERY
 
@@ -2553,6 +2586,7 @@ func _update_class_timers(delta: float) -> void:
 	if status != _class_status:
 		_class_status = status
 		class_status_changed.emit(status)
+	class_progress = _passive_progress()
 	_update_hand_effects()
 
 

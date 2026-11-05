@@ -72,13 +72,14 @@ func status() -> Array:
 	for root in COOLDOWNS:
 		if fx(COOLDOWN_EFFECTS[root]) > 0.0:
 			var left: float = _cooldown.get(root, 0.0)
-			out.append([root, "READY" if left <= 0.0 else "%ds" % ceili(left), left <= 0.0, []])
+			out.append([root, "READY" if left <= 0.0 else "%ds" % ceili(left), left <= 0.0, [], clampf(left / float(COOLDOWNS[root]), 0.0, 1.0)])
 	if fx("quake_power") > 0.0:
-		out.append(["sigil_quake", "READY" if _quake_cooldown <= 0.0 else "%ds" % ceili(_quake_cooldown), _quake_cooldown <= 0.0, []])
+		out.append(["sigil_quake", "READY" if _quake_cooldown <= 0.0 else "%ds" % ceili(_quake_cooldown), _quake_cooldown <= 0.0, [],
+			clampf(_quake_cooldown / maxf(1.0, QUAKE_COOLDOWN - fx("quake_cooldown")), 0.0, 1.0)])
 	if fx("gale") > 0.0:
-		out.append(["sigil_gale", "", gale > 0, [gale, gale_max()]])
+		out.append(["sigil_gale", "", gale > 0, [gale, gale_max()], 0.0])
 	if fx("plate_guard") > 0.0:
-		out.append(["sigil_iron", "", plates > 0, [plates, plates_max()]])
+		out.append(["sigil_iron", "", plates > 0, [plates, plates_max()], 0.0])
 	return out
 
 

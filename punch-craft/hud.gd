@@ -135,6 +135,7 @@ func _ready() -> void:
 	_build_resource_row()
 	_build_knockout_cover()
 	_place_top_row()
+	_build_new_hud()
 	GameState.changed.connect(_refresh_progress)
 	Settings.changed.connect(show_controls)
 	_refresh_progress()
@@ -151,6 +152,7 @@ func _process(delta: float) -> void:
 	if _counter_label.visible:
 		_counter_label.modulate.a = 0.6 + 0.4 * sin(_pulse_time * 14.0)
 	_layout_top()
+	_update_passive_chip()
 
 
 ## Clicking or tabbing away mid-fight pauses it, so nothing hits you while
@@ -464,9 +466,45 @@ func set_class_status(text: String) -> void:
 	_passive_ready = ready
 
 
+## The passive chip's refill: lit in the fighter's color when full, grey while
+## it recharges, filling left to right as the cooldown runs down or as it
+## builds (2026-11-06). Passives with nothing timed keep a plain chip.
+func _update_passive_chip() -> void:
+	if _passive_chip == null or not _passive_chip is StitchPanel:
+		return
+	var chip := _passive_chip as StitchPanel
+	var player := get_tree().get_first_node_in_group("fight_player")
+	var progress := -1.0
+	if player:
+		progress = float(player.get("class_progress"))
+	chip.fill = progress
+	var cooling := progress >= 0.0 and progress < 0.999
+	chip.tint = GameState.fighter_color_dark().lightened(0.1)
+	var grey := Color(0.62, 0.6, 0.64)
+	_passive_icon.color = grey if cooling else GameState.fighter_color().lightened(0.2)
+	_passive_name.add_theme_color_override("font_color", grey if cooling else Color(0.95, 0.9, 0.84))
+
+
 ## On touch the bottom corners belong to the sticks, so the passive chip and
 ## the power tiles move: under the ultimate bar (TouchUi.hud_layout "ult") or
 ## under the health bar ("health").
+## The new stitched HUD (2026-11-06; Settings "hud_style"): the strap and the
+## bout card draw from the old bars, which fade out but keep working.
+var _skin: FightSkin
+
+
+func _build_new_hud() -> void:
+	if not Settings.new_hud():
+		return
+	_skin = FightSkin.new(self)
+	add_child(_skin)
+	move_child(_skin, mini(_pause_panel.get_index(), _summary_panel.get_index()))
+	_fight_ui.append(_skin)
+	for node in [_knuckle_bar, _knuckle_ghost, _knuckle_ticks, _knuckle_label, _level_label, _xp_bar, _wave_label, _night_bar]:
+		if node:
+			(node as CanvasItem).modulate.a = 0.0
+
+
 func _place_for_touch(node: Control, is_chip: bool) -> void:
 	if not TouchUi.enabled:
 		return
@@ -481,7 +519,8 @@ func _place_for_touch(node: Control, is_chip: bool) -> void:
 	else:
 		node.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
 		node.grow_vertical = Control.GROW_DIRECTION_BEGIN
-		node.offset_bottom = -24.0
+		# (The new HUD sits a little lower, clear of the ultimate belt.)
+		node.offset_bottom = -12.0 if Settings.new_hud() else -24.0
 		node.offset_top = -64.0
 		if is_chip:
 			node.grow_horizontal = Control.GROW_DIRECTION_END
@@ -494,14 +533,18 @@ func _place_for_touch(node: Control, is_chip: bool) -> void:
 
 
 func _build_passive_chip() -> void:
-	_passive_chip = PanelContainer.new()
+	_passive_chip = StitchPanel.new(9.0) if Settings.new_hud() else PanelContainer.new()
 	_passive_chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_passive_chip.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 	_passive_chip.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	_passive_chip.offset_left = 20.0
 	_passive_chip.offset_top = -64.0
 	_passive_chip.offset_bottom = -24.0
-	_passive_chip.add_theme_stylebox_override("panel", UiTheme.box(Color(0.04, 0.03, 0.06, 0.7), Color(GameState.fighter_color(), 0.5), 1, 8, 8.0))
+	if Settings.new_hud():
+		(_passive_chip as StitchPanel).tint = GameState.fighter_color_dark().lightened(0.1)
+		_passive_chip.add_theme_stylebox_override("panel", StitchPanel.leather(9.0, 12.0))
+	else:
+		_passive_chip.add_theme_stylebox_override("panel", UiTheme.box(Color(0.04, 0.03, 0.06, 0.7), Color(GameState.fighter_color(), 0.5), 1, 8, 8.0))
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1613,13 +1656,13 @@ func bind_ult(ult: Ult) -> void:
 	add_child(_ult_bar)
 	_ult_label.visible = false
 	_ult_bar.visible = false
-	_ult_gauge = UltGauge.new()
+	_ult_gauge = UltBelt.new() if Settings.new_hud() else UltGauge.new()
 	_ult_gauge.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
 	_ult_gauge.offset_left = -210.0
 	_ult_gauge.offset_right = 210.0
 	_ult_gauge.offset_top = -132.0
 	_ult_gauge.offset_bottom = -68.0
-	_ult_gauge.color = GameState.fighter_color().lightened(0.1)
+	_ult_gauge.color = GameState.fighter_color_dark() if Settings.new_hud() else GameState.fighter_color().lightened(0.1)
 	_ult_gauge.tap = TouchUi.enabled
 	add_child(_ult_gauge)
 	# Under the pause and dawn screens, not on top of their buttons.
