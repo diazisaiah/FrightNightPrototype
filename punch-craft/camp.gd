@@ -1742,14 +1742,32 @@ var _idle_grid: GridContainer
 var _emote_grid: GridContainer
 var _emote_title: Label
 var _emote_stage: EmotePreview
+var _emote_equip: Button
+var _emote_slots: HBoxContainer
 
 
-## Hats, emotes, hand idles and (soon) skins, each on its own tab.
+## The page style (2026-11-05): no big panel, the cards float over the camp.
+func _clear_panel(panel: PanelContainer) -> void:
+	panel.add_theme_stylebox_override("panel", UiTheme.box(Color(0, 0, 0, 0), Color(0, 0, 0, 0), 0, 0, 6.0))
+
+
+## Every hat, common first up to legendary; the catalog's order within a rarity.
+func _hats_by_rarity() -> Array:
+	var order := ["common", "uncommon", "rare", "epic", "legendary"]
+	var ids: Array = Hats.CATALOG.keys()
+	var ranked: Array = []
+	for i in ids.size():
+		ranked.append([order.find(Hats.CATALOG[ids[i]].rarity), i, ids[i]])
+	ranked.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0] or (a[0] == b[0] and a[1] < b[1]))
+	return ranked.map(func(entry: Array) -> String: return entry[2])
+
+
+## Hats, emotes, hand idles and skins, each on its own tab.
 func _build_cosmetics_page() -> Control:
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 8)
 	var tabs := HBoxContainer.new()
-	tabs.add_theme_constant_override("separation", 4)
+	tabs.add_theme_constant_override("separation", 6)
 	column.add_child(tabs)
 	var area := Control.new()
 	area.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -1761,7 +1779,6 @@ func _build_cosmetics_page() -> Control:
 		button.text = page_name
 		button.toggle_mode = true
 		button.button_group = group
-		button.theme_type_variation = "TabButton"
 		button.pressed.connect(_show_cosmetic.bind(page_name))
 		tabs.add_child(button)
 		_cosmetic_buttons[page_name] = button
@@ -1791,10 +1808,11 @@ func _show_cosmetic(page_name: String) -> void:
 ## beside every emote you own.
 func _build_emote_page() -> Control:
 	var panel := PanelContainer.new()
+	_clear_panel(panel)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 16)
 	panel.add_child(row)
-	_emote_stage = EmotePreview.new(GameState.player_class)
+	_emote_stage = EmotePreview.new(GameState.player_class, 5.4)
 	_emote_stage.custom_minimum_size = Vector2(320, 0)
 	row.add_child(_emote_stage)
 	var column := VBoxContainer.new()
@@ -1803,10 +1821,23 @@ func _build_emote_page() -> Control:
 	row.add_child(column)
 	_emote_title = UiTheme.title_label("EMOTES", 26, UiTheme.GOLD)
 	column.add_child(_emote_title)
-	var tip := _label("%s to preview. Hold %s in a fight for the wheel." % [Controls.tap_word(), Controls.key_name("emote")], 13, UiTheme.MUTED)
+	var tip := _label("%s to preview, then put up to %d on your wheel. Hold %s in a fight to open it." % [Controls.tap_word(), GameState.EMOTE_SLOTS, Controls.key_name("emote")], 13, UiTheme.MUTED)
 	column.add_child(tip)
 	Controls.watch(tip, func() -> void:
-		tip.text = "%s to preview. Hold %s in a fight for the wheel." % [Controls.tap_word(), Controls.key_name("emote")])
+		tip.text = "%s to preview, then put up to %d on your wheel. Hold %s in a fight to open it." % [Controls.tap_word(), GameState.EMOTE_SLOTS, Controls.key_name("emote")])
+	# The wheel: six slots, and the button that puts the emote on stage in or out.
+	_emote_slots = HBoxContainer.new()
+	_emote_slots.add_theme_constant_override("separation", 6)
+	column.add_child(_emote_slots)
+	_emote_equip = Button.new()
+	_emote_equip.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	_emote_equip.pressed.connect(func() -> void:
+		if Achievements.toggle_equipped(_emote_stage.body.playing()):
+			Sfx.play("tick")
+		else:
+			Sfx.play("deny", -10.0)
+		_refresh_emotes())
+	column.add_child(_emote_equip)
 	var scroll := KeptScroll.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -1834,18 +1865,37 @@ func _refresh_emotes() -> void:
 	var tint := GameState.fighter_color()
 	if not dancer.playing() in owned and not owned.is_empty():
 		_emote_stage.play(owned[0])
+	var wheel := Achievements.equipped_emotes()
+	for child in _emote_slots.get_children():
+		_emote_slots.remove_child(child)
+		child.queue_free()
+	_emote_slots.add_child(_label("WHEEL", 13, UiTheme.MUTED))
+	for slot in GameState.EMOTE_SLOTS:
+		var filled := slot < wheel.size()
+		var chip := PanelContainer.new()
+		chip.custom_minimum_size = Vector2(82, 30)
+		chip.add_theme_stylebox_override("panel", UiTheme.box(Color(0.05, 0.04, 0.08, 0.6), Color(UiTheme.GOLD, 0.85) if filled else Color(1, 1, 1, 0.12), 2 if filled else 1, 8, 4.0))
+		var chip_label := _label(Emotes.name_of(wheel[slot]) if filled else "-", 11, UiTheme.TEXT if filled else UiTheme.MUTED)
+		chip_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		chip_label.clip_text = true
+		chip.add_child(chip_label)
+		_emote_slots.add_child(chip)
+	var on_stage: String = dancer.playing()
+	var on_wheel := wheel.has(on_stage)
+	_emote_equip.text = ("Take %s off the wheel" if on_wheel else "Put %s on the wheel") % Emotes.name_of(on_stage)
+	_emote_equip.disabled = on_stage == "" or (not on_wheel and wheel.size() >= GameState.EMOTE_SLOTS) or (on_wheel and wheel.size() <= 1)
 	for id in owned:
 		var showing: bool = id == dancer.playing()
 		var card := Button.new()
-		card.text = Emotes.name_of(id)
+		card.text = Emotes.name_of(id) + ("   *" if wheel.has(id) else "")
 		card.custom_minimum_size = Vector2(0, 64)
 		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		card.add_theme_font_override("font", UiTheme.bold_font())
 		card.add_theme_font_size_override("font_size", 17)
 		card.add_theme_color_override("font_color", UiTheme.GOLD if showing else UiTheme.TEXT)
-		card.add_theme_stylebox_override("normal", UiTheme.raised(Color(0.06, 0.05, 0.08, 0.96), UiTheme.GOLD if showing else Color(tint, 0.5), 3 if showing else 2, 10))
-		card.add_theme_stylebox_override("hover", UiTheme.raised(Color(tint.darkened(0.75), 0.98), tint.lightened(0.2), 3, 10))
-		card.add_theme_stylebox_override("pressed", UiTheme.raised(Color(tint.darkened(0.75), 0.98), tint.lightened(0.2), 3, 10))
+		card.add_theme_stylebox_override("normal", UiTheme.raised(Color(0.06, 0.05, 0.08, 0.68), UiTheme.GOLD if showing else Color(tint, 0.5), 3 if showing else 2, 10))
+		card.add_theme_stylebox_override("hover", UiTheme.raised(Color(tint.darkened(0.75), 0.8), tint.lightened(0.2), 3, 10))
+		card.add_theme_stylebox_override("pressed", UiTheme.raised(Color(tint.darkened(0.75), 0.8), tint.lightened(0.2), 3, 10))
 		card.pressed.connect(func() -> void:
 			_emote_stage.play(id)
 			_refresh_emotes())
@@ -1854,6 +1904,7 @@ func _refresh_emotes() -> void:
 
 func _build_idle_page() -> Control:
 	var panel := PanelContainer.new()
+	_clear_panel(panel)
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 12)
 	panel.add_child(column)
@@ -1879,6 +1930,7 @@ var _skin_note: Label
 ## dancing on its card. Click one to wear it.
 func _build_skins_page() -> Control:
 	var panel := PanelContainer.new()
+	_clear_panel(panel)
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 12)
 	panel.add_child(column)
@@ -1911,7 +1963,7 @@ func _refresh_skins() -> void:
 		var wearing: bool = id == GameState.skin()
 		var card := Button.new()
 		card.custom_minimum_size = Vector2(240, 330)
-		card.add_theme_stylebox_override("normal", UiTheme.raised(Color(0.06, 0.05, 0.08, 0.96), UiTheme.GOLD if wearing else Color(tint, 0.5), 3 if wearing else 2, 12))
+		card.add_theme_stylebox_override("normal", UiTheme.raised(Color(0.06, 0.05, 0.08, 0.68), UiTheme.GOLD if wearing else Color(tint, 0.5), 3 if wearing else 2, 12))
 		card.add_theme_stylebox_override("hover", UiTheme.raised(Color(tint.darkened(0.75), 0.98), tint.lightened(0.2), 3, 12))
 		card.add_theme_stylebox_override("pressed", UiTheme.raised(Color(tint.darkened(0.75), 0.98), tint.lightened(0.2), 3, 12))
 		var inside := VBoxContainer.new()
@@ -1941,6 +1993,7 @@ func _refresh_skins() -> void:
 ## silhouettes.
 func _build_hat_rack() -> Control:
 	var panel := PanelContainer.new()
+	_clear_panel(panel)
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 12)
 	panel.add_child(column)
@@ -1972,7 +2025,7 @@ func _refresh_hat_rack() -> void:
 	for child in _hat_grid.get_children():
 		child.queue_free()
 	var owned := 0
-	for id in Hats.CATALOG:
+	for id in _hats_by_rarity():
 		if GameState.hats.has(id):
 			owned += 1
 		_hat_grid.add_child(_hat_card(id))

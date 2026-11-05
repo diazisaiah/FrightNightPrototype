@@ -1095,7 +1095,8 @@ func _close_wheel() -> void:
 		if emote != "":
 			_stop_emote()
 		elif not (_wheel_pad and _tap_map()):
-			start_emote(_last_emote)
+			var wheel := Achievements.equipped_emotes()
+			start_emote(_last_emote if wheel.has(_last_emote) or wheel.is_empty() else wheel[0])
 
 
 func _steer_wheel(delta: float) -> void:
@@ -1121,7 +1122,7 @@ func _tap_map() -> bool:
 
 ## Starts a dance (an Emotes id) and pulls the camera out.
 func start_emote(id: String) -> void:
-	if not active or ult.busy() or not id in Emotes.ORDER or not Achievements.emote_unlocked(id):
+	if not active or ult.busy() or not id in Emotes.ORDER or not Achievements.equipped_emotes().has(id):
 		return
 	if _emote_out <= 0.0:
 		_emote_orbit = Vector2(PI * 0.78, 0.18)

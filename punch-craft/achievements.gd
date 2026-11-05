@@ -43,6 +43,41 @@ static func emotes() -> Array:
 	return Emotes.ORDER.filter(func(emote: String) -> bool: return emote_unlocked(emote))
 
 
+## The emotes on the wheel: your picks (at most GameState.EMOTE_SLOTS), in
+## Emotes.ORDER. Before you pick, your first six.
+static func equipped_emotes() -> Array:
+	var owned := emotes()
+	var picks: Array = owned.filter(func(id: String) -> bool: return GameState.emote_loadout.has(id))
+	if not GameState.emote_loadout_set:
+		for id in owned:
+			if picks.size() >= GameState.EMOTE_SLOTS:
+				break
+			if not picks.has(id):
+				picks.append(id)
+	picks = Emotes.ORDER.filter(func(id: String) -> bool: return picks.has(id))
+	return picks.slice(0, GameState.EMOTE_SLOTS)
+
+
+## Puts an owned emote on the wheel or takes it off. False when the wheel's
+## full (or it's not yours).
+static func toggle_equipped(emote: String) -> bool:
+	if not emote_unlocked(emote):
+		return false
+	var now := equipped_emotes()
+	if now.has(emote):
+		if now.size() <= 1:
+			return false  # The wheel keeps at least one.
+		now.erase(emote)
+	elif now.size() >= GameState.EMOTE_SLOTS:
+		return false
+	else:
+		now.append(emote)
+	GameState.emote_loadout = now
+	GameState.emote_loadout_set = true
+	GameState.save_game()
+	return true
+
+
 static func emote_unlocked(emote: String) -> bool:
 	if emote in FREE_EMOTES or GameState.emotes_bought.has(emote):
 		return true

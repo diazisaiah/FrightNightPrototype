@@ -19,7 +19,7 @@ var _dances: Array = ["default"]
 
 
 func refresh_dances() -> void:
-	_dances = Achievements.emotes()
+	_dances = Achievements.equipped_emotes()
 
 
 func _ready() -> void:

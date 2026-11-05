@@ -117,6 +117,12 @@ func _ready() -> void:
 					for key in {"power": 12, "grit": 8, "speed": 5, "technique": 3}:
 						GameState.attributes[key] = {"power": 12, "grit": 8, "speed": 5, "technique": 3}[key]
 					node.call("_refresh")
+				if OS.get_environment("CAPTURE_HATS") != "":
+					for hat_id in ["party_hat", "bucket", "wig_blonde", "wig_blue", "bowler", "fruit_hat", "coffin_crown", "bluetooth_headpiece"]:
+						GameState.hats[hat_id] = 1
+					node.call("_refresh")
+				if OS.get_environment("CAPTURE_COSMETIC") != "":
+					node.call("_show_cosmetic", OS.get_environment("CAPTURE_COSMETIC"))
 				if parts.size() > 3 and node.has_method("_set_fighter_tab"):
 					node.call("_set_fighter_tab", parts[3])
 				if parts.size() > 4:

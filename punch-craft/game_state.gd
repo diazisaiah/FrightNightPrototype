@@ -1191,6 +1191,11 @@ var shop_stock: Array = []
 var shop_free_at := 0
 var shop_rerolls := 0
 var emotes_bought := {}
+## The emotes on the wheel (2026-11-05): at most EMOTE_SLOTS. Until you pick
+## your own (emote_loadout_set) it's your first six; new ones fill empty slots.
+const EMOTE_SLOTS := 6
+var emote_loadout: Array = []
+var emote_loadout_set := false
 var fighters_bought := {}
 ## Fights finished (each return to camp from the Arena, Crypt or Dead League).
 var fights_done := 0
@@ -2546,6 +2551,8 @@ func save_game() -> void:
 		"shop_free_at": shop_free_at,
 		"shop_rerolls": shop_rerolls,
 		"emotes_bought": emotes_bought,
+		"emote_loadout": emote_loadout,
+		"emote_loadout_set": emote_loadout_set,
 		"fighters_bought": fighters_bought,
 		"fights_done": fights_done,
 		"bounties": bounties,
@@ -2658,6 +2665,8 @@ func load_game() -> void:
 	shop_free_at = int(data.get("shop_free_at", 0))
 	shop_rerolls = int(data.get("shop_rerolls", 0))
 	emotes_bought = data.get("emotes_bought", {}).duplicate() if data.get("emotes_bought", {}) is Dictionary else {}
+	emote_loadout = data.get("emote_loadout", []).duplicate() if data.get("emote_loadout", []) is Array else []
+	emote_loadout_set = bool(data.get("emote_loadout_set", false))
 	fighters_bought = data.get("fighters_bought", {}).duplicate() if data.get("fighters_bought", {}) is Dictionary else {}
 	fights_done = int(data.get("fights_done", 0))
 	bounties = data.get("bounties", []).duplicate(true) if data.get("bounties", []) is Array else []
@@ -2990,6 +2999,8 @@ func _reset_fields() -> void:
 	shop_free_at = 0
 	shop_rerolls = 0
 	emotes_bought = {}
+	emote_loadout = []
+	emote_loadout_set = false
 	fighters_bought = {}
 	fights_done = 0
 	bounties = []
