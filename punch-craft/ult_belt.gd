@@ -13,6 +13,8 @@ extends UltGauge
 ## difference).
 
 const SEGS := 8
+## Half-waves across the bar for the Stray's lines. Odd keeps them starting top and bottom and ending on opposite sides, crossing in the middle.
+const WAVE_TURNS := 3.0
 const AURA_COLORS := {
 	"berserker": Color(1.0, 0.5, 0.12), "counter_master": Color(0.45, 0.85, 1.0), "combo_master": Color(0.62, 0.42, 1.0),
 	"free_runner": Color(0.25, 1.0, 0.42), "wise_guy": Color(1.0, 0.8, 0.28), "elementalist": Color(1.0, 0.4, 0.72),
@@ -166,23 +168,31 @@ func _aura_front(belt: Rect2, bar: Rect2, accent: Color, pulse: float) -> void:
 			var swell := 0.5 + 0.5 * sin(_time * 3.2)
 			draw_rect(bar, Color(0.85, 0.75, 1.0, 0.12 + 0.2 * swell))
 		"free_runner":
+			# Two neon lines, one from the top and one from the bottom, crossing
+			# in the middle and ending on opposite sides: a wave and its
+			# negative, drawn left to right by a bright head that leaves a trail
+			# fading behind it, then drawn again.
 			var mid := bar.position.y + bar.size.y * 0.5
-			var amp := bar.size.y * 1.15
-			for pass_index in 2:
-				var points_a := PackedVector2Array()
-				var points_b := PackedVector2Array()
-				var x := bar.position.x
-				while x <= bar.end.x:
-					var phase := (x - bar.position.x) * 0.052 + _time * 5.0
-					points_a.append(Vector2(x, mid + sin(phase) * amp))
-					points_b.append(Vector2(x, mid + cos(phase) * amp))
-					x += 3.0
-				if pass_index == 0:
-					draw_polyline(points_a, Color(accent, 0.28), 5.0, true)
-					draw_polyline(points_b, Color(accent, 0.28), 5.0, true)
-				else:
-					draw_polyline(points_a, Color(0.75, 1.0, 0.82, 0.95), 1.4, true)
-					draw_polyline(points_b, Color(0.75, 1.0, 0.82, 0.95), 1.4, true)
+			var amp := bar.size.y * 1.0
+			var head := fmod(_time * 0.8, 1.55)
+			var tail := head - 0.75
+			var step := 3.0
+			var u := maxf(tail, 0.0)
+			while u < minf(head, 1.0):
+				var u2 := minf(u + step / bar.size.x, 1.0)
+				var fade := clampf((u2 - tail) / 0.75, 0.0, 1.0)
+				fade = fade * fade
+				for sign in [-1.0, 1.0]:
+					var a_pt := Vector2(bar.position.x + u * bar.size.x, mid + sign * amp * cos(WAVE_TURNS * PI * u))
+					var b_pt := Vector2(bar.position.x + u2 * bar.size.x, mid + sign * amp * cos(WAVE_TURNS * PI * u2))
+					draw_line(a_pt, b_pt, Color(accent, 0.4 * fade), 8.0, true)
+					draw_line(a_pt, b_pt, Color(0.8, 1.0, 0.86, fade), 2.4, true)
+				u = u2
+			if head <= 1.0:
+				for sign in [-1.0, 1.0]:
+					var tip := Vector2(bar.position.x + head * bar.size.x, mid + sign * amp * cos(WAVE_TURNS * PI * head))
+					draw_circle(tip, 8.0, Color(accent, 0.5))
+					draw_circle(tip, 3.4, Color(0.92, 1.0, 0.94))
 		"wise_guy":
 			# A diagonal band of shine crossing the belt, then a pause.
 			var cycle := fmod(_time, 1.7) / 1.0
