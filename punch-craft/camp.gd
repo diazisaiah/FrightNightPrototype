@@ -271,6 +271,7 @@ func _build_ui() -> void:
 	margin.add_child(column)
 	column.add_child(_fit_width(_build_header()))
 	var body := HBoxContainer.new()
+	_body = body
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	body.add_theme_constant_override("separation", 14)
 	column.add_child(body)
@@ -317,6 +318,8 @@ func _fit_width(content: Control) -> Control:
 ## tinted toward your fighter's color with a stripe of it along the bottom;
 ## "The Mauler: Lvl 1" in that color; the wordmark subtly alive.
 var _header: PanelContainer
+var _body: HBoxContainer
+var _picker: PlayPicker
 var _rail_panel: PanelContainer
 
 
@@ -1448,18 +1451,40 @@ func _refresh() -> void:
 
 
 ## Arena: pick a division (each opens with the seal before it).
+## Arena: the picker (PlayPicker). With only the first arena open, its bouts
+## show straight away (or the fight starts, before your first win).
 func _pick_division() -> void:
+	var open: Array = []
+	for i in Progression.TIER_COUNT:
+		if i + 1 <= Progression.current_tier():
+			open.append(i + 1)
+	var level: Dictionary
+	if open.size() == 1:
+		level = _arena_bouts(open[0])
+		if level.is_empty():
+			return
+	else:
+		level = _arena_level()
+	_open_play("arena", "ARENA", level)
+
+
+## The arenas you've opened, each a zoomed-out shot with its division's pips.
+func _arena_level() -> Dictionary:
 	var options := []
 	for i in Progression.TIER_COUNT:
+		if i + 1 > Progression.current_tier():
+			continue
 		var bouts := mini(int(GameState.arena_bouts.get(str(i + 1), 0)), Progression.BOUTS_PER_DIVISION)
 		# Runs pick up at your next unbeaten bout: recommend for that one.
 		var next_bout := clampi(bouts + 1, 1, Progression.BOUTS_PER_DIVISION)
-		options.append({"name": Progression.TIERS[i].division.to_upper(), "pips": [bouts, Progression.BOUTS_PER_DIVISION],
-			"open": i + 1 <= Progression.current_tier(), "tier": i + 1, "value": i + 1,
+		options.append({"name": Progression.TIERS[i].division.to_upper(), "place": Themes.arena(i + 1).name,
+			"art": load("res://art/ui/arena_%d.jpg" % (i + 1)), "accent": DeadLeagueRules.boss(i).accent,
+			"pips": [bouts, Progression.BOUTS_PER_DIVISION], "value": i + 1,
 			"lines": _power_lines(PowerRating.arena_power(i + 1, next_bout))})
-	_pick("UNDERWORLD ARENA", options, func(division: int) -> void:
-		GameState.arena_division = division
-		_pick_bout(division))
+	return {"heading": "CHOOSE YOUR ARENA", "sub": "Where do you fight tonight?", "options": options,
+		"pick": func(division: int) -> Dictionary:
+			GameState.arena_division = division
+			return _arena_bouts(division)}
 
 
 ## A pick card's POWER readout (2026-11-03): the recommended POWER, then yours
@@ -1474,65 +1499,98 @@ func _power_lines(recommended: int) -> Array:
 
 ## Then the bout: any you've won (to farm it) or the next one. Harder bouts
 ## pay more. With nothing won yet it goes straight in.
-func _pick_bout(division: int) -> void:
+## The bouts of one arena as a picker page, or {} after starting the fight (before
+## your first win it's just bout 1).
+func _arena_bouts(division: int) -> Dictionary:
 	var won := mini(int(GameState.arena_bouts.get(str(division), 0)), Progression.BOUTS_PER_DIVISION)
+	GameState.arena_division = division
 	if won == 0:
 		GameState.arena_bout_pick = 1
 		_start_run()
-		return
+		return {}
+	var accent: Color = DeadLeagueRules.boss(division - 1).accent
+	var picture: Texture2D = load("res://art/ui/arena_%d.jpg" % division)
 	var options := []
 	var base := Progression.pay(Progression.arena_position(division, 1))
 	for bout in range(1, mini(won + 1, Progression.BOUTS_PER_DIVISION) + 1):
 		var state := "WON" if bout <= won else "NEXT"
 		if bout == Progression.BOUTS_PER_DIVISION:
 			# The third bout is endless: 50 knockouts win it, then it's for a score.
-			options.append({"name": "ENDLESS", "number": "%d" % bout, "tier": division, "open": true, "value": bout,
+			options.append({"name": "ENDLESS", "number": "%d" % bout, "art": picture, "accent": accent, "value": bout,
 				"detail": "%s   ·   BEST %d" % [state, GameState.endless_best_in(division)],
 				"lines": _power_lines(PowerRating.arena_power(division, bout))})
 			continue
-		options.append({"name": "BOUT %d" % bout, "number": "%d" % bout, "tier": division, "open": true, "value": bout,
+		options.append({"name": "BOUT %d" % bout, "number": "%d" % bout, "art": picture, "accent": accent, "value": bout,
 			"detail": state + "   ·   x%s pay" % String.num(Progression.pay(Progression.arena_position(division, bout)) / base, 2),
 			"lines": _power_lines(PowerRating.arena_power(division, bout))})
-	_pick("%s DIVISION" % Progression.TIERS[division - 1].division.to_upper(), options, func(bout: int) -> void:
-		GameState.arena_bout_pick = bout
-		_start_run())
+	return {"heading": "%s DIVISION" % Progression.TIERS[division - 1].division.to_upper(),
+		"sub": Themes.arena(division).name, "options": options,
+		"pick": func(bout: int) -> Dictionary:
+			GameState.arena_bout_pick = bout
+			_start_run()
+			return {}}
 
 
 ## Crypt: pick a pair of floors to start on (one pair per contender beaten),
 ## or, once floor 10 is beaten, the endless floors from a checkpoint.
 func _pick_crypt_floors() -> void:
+	_open_play("crypt", "CRYPT", _crypt_level())
+
+
+func _crypt_level() -> Dictionary:
+	var picture: Texture2D = load("res://art/ui/mode_crypt.jpg")
 	var options := []
 	for i in Progression.TIER_COUNT:
 		var first := Progression.crypt_start_floor(i + 1)
-		options.append({"name": "FLOORS %d-%d" % [first, first + 1], "open": Progression.crypt_floor_open(first), "tier": i + 1, "value": i + 1,
+		if not Progression.crypt_floor_open(first):
+			continue
+		var look: Dictionary = Themes.crypt(first)
+		options.append({"name": "FLOORS %d-%d" % [first, first + 1], "place": look.name, "art": picture,
+			"tint": Color(look.banner).lightened(0.35), "accent": Color(look.fire).lerp(Color.WHITE, 0.15), "value": i + 1,
 			"lines": _power_lines(PowerRating.crypt_power(first))})
 	var checkpoints := Progression.crypt_checkpoints()
 	if not checkpoints.is_empty():
-		options.append({"name": "ENDLESS", "number": "%d+" % checkpoints[0], "number_size": 48, "open": true, "tier": Progression.TIER_COUNT,
-			"value": 0, "detail": "Checkpoints: %s" % ", ".join(checkpoints.map(func(f: int) -> String: return str(f))),
+		options.append({"name": "ENDLESS", "place": "Floors %d and beyond" % checkpoints[0], "art": picture,
+			"tint": Color(0.8, 0.3, 0.3), "accent": DeadLeagueRules.boss(Progression.TIER_COUNT - 1).accent, "value": 0,
+			"detail": "Checkpoints: %s" % ", ".join(checkpoints.map(func(f: int) -> String: return str(f))),
 			"lines": _power_lines(PowerRating.crypt_power(checkpoints[0]))})
-	_pick("THE CRYPT", options, func(tier: int) -> void:
-		if tier == 0:
-			_pick_crypt_checkpoint(checkpoints)
-			return
-		GameState.crypt_tier = tier
-		GameState.crypt_start_pick = 0
-		_start_crypt())
+	return {"heading": "THE CRYPT", "sub": "How deep do you start?", "options": options,
+		"pick": func(tier: int) -> Dictionary:
+			if tier == 0:
+				return _crypt_checkpoints(checkpoints)
+			GameState.crypt_tier = tier
+			GameState.crypt_start_pick = 0
+			_start_crypt()
+			return {}}
 
 
 ## The endless floors: start from floor 11 or any checkpoint reached (15, 20 ...).
-func _pick_crypt_checkpoint(checkpoints: Array) -> void:
+func _crypt_checkpoints(checkpoints: Array) -> Dictionary:
 	if checkpoints.size() == 1:
 		GameState.crypt_start_pick = checkpoints[0]
 		_start_crypt()
-		return
+		return {}
+	var picture: Texture2D = load("res://art/ui/mode_crypt.jpg")
 	var options := []
 	for floor_number in checkpoints:
-		options.append({"name": "FLOOR %d" % floor_number, "number": "%d" % floor_number, "number_size": 48,
-			"open": true, "tier": Progression.TIER_COUNT, "value": floor_number, "lines": _power_lines(PowerRating.crypt_power(floor_number))})
-	_pick("ENDLESS CRYPT", options, func(floor_number: int) -> void:
-		GameState.crypt_start_pick = floor_number
-		_start_crypt(), "Start from a checkpoint")
+		var look: Dictionary = Themes.crypt(floor_number)
+		options.append({"name": "FLOOR %d" % floor_number, "number": "%d" % floor_number, "art": picture,
+			"tint": Color(look.banner).lightened(0.35), "accent": Color(look.fire).lerp(Color.WHITE, 0.15), "value": floor_number,
+			"lines": _power_lines(PowerRating.crypt_power(floor_number))})
+	return {"heading": "ENDLESS FLOORS", "sub": "Start from a checkpoint", "options": options,
+		"pick": func(floor_number: int) -> Dictionary:
+			GameState.crypt_start_pick = floor_number
+			_start_crypt()
+			return {}}
+
+
+## Slides a Home mode card across and shows the picker page (PlayPicker).
+func _open_play(mode: String, title: String, level: Dictionary) -> void:
+	if _picker and is_instance_valid(_picker):
+		return
+	var parts: Dictionary = _mode_lines[mode]
+	var picture: Texture2D = (parts.art as TextureRect).texture
+	_picker = PlayPicker.open(self, _body, _rail_panel, _home, parts.card, title, (parts.line as Label).text, picture, level)
 
 
 ## A row of big cards, one per tier, edged in that tier's contender's color.
