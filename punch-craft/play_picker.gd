@@ -287,6 +287,14 @@ func _option_card(option: Dictionary, level: Dictionary) -> Control:
 		shade.position = art.position
 		shade.size = art.size
 		card.add_child(shade)
+	if option.get("art") == null:
+		# No picture (the drills): a block of the card's color to carry the big word.
+		var block := Panel.new()
+		block.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		block.position = Vector2(3, 3)
+		block.size = Vector2(width - 6.0, ART_HEIGHT)
+		block.add_theme_stylebox_override("panel", UiTheme.box(accent.darkened(0.78), Color.TRANSPARENT, 0, 10))
+		card.add_child(block)
 	if option.has("number"):
 		var number := UiTheme.title_label(String(option.number), 54, accent.lightened(0.2))
 		number.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -309,9 +317,10 @@ func _option_card(option: Dictionary, level: Dictionary) -> Control:
 		small.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		small.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		small.position = Vector2(14, y)
-		small.size = Vector2(width - 28.0, 20.0)
+		var tall := String(text).length() > 27
+		small.size = Vector2(width - 28.0, 40.0 if tall else 20.0)
 		card.add_child(small)
-		y += 22.0
+		y += 42.0 if tall else 22.0
 	y += 4.0
 	for line in option.get("lines", []):
 		var extra := Label.new()

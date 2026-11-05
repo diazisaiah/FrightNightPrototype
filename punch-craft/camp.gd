@@ -1585,12 +1585,15 @@ func _crypt_checkpoints(checkpoints: Array) -> Dictionary:
 
 
 ## Slides a Home mode card across and shows the picker page (PlayPicker).
-func _open_play(mode: String, title: String, level: Dictionary) -> void:
+func _open_play(mode: String, title: String, level: Dictionary, source: Control = null, line := "", picture: Texture2D = null) -> void:
 	if _picker and is_instance_valid(_picker):
 		return
-	var parts: Dictionary = _mode_lines[mode]
-	var picture: Texture2D = (parts.art as TextureRect).texture
-	_picker = PlayPicker.open(self, _body, _rail_panel, _home, parts.card, title, (parts.line as Label).text, picture, level)
+	if _mode_lines.has(mode):
+		var parts: Dictionary = _mode_lines[mode]
+		source = parts.card
+		line = (parts.line as Label).text
+		picture = (parts.art as TextureRect).texture
+	_picker = PlayPicker.open(self, _body, _rail_panel, _home, source, title, line, picture, level)
 
 
 ## A row of big cards, one per tier, edged in that tier's contender's color.
@@ -1710,14 +1713,17 @@ func _pick_drill() -> void:
 		var card: Array = DRILL_CARDS[id]
 		var best := int(GameState.drills.get(id, {}).get("best", 0))
 		var ready := GameState.drill_ready(id)
-		options.append({"name": card[1], "number": card[0], "number_size": 40, "tier": 1, "open": true, "value": id,
-			"card_size": Vector2(260, 290), "detail": card[2],
+		options.append({"name": card[1], "number": card[0], "accent": UiTheme.GOLD if ready else Color(0.6, 0.75, 1.0), "value": id,
+			"detail": card[2],
 			"lines": [["REWARD READY" if ready else "PRACTICE", UiTheme.GOOD if ready else UiTheme.MUTED],
 				["BEST  %d" % best, UiTheme.TEXT]]})
-	_pick("DAILY DRILLS", options, func(id: String) -> void:
-		GameState.drill_pick = id
-		GameState.save_game()
-		Loading.go("res://drills.tscn"), "Rewards pay at your furthest fight:  " + GameState.climb_place())
+	_open_play("drills", "DAILY", {"heading": "DAILY DRILLS", "sub": "Rewards pay at your furthest fight:  " + GameState.climb_place(),
+		"options": options,
+		"pick": func(id: String) -> Dictionary:
+			GameState.drill_pick = id
+			GameState.save_game()
+			Loading.go("res://drills.tscn")
+			return {}}, _daily_button, "A reward a day, then practice")
 
 
 func _start_crypt() -> void:
