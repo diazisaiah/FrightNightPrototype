@@ -23,7 +23,9 @@ const SEATS := {
 	"combo_master": {"at": Vector3(1.65, 0, -0.95), "seat": 0.06, "on": ""},
 	# The Stray on the front edge of the other log, legs in front of it.
 	"free_runner": {"at": Vector3(-1.78, 0, 0.94), "seat": 0.36, "on": ""},
-	"elementalist": {"at": Vector3(0.95, 0, -3.5), "seat": 0.4, "on": "rock", "turn": 0.45},
+	# The Catalyst on the left, beside the Stray, so it's three a side (2026-11-06;
+	# it was four on the right and two on the left).
+	"elementalist": {"at": Vector3(-3.1, 0, 1.2), "seat": 0.4, "on": "rock", "turn": -0.45},
 }
 ## The arm each gestures with while talking ("" for head only).
 const GESTURE := {"berserker": "l", "wise_guy": "l", "counter_master": "r", "combo_master": "", "free_runner": "l"}
