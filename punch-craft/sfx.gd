@@ -167,7 +167,7 @@ func play_music(track: String) -> void:
 
 ## Plays a sound with no position. Pitch varies slightly so repeats don't sound identical.
 func play(sound: String, volume_db := 0.0, pitch := 1.0) -> void:
-	if not _audio_unlocked:
+	if not _audio_unlocked or FxWarmup.running:
 		return
 	var player := _pool[_next]
 	_next = (_next + 1) % _pool.size()
@@ -176,7 +176,7 @@ func play(sound: String, volume_db := 0.0, pitch := 1.0) -> void:
 
 ## Plays a sound from a point in the world, so you can hear where it came from.
 func play_at(sound: String, at: Vector3, volume_db := 0.0, pitch := 1.0) -> void:
-	if not _audio_unlocked:
+	if not _audio_unlocked or FxWarmup.running:
 		return
 	var player := _pool_3d[_next_3d]
 	_next_3d = (_next_3d + 1) % _pool_3d.size()

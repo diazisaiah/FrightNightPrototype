@@ -43,6 +43,8 @@ static var listener: Callable
 
 
 static func went_off(root: String, target: Enemy) -> void:
+	if FxWarmup.running:
+		return  # A shader warm-up isn't a power going off.
 	if listener.is_valid():
 		listener.call(root, target)
 	_callout(root, target)
@@ -315,6 +317,8 @@ static func _hit(enemy: Enemy, damage: float, push: Vector3, stagger: bool, capt
 
 static func _enemies_near(target: Enemy, center: Vector3, radius: float) -> Array[Enemy]:
 	var result: Array[Enemy] = []
+	if FxWarmup.running:
+		return result
 	for node in target.get_tree().get_nodes_in_group("enemies"):
 		var enemy := node as Enemy
 		if enemy and enemy != target and not enemy.is_dead() and enemy.global_position.distance_to(center) <= radius:
@@ -323,6 +327,8 @@ static func _enemies_near(target: Enemy, center: Vector3, radius: float) -> Arra
 
 
 static func _nearest(origin: Enemy, from: Vector3, radius: float, exclude: Array[Enemy]) -> Enemy:
+	if FxWarmup.running:
+		return null
 	var best: Enemy = null
 	var best_distance := radius
 	for node in origin.get_tree().get_nodes_in_group("enemies"):

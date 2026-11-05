@@ -12,11 +12,18 @@ class_name FxWarmup
 
 const FRAMES := 6
 
+## True while the warm-up plays (2026-11-06). Everything it fires is for
+## compiling shaders only: it must not make a sound, spend a power, set a real
+## monster (the boss) alight, or chill or heal anything. Powers, Sfx and the
+## power listener check this.
+static var running := false
+
 
 static func run(world: Node3D, player: Player) -> void:
 	var camera := player.get_node_or_null("Camera3D") as Camera3D
 	if camera == null:
 		return
+	running = true
 	var holder := Node3D.new()
 	holder.name = "FxWarmup"
 	world.add_child(holder)
@@ -57,6 +64,7 @@ static func run(world: Node3D, player: Player) -> void:
 	await _stand_in(holder, at, player)
 	for i in FRAMES:
 		await world.get_tree().process_frame
+	running = false
 	if is_instance_valid(holder):
 		holder.queue_free()
 
