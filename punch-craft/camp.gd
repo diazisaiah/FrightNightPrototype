@@ -754,6 +754,9 @@ func _build_detail_panel(kind: String) -> Control:
 	var accent: Color = _trees[kind].accent()
 	var panel := PanelContainer.new()
 	panel.custom_minimum_size.x = DETAIL_WIDTH
+	# See-through like the web beside it (2026-11-06), a hair darker so the text
+	# reads, with the branch's color on the edge.
+	panel.add_theme_stylebox_override("panel", UiTheme.raised(Color(0.02, 0.02, 0.04, 0.42), Color(accent, 0.3), 1, 10, 16.0))
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 8)
 	panel.add_child(box)
@@ -797,7 +800,7 @@ func _build_detail_panel(kind: String) -> Control:
 
 	# The price, with resource icons, in a dark well.
 	var cost_row := PanelContainer.new()
-	cost_row.add_theme_stylebox_override("panel", UiTheme.box(Color(0, 0, 0, 0.35), Color(accent, 0.2), 1, 8, 8.0))
+	cost_row.add_theme_stylebox_override("panel", UiTheme.box(Color(0, 0, 0, 0.3), Color(accent, 0.25), 1, 8, 8.0))
 	var cost_box := HBoxContainer.new()
 	cost_box.add_theme_constant_override("separation", 10)
 	cost_row.add_child(cost_box)
