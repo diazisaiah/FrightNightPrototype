@@ -60,6 +60,19 @@
         "builds/mobile"
       ],
       "port": 8061
+    },
+    {
+      "name": "release-build",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8063",
+        "--directory",
+        "builds/release"
+      ],
+      "port": 8063,
+      "autoPort": false
     }
   ]
 }
