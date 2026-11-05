@@ -82,6 +82,31 @@ func _ready() -> void:
 					await get_tree().process_frame
 			await _capture("res://onboard_%s_capture.png" % state)
 			return
+		elif argument.begins_with("--scene="):
+			# Any scene as it opens: --scene=res://title.tscn[,NAME[,TAB]]; for
+			# camp, TAB opens that page (Upgrades, Shop, Cosmetics...).
+			process_mode = Node.PROCESS_MODE_ALWAYS
+			var parts := argument.trim_prefix("--scene=").split(",")
+			if GameState.save_path.begins_with("user://test"):
+				# A settled player on the test save: no first-time tips in the way.
+				GameState.tutorial_done = true
+				GameState.onboarded = true
+				for tip in ["arena_intro", "arena_done", "first_upgrade", "dead_league", "attribute_points", "crypt_gilding"]:
+					GameState.tips_seen[tip] = true
+				GameState.arena_bouts = {"1": 2}
+				GameState.nights_cleared = 2
+				GameState.resources["coins"] = 1240
+				GameState.draws = 0
+			var node: Node = (load(parts[0]) as PackedScene).instantiate()
+			add_child(node)
+			for frame in 90:
+				await get_tree().process_frame
+			if parts.size() > 2 and node.has_method("_show_page"):
+				node.call("_show_page", parts[2])
+				for frame in 20:
+					await get_tree().process_frame
+			await _capture("res://scene_%s_capture.png" % (parts[1] if parts.size() > 1 else "view"))
+			return
 		elif argument == "--camp":
 			# The camp's upgrade page as you see it.
 			add_child((load("res://camp.tscn") as PackedScene).instantiate())

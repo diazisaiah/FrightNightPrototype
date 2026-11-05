@@ -9,7 +9,10 @@ extends SubViewportContainer
 
 const FIRE := Vector3(0, 0, 0)
 const CAMERA_HOME := Vector3(4.6, 2.3, 6.2)
-const LOOK_AT := Vector3(-1.2, 1.0, 0)
+## Aimed right of the fire (2026-11-05, the Home + Play layout) so the fire
+## and the fighters sit in the open space between the rail on the left and
+## the play cards on the right.
+const LOOK_AT := Vector3(0.75, 1.0, -1.75)
 ## Where the Crypt's entrance stands, out past the tent, facing the fire.
 const CRYPT_SPOT := Vector3(-5.5, 0, -11.0)
 

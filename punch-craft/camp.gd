@@ -1,11 +1,21 @@
 extends Control
-## Between-run camp: a header with your progress on the Climb and the run
-## buttons, and the pages: Upgrades (the sealed coin web), Deck (the fighter's
-## level-up cards), Armory (kept Crypt gear), Cosmetics, Bounties, Shop and
-## Attributes (attribute points, perks and a sheet). The class is chosen on the
-## title screen (Menu button). Built in code from the data in GameState.
+## Between-run camp (layout "Home + Play", 2026-11-05): a header with your
+## progress and a settings gear; a rail down the left (Home, Fighter,
+## Upgrades, Deck, Gear, Style, Shop, Goals); Home shows the fire with your
+## fighters and the ways to play as picture cards on the right (Arena, Crypt,
+## Dead League, then Training and Daily). The pages: Upgrades (the sealed coin
+## web), Deck (level-up cards), Armory (kept Crypt gear), Cosmetics, Bounties,
+## Shop and Attributes (with the Loadout and changing fighter). Built in code
+## from the data in GameState.
 
-const PAGES := ["Upgrades", "Deck", "Armory", "Cosmetics", "Bounties", "Shop", "Attributes"]
+const PAGES := ["Attributes", "Upgrades", "Deck", "Armory", "Cosmetics", "Shop", "Bounties"]
+## What the rail calls each page.
+const RAIL_NAMES := {"Attributes": "Fighter", "Upgrades": "Upgrades", "Deck": "Deck", "Armory": "Gear",
+	"Cosmetics": "Style", "Shop": "Shop", "Bounties": "Goals"}
+const RAIL_ICONS := {"Home": "crown", "Attributes": "fist", "Upgrades": "sigil", "Deck": "dice", "Armory": "helmet",
+	"Cosmetics": "star", "Shop": "bag", "Bounties": "wanted"}
+const RAIL_WIDTH := 112.0
+const PLAY_WIDTH := 400.0
 const WORLD := preload("res://world.gd")
 const DUNGEON := preload("res://dungeon.gd")
 const DETAIL_WIDTH := 340.0
@@ -33,6 +43,10 @@ var _sheet: GridContainer
 var _attributes_title: Label
 var _reset_button: Button
 var _deck: DeckPage
+## Home: the play column (and its cards' lines, refreshed with the camp).
+var _home: Control
+var _mode_lines := {}
+var _daily_button: Button
 
 
 func _ready() -> void:
@@ -43,7 +57,7 @@ func _ready() -> void:
 	_build_ui()
 	GameState.changed.connect(_refresh)
 	Achievements.catch_up()
-	_show_page("Upgrades")
+	_show_page("Home")
 	_refresh()
 	if GameState.crypt_reveal_pending:
 		await _play_crypt_reveal()
@@ -149,6 +163,7 @@ func _upgrade_tip(_chain: bool) -> bool:
 	var broke := coins < cheapest
 	if broke:
 		GameState.add_resource("coins", cheapest - coins)
+	_show_page("Upgrades")
 	var upgrade := Tutorial.open(self, "first_upgrade", "YOUR FIRST UPGRADE",
 			("Oh, you're broke? Fine, I'll spare some change.\n\n" if broke else "")
 			+ "Coins buy upgrades on this web, and they work for every fighter. Buy your first one.",
@@ -244,11 +259,19 @@ func _build_ui() -> void:
 	column.add_theme_constant_override("separation", 10)
 	margin.add_child(column)
 	column.add_child(_fit_width(_build_header()))
-	column.add_child(_fit_width(_build_tabs()))
+	var body := HBoxContainer.new()
+	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	body.add_theme_constant_override("separation", 14)
+	column.add_child(body)
+	body.add_child(_build_rail())
 
 	var page_area := Control.new()
 	page_area.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	column.add_child(page_area)
+	page_area.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	body.add_child(page_area)
+	_home = _build_home()
+	_home.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	page_area.add_child(_home)
 	_add_page(page_area, "Upgrades", _build_tree_page("upgrade"))
 	_deck = DeckPage.new()
 	_deck.draw_requested.connect(_open_draw)
@@ -257,7 +280,7 @@ func _build_ui() -> void:
 	_add_page(page_area, "Cosmetics", _build_cosmetics_page())
 	_add_page(page_area, "Bounties", _build_bounty_page())
 	_add_page(page_area, "Shop", _build_shop_page())
-	_add_page(page_area, "Attributes", _build_attributes_page())
+	_add_page(page_area, "Attributes", _build_fighter_page())
 
 
 ## Holds a row at its natural size, shrunk to fit when the screen is narrower
@@ -329,97 +352,221 @@ func _build_header() -> Control:
 	_night_label.mouse_filter = Control.MOUSE_FILTER_PASS
 	_night_label.add_theme_font_override("font", UiTheme.display_font())
 	row.add_child(_night_label)
+	row.add_child(_settings_button())
 
 	return panel
 
 
-func _build_tabs() -> Control:
-	var tabs := HBoxContainer.new()
-	tabs.add_theme_constant_override("separation", 4)
+## The gear in the header: the title screen (settings, change fighter).
+func _settings_button() -> Button:
+	var gear := Button.new()
+	gear.custom_minimum_size = Vector2(46, 46)
+	gear.tooltip_text = "Settings and title screen"
+	gear.pressed.connect(func() -> void:
+		GameState.save_game()
+		Loading.go("res://title.tscn"))
+	var icon := Control.new()
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	icon.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	icon.draw.connect(func() -> void:
+		var c := icon.size / 2.0
+		var ink := UiTheme.TEXT
+		for i in 8:
+			var a := TAU * i / 8.0
+			icon.draw_line(c + Vector2.from_angle(a) * 7.0, c + Vector2.from_angle(a) * 12.0, ink, 4.5)
+		icon.draw_circle(c, 8.5, ink)
+		icon.draw_circle(c, 3.6, UiTheme.PANEL_LIGHT))
+	gear.add_child(icon)
+	return gear
+
+
+## The rail down the left: Home, then a button per page, icon over name.
+func _build_rail() -> Control:
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size.x = RAIL_WIDTH
+	var list := VBoxContainer.new()
+	list.add_theme_constant_override("separation", 4)
+	panel.add_child(list)
 	var group := ButtonGroup.new()
-	for page in PAGES:
+	for page in ["Home"] + PAGES:
 		var button := Button.new()
-		button.text = page
 		button.toggle_mode = true
 		button.button_group = group
 		button.theme_type_variation = "TabButton"
+		button.custom_minimum_size = Vector2(0, 64)
+		button.text = ""
+		button.tooltip_text = RAIL_NAMES.get(page, page)
 		button.pressed.connect(_show_page.bind(page))
-		tabs.add_child(button)
+		var stack := VBoxContainer.new()
+		stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		stack.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		stack.alignment = BoxContainer.ALIGNMENT_CENTER
+		stack.add_theme_constant_override("separation", 2)
+		var icon := IconView.new()
+		icon.icon = RAIL_ICONS[page]
+		icon.custom_minimum_size = Vector2(34, 34)
+		icon.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		icon.tile_color = Color.TRANSPARENT
+		stack.add_child(icon)
+		var name_label := UiTheme.title_label(RAIL_NAMES.get(page, page), 17, UiTheme.TEXT)
+		name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		stack.add_child(name_label)
+		button.add_child(stack)
+		button.set_meta("label", name_label)
+		button.set_meta("icon", icon)
+		list.add_child(button)
 		_tab_buttons[page] = button
-	# Run buttons on the right of the tab row: training, and the two kinds of
-	# run (the graveyard's nights, or the Crypt's floors of rooms).
-	var spacer := Control.new()
-	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	tabs.add_child(spacer)
-	var menu := Button.new()
-	menu.text = "Menu"
-	menu.tooltip_text = "Title screen: change class, settings"
-	menu.pressed.connect(func() -> void:
-		GameState.save_game()
-		Loading.go("res://title.tscn"))
-	tabs.add_child(menu)
-	# Loadout: the fighter's passive and ultimate (once there's a choice).
-	if _ability_choices() > 2:
-		_loadout_button = Button.new()
-		_loadout_button.text = "Loadout"
-		_loadout_button.tooltip_text = "Pick your fighter's passive and ultimate."
-		_loadout_button.pressed.connect(_open_loadout)
-		tabs.add_child(_loadout_button)
+	return panel
+
+
+## Home: the fire on the left (empty space over the backdrop) and the ways to
+## play on the right, each a picture card with how far you've got.
+func _build_home() -> Control:
+	var row := HBoxContainer.new()
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var gap := Control.new()
+	gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(gap)
+	var play := VBoxContainer.new()
+	play.custom_minimum_size.x = PLAY_WIDTH
+	play.add_theme_constant_override("separation", 10)
+	row.add_child(play)
+	play.add_child(UiTheme.title_label("PLAY", 22, UiTheme.MUTED))
+	_arena_button = _mode_card(play, "arena", "ARENA", "FIGHT", preload("res://art/ui/mode_arena.jpg"), _pick_division)
+	_crypt_button = _mode_card(play, "crypt", "CRYPT", "DESCEND", preload("res://art/ui/mode_crypt.jpg"), _pick_crypt_floors)
+	_league_button = _mode_card(play, "league", "DEAD LEAGUE", "CHALLENGE", preload("res://art/ui/mode_league.jpg"), _start_dead_league)
+	if GameState.crypt_new and GameState.crypt_unlocked:
+		_crypt_button.add_child(_new_badge())
+	var small := HBoxContainer.new()
+	small.add_theme_constant_override("separation", 10)
+	play.add_child(small)
 	var training := Button.new()
 	training.text = "Training" if GameState.tutorial_done else "Tutorial"
+	training.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	training.custom_minimum_size.y = 46
 	training.pressed.connect(_start_training)
-	tabs.add_child(training)
-	# Daily drills: score runs that pay once a day.
-	var daily := Button.new()
-	daily.text = "Daily"
-	daily.tooltip_text = "Pad Work, Slip Line and Heavy Bags: score runs that pay coins and XP once a day."
-	daily.pressed.connect(_pick_drill)
-	tabs.add_child(daily)
+	small.add_child(training)
+	_daily_button = Button.new()
+	_daily_button.text = "Daily"
+	_daily_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_daily_button.custom_minimum_size.y = 46
+	_daily_button.tooltip_text = "Pad Work, Slip Line and Heavy Bags: score runs that pay coins and XP once a day."
+	_daily_button.pressed.connect(_pick_drill)
+	small.add_child(_daily_button)
 	if DRILLS.any(func(id: String) -> bool: return GameState.drill_ready(id)):
-		daily.add_child(_new_badge("READY"))
-	var league := Button.new()
-	league.text = "Dead League"
-	league.tooltip_text = "1v1 bouts against the contenders. Each first win breaks a seal on your upgrade web."
-	league.custom_minimum_size = Vector2(0, 40)
-	league.add_theme_color_override("font_color", UiTheme.GOLD)
-	league.pressed.connect(_start_dead_league)
-	tabs.add_child(league)
-	_league_button = league
-	if not _league_open():
-		# Locked: dim, with a padlock, until you win an Arena bout.
-		league.tooltip_text = "Win your first Arena bout to open it."
-		league.add_theme_color_override("font_color", UiTheme.MUTED)
-		league.add_theme_color_override("font_hover_color", UiTheme.MUTED)
-		league.text = "      Dead League"
-		var lock := Control.new()
-		lock.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		lock.set_anchors_preset(Control.PRESET_CENTER_LEFT)
-		lock.position = Vector2(12, -9)
-		lock.size = Vector2(16, 18)
-		lock.draw.connect(func() -> void:
-			lock.draw_arc(Vector2(8, 7), 5.0, PI, TAU, 12, UiTheme.MUTED, 2.5, true)
-			lock.draw_line(Vector2(3, 7), Vector2(3, 9), UiTheme.MUTED, 2.5)
-			lock.draw_line(Vector2(13, 7), Vector2(13, 9), UiTheme.MUTED, 2.5)
-			lock.draw_rect(Rect2(1, 9, 14, 9), UiTheme.MUTED))
-		league.add_child(lock)
-	for mode in [["Arena", _pick_division], ["Crypt", _pick_crypt_floors]]:
-		var start := Button.new()
-		start.text = mode[0]
-		start.theme_type_variation = "PrimaryButton"
-		start.custom_minimum_size = Vector2(104, 40)
-		start.add_theme_font_size_override("font_size", 18)
-		start.pressed.connect(mode[1])
-		tabs.add_child(start)
-		if mode[0] == "Arena":
-			_arena_button = start
-		# Locked things stay hidden: the Crypt appears with the Bellman's seal,
-		# wearing a NEW badge until the first descent.
-		if mode[0] == "Crypt":
-			_crypt_button = start
-			start.visible = GameState.crypt_unlocked
-			if GameState.crypt_new:
-				start.add_child(_new_badge())
-	return tabs
+		_daily_button.add_child(_new_badge("READY"))
+	return row
+
+
+## A play card: the place's picture under a dark fade, its name, a line of
+## progress, pips, and the action word in gold. Locked, it greys out.
+func _mode_card(parent: Control, id: String, title: String, action: String, picture: Texture2D, on_press: Callable) -> Button:
+	var card := Button.new()
+	card.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	card.custom_minimum_size = Vector2(PLAY_WIDTH, 112)
+	card.clip_contents = true
+	card.pressed.connect(on_press)
+	var face := UiTheme.raised(Color(0.04, 0.035, 0.05, 0.95), Color(1, 1, 1, 0.14), 2, 12)
+	var hover := UiTheme.raised(Color(0.04, 0.035, 0.05, 0.95), UiTheme.GOLD, 2, 12)
+	for state in ["normal", "disabled"]:
+		card.add_theme_stylebox_override(state, face)
+	for state in ["hover", "pressed", "hover_pressed", "focus"]:
+		card.add_theme_stylebox_override(state, hover)
+	var art := TextureRect.new()
+	art.texture = picture
+	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	art.offset_left = 2
+	art.offset_top = 2
+	art.offset_right = -2
+	art.offset_bottom = -2
+	card.add_child(art)
+	var fade := TextureRect.new()
+	var gradient := Gradient.new()
+	gradient.set_color(0, Color(0.03, 0.025, 0.04, 0.95))
+	gradient.add_point(0.55, Color(0.03, 0.025, 0.04, 0.6))
+	gradient.set_color(gradient.get_point_count() - 1, Color(0.03, 0.025, 0.04, 0.1))
+	var fade_texture := GradientTexture2D.new()
+	fade_texture.gradient = gradient
+	fade.texture = fade_texture
+	fade.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	fade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	card.add_child(fade)
+	var text := VBoxContainer.new()
+	text.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	text.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	text.offset_left = 18
+	text.offset_right = -16
+	text.alignment = BoxContainer.ALIGNMENT_CENTER
+	text.add_theme_constant_override("separation", 2)
+	card.add_child(text)
+	var name_label := UiTheme.title_label(title, 32, UiTheme.TEXT)
+	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	text.add_child(name_label)
+	var line := _label("", 15, Color(0.86, 0.82, 0.9))
+	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	text.add_child(line)
+	var pips := HBoxContainer.new()
+	pips.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pips.add_theme_constant_override("separation", 5)
+	text.add_child(pips)
+	var go := UiTheme.title_label(action + " ›", 18, UiTheme.GOLD)
+	go.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	go.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+	go.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	go.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	go.offset_right = -16
+	go.offset_bottom = -10
+	card.add_child(go)
+	parent.add_child(card)
+	_mode_lines[id] = {"card": card, "line": line, "pips": pips, "go": go, "art": art}
+	return card
+
+
+## The play cards' lines, pips and locks.
+func _refresh_home() -> void:
+	if _mode_lines.is_empty():
+		return
+	var division := clampi(GameState.arena_division, 1, Progression.current_tier())
+	var won := mini(int(GameState.arena_bouts.get(str(division), 0)), Progression.BOUTS_PER_DIVISION)
+	var next_bout := mini(won + 1, Progression.BOUTS_PER_DIVISION)
+	_set_mode("arena", "%s  ·  bout %d of %d" % [Themes.arena(division).name, next_bout, Progression.BOUTS_PER_DIVISION],
+			won, Progression.BOUTS_PER_DIVISION, true)
+	_set_mode("crypt", "Gild the gear you find to keep it" if GameState.crypt_unlocked else "Break the Bellman's seal to open it",
+			0, 0, GameState.crypt_unlocked)
+	var seals := Progression.seals_broken()
+	var league_line := "Win your first Arena bout to open it"
+	if _league_open():
+		league_line = "All five seals broken" if seals >= DeadLeagueRules.BOSS_COUNT \
+				else "Next: %s" % String(DeadLeagueRules.boss(seals).name).capitalize()
+	_set_mode("league", league_line, seals, DeadLeagueRules.BOSS_COUNT, _league_open())
+	if _daily_button:
+		var badge := _daily_button.get_child(_daily_button.get_child_count() - 1) if _daily_button.get_child_count() > 0 else null
+		if badge and not DRILLS.any(func(id: String) -> bool: return GameState.drill_ready(id)):
+			badge.queue_free()
+
+
+func _set_mode(id: String, line: String, done: int, total: int, open: bool) -> void:
+	var parts: Dictionary = _mode_lines[id]
+	(parts.line as Label).text = line
+	var pips: HBoxContainer = parts.pips
+	for child in pips.get_children():
+		child.queue_free()
+	for i in total:
+		var pip := Panel.new()
+		pip.custom_minimum_size = Vector2(24, 6)
+		pip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		pip.add_theme_stylebox_override("panel", UiTheme.box(UiTheme.GOLD if i < done else Color(1, 1, 1, 0.18), Color.TRANSPARENT, 0, 3))
+		pips.add_child(pip)
+	(parts.go as Control).visible = open
+	(parts.art as CanvasItem).modulate = Color.WHITE if open else Color(0.45, 0.45, 0.5)
+	(parts.card as Button).tooltip_text = "" if open else line
 
 
 ## A small pulsing "NEW" tag on a button's corner.
@@ -465,9 +612,16 @@ func _add_page(area: Control, page_name: String, page: Control) -> void:
 
 
 func _show_page(page_name: String) -> void:
+	if _home:
+		_home.visible = page_name == "Home"
 	for page in _pages:
 		_pages[page].visible = page == page_name
-		_tab_buttons[page].set_pressed_no_signal(page == page_name)
+	for page in _tab_buttons:
+		var on: bool = page == page_name
+		_tab_buttons[page].set_pressed_no_signal(on)
+		var label: Label = _tab_buttons[page].get_meta("label", null)
+		if label:
+			label.add_theme_color_override("font_color", UiTheme.GOLD if on else UiTheme.TEXT)
 	if page_name == "Cosmetics":
 		_show_cosmetic(_cosmetic_tab)
 
@@ -645,6 +799,9 @@ func _ability_tip() -> void:
 			var entry: Dictionary = list[i]
 			if not Abilities.unlocked(GameState.player_class, entry.id, GameState.level):
 				continue
+			if Tutorial.seen("ability_" + entry.id):
+				continue
+			_show_page("Attributes")  # The Loadout button is on the Fighter page.
 			if Tutorial.open(self, "ability_" + entry.id, "NEW %s: %s" % [slot.to_upper(), String(entry.name).to_upper()],
 					"%s\n\nEquip it in your Loadout. Its cards join your deck." % entry.desc,
 					_loadout_button, func() -> bool: return _loadout_opened, false) != null:
@@ -884,6 +1041,37 @@ func _refresh_detail(kind: String) -> void:
 
 # --- Attributes ------------------------------------------------------------------
 
+## Fighter: the Loadout and changing fighter over the attributes page.
+func _build_fighter_page() -> Control:
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 10)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	column.add_child(row)
+	var title := UiTheme.title_label(GameState.fighter_name().to_upper(), 28, UiTheme.GOLD)
+	row.add_child(title)
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(spacer)
+	if _ability_choices() > 2:
+		_loadout_button = Button.new()
+		_loadout_button.text = "Loadout"
+		_loadout_button.tooltip_text = "Pick your fighter's passive and ultimate."
+		_loadout_button.pressed.connect(_open_loadout)
+		row.add_child(_loadout_button)
+	var change := Button.new()
+	change.text = "Change fighter"
+	change.tooltip_text = "Pick another fighter on the title screen."
+	change.pressed.connect(func() -> void:
+		GameState.save_game()
+		Loading.go("res://title.tscn"))
+	row.add_child(change)
+	var page := _build_attributes_page()
+	page.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	column.add_child(page)
+	return column
+
+
 func _build_attributes_page() -> Control:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 14)
@@ -1079,6 +1267,7 @@ func _refresh() -> void:
 		_refresh_detail(kind)
 	_set_tab_count("Deck", GameState.usable_draws())
 	_set_tab_count("Attributes", GameState.attribute_points)
+	_refresh_home()
 	_refresh_attributes()
 	_refresh_sheet()
 

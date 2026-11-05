@@ -2235,6 +2235,10 @@ Prerequisites for the Crypt revamp, and the first Rebalance plan items.
 
 **Open work:** none; the revamp is built (item models, item and store cards, the gear system with save migration, drop odds, salvage, the economy, room furniture, mimics, the toilet and merchant tie-in, and the balance re-run, 2026-11-04).
 
+## Camp layout: Home + Play [Built 2026-11-05, mobile 0.1.31 only]
+
+After four skin tries (taped glove, stitched, spooky signs, polished) didn't land, the fix was the layout: the 14 equal buttons in one row became a rail down the left (Home, Fighter, Upgrades, Deck, Gear, Style, Shop, Goals; `Camp.RAIL_NAMES`, icons from Icons) and a Home view: the camp fire in the open space (the backdrop camera now aims right of the fire, `CampBackdrop.LOOK_AT`) and the ways to play as picture cards on the right (`_mode_card`: Arena with division, bout and pips; Crypt; Dead League with the next contender and seals; locked ones greyed with why), Training and Daily under them. Menu became a settings gear in the header. Fighter (the Attributes page) carries the Loadout and Change fighter buttons. Card art: `art/ui/mode_*.jpg`, game screenshots. Tips open the page they point into. Mock-ups: the Fright Night Camp Layouts artifact.
+
 ## New-player onboarding [Built 2026-11-05]
 
 - **The tutorial pays nothing** (it used to pay for your first upgrade with an "Enough for your first upgrade" line).
