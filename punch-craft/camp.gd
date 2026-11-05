@@ -1616,7 +1616,7 @@ func _start_dead_league() -> void:
 const ARMORY_FILTERS := ["All", "Gloves", "Wraps", "Boots", "Charm"]
 const ARMORY_TILE := Vector2(132, 118)
 var _armory_worn: HBoxContainer
-var _armory_list: HFlowContainer
+var _armory_list: GridContainer
 var _armory_title: Label
 var _armory_detail: VBoxContainer
 var _armory_pills := {}
@@ -1662,10 +1662,11 @@ func _build_armory_page() -> Control:
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	left.add_child(scroll)
-	_armory_list = HFlowContainer.new()
-	_armory_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_armory_list.add_theme_constant_override("h_separation", 8)
-	_armory_list.add_theme_constant_override("v_separation", 8)
+	# Rows of four, lined up under the four worn slots.
+	_armory_list = GridContainer.new()
+	_armory_list.columns = Items.SLOTS.size()
+	_armory_list.add_theme_constant_override("h_separation", 10)
+	_armory_list.add_theme_constant_override("v_separation", 10)
 	scroll.add_child(_armory_list)
 	var detail_scroll := KeptScroll.new()
 	detail_scroll.custom_minimum_size.x = ItemCard.WIDTH + 16
