@@ -414,12 +414,14 @@ func _build_rail() -> Control:
 		stack.add_theme_constant_override("separation", 2)
 		var icon := IconView.new()
 		icon.icon = RAIL_ICONS[page]
-		icon.custom_minimum_size = Vector2(64, 64)
+		# (2026-11-05: 64 -> 50, so seven pages fit without the names
+		# running into the next icon.)
+		icon.custom_minimum_size = Vector2(50, 50)
 		icon.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		icon.tile_color = Color.TRANSPARENT
 		stack.add_child(icon)
-		var name_label := UiTheme.title_label(RAIL_NAMES.get(page, page), 17, UiTheme.TEXT)
+		var name_label := UiTheme.title_label(RAIL_NAMES.get(page, page), 16, UiTheme.TEXT)
 		name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		stack.add_child(name_label)
@@ -1606,42 +1608,74 @@ func _start_dead_league() -> void:
 
 # --- Armory -------------------------------------------------------------------------
 
-var _armory_worn: VBoxContainer
-var _armory_list: VBoxContainer
+## The Locker (2026-11-05): the four worn slots in a strip on top, every kept
+## piece below in an even grid with slot pills, and the one you tap on the
+## right as its big turning card (stats against what's worn) with Wear,
+## Level up and Sell. Only the detail card turns in 3D: a grid of live models
+## would be too much for phones.
+const ARMORY_FILTERS := ["All", "Gloves", "Wraps", "Boots", "Charm"]
+const ARMORY_TILE := Vector2(132, 118)
+var _armory_worn: HBoxContainer
+var _armory_list: HFlowContainer
 var _armory_title: Label
+var _armory_detail: VBoxContainer
+var _armory_pills := {}
+var _armory_filter := "All"
+var _armory_pick := -1  # The uid shown on the right (-1: the first worn or kept).
 
 
 func _build_armory_page() -> Control:
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 14)
-	var worn_panel := PanelContainer.new()
-	worn_panel.custom_minimum_size.x = 420
-	row.add_child(worn_panel)
-	var worn_box := VBoxContainer.new()
-	worn_box.add_theme_constant_override("separation", 8)
-	worn_panel.add_child(worn_box)
-	worn_box.add_child(UiTheme.title_label("WORN", 24, UiTheme.GOLD))
-	_armory_worn = VBoxContainer.new()
-	_armory_worn.add_theme_constant_override("separation", 6)
-	worn_box.add_child(_armory_worn)
-
-	var kept_panel := PanelContainer.new()
-	kept_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(kept_panel)
-	var kept_box := VBoxContainer.new()
-	kept_box.add_theme_constant_override("separation", 8)
-	kept_panel.add_child(kept_box)
-	_armory_title = UiTheme.title_label("KEPT GEAR", 24, UiTheme.GOLD)
-	kept_box.add_child(_armory_title)
+	var root := HBoxContainer.new()
+	root.add_theme_constant_override("separation", 14)
+	var page := VBoxContainer.new()
+	page.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	page.add_theme_constant_override("separation", 10)
+	root.add_child(page)
+	var header := HBoxContainer.new()
+	header.add_theme_constant_override("separation", 16)
+	page.add_child(header)
+	header.add_child(UiTheme.title_label("ARMORY", 26, UiTheme.GOLD))
+	_armory_title = _label("", 15, UiTheme.MUTED)
+	_armory_title.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	header.add_child(_armory_title)
+	_armory_worn = HBoxContainer.new()
+	_armory_worn.add_theme_constant_override("separation", 10)
+	page.add_child(_armory_worn)
+	var left := VBoxContainer.new()
+	left.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	left.add_theme_constant_override("separation", 8)
+	page.add_child(left)
+	var pills := HBoxContainer.new()
+	pills.add_theme_constant_override("separation", 6)
+	left.add_child(pills)
+	for filter_name in ARMORY_FILTERS:
+		var pill := Button.new()
+		pill.text = filter_name
+		pill.toggle_mode = true
+		pill.button_pressed = filter_name == _armory_filter
+		pill.pressed.connect(func() -> void:
+			_armory_filter = filter_name
+			_refresh_armory())
+		pills.add_child(pill)
+		_armory_pills[filter_name] = pill
 	var scroll := KeptScroll.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	kept_box.add_child(scroll)
-	_armory_list = VBoxContainer.new()
-	_armory_list.add_theme_constant_override("separation", 8)
+	left.add_child(scroll)
+	_armory_list = HFlowContainer.new()
 	_armory_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_armory_list.add_theme_constant_override("h_separation", 8)
+	_armory_list.add_theme_constant_override("v_separation", 8)
 	scroll.add_child(_armory_list)
-	return row
+	var detail_scroll := KeptScroll.new()
+	detail_scroll.custom_minimum_size.x = ItemCard.WIDTH + 16
+	detail_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	root.add_child(detail_scroll)
+	_armory_detail = VBoxContainer.new()
+	_armory_detail.add_theme_constant_override("separation", 8)
+	_armory_detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	detail_scroll.add_child(_armory_detail)
+	return root
 
 
 func _refresh_armory() -> void:
@@ -1650,80 +1684,164 @@ func _refresh_armory() -> void:
 		_tab_buttons["Armory"].visible = not GameState.armory.is_empty() or not GameState.equipped.is_empty()
 	if _armory_list == null:
 		return
-	for child in _armory_worn.get_children() + _armory_list.get_children():
-		child.queue_free()
+	for box in [_armory_worn, _armory_list, _armory_detail]:
+		for child in box.get_children():
+			box.remove_child(child)
+			child.queue_free()
+	for filter_name in _armory_pills:
+		_armory_pills[filter_name].set_pressed_no_signal(filter_name == _armory_filter)
+	_armory_title.text = "Kept %d" % GameState.armory.size()
+	# Who's on the right: your pick if it's still yours, else the first worn
+	# piece, else the first kept one.
+	var shown := _armory_shown()
 	for slot in Items.SLOTS:
 		var item: Dictionary = GameState.equipped.get(slot, {})
-		var line := HBoxContainer.new()
-		line.add_theme_constant_override("separation", 10)
-		var icon := IconView.new()
-		icon.icon = Items.SLOT_ICONS[slot]
-		icon.custom_minimum_size = Vector2(40, 40)
-		icon.color = Items.rarity_color(item) if not item.is_empty() else UiTheme.MUTED
-		line.add_child(icon)
-		var text := _label(("%s:  %s" % [Items.SLOT_NAMES[slot], item.name]) if not item.is_empty() else "%s:  (empty)" % Items.SLOT_NAMES[slot], 15,
-				Items.rarity_color(item) if not item.is_empty() else UiTheme.MUTED)
-		text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		line.add_child(text)
-		if not item.is_empty():
-			var off := Button.new()
-			off.text = "Take off"
-			off.pressed.connect(GameState.unequip.bind(slot))
-			line.add_child(off)
-		_armory_worn.add_child(line)
-	_armory_title.text = "KEPT GEAR  (%d)" % GameState.armory.size()
-	if GameState.armory.is_empty():
-		_armory_list.add_child(_label("Nothing kept yet.", 15, UiTheme.MUTED))
+		_armory_worn.add_child(_armory_tile(item, String(Items.SLOT_NAMES[slot]).to_upper(), shown, slot))
+	var kept: Array = GameState.armory.filter(func(item: Dictionary) -> bool:
+		return _armory_filter == "All" or Items.SLOT_NAMES.get(item.slot, "") == _armory_filter)
+	if kept.is_empty():
+		_armory_list.add_child(_label("Nothing kept yet. Gild finds in the Crypt to keep them." if GameState.armory.is_empty() else "No %s kept." % _armory_filter.to_lower(), 15, UiTheme.MUTED))
+	for item in kept:
+		_armory_list.add_child(_armory_tile(item, "WORN" if _is_worn(item) else "", shown))
+	_armory_show_detail(shown)
+
+
+func _is_worn(item: Dictionary) -> bool:
+	return int(GameState.equipped.get(item.get("slot", ""), {}).get("uid", -1)) == int(item.get("uid", -2))
+
+
+func _armory_shown() -> Dictionary:
 	for item in GameState.armory:
-		_armory_list.add_child(_armory_card(item))
+		if int(item.get("uid", -2)) == _armory_pick:
+			return item
+	for slot in Items.SLOTS:
+		if GameState.equipped.has(slot):
+			return GameState.equipped[slot]
+	return GameState.armory[0] if not GameState.armory.is_empty() else {}
 
 
-func _armory_card(item: Dictionary) -> Control:
-	var card := PanelContainer.new()
-	card.add_theme_stylebox_override("panel", UiTheme.box(Color(0.06, 0.055, 0.08, 0.92), Items.rarity_color(item).darkened(0.2), 1, 8, 10.0))
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 12)
-	card.add_child(row)
-	var texts := VBoxContainer.new()
-	texts.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var worn: bool = GameState.equipped.get(item.slot, {}).get("uid", -1) == item.get("uid", -2)
-	texts.add_child(_label("%s%s" % [item.name, "   (worn)" if worn else ""], 17, Items.rarity_color(item)))
-	texts.add_child(_label(Items.kind_text(item), 12, UiTheme.MUTED))
-	var effects := _label("   ".join(Items.effect_lines(item)), 13)
-	effects.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	texts.add_child(effects)
-	row.add_child(texts)
-	var buttons := VBoxContainer.new()
-	buttons.add_theme_constant_override("separation", 6)
-	buttons.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_child(buttons)
-	var uid := int(item.uid)
+## A small tile: the slot's icon in the rarity's color, the name, slot and
+## level. Tap to show it on the right. An empty worn slot is a dashed box.
+func _armory_tile(item: Dictionary, tag: String, shown: Dictionary, empty_slot := "") -> Control:
+	var tile := PanelContainer.new()
+	tile.custom_minimum_size = ARMORY_TILE
+	if item.is_empty():
+		tile.add_theme_stylebox_override("panel", UiTheme.box(Color(0, 0, 0, 0.3), Color(1, 1, 1, 0.14), 1, 10, 8.0))
+		var empty := VBoxContainer.new()
+		empty.alignment = BoxContainer.ALIGNMENT_CENTER
+		tile.add_child(empty)
+		var icon := IconView.new()
+		icon.icon = Items.SLOT_ICONS[empty_slot]
+		icon.color = Color(1, 1, 1, 0.25)
+		icon.custom_minimum_size = Vector2(36, 36)
+		icon.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		empty.add_child(icon)
+		var label := _label("%s\nempty" % Items.SLOT_NAMES[empty_slot], 12, UiTheme.MUTED)
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		empty.add_child(label)
+		return tile
+	var tint := Items.rarity_color(item)
+	var picked: bool = int(item.get("uid", -2)) == int(shown.get("uid", -3))
+	var worn := _is_worn(item)
+	tile.add_theme_stylebox_override("panel", UiTheme.box(Color(tint.darkened(0.82), 0.68),
+			Color.WHITE if picked else (UiTheme.GOLD if worn else Color(tint, 0.85)), 3 if picked or worn else 2, 10, 8.0))
+	tile.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	var uid := int(item.get("uid", -1))
+	tile.gui_input.connect(func(event: InputEvent) -> void:
+		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+			_armory_pick = uid
+			Sfx.play("tick")
+			_refresh_armory())
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 2)
+	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tile.add_child(column)
+	var top := HBoxContainer.new()
+	top.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	column.add_child(top)
+	var icon := IconView.new()
+	icon.icon = Items.SLOT_ICONS.get(item.slot, "star")
+	icon.color = tint.lightened(0.15)
+	icon.custom_minimum_size = Vector2(36, 36)
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	top.add_child(icon)
+	var gap := Control.new()
+	gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	top.add_child(gap)
+	if tag != "":
+		var tag_label := _label(tag, 10, UiTheme.GOLD)
+		tag_label.add_theme_font_override("font", UiTheme.bold_font())
+		tag_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		top.add_child(tag_label)
+	var name_label := _label(String(item.name), 13, tint.lightened(0.15))
+	name_label.add_theme_font_override("font", UiTheme.bold_font())
+	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	column.add_child(name_label)
+	var kind := _label("%s  ·  Lv %d" % [Items.SLOT_NAMES.get(item.slot, ""), int(item.get("level", 1))], 11, UiTheme.MUTED)
+	kind.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	column.add_child(kind)
+	return tile
+
+
+## The right side: the piece's big turning card (against what you wear in that
+## slot, when it isn't that), then Wear / Take off, Level up and Sell.
+func _armory_show_detail(item: Dictionary) -> void:
+	if item.is_empty():
+		_armory_detail.add_child(_label("Your gear shows here.", 15, UiTheme.MUTED))
+		return
+	var worn := _is_worn(item)
+	var against: Dictionary = {} if worn else GameState.equipped.get(item.slot, {})
+	var card := ItemCard.make(item, "WORN NOW" if worn else "KEPT", against)
+	card.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_armory_detail.add_child(card)
+	var uid := int(item.get("uid", -1))
+	var kept := not GameState.armory_item(uid).is_empty()
 	var wear := Button.new()
-	wear.text = "Worn" if worn else "Wear"
-	wear.custom_minimum_size = Vector2(170, 36)
-	wear.disabled = worn
-	wear.pressed.connect(GameState.equip_from_armory.bind(uid))
-	buttons.add_child(wear)
+	wear.custom_minimum_size = Vector2(0, 40)
+	if worn:
+		wear.text = "Take off"
+		wear.pressed.connect(func() -> void:
+			GameState.unequip(item.slot)
+			Sfx.play("tick"))
+	else:
+		wear.text = "Wear"
+		wear.theme_type_variation = "PrimaryButton"
+		wear.disabled = not kept
+		wear.pressed.connect(func() -> void:
+			GameState.equip_from_armory(uid)
+			Sfx.play("unlock", -8.0, 1.3))
+	_armory_detail.add_child(wear)
+	if not kept:
+		return
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	_armory_detail.add_child(row)
 	# Gear levels up for Souls, as far as the deepest floor you've beaten
 	# allows (Gear.level_cap), and sells for gold (2026-11-04).
 	var cost := Gear.level_up_cost(item)
 	var capped := int(item.get("level", 1)) >= Gear.level_cap()
 	var level_up := Button.new()
+	level_up.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	level_up.custom_minimum_size.y = 40
 	level_up.disabled = capped or GameState.souls < cost
-	level_up.custom_minimum_size = Vector2(170, 36)
 	level_up.tooltip_text = "Beat deeper Crypt floors to level it further." if capped else ""
-	IconLabel.on_button(level_up, "Max level for now" if capped else "Level up  %d {souls}" % cost, 15)
+	IconLabel.on_button(level_up, "Max level" if capped else "Level up  %d {souls}" % cost, 15)
 	level_up.pressed.connect(func() -> void:
 		if GameState.level_up(uid):
 			Sfx.play("unlock", -8.0, 1.2))
-	buttons.add_child(level_up)
+	row.add_child(level_up)
 	var sell := Button.new()
-	sell.custom_minimum_size = Vector2(170, 36)
+	sell.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sell.custom_minimum_size.y = 40
+	sell.disabled = worn
+	sell.tooltip_text = "Take it off first." if worn else ""
 	IconLabel.on_button(sell, "Sell  +%d {coins}" % Gear.sell_price(item), 15)
-	sell.pressed.connect(func() -> void: GameState.sell(uid))
-	buttons.add_child(sell)
-	return card
+	sell.pressed.connect(func() -> void:
+		_armory_pick = -1
+		GameState.sell(uid))
+	row.add_child(sell)
 
 
 # --- Hat Rack ----------------------------------------------------------------------

@@ -48,11 +48,13 @@ const BUTTONS := {
 	"sprint": ["sprint", "RUN", "s", SQUARE_HALF, "up2"],
 	"lock": ["lock_cycle", "LOCK", "c", SMALL_RADIUS, ""],
 	"map": ["map", "MAP", "c", SMALL_RADIUS, ""],
+	# The Crypt only: your worn gear (Hud.show_worn_gear).
+	"gear": ["", "GEAR", "c", SMALL_RADIUS, ""],
 	"emote": ["emote", "EMOTE", "c", SMALL_RADIUS, ""],
 	"pause": ["pause", "II", "c", SMALL_RADIUS, ""],
 }
 ## Where the small buttons sit in the top row (steps left of PAUSE).
-const TOP_STEP := {"pause": 0, "emote": 1, "lock": 2, "map": 3}
+const TOP_STEP := {"pause": 0, "emote": 1, "lock": 2, "map": 3, "gear": 4}
 
 ## True when touch controls are turned on for this run.
 var enabled := false
@@ -234,9 +236,24 @@ func _button_center(id: String) -> Vector2:
 			return _mirror_x(Vector2(_size.x - inner, stick_y), false)
 		"ultimate":
 			return _ult_rect().get_center()
-	# Small buttons along the top right, left of the coin counter.
+	# Small buttons along the top right, left of the currency chips (coins,
+	# and Souls and silver in the Crypt; 2026-11-05: they used to cover those).
 	var slot: int = TOP_STEP[id]
-	return Vector2(_size.x - 150.0 - slot * (SMALL_RADIUS * s * 2.0 + 12.0), 64.0)
+	var radius := SMALL_RADIUS * s
+	return Vector2(_chips_left() - 12.0 - radius - slot * (radius * 2.0 + 12.0), 64.0)
+
+
+## The left edge of the HUD's visible currency chips (where the coin counter
+## sat before, when there's no HUD).
+func _chips_left() -> float:
+	var left := _size.x - 150.0 + SMALL_RADIUS * _scale() + 12.0
+	var row := get_tree().get_first_node_in_group("hud_chips") as Control
+	if row == null or not row.is_visible_in_tree():
+		return left
+	for chip in row.get_children():
+		if chip is Control and chip.visible:
+			left = minf(left, (chip as Control).get_global_rect().position.x)
+	return left
 
 
 ## Left-handed layout: everything flips sideways.
@@ -252,6 +269,8 @@ func _button_shown(id: String) -> bool:
 		return _player != null and _player.lock != null and _player.lock.level() != "off"
 	if id == "map":
 		return _map_label() != ""
+	if id == "gear":
+		return get_tree().get_first_node_in_group("gear_view") != null
 	return true
 
 
@@ -611,6 +630,10 @@ func _press_button(id: String) -> void:
 		"lock":
 			if _player:
 				_player.lock.cycle()
+		"gear":
+			var hud := get_tree().get_first_node_in_group("gear_view")
+			if hud:
+				hud.call_deferred("show_worn_gear")
 		"jump", "ultimate", "map", "pause", "emote":
 			_held_buttons[id] = true
 			_send_action(BUTTONS[id][0], true)

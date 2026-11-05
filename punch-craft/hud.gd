@@ -1018,6 +1018,7 @@ func _build_resource_row() -> void:
 	row.alignment = BoxContainer.ALIGNMENT_END
 	row.add_theme_constant_override("separation", 10)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_to_group("hud_chips")  # TouchUi's top buttons sit left of these.
 	add_child(row)
 	for id in ["souls", "silver", "coins"]:
 		var chip := ResourceChip.make(id, 28.0, 21)
@@ -1085,6 +1086,112 @@ func add_minimap(map: Control) -> void:
 	move_child(map, _item_panel.get_parent().get_index())  # Under item panels.
 	_fight_ui.append(map)
 	_equipment_box.offset_top = 270.0
+	_add_gear_buttons(map)
+
+
+## The Crypt only (2026-11-05): a GEAR button under the map (tap or click) and
+## "Worn gear" in the pause menu, both opening show_worn_gear.
+func _add_gear_buttons(map: Control) -> void:
+	add_to_group("gear_view")
+	var button := Button.new()
+	button.name = "GearButton"
+	button.text = "GEAR"
+	button.focus_mode = Control.FOCUS_NONE
+	button.add_theme_font_override("font", UiTheme.display_font())
+	button.add_theme_font_size_override("font_size", 18)
+	button.custom_minimum_size = Vector2(96, 40)
+	button.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	add_child(button)
+	move_child(button, map.get_index() + 1)
+	_fight_ui.append(button)
+	button.pressed.connect(show_worn_gear)
+	var place := func() -> void:
+		var rect := map.get_global_rect()
+		button.global_position = Vector2(rect.end.x - button.size.x, rect.end.y + 8.0)
+	map.resized.connect(place)
+	map.item_rect_changed.connect(place)
+	place.call_deferred()
+	# On touch the fight controls take every finger, so TouchUi draws its own
+	# GEAR button in the top row instead.
+	if TouchUi.enabled:
+		button.visible = false
+		_fight_ui.erase(button)
+	var entry := Button.new()
+	entry.text = "Worn gear"
+	entry.custom_minimum_size = Vector2(0, 50)
+	entry.add_theme_font_size_override("font_size", 20)
+	var resume: Button = %ResumeButton
+	resume.get_parent().add_child(entry)
+	resume.get_parent().move_child(entry, resume.get_index() + 1)
+	entry.pressed.connect(func() -> void:
+		_pause_panel.visible = false
+		show_worn_gear())
+
+
+## Pauses and shows every worn piece (its turning card, bound or gilded), the
+## sets you're building, and this run's blessings. Done (or Esc) goes back.
+func show_worn_gear() -> void:
+	if _item_panel.visible:
+		return
+	for child in _item_panel.get_children():
+		child.queue_free()
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 12)
+	_item_panel.add_child(column)
+	column.add_child(UiTheme.heading("WORN GEAR", 34))
+	var cards := HBoxContainer.new()
+	cards.add_theme_constant_override("separation", 12)
+	cards.alignment = BoxContainer.ALIGNMENT_CENTER
+	column.add_child(_scrolling(cards, 220.0))
+	var worn: Dictionary = GameState.equipped
+	for slot in Items.SLOTS:
+		if worn.has(slot):
+			var item: Dictionary = worn[slot]
+			var tag := String(Items.SLOT_NAMES[slot]).to_upper()
+			if item.get("found", false):
+				tag += "  ·  " + ("GILDED" if item.get("gilded", false) else "BOUND")
+			cards.add_child(ItemCard.make(item, tag, {}, true))
+		else:
+			var empty := PanelContainer.new()
+			empty.custom_minimum_size = Vector2(ItemCard.COMPACT_WIDTH, 200)
+			empty.add_theme_stylebox_override("panel", UiTheme.box(Color(0, 0, 0, 0.35), Color(1, 1, 1, 0.15), 1, 10, 8.0))
+			var label := _outlined_label("%s\n(empty)" % Items.SLOT_NAMES[slot], 15)
+			label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			label.add_theme_color_override("font_color", UiTheme.MUTED)
+			empty.add_child(label)
+			cards.add_child(empty)
+	# The sets you're building: "Deadweight 2/4".
+	var sets := {}
+	for slot in worn:
+		var set_id := String(worn[slot].get("set", ""))
+		if set_id != "" and ItemModels.SETS.has(set_id):
+			sets[set_id] = Gear.set_count(set_id, worn)
+	if not sets.is_empty():
+		var parts: Array = []
+		for set_id in sets:
+			parts.append("%s %d/4" % [ItemModels.SETS[set_id].name, sets[set_id]])
+		var set_line := _outlined_label("Sets:  " + "   ·   ".join(parts), 16)
+		set_line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		set_line.add_theme_color_override("font_color", UiTheme.GOLD)
+		column.add_child(set_line)
+	if not GameState.blessings.is_empty():
+		var names: Array = GameState.blessings.map(func(blessing: Dictionary) -> String: return String(blessing.name))
+		var bless_line := _outlined_label("Blessings:  " + "   ·   ".join(names), 15)
+		bless_line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		bless_line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		column.add_child(bless_line)
+	var done := Button.new()
+	done.text = "Done"
+	done.custom_minimum_size = Vector2(200, 44)
+	done.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	done.pressed.connect(_close_item_panel)
+	column.add_child(done)
+	_panel_close = _close_item_panel
+	_can_pause = false
+	get_tree().paused = true
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	_item_panel.show()
 
 
 ## Lists the worn items {slot: item} along the right side.

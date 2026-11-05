@@ -117,6 +117,19 @@ func _ready() -> void:
 					for key in {"power": 12, "grit": 8, "speed": 5, "technique": 3}:
 						GameState.attributes[key] = {"power": 12, "grit": 8, "speed": 5, "technique": 3}[key]
 					node.call("_refresh")
+				if OS.get_environment("CAPTURE_GEAR") != "":
+					GameState.armory.clear()
+					GameState.equipped.clear()
+					GameState.souls = 40
+					var picks := [["drowned", "gloves", "rare"], ["deadweight", "gloves", "legendary"], ["dead_money", "wraps", "uncommon"],
+						["drowned", "wraps", "epic"], ["deadweight", "boots", "common"], ["dead_money", "charm", "rare"], ["drowned", "gloves", "common"]]
+					for pick in picks:
+						if not ItemModels.SETS.has(pick[0]):
+							pick[0] = ItemModels.SETS.keys()[0]
+						GameState.add_to_armory(Gear.make(pick[0], pick[1], pick[2], 2))
+					GameState.equip_from_armory(int(GameState.armory[0].uid))
+					GameState.equip_from_armory(int(GameState.armory[3].uid))
+					node.call("_refresh")
 				if OS.get_environment("CAPTURE_HATS") != "":
 					for hat_id in ["party_hat", "bucket", "wig_blonde", "wig_blue", "bowler", "fruit_hat", "coffin_crown", "bluetooth_headpiece"]:
 						GameState.hats[hat_id] = 1

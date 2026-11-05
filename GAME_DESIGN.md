@@ -2838,3 +2838,9 @@ Cosmetics (emote, idle, skin, fighter) sit on the top row, gear on the second; e
 
 ### Style page (built 2026-11-05)
 Same look as the Shop: no big panel, pill tabs, translucent cards. Hats always show in rarity order (common first, legendary last). The emote wheel holds at most 6 emotes: pick them on the Emotes tab (preview one, then Put on the wheel); until you pick, it is your first six, and the wheel always keeps at least one. The Bluetooth Headpiece got its rack thumbnail.
+
+### Armory: the Locker (built 2026-11-05)
+Picked from three mock-ups. The four worn slots in a strip on top; every kept piece below in an even grid with All / Gloves / Wraps / Boots / Charm pills; tap one and the right column shows its big turning ItemCard (stats against what you wear in that slot) with Wear / Take off, Level up and Sell (sell is off while worn). Grid tiles are flat icons; only the detail card is a live 3D model (phones). The rail icons shrank (64 -> 50) so seven pages fit.
+
+### Crypt: worn gear button (2026-11-05)
+In the Crypt only: a GEAR button under the map (mouse), a GEAR touch button in the top row, and "Worn gear" in the pause menu. Each pauses and shows the four worn pieces (bound or gilded), set progress and the run's blessings. The touch top buttons now sit left of the currency chips, so Souls and silver stay visible.
