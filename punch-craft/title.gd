@@ -20,8 +20,8 @@ const SUBTITLE := "BARE-KNUCKLE BOXING IN THE GRAVEYARD"
 const LIGHTNING_GAP := Vector2(9.0, 18.0)
 const RING_CENTER := Vector3(1.6, 0, -9.0)
 const RING_HALF := 3.4
-const CAMERA_HOME := Vector3(-0.9, 1.35, -1.2)
-const CAMERA_LOOK := Vector3(1.9, 2.75, -14.0)
+const CAMERA_HOME := Vector3(-0.9, 2.5, -2.4)
+const CAMERA_LOOK := Vector3(1.9, 1.7, -14.0)
 const MENU := [["PLAY", "_on_play"], ["FIGHTER", "_open_classes"], ["SETTINGS", "_open_settings"], ["CREDITS", "_open_credits"], ["QUIT", "_on_quit"]]
 
 var _time := 0.0
@@ -29,6 +29,15 @@ var _camera: Camera3D
 var _env: Environment
 var _moonlight: DirectionalLight3D
 var _torches: Array[OmniLight3D] = []
+## The Dead League stage behind the ring (2026-11-06): the place of the
+## contender you're climbing toward, as DeadLeagueStages builds it for the
+## arena. Empty if that contender has none (the old graveyard is the fallback).
+var _stage := {}
+## The contender's own color: the logo, its drips and the menu marker wear it.
+var _title_color := BLOOD
+var _indoors := false
+var _ambient_base := 0.35
+var _moon_base := 0.55
 var _bats: Array[Dictionary] = []
 ## The contender in the ring and the dead watching it: they hold their places
 ## and only breathe (driven here, their own AI stays off).
@@ -98,9 +107,19 @@ var _mode_offer: Control
 var _onboarding := false
 
 
+## Which contender stands in the ring: the one you're climbing toward (the
+## Coffin King once the crown is yours). TITLE_BOSS forces one in tests.
+static func boss_index() -> int:
+	var forced := OS.get_environment("TITLE_BOSS")
+	if forced != "":
+		return clampi(int(forced), 0, DeadLeagueRules.BOSS_COUNT - 1)
+	return mini(Progression.current_tier() - 1, DeadLeagueRules.BOSS_COUNT - 1)
+
+
 func _ready() -> void:
 	if WebBench.start_if_requested(get_tree()):
 		return
+	_title_color = DeadLeagueRules.boss(boss_index()).accent.lightened(0.05)
 	Sfx.play_music("title")
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	Controls.watch(self, func() -> void:
@@ -166,6 +185,7 @@ func _build_world() -> void:
 	_env.fog_sky_affect = 0.35
 	Look.tune_environment(_env, "night")
 	var world_env := WorldEnvironment.new()
+	world_env.name = "WorldEnvironment"  # DeadLeagueStages finds these by name.
 	world_env.environment = _env
 	add_child(world_env)
 
@@ -174,6 +194,7 @@ func _build_world() -> void:
 	_moonlight.light_energy = 0.55
 	_moonlight.shadow_enabled = Settings.get_value("shadows") and not Settings.use_web_profile()
 	_moonlight.rotation = Vector3(deg_to_rad(-22), deg_to_rad(155), 0)
+	_moonlight.name = "Moon"
 	add_child(_moonlight)
 
 	_camera = Camera3D.new()
@@ -184,11 +205,19 @@ func _build_world() -> void:
 
 	_build_set()
 	_build_ring()
-	_build_braziers()
 	_build_contender()
-	_build_crowd()
-	_build_bats()
-	Look.batch_meshes(_decor, true)
+	if _stage.is_empty():
+		_build_braziers()
+		_build_crowd()
+		_build_bats()
+		Look.batch_meshes(_decor, true)
+	else:
+		# The same grade as the Dead League ring, so the contender looks here
+		# as he does in the fight.
+		Look.tune_environment(_env, "ring")
+		_indoors = _env.background_mode == Environment.BG_COLOR
+		_ambient_base = _env.ambient_light_energy
+		_moon_base = _moonlight.light_energy
 
 
 ## Ground, sky and moon, graves, dead trees, the mausoleum and the mist, from
@@ -198,13 +227,23 @@ func _build_set() -> void:
 	rng.seed = 2024
 	var web := Settings.use_web_profile()
 	_decor = Node3D.new()
+	_decor.name = "Decorations"
 	add_child(_decor)
 	var ground := MeshInstance3D.new()
+	ground.name = "Mesh"
 	var plane := PlaneMesh.new()
 	plane.size = Vector2(220, 220)
 	plane.material = Look.block_material(Color(0.12, 0.14, 0.11))
 	ground.mesh = plane
-	add_child(ground)
+	var ground_root := Node3D.new()
+	ground_root.name = "Ground"
+	ground_root.add_child(ground)
+	add_child(ground_root)
+	_stage = DeadLeagueStages.build(DeadLeagueRules.boss(boss_index()).id, self, RING_CENTER)
+	if not _stage.is_empty():
+		for light in _stage.lights:
+			_torches.append(light)
+		return
 	Scenery.night_sky(_decor, rng, Vector3(44, 27, -66))
 	Scenery.ground_patches(_decor, 24.0, 24 if web else 40, rng)
 	# The iron fence around the ring (open on the camera's side).
@@ -247,15 +286,17 @@ func _build_ring() -> void:
 	var post := Enemy._material(Color(0.12, 0.12, 0.15), 0.75)
 	var rope := Enemy._material(Color(0.72, 0.08, 0.06))
 	var size := RING_HALF * 2.0
-	Scenery.box(_decor, Vector3(size + 0.6, 0.5, size + 0.6), RING_CENTER + Vector3(0, 0.25, 0), Enemy._material(Color(0.1, 0.09, 0.11)))
-	Scenery.box(_decor, Vector3(size, 0.04, size), RING_CENTER + Vector3(0, 0.52, 0), canvas)
+	var holder := Node3D.new()
+	_decor.add_child(holder)
+	Scenery.box(holder, Vector3(size + 0.6, 0.5, size + 0.6), RING_CENTER + Vector3(0, 0.25, 0), Enemy._material(Color(0.1, 0.09, 0.11)))
+	Scenery.box(holder, Vector3(size, 0.04, size), RING_CENTER + Vector3(0, 0.52, 0), canvas)
 	for x in [-1.0, 1.0]:
 		for z in [-1.0, 1.0]:
-			Scenery.box(_decor, Vector3(0.16, 1.6, 0.16), RING_CENTER + Vector3(x * RING_HALF, 1.3, z * RING_HALF), post)
+			Scenery.box(holder, Vector3(0.16, 1.6, 0.16), RING_CENTER + Vector3(x * RING_HALF, 1.3, z * RING_HALF), post)
 	for height in [1.0, 1.35, 1.7]:
 		for side in [-1.0, 1.0]:
-			Scenery.box(_decor, Vector3(size, 0.05, 0.05), RING_CENTER + Vector3(0, height, side * RING_HALF), rope)
-			Scenery.box(_decor, Vector3(0.05, 0.05, size), RING_CENTER + Vector3(side * RING_HALF, height, 0), rope)
+			Scenery.box(holder, Vector3(size, 0.05, 0.05), RING_CENTER + Vector3(0, height, side * RING_HALF), rope)
+			Scenery.box(holder, Vector3(0.05, 0.05, size), RING_CENTER + Vector3(side * RING_HALF, height, 0), rope)
 	var spot := SpotLight3D.new()
 	spot.position = RING_CENTER + Vector3(0, 9.0, 0.5)
 	spot.rotation = Vector3(-PI / 2.0 + 0.08, 0, 0)
@@ -264,6 +305,7 @@ func _build_ring() -> void:
 	spot.light_energy = 4.0
 	spot.light_color = Color(1.0, 0.92, 0.82)
 	add_child(spot)
+	Look.batch_meshes(holder, true)
 
 
 ## Fire braziers hanging from tall posts at the ring's corners.
@@ -289,7 +331,7 @@ func _build_braziers() -> void:
 ## The contender you're climbing toward, waiting in the far corner in its
 ## guard (the Coffin King once the crown is yours).
 func _build_contender() -> void:
-	var index := mini(Progression.current_tier() - 1, DeadLeagueRules.BOSS_COUNT - 1)
+	var index := boss_index()
 	var boss: DeadLeagueBoss = load("res://dead_league_boss.tscn").instantiate()
 	boss.configure(index, 1)
 	add_child(boss)
@@ -393,6 +435,8 @@ func _drive_contender(delta: float) -> void:
 		c.move.from = c.x
 		if c.move.kind == "punch":
 			boss._attack = c.move.attack
+			if _stage.has("crowd") and is_instance_valid(_stage.crowd):
+				(_stage.crowd as Crowd).cheer(0.45)
 	var move: Dictionary = c.move
 	move.time += delta
 	var t := clampf(move.time / move.duration, 0.0, 1.0)
@@ -449,13 +493,15 @@ func _plan_contender() -> void:
 
 ## Lightning: a double flicker that lights the scene and the logo, then thunder.
 func _update_lightning(delta: float) -> void:
+	if _indoors:
+		return  # No sky to flash in a hall or a pit.
 	_lightning_timer -= delta
 	if _lightning_timer <= 0.0:
 		_lightning_timer = randf_range(LIGHTNING_GAP.x, LIGHTNING_GAP.y)
 		_strike()
 	_flash = maxf(0.0, _flash - delta * 3.5)
-	_moonlight.light_energy = 0.55 + _flash * 3.5
-	_env.ambient_light_energy = 0.35 + _flash * 1.6
+	_moonlight.light_energy = _moon_base + _flash * 3.5
+	_env.ambient_light_energy = _ambient_base + _flash * 1.6
 	_flash_rect.color.a = _flash * 0.18
 
 
@@ -546,10 +592,10 @@ func _build_logo() -> void:
 		label.text = TITLE_TEXT[i]
 		label.add_theme_font_override("font", UiTheme.display_font())
 		label.add_theme_font_size_override("font_size", TITLE_SIZE)
-		label.add_theme_color_override("font_color", BLOOD)
-		label.add_theme_color_override("font_outline_color", Color(0.04, 0.0, 0.0))
+		label.add_theme_color_override("font_color", _title_color)
+		label.add_theme_color_override("font_outline_color", Color(0.03, 0.01, 0.01))
 		label.add_theme_constant_override("outline_size", 20)
-		label.add_theme_color_override("font_shadow_color", Color(0.5, 0.0, 0.0, 0.6))
+		label.add_theme_color_override("font_shadow_color", Color(_title_color.darkened(0.55), 0.6))
 		label.add_theme_constant_override("shadow_offset_x", 0)
 		label.add_theme_constant_override("shadow_offset_y", 8)
 		label.add_theme_constant_override("shadow_outline_size", 28)
@@ -606,7 +652,7 @@ func _animate_title(delta: float) -> void:
 
 func _drip(label: Label) -> void:
 	var drop := ColorRect.new()
-	drop.color = BLOOD.darkened(0.15)
+	drop.color = _title_color.darkened(0.15)
 	drop.size = Vector2(5, 9)
 	drop.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	drop.position = label.position + Vector2(label.size.x * randf_range(0.3, 0.7), TITLE_SIZE * 0.95)
@@ -681,7 +727,7 @@ func _build_menu() -> void:
 		row += 1
 	# A blood-red bar beside the menu.
 	var bar := ColorRect.new()
-	bar.color = BLOOD
+	bar.color = _title_color
 	bar.position = Vector2(-22, 10)
 	bar.size = Vector2(5, row * 58 - 20)
 	bar.modulate.a = 0.0

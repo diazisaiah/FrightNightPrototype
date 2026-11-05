@@ -113,12 +113,42 @@ func _process(delta: float) -> void:
 	_dots.text = "LOADING" + ".".repeat(int(_time * 3.0) % 4)
 
 
-## Who shows on this load: {texture, accent, header, name, tagline, line}.
+## Tips under the wordmark.
+const TIPS := [
+	"Hooks and uppercuts hit harder after a jab or cross.",
+	"Slip the arrow, don't block it.",
+	"A clean dodge opens them up for a counter.",
+	"Gild the gear you find in the Crypt to keep it.",
+	"Win a bout to break a seal on your upgrades.",
+	"Hold the emote key for the wheel.",
+	"Every fight pays: spend it on Upgrades.",
+	"Beat all five contenders to reach the Coffin King.",
+]
+
+
+## The loading screen is a still of the title (2026-11-06): the ring of the
+## contender you're climbing toward (or the one you're about to fight), the
+## wordmark in their color, and a tip. The stills are renders of the title
+## scene without its menu (art/loading/title_N.jpg), so nothing 3D has to be
+## built while the game loads.
+func _title_card(index: int) -> Dictionary:
+	index = clampi(index, 0, DeadLeagueRules.BOSS_COUNT - 1)
+	var profile := DeadLeagueRules.boss(index)
+	return {"still": "res://art/loading/title_%d.jpg" % index, "accent": profile.accent.lightened(0.05),
+		"line": TIPS.pick_random()}
+
+
+## Who shows on this load: {still, accent, line} (see _title_card).
 func _pick(path: String) -> Dictionary:
 	if path.ends_with("dead_league_arena.tscn"):
 		if GameState.true_king_bout:
-			return _true_king_card()
-		return _boss_card(clampi(GameState.dead_league_bout, 0, DeadLeagueRules.BOSS_COUNT - 1))
+			return _title_card(DeadLeagueRules.BOSS_COUNT - 1)
+		return _title_card(GameState.dead_league_bout)
+	return _title_card(mini(Progression.current_tier() - 1, DeadLeagueRules.BOSS_COUNT - 1))
+
+
+## The old random pool of portraits, kept for the test captures.
+func _pick_old(path: String) -> Dictionary:
 	var pool := _pool()
 	if pool.size() > 1:
 		pool.erase(_last_pick)
@@ -194,6 +224,9 @@ func _build(card: Dictionary) -> void:
 	back.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_screen.add_child(back)
 
+	if card.has("still"):
+		_title_still(card, accent)
+		return
 	if card.has("scene"):
 		_scene(card)
 	else:
@@ -201,6 +234,84 @@ func _build(card: Dictionary) -> void:
 
 	# Darkness from the left so the words read.
 	_words(card, accent)
+
+
+## The title's look: the still creeping in, the wordmark in the contender's
+## color, a tip, and LOADING in the corner.
+func _title_still(card: Dictionary, accent: Color) -> void:
+	_portrait = TextureRect.new()
+	_portrait.texture = load(card.still)
+	_portrait.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	_portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_screen.add_child(_portrait)
+	# A soft dark foot for the tip and LOADING.
+	var foot := TextureRect.new()
+	var gradient := Gradient.new()
+	gradient.set_color(0, Color(0.012, 0.01, 0.02, 0.0))
+	gradient.set_color(1, Color(0.012, 0.01, 0.02, 0.85))
+	var foot_texture := GradientTexture2D.new()
+	foot_texture.gradient = gradient
+	foot_texture.fill_from = Vector2(0, 0)
+	foot_texture.fill_to = Vector2(0, 1)
+	foot.texture = foot_texture
+	foot.anchor_top = 0.72
+	foot.anchor_right = 1.0
+	foot.anchor_bottom = 1.0
+	foot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_screen.add_child(foot)
+	var wordmark := UiTheme.title_label("FRIGHT NIGHT", 116, accent)
+	wordmark.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	wordmark.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	wordmark.offset_top = 56
+	wordmark.add_theme_constant_override("outline_size", 20)
+	wordmark.add_theme_color_override("font_outline_color", Color(0.03, 0.01, 0.01))
+	wordmark.add_theme_color_override("font_shadow_color", Color(accent.darkened(0.55), 0.6))
+	wordmark.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_screen.add_child(wordmark)
+	var tip := Label.new()
+	tip.text = card.line
+	tip.add_theme_font_size_override("font_size", 22)
+	tip.add_theme_color_override("font_color", Color(0.9, 0.87, 0.92))
+	tip.add_theme_color_override("font_outline_color", Color.BLACK)
+	tip.add_theme_constant_override("outline_size", 7)
+	tip.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	tip.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	tip.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	tip.offset_top = -118
+	tip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_screen.add_child(tip)
+	_loading_bar(accent)
+	for node in [wordmark, tip]:
+		node.modulate.a = 0.0
+		node.create_tween().tween_property(node, "modulate:a", 1.0, 0.35)
+
+
+## LOADING..., bottom left, with a thin bar sweeping under it.
+func _loading_bar(accent: Color) -> void:
+	_dots = UiTheme.title_label("LOADING", 18, Color(UiTheme.TEXT, 0.7))
+	_dots.anchor_top = 1.0
+	_dots.anchor_bottom = 1.0
+	_dots.offset_left = 72
+	_dots.offset_top = -64
+	_dots.offset_bottom = -40
+	_screen.add_child(_dots)
+	var bar := ColorRect.new()
+	bar.color = accent
+	bar.anchor_top = 1.0
+	bar.anchor_bottom = 1.0
+	bar.offset_left = 72
+	bar.offset_right = 72
+	bar.offset_top = -34
+	bar.offset_bottom = -31
+	_screen.add_child(bar)
+	var sweep := bar.create_tween().set_loops()
+	sweep.tween_property(bar, "offset_right", 72 + 220.0, 0.9).set_trans(Tween.TRANS_SINE)
+	sweep.tween_property(bar, "offset_left", 72 + 220.0, 0.5).set_trans(Tween.TRANS_SINE)
+	sweep.tween_callback(func() -> void:
+		bar.offset_left = 72
+		bar.offset_right = 72)
 
 
 ## A full-screen scene behind everything, creeping in.
