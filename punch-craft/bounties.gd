@@ -22,6 +22,8 @@ const XP := [10, 22, 45, 90, 180]
 ## Uncommon bounties pay Souls this often (rarer always do).
 const UNCOMMON_SOUL_CHANCE := 0.5
 const SLOTS := 3
+## Extra slots bought with Souls (2026-11-05): the 4th, then the 5th.
+const EXTRA_SLOT_SOULS := [20, 40]
 const SWAP_SOULS := 2
 ## The fights bounties count in (not training).
 const FIGHT_SCENES := ["world.tscn", "dungeon.tscn", "dead_league_arena.tscn"]
@@ -91,10 +93,32 @@ static func unlocked() -> bool:
 	return GameState.nights_cleared >= 1
 
 
-## The three bounties, rolled if any slots are empty.
+## How many bounties run at once: three, plus the slots you've bought.
+static func slots() -> int:
+	return SLOTS + clampi(GameState.bounty_slots_bought, 0, EXTRA_SLOT_SOULS.size())
+
+
+## The next slot's price in Souls, or -1 when both are bought.
+static func next_slot_price() -> int:
+	var bought := GameState.bounty_slots_bought
+	return int(EXTRA_SLOT_SOULS[bought]) if bought < EXTRA_SLOT_SOULS.size() else -1
+
+
+static func buy_slot() -> bool:
+	var price := next_slot_price()
+	if price < 0 or GameState.souls < price:
+		return false
+	GameState.souls -= price
+	GameState.bounty_slots_bought += 1
+	GameState.bounties.append(roll())
+	GameState.save_game()
+	return true
+
+
+## The active bounties, rolled if any slots are empty.
 static func active() -> Array:
 	if unlocked():
-		while GameState.bounties.size() < SLOTS:
+		while GameState.bounties.size() < slots():
 			GameState.bounties.append(roll())
 	return GameState.bounties
 

@@ -2208,35 +2208,49 @@ func _hat_card(id: String) -> Control:
 
 # --- Bounties --------------------------------------------------------------------------
 
+## The Shop look (2026-11-05): no big panel; the mastery bar with its XP and
+## the rarity odds as pills on top; five even cards in a row, the last two
+## locked slots until bought (Bounties.EXTRA_SLOT_SOULS); each card's button
+## (Swap, Unlock) under it, outside the frame.
+const BOUNTY_CARD := Vector2(204, 236)
 var _bounty_grid: HBoxContainer
 var _bounty_mastery: Label
+var _bounty_xp: Label
 var _bounty_bar: ProgressBar
 var _bounty_odds: HBoxContainer
 
 
 func _build_bounty_page() -> Control:
 	var panel := PanelContainer.new()
+	_clear_panel(panel)
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 12)
 	panel.add_child(column)
 	var header := HBoxContainer.new()
-	header.add_theme_constant_override("separation", 18)
+	header.add_theme_constant_override("separation", 16)
 	column.add_child(header)
 	header.add_child(UiTheme.title_label("BOUNTIES", 26, UiTheme.GOLD))
 	_bounty_mastery = _label("", 18, UiTheme.TEXT)
 	_bounty_mastery.add_theme_font_override("font", UiTheme.bold_font())
+	_bounty_mastery.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	header.add_child(_bounty_mastery)
 	_bounty_bar = ProgressBar.new()
 	_bounty_bar.show_percentage = false
-	_bounty_bar.custom_minimum_size = Vector2(220, 8)
+	_bounty_bar.custom_minimum_size = Vector2(260, 10)
 	_bounty_bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	header.add_child(_bounty_bar)
+	_bounty_xp = _label("", 14, UiTheme.MUTED)
+	_bounty_xp.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	header.add_child(_bounty_xp)
 	_bounty_odds = HBoxContainer.new()
-	_bounty_odds.add_theme_constant_override("separation", 14)
+	_bounty_odds.add_theme_constant_override("separation", 6)
 	column.add_child(_bounty_odds)
 	_bounty_grid = HBoxContainer.new()
-	_bounty_grid.add_theme_constant_override("separation", 14)
+	_bounty_grid.add_theme_constant_override("separation", 12)
 	column.add_child(_bounty_grid)
+	var note := _label("Finish one and the next rolls in. Rarer bounties pay more; mastery makes them come up more often.", 13, UiTheme.MUTED)
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	column.add_child(note)
 	return panel
 
 
@@ -2250,35 +2264,61 @@ func _refresh_bounties() -> void:
 	_bounty_mastery.text = "Mastery %d" % Bounties.mastery()
 	_bounty_bar.max_value = progress[1]
 	_bounty_bar.value = progress[0]
-	_bounty_bar.tooltip_text = "%d / %d bounty XP" % progress
-	for child in _bounty_odds.get_children():
-		child.queue_free()
+	_bounty_xp.text = "%d / %d XP" % progress
+	for box in [_bounty_odds, _bounty_grid]:
+		for child in box.get_children():
+			box.remove_child(child)
+			child.queue_free()
 	var odds := Bounties.odds()
 	for i in Bounties.RARITIES.size():
 		var rarity: String = Bounties.RARITIES[i]
-		_bounty_odds.add_child(_label("%s %d%%" % [rarity.capitalize(), roundi(odds[i] * 100.0)], 14, Bounties.RARITY_COLORS[rarity]))
-	for child in _bounty_grid.get_children():
-		child.queue_free()
+		var tint: Color = Bounties.RARITY_COLORS[rarity]
+		var pill := PanelContainer.new()
+		pill.add_theme_stylebox_override("panel", UiTheme.box(Color(tint.darkened(0.82), 0.6), Color(tint, 0.6), 1, 12, 5.0))
+		var text := _label("%s  %d%%" % [rarity.capitalize(), roundi(odds[i] * 100.0)], 13, tint.lightened(0.1))
+		text.add_theme_font_override("font", UiTheme.bold_font())
+		pill.add_child(text)
+		_bounty_odds.add_child(pill)
 	var active := Bounties.active()
 	for i in active.size():
 		_bounty_grid.add_child(_bounty_card(i, active[i]))
+	for extra in range(GameState.bounty_slots_bought, Bounties.EXTRA_SLOT_SOULS.size()):
+		_bounty_grid.add_child(_bounty_locked(extra))
+
+
+## A card with its button under it, outside the frame (the Shop's way).
+func _bounty_holder(card: Control, button: Button) -> Control:
+	var holder := VBoxContainer.new()
+	holder.add_theme_constant_override("separation", 6)
+	holder.add_child(card)
+	button.custom_minimum_size = Vector2(BOUNTY_CARD.x, 38)
+	holder.add_child(button)
+	return holder
 
 
 func _bounty_card(index: int, bounty: Dictionary) -> Control:
 	var tint: Color = Bounties.RARITY_COLORS[bounty.rarity]
 	var card := PanelContainer.new()
-	card.custom_minimum_size = Vector2(300, 230)
-	card.add_theme_stylebox_override("panel", UiTheme.box(Color(tint.darkened(0.85), 0.8), Color(tint, 0.85), 2, 10, 14.0))
+	card.custom_minimum_size = BOUNTY_CARD
+	card.add_theme_stylebox_override("panel", UiTheme.box(Color(tint.darkened(0.82), 0.68), Color(tint, 0.85), 2, 10, 12.0))
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 8)
 	card.add_child(column)
+	var top := HBoxContainer.new()
+	column.add_child(top)
 	var rarity := _label(String(bounty.rarity).to_upper(), 12, tint)
 	rarity.add_theme_font_override("font", UiTheme.bold_font())
-	column.add_child(rarity)
-	var task := _label(Bounties.text(bounty), 18, UiTheme.TEXT)
+	rarity.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(rarity)
+	var icon := IconView.new()
+	icon.icon = "wanted"
+	icon.color = tint
+	icon.custom_minimum_size = Vector2(26, 26)
+	top.add_child(icon)
+	var task := _label(Bounties.text(bounty), 17, UiTheme.TEXT)
 	task.add_theme_font_override("font", UiTheme.bold_font())
 	task.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	task.custom_minimum_size.x = 270
+	task.custom_minimum_size.x = BOUNTY_CARD.x - 24
 	column.add_child(task)
 	var bar := ProgressBar.new()
 	bar.show_percentage = false
@@ -2291,14 +2331,14 @@ func _bounty_card(index: int, bounty: Dictionary) -> Control:
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	column.add_child(spacer)
 	var reward := IconLabel.new()
-	reward.font_size = 16
-	var pay := "+%d {coins}" % bounty.coins
-	if int(bounty.souls) > 0:
-		pay += "   +%d {souls}" % bounty.souls
-	reward.text = pay + "   +%d XP" % bounty.xp
+	reward.font_size = 15
+	reward.text = "+%d {coins}" % bounty.coins
 	column.add_child(reward)
+	var extra := IconLabel.new()
+	extra.font_size = 15
+	extra.text = ("+%d {souls}   " % bounty.souls if int(bounty.souls) > 0 else "") + "+%d XP" % bounty.xp
+	column.add_child(extra)
 	var swap := Button.new()
-	swap.custom_minimum_size.y = 36
 	IconLabel.on_button(swap, "Swap   %d {souls}" % Bounties.SWAP_SOULS)
 	swap.disabled = GameState.souls < Bounties.SWAP_SOULS
 	swap.tooltip_text = "Roll a different bounty."
@@ -2306,8 +2346,47 @@ func _bounty_card(index: int, bounty: Dictionary) -> Control:
 		if Bounties.swap(index):
 			Sfx.play("coin", -4.0, 0.8)
 			_refresh())
-	column.add_child(swap)
-	return card
+	return _bounty_holder(card, swap)
+
+
+## A slot not bought yet: chained shut, with its price. Only the next one can
+## be bought.
+func _bounty_locked(extra: int) -> Control:
+	var price := int(Bounties.EXTRA_SLOT_SOULS[extra])
+	var next := extra == GameState.bounty_slots_bought
+	var card := PanelContainer.new()
+	card.custom_minimum_size = BOUNTY_CARD
+	card.add_theme_stylebox_override("panel", UiTheme.box(Color(0, 0, 0, 0.35), Color(1, 1, 1, 0.22 if next else 0.1), 1, 10, 12.0))
+	var column := VBoxContainer.new()
+	column.alignment = BoxContainer.ALIGNMENT_CENTER
+	column.add_theme_constant_override("separation", 8)
+	card.add_child(column)
+	var icon := IconView.new()
+	icon.icon = "chain"
+	icon.color = Color(1, 1, 1, 0.45 if next else 0.2)
+	icon.custom_minimum_size = Vector2(48, 48)
+	icon.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	column.add_child(icon)
+	var title := _label("EXTRA SLOT", 15, UiTheme.TEXT if next else UiTheme.MUTED)
+	title.add_theme_font_override("font", UiTheme.bold_font())
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	column.add_child(title)
+	var note := _label("One more bounty at a time." if next else "Unlock the one before first.", 12, UiTheme.MUTED)
+	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	column.add_child(note)
+	var unlock := Button.new()
+	IconLabel.on_button(unlock, "Unlock   %d {souls}" % price)
+	unlock.disabled = not next or GameState.souls < price
+	if next:
+		unlock.theme_type_variation = "PrimaryButton" if GameState.souls >= price else ""
+	unlock.pressed.connect(func() -> void:
+		if Bounties.buy_slot():
+			Sfx.play("unlock", -6.0, 1.1)
+			_refresh()
+		else:
+			Sfx.play("deny", -10.0))
+	return _bounty_holder(card, unlock)
 
 
 # --- Soul Shop -------------------------------------------------------------------------

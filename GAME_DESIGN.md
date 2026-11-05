@@ -2844,3 +2844,6 @@ Picked from three mock-ups. The four worn slots in a strip on top; every kept pi
 
 ### Crypt: worn gear button (2026-11-05)
 In the Crypt only: a GEAR button under the map (mouse), a GEAR touch button in the top row, and "Worn gear" in the pause menu. Each pauses and shows the four worn pieces (bound or gilded), set progress and the run's blessings. The touch top buttons now sit left of the currency chips, so Souls and silver stay visible.
+
+### Bounties page (built 2026-11-05)
+Shop look: mastery bar with its XP, rarity odds as pills, five even cards in a row with each card's button (Swap / Unlock) under it. Two extra bounty slots can be bought with Souls: the 4th for 20, then the 5th for 40 (Bounties.EXTRA_SLOT_SOULS, GameState.bounty_slots_bought). A bought slot rolls a bounty straight away.

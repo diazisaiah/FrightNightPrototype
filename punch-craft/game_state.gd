@@ -1209,6 +1209,8 @@ var idles_bought := {}
 var skins_owned := {}
 var skin_picks := {}
 var bounty_xp := 0
+## Extra bounty slots bought (Bounties.EXTRA_SLOT_SOULS), 0 to 2.
+var bounty_slots_bought := 0
 var kills := {}
 ## Ability picks per fighter (Abilities): {class: {"passive": id, "ultimate": id}}.
 var loadouts := {}
@@ -2561,6 +2563,7 @@ func save_game() -> void:
 		"skins_owned": skins_owned,
 		"skin_picks": skin_picks,
 		"bounty_xp": bounty_xp,
+		"bounty_slots_bought": bounty_slots_bought,
 		"kills": kills,
 		"loadouts": loadouts,
 		"endless_bests": endless_bests,
@@ -2671,6 +2674,7 @@ func load_game() -> void:
 	fights_done = int(data.get("fights_done", 0))
 	bounties = data.get("bounties", []).duplicate(true) if data.get("bounties", []) is Array else []
 	bounty_xp = int(data.get("bounty_xp", 0))
+	bounty_slots_bought = int(data.get("bounty_slots_bought", 0))
 	idle_picks = data.get("idle_picks", {}).duplicate() if data.get("idle_picks", {}) is Dictionary else {}
 	idles_bought = data.get("idles_bought", {}).duplicate() if data.get("idles_bought", {}) is Dictionary else {}
 	skins_owned = data.get("skins_owned", {}).duplicate() if data.get("skins_owned", {}) is Dictionary else {}
@@ -3005,6 +3009,7 @@ func _reset_fields() -> void:
 	fights_done = 0
 	bounties = []
 	bounty_xp = 0
+	bounty_slots_bought = 0
 	idle_picks = {}
 	idles_bought = {}
 	skins_owned = {}
