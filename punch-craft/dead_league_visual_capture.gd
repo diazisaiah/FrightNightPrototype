@@ -28,8 +28,8 @@ func _ready() -> void:
 			await _capture_stage(int(parts[0]), float(parts[1]) if parts.size() > 1 else 0.0, float(parts[2]) if parts.size() > 2 else 0.0)
 			return
 		elif argument == "--tutorial-touch":
-			# The touch tutorial's plan, its dash / back step step completing
-			# from real performed signals, and a still of the RUN AND JUMP card.
+			# The touch tutorial's plan, its DASH step completing from real
+			# performed signals, and a still of that card.
 			var training: Node = (load("res://training.tscn") as PackedScene).instantiate()
 			add_child(training)
 			for frame in 60:
@@ -42,7 +42,7 @@ func _ready() -> void:
 			for move in ["forward_dash", "forward_dash"]:
 				player.performed.emit(move)
 			print("TUTORIAL DASH STEP DONE: ", training.get("_step_done"))
-			training.call("_start_step", dash_step - 1)
+			training.call("_start_step", dash_step)
 			for frame in 30:
 				await get_tree().process_frame
 			await _capture("res://tutorial_touch_capture.png")

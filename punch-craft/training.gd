@@ -46,14 +46,10 @@ const STEPS_START := [
 		"drills": [["jab", "cross", "hook"], ["jab", "cross", "hook", "uppercut"]],
 		"keys": [["<jab>", "Jab"], ["<cross>", "Cross"], ["<hook>", "Hook"], ["<uppercut>", "Uppercut"]]},
 ]
-## Touch screens only (2026-11-05): RUN, JUMP and the two-thumb swipes have no
-## buttons of their own to discover, so they get steps. Events: run (meters
-## moved with RUN on), jump, dash (performed, dodge or not).
+## Touch screens only (2026-11-05): the dash has no button to discover (a
+## two-thumb swipe up), so it gets a step. Event: dash (performed). RUN and
+## JUMP are buttons, and the back step has its own steps later.
 const STEPS_TOUCH := [
-	{"title": "RUN AND JUMP", "goals": {"run": 6, "jump": 2}, "dummy": "passive",
-		"text": "Tap RUN to keep running; tap it again to walk. Tap JUMP to jump.",
-		"keys": [["RUN", "Run on / off"], ["JUMP", "Jump"]]},
-	# (The back step has its own steps later: BACK STEP, TAKE TURNS.)
 	{"title": "DASH", "goals": {"dash": 2}, "dummy": "passive",
 		"text": "Swipe up with both thumbs at once to dash in.",
 		"keys": [["<dash>", "Dash"]]},
@@ -238,13 +234,11 @@ func _set_dummy_level(level: int) -> void:
 
 func _process(delta: float) -> void:
 	_torch_time += delta
-	if _step >= 0 and not _step_done and (_plan[_step].goals.has("move") or _plan[_step].goals.has("run")):
+	if _step >= 0 and not _step_done and _plan[_step].goals.has("move"):
 		var moved := _player.global_position - _last_position
 		moved.y = 0.0
 		_last_position = _player.global_position
 		_add_progress("move", moved.length())
-		if Input.is_action_pressed("sprint"):
-			_add_progress("run", moved.length())
 	for i in _torches.size():
 		_torches[i].light_energy = 2.2 + sin(_torch_time * 11.0 + i * 1.7) * 0.25
 
@@ -262,7 +256,7 @@ func _on_knuckles_broken() -> void:
 
 ## The steps for your control mode.
 static func plan() -> Array:
-	# The touch steps go straight after MOVE: they're moving too.
+	# The touch step goes straight after MOVE: it's moving too.
 	var start: Array = STEPS_START.slice(0, 1) + (STEPS_TOUCH if Controls.touch() else []) + STEPS_START.slice(1)
 	return start + (STEPS_JUNIOR if Controls.junior() else STEPS_PRO) + STEPS_END
 
@@ -434,7 +428,7 @@ func _update_goals() -> void:
 		var need: int = goals[goal]
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 6)
-		var name_label := UiTheme.title_label(("Move" if goal == "move" else "Run" if goal == "run" else _goal_name(goal)).to_upper(), 18,
+		var name_label := UiTheme.title_label(("Move" if goal == "move" else _goal_name(goal)).to_upper(), 18,
 				DONE_COLOR if have >= need else UiTheme.TEXT)
 		name_label.custom_minimum_size.x = 150
 		row.add_child(name_label)
@@ -537,13 +531,10 @@ func _on_dodged(move: String) -> void:
 		_add_progress("back_step")
 
 
-## Jumps, dashes and back steps done (the touch steps), dodge or not.
+## Dashes done (the touch step).
 func _on_performed(move: String) -> void:
-	match move:
-		"jump":
-			_add_progress("jump")
-		"forward_dash":
-			_add_progress("dash")
+	if move == "forward_dash":
+		_add_progress("dash")
 
 
 func _on_punch_connected(type: String, kind: String) -> void:
