@@ -14,8 +14,23 @@ var _aim := Vector3.FORWARD
 
 func _ready() -> void:
 	super()
+	add_to_group("threats")
 	_marks = Telegraphs.new(self)
 	add_child(_marks)
+
+
+## For the HUD's projectile warning (Threat): while it draws with you in its
+## lane, the time until the shot goes.
+func threat(target: Vector3) -> Dictionary:
+	if not _drawing or _dead:
+		return {}
+	var offset := target - global_position
+	offset.y = 0.0
+	var along := offset.dot(_aim)
+	var across := absf(offset.cross(_aim).y)
+	if along <= 0.0 or across > LANE_WIDTH * 0.5 + 0.3:
+		return {}
+	return {"from": global_position, "time": maxf(_draw_timer, 0.0), "color": Color(0.45, 1.0, 0.55)}
 
 
 func _think(delta: float) -> Vector3:

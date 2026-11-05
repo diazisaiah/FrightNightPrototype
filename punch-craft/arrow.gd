@@ -14,6 +14,7 @@ var _stuck := false
 
 
 func _ready() -> void:
+	add_to_group("threats")
 	collision_layer = 0
 	collision_mask = 3 | Scenery.PROP_LAYER  # World, player, and big props (cover).
 	var shape := CollisionShape3D.new()
@@ -50,6 +51,13 @@ func _ready() -> void:
 	add_child(light)
 
 	body_entered.connect(_on_body_entered)
+
+
+## For the HUD's projectile warning (Threat).
+func threat(target: Vector3) -> Dictionary:
+	if _stuck:
+		return {}
+	return Threat.of_projectile(global_position, _velocity, target, Color(0.4, 0.85, 1.0))
 
 
 ## Call after adding to the tree.

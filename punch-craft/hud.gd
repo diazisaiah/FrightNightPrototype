@@ -135,6 +135,7 @@ func _ready() -> void:
 	_build_resource_row()
 	_build_knockout_cover()
 	_place_top_row()
+	_build_projectile_warn()
 	_build_new_hud()
 	GameState.changed.connect(_refresh_progress)
 	Settings.changed.connect(show_controls)
@@ -488,6 +489,14 @@ func _update_passive_chip() -> void:
 ## On touch the bottom corners belong to the sticks, so the passive chip and
 ## the power tiles move: under the ultimate bar (TouchUi.hud_layout "ult") or
 ## under the health bar ("health").
+## The side-of-screen shot warning while locked on (ProjectileWarn).
+func _build_projectile_warn() -> void:
+	var warn := ProjectileWarn.new()
+	add_child(warn)
+	move_child(warn, mini(_pause_panel.get_index(), _summary_panel.get_index()))
+	_fight_ui.append(warn)
+
+
 ## The new stitched HUD (2026-11-06; Settings "hud_style"): the strap and the
 ## bout card draw from the old bars, which fade out but keep working.
 var _skin: FightSkin

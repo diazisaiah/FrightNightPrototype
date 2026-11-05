@@ -19,6 +19,7 @@ var _time := 0.0
 
 
 func _ready() -> void:
+	add_to_group("threats")
 	collision_layer = 0
 	collision_mask = 3  # World and player.
 	var shape := CollisionShape3D.new()
@@ -61,6 +62,11 @@ func _ready() -> void:
 	add_child(trail)
 
 	body_entered.connect(_on_body_entered)
+
+
+## For the HUD's projectile warning (Threat).
+func threat(target: Vector3) -> Dictionary:
+	return Threat.of_projectile(global_position, _velocity, target, color)
 
 
 ## Call after adding to the tree.
