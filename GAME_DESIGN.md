@@ -2847,3 +2847,6 @@ In the Crypt only: a GEAR button under the map (mouse), a GEAR touch button in t
 
 ### Bounties page (built 2026-11-05)
 Shop look: mastery bar with its XP, rarity odds as pills, five even cards in a row with each card's button (Swap / Unlock) under it. Two extra bounty slots can be bought with Souls: the 4th for 20, then the 5th for 40 (Bounties.EXTRA_SLOT_SOULS, GameState.bounty_slots_bought). A bought slot rolls a bounty straight away.
+
+### Top bar and rail themed per fighter (2026-11-05)
+The top bar is solid (it anchors the camp), its dark base leaning toward the fighter's color with a stripe of it along the bottom; the rail matches (stripe down its right side), and the lit page glows in that color instead of gold. The bar reads "The Mauler:  Lvl 1" in the fighter's color, with the XP bar in it too. FRIGHT NIGHT in the corner is subtly alive (TitleWordmark): letters bob a pixel or two on a slow wave, the red breathes, and now and then one letter flickers.

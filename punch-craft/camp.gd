@@ -313,9 +313,17 @@ func _fit_width(content: Control) -> Control:
 
 # --- Header ------------------------------------------------------------------
 
+## The top bar (2026-11-05): solid, not see-through (it anchors the camp),
+## tinted toward your fighter's color with a stripe of it along the bottom;
+## "The Mauler: Lvl 1" in that color; the wordmark subtly alive.
+var _header: PanelContainer
+var _rail_panel: PanelContainer
+
+
 func _build_header() -> Control:
 	var panel := PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", UiTheme.raised(Color(UiTheme.PANEL, 0.88), Color(UiTheme.GOLD, 0.25), 1, 10, 12.0))
+	_header = panel
+	_theme_header()
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 22)
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -323,13 +331,16 @@ func _build_header() -> Control:
 
 	var titles := VBoxContainer.new()
 	titles.add_theme_constant_override("separation", -2)
-	titles.add_child(UiTheme.title_label("FRIGHT NIGHT", 30, UiTheme.BLOOD.lightened(0.15)))
+	var wordmark := TitleWordmark.new()
+	wordmark.color = UiTheme.BLOOD.lightened(0.15)
+	wordmark.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	titles.add_child(wordmark)
 	row.add_child(titles)
 
 	var progress := VBoxContainer.new()
 	progress.add_theme_constant_override("separation", 3)
 	progress.custom_minimum_size.x = 240
-	_level_label = _label("", 16)
+	_level_label = UiTheme.title_label("", 20)
 	_xp_bar = ProgressBar.new()
 	_xp_bar.show_percentage = false
 	_xp_bar.custom_minimum_size.y = 7
@@ -364,6 +375,62 @@ func _build_header() -> Control:
 	return panel
 
 
+## The bar's colors for the fighter you're playing: a dark base leaning a
+## little toward their color, their color faint round the edge and solid in
+## the bottom stripe, and their color in the XP bar.
+func _theme_header() -> void:
+	if _header == null:
+		return
+	var tint := GameState.fighter_color()
+	var style := UiTheme.raised(UiTheme.PANEL.lerp(tint.darkened(0.75), 0.3), Color(tint, 0.4), 1, 10, 12.0)
+	style.bg_color.a = 1.0
+	style.border_width_bottom = 3
+	style.border_color = Color(tint, 0.45)
+	_header.add_theme_stylebox_override("panel", style)
+	# The rail takes the same colors, its stripe down the right side.
+	if _rail_panel:
+		var rail := UiTheme.raised(UiTheme.PANEL.lerp(tint.darkened(0.75), 0.3), Color(tint, 0.4), 1, 10, 0.0)
+		rail.bg_color.a = 1.0
+		rail.border_width_right = 3
+		rail.border_color = Color(tint, 0.45)
+		_rail_panel.add_theme_stylebox_override("panel", rail)
+		# The lit page's glow and underline in the fighter's color, not gold.
+		var lit := UiTheme.box(Color(tint, 0.1), tint, 0, 0, 0.0)
+		lit.border_width_bottom = 3
+		lit.shadow_color = Color(tint, 0.25)
+		lit.shadow_size = 6
+		lit.content_margin_left = 12
+		lit.content_margin_right = 12
+		lit.content_margin_top = 10
+		lit.content_margin_bottom = 10
+		for page in _tab_buttons:
+			_tab_buttons[page].add_theme_stylebox_override("pressed", lit)
+			_tab_buttons[page].add_theme_stylebox_override("hover_pressed", lit)
+		_highlight_rail()
+	if _xp_bar:
+		var fill := UiTheme.box(tint.darkened(0.1), tint.lightened(0.2), 0, 4)
+		_xp_bar.add_theme_stylebox_override("fill", fill)
+
+
+## The rail's lit page: your fighter's color, a touch lighter.
+func _rail_lit() -> Color:
+	return GameState.fighter_color().lightened(0.15)
+
+
+## Recolors the lit rail page (after a fighter change).
+func _highlight_rail() -> void:
+	for page in _tab_buttons:
+		var button: Button = _tab_buttons[page]
+		if not button.button_pressed:
+			continue
+		var label: Label = button.get_meta("label", null)
+		if label:
+			label.add_theme_color_override("font_color", _rail_lit())
+		var icon: IconView = button.get_meta("icon", null)
+		if icon:
+			icon.color = _rail_lit()
+
+
 ## The gear in the header: the title screen (settings, change fighter).
 func _settings_button() -> Button:
 	var gear := Button.new()
@@ -390,6 +457,7 @@ func _settings_button() -> Button:
 ## The rail down the left: Home, then a button per page, icon over name.
 func _build_rail() -> Control:
 	var panel := PanelContainer.new()
+	_rail_panel = panel
 	panel.custom_minimum_size.x = RAIL_WIDTH
 	var list := VBoxContainer.new()
 	list.add_theme_constant_override("separation", 4)
@@ -644,10 +712,10 @@ func _show_page(page_name: String) -> void:
 		_tab_buttons[page].set_pressed_no_signal(on)
 		var label: Label = _tab_buttons[page].get_meta("label", null)
 		if label:
-			label.add_theme_color_override("font_color", UiTheme.GOLD if on else UiTheme.TEXT)
+			label.add_theme_color_override("font_color", _rail_lit() if on else UiTheme.TEXT)
 		var icon: IconView = _tab_buttons[page].get_meta("icon", null)
 		if icon:
-			icon.color = UiTheme.GOLD if on else Color(0.74, 0.71, 0.8)
+			icon.color = _rail_lit() if on else Color(0.74, 0.71, 0.8)
 	if page_name == "Cosmetics":
 		_show_cosmetic(_cosmetic_tab)
 
@@ -1333,8 +1401,9 @@ func _refresh_sheet() -> void:
 # --- Refresh & navigation --------------------------------------------------------
 
 func _refresh() -> void:
-	var class_name_text: String = GameState.fighter_name()
-	_level_label.text = "Level %d   ·   %s" % [GameState.level, class_name_text]
+	_level_label.text = "%s:  Lvl %d" % [GameState.fighter_name(), GameState.level]
+	_level_label.add_theme_color_override("font_color", GameState.fighter_color().lightened(0.1))
+	_theme_header()
 	_xp_bar.max_value = GameState.xp_to_next()
 	_xp_bar.value = GameState.xp
 	_xp_label.text = "%d / %d XP" % [GameState.xp, GameState.xp_to_next()]

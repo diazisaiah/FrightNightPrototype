@@ -104,6 +104,8 @@ func _ready() -> void:
 				if OS.get_environment("CAPTURE_POINTS") != "":
 					GameState.attribute_points = int(OS.get_environment("CAPTURE_POINTS"))
 					GameState.draws = 0
+			if OS.get_environment("CAPTURE_CLASS") != "":
+				GameState.player_class = OS.get_environment("CAPTURE_CLASS")
 			var node: Node = (load(parts[0]) as PackedScene).instantiate()
 			add_child(node)
 			for frame in 90:
