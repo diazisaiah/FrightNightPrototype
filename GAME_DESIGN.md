@@ -2830,3 +2830,7 @@ An itch player called out "a half second pause on every hit". Two causes:
 - **First-use stalls:** `FxWarmup` (run while the loading screen still covers a fight) now also puts a stand-in monster through a hit, a crit, a chill and a Doom mark, sets off each of your selected powers on it, and shows a knockout line, so their effects are compiled before the first punch.
 
 **Tutorial:** the JAB AND CROSS step says punching monsters isn't good for your knuckles but has to be done, points at the knuckle HP bar (a pulsing gold frame and a "YOUR KNUCKLE HP" tag), shows each punch's cost and flashes the bar as it drops. The COMBOS step says the longer the combo, the harder you hit (counters and set-ups are already their own steps).
+
+
+### Soul Shop layout (built 2026-11-05)
+The Shop page has no big panel: cards float over the camp. Every offer is the same size (gear too, as an icon card with its effects), with All / Emotes / Gear / Idles / Skins filter pills.
