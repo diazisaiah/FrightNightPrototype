@@ -2349,7 +2349,7 @@ func _bounty_card(index: int, bounty: Dictionary) -> Control:
 	return _bounty_holder(card, swap)
 
 
-## A slot not bought yet: chained shut, with its price. Only the next one can
+## A slot not bought yet: a padlock, with its price. Only the next one can
 ## be bought.
 func _bounty_locked(extra: int) -> Control:
 	var price := int(Bounties.EXTRA_SLOT_SOULS[extra])
@@ -2362,9 +2362,9 @@ func _bounty_locked(extra: int) -> Control:
 	column.add_theme_constant_override("separation", 8)
 	card.add_child(column)
 	var icon := IconView.new()
-	icon.icon = "chain"
-	icon.color = Color(1, 1, 1, 0.45 if next else 0.2)
-	icon.custom_minimum_size = Vector2(48, 48)
+	icon.icon = "lock"
+	icon.color = Color(1, 1, 1, 0.55 if next else 0.25)
+	icon.custom_minimum_size = Vector2(60, 60)
 	icon.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	column.add_child(icon)
 	var title := _label("EXTRA SLOT", 15, UiTheme.TEXT if next else UiTheme.MUTED)

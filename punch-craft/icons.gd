@@ -16,7 +16,7 @@ const NAMES := [
 	"wing_boot", "footprints", "road", "heavy_bag", "dumbbell", "belt", "medal",
 	"tooth", "helmet", "chestplate", "anvil", "anchor", "medkit", "bucket",
 	# Loot and luck.
-	"bag", "chest", "crown", "shovel", "wanted", "dice", "sun", "moon",
+	"bag", "chest", "crown", "shovel", "wanted", "dice", "sun", "moon", "lock",
 	# Powers.
 	"snowflake", "shard", "icicle", "nova", "thermometer", "match", "ripple",
 	"fork", "storm", "magnet", "battery", "spark", "fang", "blood_burst",
@@ -279,6 +279,15 @@ static func draw(ci: CanvasItem, icon: String, center: Vector2, size: float, col
 				ci.draw_line(center + Vector2(-0.68 + y * 0.16, y) * u, center + Vector2(0.68 - y * 0.16, y) * u, dark, 0.08 * u)
 
 		# --- Loot and luck -----------------------------------------------------
+		"lock":
+			# A padlock: the shackle, then the body with its keyhole.
+			ci.draw_arc(center + Vector2(0, -0.2) * u, 0.42 * u, PI, TAU, 18, dark, 0.17 * u)
+			for x in [-0.42, 0.42]:
+				ci.draw_line(center + Vector2(x, -0.2) * u, center + Vector2(x, 0.05) * u, dark, 0.17 * u)
+			ci.draw_colored_polygon(_points(center, u, [Vector2(-0.7, -0.02), Vector2(0.7, -0.02), Vector2(0.7, 0.85), Vector2(-0.7, 0.85)]), color)
+			ci.draw_line(center + Vector2(-0.7, 0.05) * u, center + Vector2(0.7, 0.05) * u, light, 0.08 * u)
+			ci.draw_circle(center + Vector2(0, 0.33) * u, 0.15 * u, bg)
+			ci.draw_colored_polygon(_points(center, u, [Vector2(-0.07, 0.36), Vector2(0.07, 0.36), Vector2(0.11, 0.66), Vector2(-0.11, 0.66)]), bg)
 		"bag":
 			ci.draw_circle(center + Vector2(0, 0.28) * u, 0.64 * u, color)
 			ci.draw_colored_polygon(_points(center, u, [Vector2(-0.28, -0.3), Vector2(0.28, -0.3), Vector2(0.13, -0.52), Vector2(-0.13, -0.52)]), color)
