@@ -19,8 +19,8 @@ var seam := Color(0.92, 0.84, 0.68, 0.5)
 
 ## Dyed leather (2026-11-06): see-through, in the fighter's color rather than
 ## plain brown, with a darker edge of the same dye.
-static func leather(corner := 10.0, padding := 8.0) -> StyleBoxFlat:
-	var dye := GameState.fighter_color()
+static func leather(corner := 10.0, padding := 8.0, tint_override := Color(0, 0, 0, 0)) -> StyleBoxFlat:
+	var dye := GameState.fighter_color() if tint_override.a == 0.0 else tint_override
 	var body := Color(0.16, 0.1, 0.07).lerp(dye.darkened(0.5), 0.72)
 	var style := UiTheme.box(Color(body, 0.62), Color(dye.darkened(0.55), 0.85), 2, int(corner), padding)
 	style.shadow_color = Color(0, 0, 0, 0.4)

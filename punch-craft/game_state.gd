@@ -1269,6 +1269,9 @@ var crypt_unlocked := false
 var crypt_reveal_pending := false
 ## The camp's Crypt button wears a NEW badge until the first descent.
 var crypt_new := false
+## Camp's "Change fighter": the title opens the fighter picker straight away
+## (and Back returns to camp). Not saved.
+var title_opens_fighters := false
 ## Dead League progression. Results persist; the active flag and selected bout
 ## are session-only so entering the ring never mutates the player's build.
 var dead_league_best := {}

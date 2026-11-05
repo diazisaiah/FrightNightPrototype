@@ -22,7 +22,7 @@ const RING_CENTER := Vector3(1.6, 0, -9.0)
 const RING_HALF := 3.4
 const CAMERA_HOME := Vector3(-0.9, 1.35, -1.2)
 const CAMERA_LOOK := Vector3(1.9, 2.75, -14.0)
-const MENU := [["PLAY", "_on_play"], ["CLASS", "_open_classes"], ["SETTINGS", "_open_settings"], ["CREDITS", "_open_credits"], ["QUIT", "_on_quit"]]
+const MENU := [["PLAY", "_on_play"], ["FIGHTER", "_open_classes"], ["SETTINGS", "_open_settings"], ["CREDITS", "_open_credits"], ["QUIT", "_on_quit"]]
 
 var _time := 0.0
 var _camera: Camera3D
@@ -74,7 +74,10 @@ var _card_scale := 1.0
 var _picked := ""
 var _demo: DemoReel
 var _demo_shade: TextureRect
-var _detail: VBoxContainer
+var _detail: PanelContainer
+var _detail_box: VBoxContainer
+## Opened from camp's Change fighter: Back goes back to camp.
+var _from_camp := false
 var _detail_tagline: Label
 var _detail_bars: GridContainer
 var _detail_ult_tag: Label
@@ -102,7 +105,7 @@ func _ready() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	Controls.watch(self, func() -> void:
 		if _detail_ult_tag:
-			_detail_ult_tag.text = "ULTIMATE  -  " + Controls.text("ultimate"))
+			_detail_ult_tag.text = "ULTIMATE")
 	get_tree().paused = false
 	TimeFx.clear()
 	_build_world()
@@ -110,6 +113,11 @@ func _ready() -> void:
 	Sfx.play_ambience("wind", -8.0)
 	GameState.changed.connect(_refresh_class)  # e.g. after resetting the save.
 	_lightning_timer = randf_range(3.0, 6.0)
+	# Camp's Change fighter lands straight on the fighter picker.
+	if GameState.title_opens_fighters:
+		GameState.title_opens_fighters = false
+		_from_camp = true
+		_open_classes.call_deferred()
 
 
 func _process(delta: float) -> void:
@@ -845,21 +853,21 @@ func _fighter_card(id: String) -> Control:
 	badge_box.add_child(badge)
 	card.add_child(badge_box)
 	# "THE" above the name, for the fighters who go by a title (not Tony).
-	var the := _card_text("THE", 22, BLOOD)
+	var the := _card_text("THE", 22, accent.lightened(0.1))
 	the.position = Vector2(18, 268)
 	the.visible = String(info.fighter).begins_with("The ")
 	card.add_child(the)
-	var name_label := _card_text(String(info.fighter).trim_prefix("The ").to_upper(), 54, BLOOD)
+	var name_label := _card_text(String(info.fighter).trim_prefix("The ").to_upper(), 54, accent.lightened(0.12))
 	name_label.add_theme_constant_override("outline_size", 12)
 	name_label.add_theme_font_override("font", UiTheme.display_font())
 	the.add_theme_font_override("font", UiTheme.display_font())
 	name_label.position = Vector2(14, 286)
 	card.add_child(name_label)
 	var tag := PanelContainer.new()
-	tag.add_theme_stylebox_override("panel", UiTheme.box(Color(0, 0, 0, 0.35), UiTheme.BORDER, 1, 3, 4.0))
+	tag.add_theme_stylebox_override("panel", UiTheme.box(Color(accent.darkened(0.7), 0.6), Color(accent, 0.6), 1, 8, 5.0))
 	tag.position = Vector2(18, 360)
 	tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	tag.add_child(_card_text(String(info.name).to_upper(), 14, UiTheme.MUTED))
+	tag.add_child(_card_text(String(info.name).to_upper(), 14, accent.lightened(0.3)))
 	card.add_child(tag)
 	var traits: Array = info.traits
 	for t in traits.size():
@@ -873,10 +881,11 @@ func _fighter_card(id: String) -> Control:
 		icon.size = Vector2(36, 36)
 		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		card.add_child(icon)
-		var trait_name := _card_text(traits[t][1], 17, Color.WHITE)
-		trait_name.position = Vector2(64, row_y - 2)
+		var trait_name := _card_text(traits[t][1], 18, Color.WHITE)
+		trait_name.add_theme_font_override("font", UiTheme.bold_font())
+		trait_name.position = Vector2(64, row_y - 3)
 		card.add_child(trait_name)
-		var trait_line := _card_text(traits[t][2], 13, UiTheme.MUTED)
+		var trait_line := _card_text(traits[t][2], 14, Color(0.8, 0.78, 0.84))
 		trait_line.position = Vector2(64, row_y + 19)
 		card.add_child(trait_line)
 	card.gui_input.connect(func(event: InputEvent) -> void:
@@ -915,28 +924,33 @@ func _card_text(text: String, font_size: int, color: Color) -> Label:
 ## The panel beside the picked card: tagline, stat bars, the ultimate, and
 ## Back / Choose.
 func _build_fighter_detail() -> void:
-	_detail = VBoxContainer.new()
-	_detail.add_theme_constant_override("separation", 14)
+	# A dyed, see-through leather panel (StitchPanel), recolored for the picked
+	# fighter (2026-11-06).
+	_detail = StitchPanel.new(12.0)
+	_detail.add_theme_stylebox_override("panel", StitchPanel.leather(12.0, 18.0))
 	_detail.position = Vector2(_card_left + CARD_SIZE.x + 34, CARD_TOP + 8)
-	_detail.size = Vector2(430, 0)
+	_detail.custom_minimum_size = Vector2(470, 0)
 	_detail.modulate.a = 0.0
 	_detail.visible = false
 	_class_panel.add_child(_detail)
-	_detail_tagline = _card_text("", 34, Color.WHITE)
+	_detail_box = VBoxContainer.new()
+	_detail_box.add_theme_constant_override("separation", 10)
+	_detail.add_child(_detail_box)
+	_detail_tagline = _card_text("", 30, Color.WHITE)
 	_detail_tagline.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_detail_tagline.custom_minimum_size.x = 430
 	_detail_tagline.add_theme_constant_override("outline_size", 10)
 	_detail_tagline.add_theme_font_override("font", UiTheme.display_font())
-	_detail.add_child(_detail_tagline)
+	_detail_box.add_child(_detail_tagline)
 	_detail_bars = GridContainer.new()
 	_detail_bars.columns = 2
 	_detail_bars.add_theme_constant_override("h_separation", 14)
-	_detail_bars.add_theme_constant_override("v_separation", 8)
-	_detail.add_child(_detail_bars)
+	_detail_bars.add_theme_constant_override("v_separation", 5)
+	_detail_box.add_child(_detail_bars)
 	var ult_box := VBoxContainer.new()
 	ult_box.add_theme_constant_override("separation", 2)
-	_detail.add_child(ult_box)
-	_detail_ult_tag = _card_text("ULTIMATE  -  " + Controls.text("ultimate"), 15, UiTheme.GOLD)
+	_detail_box.add_child(ult_box)
+	_detail_ult_tag = _card_text("ULTIMATE", 15, UiTheme.GOLD)
 	ult_box.add_child(_detail_ult_tag)
 	_detail_ult_name = _card_text("", 28, Color.WHITE)
 	_detail_ult_name.add_theme_font_override("font", UiTheme.display_font())
@@ -947,17 +961,17 @@ func _build_fighter_detail() -> void:
 	ult_box.add_child(_detail_ult_how)
 	var buttons := HBoxContainer.new()
 	buttons.add_theme_constant_override("separation", 12)
-	_detail.add_child(buttons)
+	_detail_box.add_child(buttons)
 	var back := Button.new()
 	back.text = "Back"
-	back.custom_minimum_size = Vector2(130, 50)
-	back.add_theme_font_size_override("font_size", 20)
+	back.custom_minimum_size = Vector2(110, 46)
+	back.add_theme_font_size_override("font_size", 19)
 	back.pressed.connect(_unpick_fighter)
 	buttons.add_child(back)
 	_choose_button = Button.new()
 	_choose_button.theme_type_variation = "PrimaryButton"
-	_choose_button.custom_minimum_size = Vector2(280, 50)
-	_choose_button.add_theme_font_size_override("font_size", 20)
+	_choose_button.custom_minimum_size = Vector2(300, 46)
+	_choose_button.add_theme_font_size_override("font_size", 19)
 	_choose_button.pressed.connect(_choose_picked)
 	buttons.add_child(_choose_button)
 
@@ -1014,16 +1028,17 @@ func _pick_fighter(id: String) -> void:
 	_class_back.hide()
 	# Details.
 	_detail_tagline.text = String(info.tagline).to_upper()
+	_detail.add_theme_stylebox_override("panel", StitchPanel.leather(12.0, 18.0, accent))
 	for child in _detail_bars.get_children():
 		child.queue_free()
 	var bars: Dictionary = info.bars
 	for stat in bars:
-		var label := _card_text(String(stat).to_upper(), 15, UiTheme.MUTED)
+		var label := _card_text(String(stat).to_upper(), 13, Color(0.8, 0.78, 0.84))
 		label.custom_minimum_size.x = 90
 		_detail_bars.add_child(label)
 		var bar := ProgressBar.new()
 		bar.show_percentage = false
-		bar.custom_minimum_size = Vector2(300, 12)
+		bar.custom_minimum_size = Vector2(300, 9)
 		bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		bar.add_theme_stylebox_override("background", UiTheme.box(Color(1, 1, 1, 0.1), Color.TRANSPARENT, 0, 6))
 		bar.add_theme_stylebox_override("fill", UiTheme.box(accent, Color.TRANSPARENT, 0, 6))
@@ -1189,6 +1204,12 @@ func _open_settings() -> void:
 
 
 func _close_panels() -> void:
+	# Opened from camp: leaving the picker goes back there, not to the menu.
+	if _from_camp and _class_panel.visible and not _leaving:
+		_from_camp = false
+		_reset_picker()
+		_go_to("res://camp.tscn")
+		return
 	if _class_panel.visible:
 		_reset_picker()
 	_onboarding = false

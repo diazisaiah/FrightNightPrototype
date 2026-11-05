@@ -1176,9 +1176,10 @@ func _build_fighter_page() -> Control:
 		_fighter_buttons.add_child(_loadout_button)
 	var change := Button.new()
 	change.text = "Change fighter"
-	change.tooltip_text = "Pick another fighter on the title screen."
+	change.tooltip_text = "Pick another fighter."
 	change.pressed.connect(func() -> void:
 		GameState.save_game()
+		GameState.title_opens_fighters = true
 		Loading.go("res://title.tscn"))
 	_fighter_buttons.add_child(change)
 	_reset_button = Button.new()

@@ -11,7 +11,7 @@ signal caption_changed(tag: String, move: String, how: String)
 const SIGNATURE := {
 	"berserker": ["Grudge", "Whatever hits him is marked. His next punch on it hits triple and staggers."],
 	"combo_master": ["Shockwave", "Every 5th hit of a combo stuns everything nearby and freezes the combo timer."],
-	"counter_master": ["Perfect Counter", "Slip the punch, then hook with the matching hand: knocked out in one."],
+	"counter_master": ["Perfect Counter", "Slip the punch, then hook back with the matching hand for 2.5x damage."],
 	"free_runner": ["Dash Punches", "Dash forward and punch: a left Spear Jab runs through a whole line, a right Haymaker blasts them back."],
 	"wise_guy": ["Fuggedaboudit", "Once every 10 seconds, a hit that would've landed gets waved off. No damage, no flinch."],
 	"elementalist": ["Dual Sigil", "Two powers at once: his punches burst into flame and freeze what they hit."],
@@ -274,7 +274,7 @@ func _signature(id: int) -> void:
 				_flash(GameState.fighter_color("counter_master"), 0.25)
 				_popup(_dummy, "CLEAN SLIP", GameState.fighter_color("counter_master"))
 				await _wait(0.15)
-				await _punch("hook", pair[2], 999.0, "PERFECT KO!", 0.12, 0.3, true)
+				await _punch("hook", pair[2], 30.0, "PERFECT COUNTER!", 0.12, 0.3, true)
 				HitFx.burst(_world, _dummy.global_position + Vector3(0, 1.4, 0), Vector3.UP, GameState.fighter_color("counter_master"), 30, 5.0, true, 0.05)
 				await _wait(1.0)
 				if id != _run_id:
