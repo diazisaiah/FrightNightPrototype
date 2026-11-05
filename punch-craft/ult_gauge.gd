@@ -3,7 +3,8 @@ extends Control
 ## The ultimate meter: a slanted, segmented gauge in the fighter's color with
 ## a flowing shine, a diamond badge holding the percent, and the ultimate's
 ## name over it. Full, it turns gold, throbs, throws sparks and the badge
-## shows the key to press.
+## shows the key to press. On touch (tap) the gauge itself is the ultimate's
+## button (TouchUi): full, it blazes with a big aura and says TAP!.
 
 const SEGMENTS := 10
 const BADGE_RADIUS := 30.0
@@ -24,6 +25,8 @@ var title := ""
 ## Replaces the title while the ultimate is running (e.g. "TEMPORAL BREAK").
 var status := ""
 var key := "T"
+## Touch: the gauge is the button you tap (TouchUi finds it in this group).
+var tap := false
 var color := Color(0.55, 0.45, 0.85)
 
 var _time := 0.0
@@ -35,6 +38,7 @@ var _sparks: Array = []
 func _init() -> void:
 	custom_minimum_size = Vector2(420, 64)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_to_group("ult_gauge")
 
 
 func _process(delta: float) -> void:
@@ -55,6 +59,11 @@ func _draw() -> void:
 	var tint := READY_COLOR if full else color
 	var pulse := 0.5 + 0.5 * sin(_time * 6.0)
 	var right := size.x - SKEW
+	# Touch, ready: a big pulsing aura round the whole gauge (it's the button).
+	if full and tap:
+		for i in 5:
+			var grow := 8.0 + i * 7.0 + pulse * 6.0
+			_slant(Rect2(-grow, BAR_TOP - BADGE_RADIUS * 0.6 - grow * 0.5, size.x + grow * 2.0, BAR_HEIGHT + BADGE_RADIUS * 1.2 + grow), Color(tint, (0.16 - i * 0.028) * (0.6 + 0.8 * pulse)))
 	# Glow behind the whole bar when it's ready.
 	if full:
 		_slant(Rect2(BAR_LEFT - 6, BAR_TOP - 6, right - BAR_LEFT + 12, BAR_HEIGHT + 12), Color(tint, 0.18 + 0.2 * pulse))
@@ -85,7 +94,7 @@ func _draw() -> void:
 		draw_circle(spark.pos, 1.8, Color(READY_COLOR.lightened(0.4), spark.life / 0.6))
 	# Name over the bar.
 	var font := UiTheme.display_font()
-	var heading := status if status != "" else (title + ("   READY" if full else ""))
+	var heading := status if status != "" else (title + (("   TAP!" if tap else "   READY") if full else ""))
 	_text(font, Vector2(BAR_LEFT + 4, BAR_TOP - 8), heading, 20, tint.lightened(0.2) if full or status != "" else Color(0.88, 0.86, 0.94))
 	# The badge: percent, or the key once it's full.
 	var center := Vector2(BADGE_RADIUS + 2, BAR_TOP + BAR_HEIGHT / 2.0)
@@ -98,7 +107,7 @@ func _draw() -> void:
 	draw_colored_polygon(inner, Color(tint.darkened(0.6), 0.9))
 	diamond.append(diamond[0])
 	draw_polyline(diamond, tint, 3.0, true)
-	var label := key if full else "%d" % roundi(_shown)
+	var label := ("TAP" if tap else key) if full else "%d" % roundi(_shown)
 	var size_px := 26 if full else (22 if _shown < 99.5 else 18)
 	var text_width := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, size_px).x
 	_text(font, center + Vector2(-text_width / 2.0, size_px * 0.36), label, size_px, Color.WHITE)

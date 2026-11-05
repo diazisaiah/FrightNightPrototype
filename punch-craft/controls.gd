@@ -176,7 +176,7 @@ static func touch_name(action: String) -> String:
 		"dash_key":
 			return "Double swipe up"
 		"ultimate":
-			return "Tap ULT"
+			return "Tap the ULT bar"
 		"interact":
 			return "Hold"
 		"map":
@@ -622,7 +622,7 @@ static func _touch_text(move: String) -> String:
 		"back_step":
 			return "Swipe out" if junior() else "Double swipe down"
 		"ultimate":
-			return "Tap ULT"
+			return "Tap the ULT bar"
 		"map":
 			return TouchUi.map_name()
 		"dash":
@@ -677,7 +677,7 @@ static func fill(hint: String) -> String:
 static func summary() -> String:
 	if touch():
 		var dodge := "swipe out dodge" if junior() else "swipe out slip  |  swipe down roll  |  double swipe down back step"
-		return "tap jab / cross  |  swipe in hook  |  swipe up uppercut  |  %s  |  double swipe up dash  |  JUMP  |  tap ULT  |  hold to use  |  hold EMOTE" % dodge
+		return "tap jab / cross  |  swipe in hook  |  swipe up uppercut  |  %s  |  double swipe up dash  |  JUMP  |  tap the ULT bar  |  hold to use  |  hold EMOTE" % dodge
 	var parts: Array[String] = ["%s sprint" % key_name("sprint"), "%s/%s jab/cross" % [key_name("punch_left"), key_name("punch_right")]]
 	parts.append("%s hook" % text("hook"))
 	parts.append("%s uppercut" % text("uppercut"))
@@ -701,7 +701,7 @@ static func rows() -> Array:
 			list.append(["Dodge", "Swipe out or down"])
 		else:
 			list.append_array([["Slip", "Swipe out"], ["Roll", "Swipe down"], ["Back step", "Double swipe down  (both thumbs)"]])
-		list.append_array([["Dash", "Double swipe up  (both thumbs)"], ["Jump", "JUMP"], ["Ultimate", "Tap ULT when it glows"],
+		list.append_array([["Dash", "Double swipe up  (both thumbs)"], ["Jump", "JUMP"], ["Ultimate", "Tap the ULT bar when it glows"],
 				["Use", "Hold a finger still"],
 				["Emote  (hold, drag to pick)", "EMOTE"], ["Map", "MAP"], ["Pause", "II"]])
 		return list

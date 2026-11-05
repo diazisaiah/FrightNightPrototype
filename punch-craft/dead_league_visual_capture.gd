@@ -157,7 +157,7 @@ func _capture_stage(index: int, yaw: float, pitch: float) -> void:
 		boss.process_mode = Node.PROCESS_MODE_DISABLED
 	player.rotation.y = deg_to_rad(yaw)
 	if OS.get_environment("CAPTURE_ULT_FULL") == "1" and player.ult:
-		player.ult.meter = player.ult.MAX_METER
+		player.ult.add(player.ult.MAX_METER)
 	var camera := get_viewport().get_camera_3d()
 	if camera:
 		camera.rotation.x = deg_to_rad(pitch)

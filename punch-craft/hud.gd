@@ -1464,6 +1464,7 @@ func bind_ult(ult: Ult) -> void:
 	_ult_gauge.offset_top = -132.0
 	_ult_gauge.offset_bottom = -68.0
 	_ult_gauge.color = GameState.fighter_color().lightened(0.1)
+	_ult_gauge.tap = TouchUi.enabled
 	add_child(_ult_gauge)
 	# Under the pause and dawn screens, not on top of their buttons.
 	var below := mini(_pause_panel.get_index(), _summary_panel.get_index())

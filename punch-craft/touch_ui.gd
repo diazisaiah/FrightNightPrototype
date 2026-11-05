@@ -13,9 +13,9 @@ extends CanvasLayer
 ##   (2026-11-05, the DASH and BACK buttons went: they covered the screen and
 ##   the tutorial).
 ## - Hold a finger still in a punch zone: use (doors, chests, stairs).
-## - RUN (toggle) and JUMP sit beside the sticks, on their inner sides; the
-##   ultimate is a badge at the bottom middle that blazes and says TAP when
-##   it's charged. Map / emote / pause / lock across the top.
+## - RUN (toggle) and JUMP sit beside the sticks, on their inner sides. The
+##   HUD's ultimate gauge is the ultimate's button: tap it (it blazes and says
+##   TAP! when charged). Map / emote / pause / lock across the top.
 ## It sends the same actions keys and pads do (move_*, look_*, jump, ...) and
 ## calls Player.touch_punch / touch_dodge for the gestures, so every combo
 ## rule stays the same.
@@ -35,9 +35,6 @@ const WHEEL_DRAG := 38.0
 
 ## The square buttons beside the sticks (RUN, JUMP): half a side.
 const SQUARE_HALF := 36.0
-## The ultimate badge's radius: charging, and charged (it grows).
-const ULT_RADIUS := 30.0
-const ULT_READY_RADIUS := 44.0
 ## A finger held this still this long in a punch zone uses (interact).
 const HOLD_TIME := 0.45
 ## Gap between buttons.
@@ -45,7 +42,8 @@ const GAP := 12.0
 
 ## id: [action or method, label, shape ("c" circle, "s" square), radius or half side, arrow]
 const BUTTONS := {
-	"ultimate": ["ultimate", "ULT", "star", ULT_RADIUS, ""],
+	# The HUD's gauge is this one's button (_ult_rect); nothing drawn here.
+	"ultimate": ["ultimate", "ULT", "hud", 0.0, ""],
 	"jump": ["jump", "JUMP", "s", SQUARE_HALF, ""],
 	"sprint": ["sprint", "RUN", "s", SQUARE_HALF, "up2"],
 	"lock": ["lock_cycle", "LOCK", "c", SMALL_RADIUS, ""],
@@ -184,7 +182,7 @@ func _show_gesture_tip() -> void:
 	if shown >= 3:
 		return
 	Settings.set_value("touch_tips_shown", shown + 1)
-	Toast.show_on(get_tree(), "TOUCH MOVES", "Double swipe up: dash   ·   Double swipe down: back step\nHold a finger still: use   ·   Tap ULT when it glows")
+	Toast.show_on(get_tree(), "TOUCH MOVES", "Double swipe up: dash   ·   Double swipe down: back step\nHold a finger still: use   ·   Tap the ULT bar when it glows")
 
 
 ## True when the touch layer is what you are playing with right now.
@@ -219,21 +217,22 @@ func _zone(role: String) -> Rect2:
 	return Rect2(0 if left_side else _size.x - width, _size.y * 0.64, width, _size.y * 0.36)
 
 
-## Half the button's size (radius for circles, half a side for squares). The
-## ultimate grows when it's charged.
+## Half the button's size (radius for circles, half a side for squares).
 func _half(id: String) -> float:
-	if id == "ultimate" and _ult_ready():
-		return ULT_READY_RADIUS * _scale()
 	return float(BUTTONS[id][3]) * _scale()
 
 
-func _ult_ready() -> bool:
-	return _player != null and _player.ult != null and _player.ult.is_full()
+## The HUD's ultimate gauge on screen (a little padded), or an empty rect.
+func _ult_rect() -> Rect2:
+	var gauge := get_tree().get_first_node_in_group("ult_gauge") as Control
+	if gauge == null or not gauge.is_visible_in_tree():
+		return Rect2()
+	return gauge.get_global_rect().grow(10.0)
 
 
 ## Layout (2026-11-05): RUN just inside the move stick, JUMP just inside the
-## look stick, both level with the sticks; the ultimate at the bottom middle;
-## the small buttons along the top. The rest of the screen is punch zones.
+## look stick, both level with the sticks; the small buttons along the top;
+## the HUD's ultimate gauge is the ultimate. The rest is punch zones.
 func _button_center(id: String) -> Vector2:
 	var s := _scale()
 	var sq := SQUARE_HALF * s
@@ -245,9 +244,7 @@ func _button_center(id: String) -> Vector2:
 		"jump":
 			return _mirror_x(Vector2(_size.x - inner, stick_y), false)
 		"ultimate":
-			# Just above the HUD's ultimate name and bar (Hud.bind_ult: they and
-			# the passive chip fill the bottom 150 px of the middle).
-			return Vector2(_size.x * 0.5, _size.y - 156.0 - ULT_READY_RADIUS * s)
+			return _ult_rect().get_center()
 	# Small buttons along the top right, left of the coin counter.
 	var slot: int = TOP_STEP[id]
 	return Vector2(_size.x - 150.0 - slot * (SMALL_RADIUS * s * 2.0 + 12.0), 64.0)
@@ -296,6 +293,10 @@ func _combat() -> bool:
 func _button_at(pos: Vector2) -> String:
 	for id in BUTTONS:
 		if not _button_shown(id):
+			continue
+		if BUTTONS[id][2] == "hud":
+			if _ult_rect().has_point(pos):
+				return id
 			continue
 		var offset: Vector2 = (pos - _button_center(id)).abs()
 		var reach := _half(id) + 8.0
@@ -676,7 +677,7 @@ func _draw_controls() -> void:
 	_draw_stick("move", _zone("move"), "MOVE", accent, false)
 	_draw_stick("look", _zone("look"), "LOOK" if not _combat() else "UP / DOWN", accent, _combat())
 	for id in BUTTONS:
-		if not _button_shown(id):
+		if not _button_shown(id) or BUTTONS[id][2] == "hud":
 			continue
 		var pressed: bool = _held_buttons.has(id) or (id == "sprint" and _sprint_on) or (id == "lock" and _combat())
 		for touch in _touches.values():
@@ -803,9 +804,6 @@ func _draw_button(id: String, pressed: bool, accent: Color) -> void:
 		label = _map_label()
 	if pressed:
 		center += Vector2(0, 2)
-	if shape == "star":
-		_draw_ult(center, half, accent, pressed)
-		return
 	var icon := accent if not pressed else _leather(accent, 0.12)
 	if shape == "c":
 		_draw_tape_disc(id, center, half, label, accent, pressed)
@@ -846,65 +844,8 @@ func _draw_tape_disc(id: String, center: Vector2, radius: float, label: String, 
 	_canvas.draw_string(font, center + Vector2(-width * 0.5, size * 0.34), label, HORIZONTAL_ALIGNMENT_LEFT, -1, size, ink)
 
 
-## The ultimate: a stitched leather star with a tape rim and a meter ring
-## that fills as it charges; ready, it blazes in the fighter's colour.
-func _draw_ult(center: Vector2, half: float, accent: Color, pressed: bool) -> void:
-	var ready := _ult_ready()
-	var pulse := 0.5 + 0.5 * sin(Time.get_ticks_msec() * 0.008)
-	var charge := clampf(GameState.ult_share, 0.0, 1.0)
-	if ready:
-		# A big pulsing aura so it can't be missed, and TAP on it.
-		for i in 6:
-			var halo := accent.lightened(0.35)
-			halo.a = (0.26 - i * 0.04) * (0.55 + 0.9 * pulse)
-			_canvas.draw_circle(center, half * (1.15 + i * 0.16 + pulse * 0.08), halo)
-		for i in 2:
-			var wave := fmod(Time.get_ticks_msec() * 0.0012 + i * 0.5, 1.0)
-			var ring := accent.lightened(0.5)
-			ring.a = 0.8 * (1.0 - wave)
-			_canvas.draw_arc(center, half * (1.0 + wave * 0.9), 0.0, TAU, 40, ring, 3.0, true)
-	else:
-		# Charging: a dim, smaller badge that says ULT.
-		accent = accent.lerp(Color(0.55, 0.55, 0.6), 0.45)
-	_canvas.draw_colored_polygon(_star(center + Vector2(0, 4), half, 12), Color(0, 0, 0, 0.4))
-	var body := _leather(accent, 0.2)
-	if ready or pressed:
-		body = accent.darkened(0.1)
-	_canvas.draw_colored_polygon(_star(center, half, 12), body)
-	var outline := _star(center, half, 12)
-	_canvas.draw_polyline(_closed(outline), TAPE, 3.0, true)
-	_stitch(_star(center, half * 0.8, 12), accent.lightened(0.2) if not (ready or pressed) else TAPE, 1.6)
-	var inner := half * 0.52
-	_canvas.draw_arc(center, inner, 0.0, TAU, 32, Color(0, 0, 0, 0.5), 5.0, true)
-	if charge > 0.0:
-		_canvas.draw_arc(center, inner, -PI * 0.5, -PI * 0.5 + TAU * charge, 32, accent, 5.0, true)
-	var font := UiTheme.display_font()
-	var word := "TAP" if ready else "ULT"
-	var size := 22 if ready else 13
-	var width := font.get_string_size(word, HORIZONTAL_ALIGNMENT_CENTER, -1, size).x
-	var at := center + Vector2(-width * 0.5, size * 0.36)
-	_canvas.draw_string_outline(font, at, word, HORIZONTAL_ALIGNMENT_LEFT, -1, size, 4, Color(0, 0, 0, 0.6))
-	_canvas.draw_string(font, at, word, HORIZONTAL_ALIGNMENT_LEFT, -1, size, TAPE if not ready else Color.WHITE)
-
-
-func _closed(points: PackedVector2Array) -> PackedVector2Array:
-	var loop := points.duplicate()
-	loop.append(points[0])
-	return loop
-
-
 ## The punch fingers: a glow in your fighter's colour with a fading trail, and
 ## the trails of fingers that just lifted.
-## A star with this many points (outer radius, inner about 0.74 of it).
-func _star(center: Vector2, radius: float, points: int) -> PackedVector2Array:
-	var out := PackedVector2Array()
-	for i in points * 2:
-		var r := radius if i % 2 == 0 else radius * 0.74
-		var a := -PI * 0.5 + PI * float(i) / float(points)
-		out.append(center + Vector2(cos(a), sin(a)) * r)
-	return out
-
-
 func _draw_trails(color: Color) -> void:
 	for touch in _touches.values():
 		if touch.role == "punch":
