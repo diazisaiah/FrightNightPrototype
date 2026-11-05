@@ -2235,6 +2235,33 @@ Prerequisites for the Crypt revamp, and the first Rebalance plan items.
 
 **Open work:** none; the revamp is built (item models, item and store cards, the gear system with save migration, drop odds, salvage, the economy, room furniture, mimics, the toilet and merchant tie-in, and the balance re-run, 2026-11-04).
 
+## Camp pass 2: rail, Fighter page, hidden modes [Planned 2026-11-05]
+
+The user's notes after seeing Home + Play on mobile: they like it, but the Attributes page "looks like a Godot ui game", the rail buttons need even spacing and nicer icons, the "Camp" text goes, Crypt and Dead League stay hidden until unlocked, and the upgrade web's transparent look should carry onto the fighter screens.
+
+**1. The rail**
+- **Fighter = Deck + Attributes** (+ Loadout, Change fighter). Deck leaves the rail. Inside Fighter a switch at the top: ATTRIBUTES | DECK. The Fighter button's badge adds card draws and attribute points.
+- **Bounties:** the Goals button goes back to the name Bounties (open question: should Dailies also live there? Today they sit under Training on Home).
+- **Even spacing:** buttons share the rail's height equally (expand-fill), so Gear and Bounties appearing or hiding re-spreads them instead of leaving gaps. About 7 buttons: Home, Fighter, Upgrades, Gear (once unlocked), Style, Shop, Bounties (once unlocked).
+- **Icons:** new drawn set in `Icons` at 40 px, two-tone like the rest, one per page: Home = campfire flame, Fighter = glove, Upgrades = the sigil web, Gear = helmet over chestplate, Style = hat, Shop = soul bag, Bounties = wanted poster. Selected one lights gold with a soft glow.
+
+**2. Header and Home**
+- Remove the "Camp" text under FRIGHT NIGHT; the title is centred on its own.
+- **Crypt and Dead League cards are hidden until unlocked** (Crypt: Bellman's seal; Dead League: first Arena bout won), instead of greyed. At first Home shows just the Arena card, big and tall, plus Training and Daily. When one unlocks, its card slides in with a pulse (the existing Crypt reveal and Dead League tip fire as before). This replaces the padlock and "prove your worth" dialog, which go away.
+
+**3. The Fighter page in the upgrade web's style**
+What the user likes: the Upgrades page's near-transparent canvas (backdrop and fire show through), thin lines, glowing round nodes, a detail panel on the right. Fighter becomes the same kind of screen:
+- **Attributes:** a ring like the upgrade web. Your fighter stands in the centre (their real voxel body, as in the Soul Shop previews), the attributes are glowing nodes round them showing their point count, each with three small satellite nodes for the 10 / 20 / 30 perks that light up as you reach them. Tap a node to select it, a + in the detail panel (or tap again) spends a point. The detail panel on the right shows the attribute, what each point does, the three perks in full, and the Reset button.
+- **Deck:** same canvas: the cards in a transparent grid, each a rarity-framed tile, selected one shown large in the detail panel (as today), Draw and Redraft along the top.
+- **Your fighter sheet** (jab damage, knuckle HP and so on) moves into the detail panel when nothing is selected, so it's still one tap away.
+- Panels over the canvas become see-through with a thin gold edge, like the Upgrades canvas; the heavy bordered cards go.
+
+**4. Order of work (each approved before the next)**
+1. Mock the Fighter page (attribute ring and deck) on the options page, from a screenshot of the camp, for approval.
+2. Rail: Fighter merge, even spacing, new icons, rename. Header "Camp" removed. Hidden cards. (Small; can ship first.)
+3. Fighter page rebuild, playground first.
+4. Phone check at 844x390 and touch: tap node, tap +, drag to scroll the deck.
+
 ## Camp layout: Home + Play [Built 2026-11-05, mobile 0.1.31 only]
 
 After four skin tries (taped glove, stitched, spooky signs, polished) didn't land, the fix was the layout: the 14 equal buttons in one row became a rail down the left (Home, Fighter, Upgrades, Deck, Gear, Style, Shop, Goals; `Camp.RAIL_NAMES`, icons from Icons) and a Home view: the camp fire in the open space (the backdrop camera now aims right of the fire, `CampBackdrop.LOOK_AT`) and the ways to play as picture cards on the right (`_mode_card`: Arena with division, bout and pips; Crypt; Dead League with the next contender and seals; locked ones greyed with why), Training and Daily under them. Menu became a settings gear in the header. Fighter (the Attributes page) carries the Loadout and Change fighter buttons. Card art: `art/ui/mode_*.jpg`, game screenshots. Tips open the page they point into. Mock-ups: the Fright Night Camp Layouts artifact.
