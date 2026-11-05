@@ -17,9 +17,13 @@ var radius := 10.0
 var seam := Color(0.92, 0.84, 0.68, 0.5)
 
 
+## Dyed leather (2026-11-06): see-through, in the fighter's color rather than
+## plain brown, with a darker edge of the same dye.
 static func leather(corner := 10.0, padding := 8.0) -> StyleBoxFlat:
-	var style := UiTheme.box(Color(0.15, 0.09, 0.065, 0.92), Color(0.03, 0.02, 0.015, 0.9), 2, int(corner), padding)
-	style.shadow_color = Color(0, 0, 0, 0.5)
+	var dye := GameState.fighter_color()
+	var body := Color(0.16, 0.1, 0.07).lerp(dye.darkened(0.5), 0.72)
+	var style := UiTheme.box(Color(body, 0.62), Color(dye.darkened(0.55), 0.85), 2, int(corner), padding)
+	style.shadow_color = Color(0, 0, 0, 0.4)
 	style.shadow_size = 6
 	return style
 
