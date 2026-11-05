@@ -24,16 +24,13 @@ const CHOICES := {
 		"shift_z": ["Shift / Z + click", "Z uppercuts, no Ctrl"],
 	},
 	"dodge_mode": {
-		"shift_qe": ["Shift + Q / E", "Rolls; Shift + S or double-tap S back step"],
+		"shift_qe": ["Shift + Q / E", "Rolls; Shift + S backs up"],
 		"ctrl": ["Ctrl + A / D / S", "Hold Ctrl with a direction"],
 		"double_tap": ["Double-tap A / D / S", "Tap a direction twice"],
 	},
 	"lock_on": {
-		"auto": ["Auto", "On for touch, off elsewhere"],
+		"auto": ["Auto", "The game helps you aim"],
 		"off": ["Off", "Aim yourself"],
-		"soft": ["Soft", "A light pull"],
-		"blend": ["Blend", "Turns on its own"],
-		"hard": ["Hard", "Locks and holds"],
 	},
 }
 ## Settings that move several values at once (2026-11-05): [title, detail,
@@ -69,6 +66,8 @@ var _code_box: LineEdit
 var _load_button: Button
 var _load_armed := false
 var _code_note: Label
+## True when a controller is plugged in (the bindings list adds its column).
+var _show_pad := false
 ## The presets' tiles, by preset id.
 var _presets := {}
 ## Key bindings: the list of rows (rebuilt when the mode changes), the
@@ -490,10 +489,7 @@ func _choice(page: Control, key: String, icon: String, title: String, hint: Stri
 	head.add_theme_constant_override("separation", 14)
 	column.add_child(head)
 	_row_head(head, icon, title, hint, UiTheme.GOLD)
-	var options: Dictionary = CHOICES[key].duplicate()
-	# Auto is "off" with a keyboard and mouse, so it isn't a tile there.
-	if key == "lock_on" and not Controls.touch():
-		options.erase("auto")
+	var options: Dictionary = CHOICES[key]
 	var grid := GridContainer.new()
 	grid.columns = 3 if options.size() == 3 else 2
 	grid.add_theme_constant_override("h_separation", 10)
@@ -588,7 +584,9 @@ func _build_bindings(page: Control) -> void:
 	var head := HBoxContainer.new()
 	head.add_theme_constant_override("separation", 14)
 	column.add_child(head)
-	_row_head(head, "fist", "Bindings", "Click one, then press the new key, mouse button or controller button. Esc / Start cancels.", UiTheme.GOLD)
+	# The controller column only shows with a controller plugged in.
+	_show_pad = not Input.get_connected_joypads().is_empty()
+	_row_head(head, "fist", "Bindings", "Click one, then press the new key or mouse button. Esc cancels." if not _show_pad else "Click one, then press the new key, mouse button or controller button. Esc / Start cancels.", UiTheme.GOLD)
 	var reset := Button.new()
 	reset.text = "Reset keys"
 	reset.focus_mode = Control.FOCUS_NONE
@@ -605,7 +603,7 @@ func _build_bindings(page: Control) -> void:
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	columns.add_child(spacer)
-	for title in ["KEYBOARD", "CONTROLLER"]:
+	for title in (["KEYBOARD", "CONTROLLER"] if _show_pad else ["KEYBOARD"]):
 		var label := _label(title, 13, UiTheme.MUTED)
 		label.custom_minimum_size.x = 170
 		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -635,8 +633,9 @@ func _fill_bindings() -> void:
 			# Nothing of its own: say how it's done instead.
 			shown = {"punch_hook": Controls.kb_hint("hook"), "punch_uppercut": Controls.kb_hint("uppercut")}.get(action, "Not set")
 		row.add_child(_bind_button(action, false, shown, custom.has(action)))
-		var on_pad := Controls.pad_name(action)
-		row.add_child(_bind_button(action, true, on_pad if on_pad != "-" else "Not set", pad_custom.has(action)))
+		if _show_pad:
+			var on_pad := Controls.pad_name(action)
+			row.add_child(_bind_button(action, true, on_pad if on_pad != "-" else "Not set", pad_custom.has(action)))
 		_bind_list.add_child(row)
 
 
@@ -685,8 +684,6 @@ func _refresh() -> void:
 		var control: Dictionary = _controls[key]
 		if control.has("tiles"):
 			var current = Settings.get_value(key)
-			if key == "lock_on" and current == "auto" and not control.tiles.has("auto"):
-				current = "off"
 			for id in control.tiles:
 				control.tiles[id].set_pressed_no_signal(id == current)
 				control.tiles[id].toggled.emit(id == current)

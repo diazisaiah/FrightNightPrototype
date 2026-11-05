@@ -277,6 +277,9 @@ func _load() -> void:
 		values["dodge_mode"] = DEFAULTS["dodge_mode"]
 	if values["slip_mode"] != "qe":
 		values["slip_mode"] = "qe"
+	# Lock-on is Auto or Off now (the Soft, Blend and Hard strengths went).
+	if values["lock_on"] in ["soft", "blend", "hard"]:
+		values["lock_on"] = "auto"
 	# 2026-11-02: Shift + Q / E rolls became the default; settings still on the
 	# old default (Space + direction) move over once.
 	if int(file.get_value("settings", "controls_version", 1)) < 2:
