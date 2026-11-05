@@ -331,6 +331,7 @@ func _build_header() -> Control:
 
 	var titles := VBoxContainer.new()
 	titles.add_theme_constant_override("separation", -2)
+	titles.alignment = BoxContainer.ALIGNMENT_CENTER  # The title sits mid-height in the bar.
 	var wordmark := TitleWordmark.new()
 	wordmark.color = UiTheme.BLOOD.lightened(0.15)
 	wordmark.size_flags_vertical = Control.SIZE_SHRINK_CENTER
