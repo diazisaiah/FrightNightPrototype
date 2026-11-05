@@ -10,7 +10,7 @@ signal closed
 
 ## Seconds the "really erase?" state of the reset button lasts.
 const CONFIRM_TIME := 4.0
-const TABS := [["SOUND", "note"], ["CONTROLS", "glove"], ["DISPLAY", "sun"], ["SAVE DATA", "skull"]]
+const TABS := [["SOUND", "note"], ["CONTROLS", "glove"], ["DISPLAY", "sun"], ["SAVE DATA", "skull"], ["CODES", "star"]]
 ## Each choice setting's options as [title, detail] tiles.
 const CHOICES := {
 	"assist_mode": {
@@ -131,7 +131,7 @@ func _ready() -> void:
 	rail_margin.add_child(rail)
 	var group := ButtonGroup.new()
 	for tab in TABS:
-		if tab[0] == "SAVE DATA" and not show_save_data:
+		if tab[0] in ["SAVE DATA", "CODES"] and not show_save_data:
 			continue
 		var button := _tab_button(tab[0], tab[1], group)
 		rail.add_child(button)
@@ -205,6 +205,9 @@ func _ready() -> void:
 		slot.add_child(_reset_button)
 		_disarm_reset()
 
+	if show_save_data:
+		_build_codes_page(_page(pages, "CODES"))
+
 	_show_tab("SOUND", false)
 	_refresh()
 
@@ -212,7 +215,7 @@ func _ready() -> void:
 ## While a binding is listening, the next key or mouse button is the new
 ## binding (Esc cancels).
 func _input(event: InputEvent) -> void:
-	if visible and _listening == "" and event is InputEventKey and event.pressed and not event.echo:
+	if visible and _listening == "" and event is InputEventKey and event.pressed and not event.echo 			and not get_viewport().gui_get_focus_owner() is LineEdit:
 		_type_secret(event)
 	if _listening == "" or not visible:
 		return
@@ -247,8 +250,9 @@ func _input(event: InputEvent) -> void:
 	_refresh()
 
 
-## Secrets: typing FUGGEDABOUDIT anywhere in Settings unlocks Tony, and
-## ABRACADABRA the Catalyst (as if bought in the Soul Shop).
+## Secrets: the CODES tab (or typing one anywhere in Settings) unlocks Tony
+## with FUGGEDABOUDIT, and the Catalyst with ABRACADABRA (as if bought in the
+## Soul Shop).
 const TONY_CODE := "fuggedaboudit"
 const CATALYST_CODE := "abracadabra"
 
@@ -258,20 +262,78 @@ func _type_secret(event: InputEventKey) -> void:
 	if letter.length() != 1 or letter < "a" or letter > "z":
 		return
 	_typed = (_typed + letter).right(maxi(TONY_CODE.length(), CATALYST_CODE.length()))
+	if _redeem(_typed) != "":
+		_typed = ""
+
+
+## Tries a code. Returns the fighter it unlocked ("wise_guy" or
+## "elementalist"), "" for none, "have" if it's his already.
+func _redeem(code: String) -> String:
 	var fighter := ""
-	if _typed.ends_with(TONY_CODE) and not GameState.tony_unlocked:
+	if code.ends_with(TONY_CODE):
+		if GameState.tony_unlocked:
+			return "have"
 		GameState.unlock_tony()
 		fighter = "wise_guy"
-	elif _typed.ends_with(CATALYST_CODE) and not GameState.fighters_bought.has("elementalist"):
+	elif code.ends_with(CATALYST_CODE):
+		if GameState.fighters_bought.has("elementalist"):
+			return "have"
 		GameState.unlock_catalyst()
 		fighter = "elementalist"
 	if fighter != "":
-		_typed = ""
 		var screen := TonyUnlock.open(get_tree(), fighter)
 		# The title's fighter picker was built without him: rebuild it.
 		var scene := get_tree().current_scene
 		if scene and scene.scene_file_path.ends_with("title.tscn"):
 			screen.closed.connect(Loading.reload)
+	return fighter
+
+
+# --- Codes ---------------------------------------------------------------------------
+
+var _secret_box: LineEdit
+var _secret_note: Label
+
+
+## The CODES tab: type a secret code and Redeem. The field is a WebField, so a
+## phone's keyboard opens on it.
+func _build_codes_page(page: Control) -> void:
+	var slot := _row(page, "star", "Enter a code", "Secret codes unlock new fighters.")
+	_secret_box = WebField.new()
+	_secret_box.placeholder_text = "Type a code"
+	_secret_box.custom_minimum_size = Vector2(220, 44)
+	_secret_box.text_submitted.connect(func(_text: String) -> void: _on_redeem())
+	slot.add_child(_secret_box)
+	var redeem := Button.new()
+	redeem.text = "Redeem"
+	redeem.theme_type_variation = "PrimaryButton"
+	redeem.custom_minimum_size = Vector2(130, 44)
+	redeem.pressed.connect(_on_redeem)
+	slot.add_child(redeem)
+	_secret_note = _label("", 14, UiTheme.MUTED)
+	_secret_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	page.add_child(_secret_note)
+
+
+func _on_redeem() -> void:
+	var code := _secret_box.text.strip_edges().to_lower().replace(" ", "")
+	if code == "":
+		_secret_note.text = "Type a code first."
+		_secret_note.add_theme_color_override("font_color", UiTheme.MUTED)
+		return
+	var result := _redeem(code)
+	match result:
+		"":
+			_secret_note.text = "That's not a code."
+			_secret_note.add_theme_color_override("font_color", UiTheme.BAD)
+			Sfx.play("deny", -6.0)
+		"have":
+			_secret_note.text = "You already have him."
+			_secret_note.add_theme_color_override("font_color", UiTheme.GOLD)
+		_:
+			_secret_note.text = "Unlocked!"
+			_secret_note.add_theme_color_override("font_color", UiTheme.GOOD)
+			_secret_box.text = ""
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -706,19 +768,26 @@ func _build_save_codes(page: Control) -> void:
 	_copy_button.custom_minimum_size = Vector2(240, 44)
 	_copy_button.pressed.connect(_copy_save_code)
 	copy_slot.add_child(_copy_button)
-	_code_shown = LineEdit.new()
+	_code_shown = WebField.new()
 	_code_shown.editable = false
 	_code_shown.visible = false
 	_code_shown.select_all_on_focus = true
 	page.add_child(_code_shown)
 	var load_slot := _row(page, "shovel", "Load a save code", "Replaces this save.")
-	_code_box = LineEdit.new()
+	_code_box = WebField.new()
 	_code_box.placeholder_text = "Paste a code"
-	_code_box.custom_minimum_size = Vector2(220, 44)
+	_code_box.custom_minimum_size = Vector2(200, 44)
 	_code_box.text_changed.connect(func(_text: String) -> void:
 		_disarm_load()
 		_code_note.text = "")
 	load_slot.add_child(_code_box)
+	var paste := Button.new()
+	paste.text = "Paste"
+	paste.custom_minimum_size = Vector2(90, 44)
+	paste.pressed.connect(func() -> void:
+		(_code_box as WebField).paste_from_clipboard()
+		Sfx.play("tick", -8.0))
+	load_slot.add_child(paste)
 	_load_button = Button.new()
 	_load_button.custom_minimum_size = Vector2(130, 44)
 	_load_button.pressed.connect(_on_load_pressed)
@@ -731,10 +800,12 @@ func _build_save_codes(page: Control) -> void:
 
 func _copy_save_code() -> void:
 	var code := GameState.save_code()
-	DisplayServer.clipboard_set(code)
+	WebField.copy(code)
 	_code_shown.text = code
 	_code_shown.visible = true
 	_copy_button.text = "Copied"
+	_code_note.text = "If it didn't reach your clipboard, press and hold the code above to copy it."
+	_code_note.remove_theme_color_override("font_color")
 	Sfx.play("coin", -6.0, 1.2)
 	get_tree().create_timer(2.0, true).timeout.connect(func() -> void:
 		if is_instance_valid(_copy_button):
