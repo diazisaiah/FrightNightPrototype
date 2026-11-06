@@ -1664,7 +1664,7 @@ Not built yet. Versus comes first (it's cheaper, fits the game, and its networki
 
   Beating someone much weaker barely moves either of you; beating someone stronger pushes you far.
 
-### Co-op
+### Co-op (superseded by Survival, 2026-11-05: see "Multiplayer modes, refined")
 - **One shared Arena field** for both players, with their power balanced against the field: monsters scale to the field and to how many are fighting.
 - **Revives:** a downed player crawls with a bleed-out timer while the partner holds interact to pick them up; both down ends the run.
 
@@ -1682,6 +1682,57 @@ Not built yet. Versus comes first (it's cheaper, fits the game, and its networki
 2. **Ladder** (3-4, plus hosting): server, matchmaking, points, arenas with floors and rewards, leaderboard, web play with room codes.
 3. **Bots** (about 1).
 4. **Co-op prototype** (4-6); shipping co-op takes weeks.
+
+## Multiplayer modes, refined [Planned, 2026-11-05]
+
+The user's plan: both modes are coming whether or not they're hard, and both run on their own progression (nothing carries in or out) so balance stays simple. Store launch with paid cosmetics waits for these: cosmetics need other people to see them.
+
+### Versus (PvP): two fields, one clock
+- **Layout:** each player has their own field, side by side, split by a light line on the ground and a wall nobody can cross. Players see each other, emote at each other, and watch each other fight and get swarmed.
+- **Monsters:** each side spawns monsters like the endless levels of each arena. Kill one and it spawns on the opponent's side.
+- **Time:** every field runs on its own clock, and real time is the same for both. Slow-motion and time stops only change your own field. Nothing in your powers touches the opponent's monsters or timing.
+- **Why it's cheap to build:** each machine runs only its own fight, so dodges and counters feel exactly like single player and lag never touches combat. Only three things cross the network: the monster you sent, the opponent's body (position, facing, emote, about 20 times a second) and win or lose.
+- **Already drafted:** the `versus-prototype-wip` branch (Net autoload, lobby, split field, sends). It's parked and untested; start from it.
+- **Still to decide:** whether a send that arrives during your time stop waits until it ends (my pick) or lands frozen; whether KOs cancel incoming sends (Tetris style); first-down-loses vs a shared timer.
+- **Needs:** fight animations on the sculpted body (guard, walk, jab, cross, hooks, uppercut, slip, roll, getting hit, down), a relay server for browsers, an anonymous ID and display name, and bots for empty queues.
+
+### Survival (co-op, 1-2 players): the zombies-style mode
+Working name; "Survival" until a better one turns up.
+
+**Start:** every run starts like a brand new fighter: no upgrades, levels or gear from the main game. Pick a map, then invite a friend, find a random player or take a bot.
+
+**Rules of the world**
+- No slow-motion. Time stops can't pause the world for one player, so either they work in a range around the caster (my pick) or the partner can still move inside it. Hit-stop and shakes stay local.
+- Monsters choose between two targets. The host runs them; each player's own machine decides whether their dodge worked.
+- A downed player crawls with a bleed-out timer and the partner holds interact to pick them up. Both down ends the run.
+
+**Points, not coins**
+- You score points for kills, with bonus points for style: clean dodges, counters, high combo counts.
+- Points open doors into new rooms. Some rooms have features.
+- **Mystery box:** spend points to get random gear, or to level the box up so it spawns higher-level gear. It appears at set spots, and after a while the "teddy bear" moves it somewhere else.
+- **Between waves:** 10 to 15 seconds to draw your cards.
+- **Merchant:** sells premium items and patches you up. The patching cost grows exponentially each time.
+- **XP:** you earn XP as well as points.
+
+**Objectives, then the boss:** guard an area, clear a special wave, solve a puzzle, collect items from around the map. Finish them all and the boss fight starts. Win the boss to win the run, or keep surviving waves for more survivor XP.
+
+**Survivor XP:** levels the character for this mode only and gives perks that only work in this mode.
+
+**Maps (one per Dead League contender, five in total):** Bellman's dungeon, the Headless's fortress, the Southpaw's chapel, the Plague Doc's circus, the Coffin King's castle. Build one map first.
+
+### Build order
+1. **Survival offline with a bot partner.** It needs no networking and the solo bot makes it playable at launch, so everything about points, doors, boxes, waves and the boss can be tested before a server exists.
+2. **Body fight animations** (shared with Versus).
+3. **Versus prototype**, two windows on one PC (revive the parked branch).
+4. **Relay server and rooms**, with room codes first. Matchmaking and ladder come later.
+5. **Online Survival**, host-runs-monsters.
+6. **More maps; bots for empty queues.**
+
+### Open questions
+- The mode's name, and whether a bot can fill the second slot online as well as offline.
+- Points vs XP: which one gates what (my pick: points are per-run and reset, XP is for the survivor level).
+- How many players: 2 to start, 4 later.
+- Cheating: builds live in each player's save, so it's easy to cheat. Survival avoids this by starting from nothing; Versus uses real builds and needs a POWER limit on the server.
 
 ## Launch readiness [In progress, 2026-10-15]
 
