@@ -1730,9 +1730,95 @@ Working name; "Survival" until a better one turns up.
 
 ### Open questions
 - The mode's name, and whether a bot can fill the second slot online as well as offline.
-- Points vs XP: which one gates what (my pick: points are per-run and reset, XP is for the survivor level).
+- Points vs XP: decided 2026-11-05. Both reset each run; a separate Survivor XP persists for ranks.
 - How many players: 2 to start, 4 later.
 - Cheating: builds live in each player's save, so it's easy to cheat. Survival avoids this by starting from nothing; Versus uses real builds and needs a POWER limit on the server.
+
+## Survival: detailed plan [Planned, 2026-11-05]
+
+Decided: points and XP both reset every run. A separate kind of XP, Survivor XP, persists and ranks up each fighter for this mode only. Start offline with a bot partner; networking comes later.
+
+### What it reuses, and what's new
+- **Reuse:** the Crypt's rooms, doors, merchant, chests and boss-room code (`dungeon.gd`, `crypt_door.gd`), enemy types and tells (`enemy.gd` and the monster scripts), run-only gear (`gear.gd`, `begin_crypt_run`), the card pool and draw screen (`cards.gd`, `card_draw.gd`), the Dead League bosses (`dead_league_boss.gd`), the HUD pieces, and the phone controls ("hold a finger still to use things").
+- **New:** `survival.gd` (the map and the wave director), a points tracker, the mystery box, the objectives, a companion bot, a clean run profile, Survivor ranks, and the results screen.
+
+### Three technical problems to solve first
+1. **A clean profile.** `GameState` holds every upgrade, level, seal, piece of gear and card for the whole game, and the player reads it directly. A Survival run needs a blank swap-in: `begin_survival(fighter)` snapshots the real values and clears the gameplay ones, and `end_survival()` restores them. Rules: saving is locked while the swap is active (a crash or quit must never write a blank profile over the real save), cosmetics (hats, skins, emotes) still show, and Survivor ranks live in their own key. Tests must use the test save and settings env vars.
+2. **Two targets.** Enemies hold one `player` and call `player.receive_attack(...)`. Give them a target list and a pick rule (nearest, with the attack-turn limit counting both fighters). The bot gets the same `receive_attack` interface, `active` flag and position.
+3. **No slow-motion.** Survival has no slow-down. Hit-stop stays local. Time-stop powers (the Blur's) become a bubble around the caster in this mode. Audit `time_fx.gd`, the Blur's ultimate and Temporal Break for anything that touches the whole world.
+
+### Rules (first-guess numbers; all of them to be tuned)
+**Run start:** pick fighter and map, then partner (bot, or later a friend or random). Level 1, no upgrades, no gear, the fighter's base deck, 0 points. Hats and emotes still work.
+
+**Points**
+- **Kills:** zombie 60, skeleton or runner 80, brawler 100, mage or priest 120, armor 140, hulk 150, elite 300, mini-boss 500.
+- **Style bonuses** (floating popups): clean slip or roll +10, perfect counter +50, combo of 5 / 10 / 20 hits +25 / +50 / +100, head-shot KO +20, finisher launch +20, a wave cleared without a hit +200 × wave.
+- **Points are per player.** The bot earns none and buys nothing; its strength follows the wave number so it stays balanced.
+
+**Doors:** 500, 750, 1000, 1250 and so on by depth. A closed room has no spawns. Opening a door adds its spawn points to the wave director. Hold to buy (phones: hold a finger still).
+
+**Mystery box**
+- Sits in one of 4 or 5 fixed spots on the map. A spin costs 300 and offers one piece of gear (gloves, wraps, boots or charm) for a few seconds; take it or leave it. Taking it replaces what you wear in that slot and is kept for the run only.
+- **Level up the box:** 1000 points, up to 3 times. Each level raises the gear level it offers.
+- **Teddy bear:** after 8 spins, give or take, the box leaves and appears at another spot; the last spin is refunded.
+
+**Waves**
+- The director spends a budget per wave from the existing enemy types; new types unlock by wave number as they do by bar fullness in the Arena.
+- Every 3rd wave is a special (a runners-only rush, an armored wave); every 5th has an elite.
+- Alive cap: 8, plus 2 per extra open room, and a lower cap on the phone profile.
+- Knuckles (HP) don't regenerate between waves except a small amount (25% of what you're missing); the merchant does the rest.
+
+**Between waves (10 to 15 seconds)**
+- **XP and levels:** kills and style give run XP. Each run level earns one card draw. At the break you draw 3 cards and pick 1 per pending level (at least one draw per break).
+- **Merchant room:** premium items, and a patch-up that costs 250, 500, 1000, 2000... each time you use it in a run.
+- A timer bar shows the break; the next wave starts when it ends. You can skip the rest of a break if everyone is ready.
+
+**Objectives (the map's own mix of 3, then the boss door opens)**
+- **Guard:** hold a spot for 60 seconds while the wave spawns around it; the bar drains while enemies stand in the zone.
+- **Clear:** a special elite wave in one room.
+- **Collect:** find 3 items spread across the map.
+- **Puzzle:** light the torches in the order a plaque shows, or ring the bells in a sequence.
+- **Boss:** the contender, from the Dead League boss code, with Survival numbers (more HP and fewer minions for one fighter; scale by player count). Beat it to win the run. After that you can keep surviving endless waves for more Survivor XP.
+
+**Downed and revive:** HP zero means down, crawling with a bleed-out timer of about 20 seconds; the partner holds interact to pick you up. The bot revives you first when it's safe, and you can revive it. Both down ends the run.
+
+**Survivor XP and rank**
+- Earned at the end of a run from: waves survived, objectives done, boss defeated, and style score. A lost run still pays something.
+- **Ranks 1 to 10 per fighter.** Each rank grants a perk that only works in Survival (examples: +100 starting points, a cheaper first patch-up, one extra card draw at the first break, +5% box luck, a starting charm). Fighter-specific perks come later.
+- Stored per fighter in its own save key, separate from the main game and from the Crypt.
+
+### The companion bot
+- **Body:** the sculpted body with a hat, in another fighter's look, labelled "BOT".
+- **Behavior:** stays within about 6 m of you. Picks the nearest enemy that's attacking you or is about to, closes to 1.6 m, punches about every 0.7 seconds, and slips or blocks some attacks (a dodge chance rather than real reads). Revives you first when you're down and nothing is on top of it. Retreats when low, and never steals the elite you're fighting.
+- **Numbers:** damage, HP and dodge scale with the wave, tuned so a good player is clearly better than the bot and a weak player isn't carried.
+- **Needs fight animations** on the body. The body only knows dances, so the bot starts with a few simple poses (guard, jab, cross, hit, down, get up).
+
+### Map one: Bellman's dungeon
+About 7 rooms: start, 2 side rooms, the merchant room, one objective room, a long corridor with the second objective, and the boss room. 4 box spots. Built in code from a layout table, using the arena prop set, so it stays light enough for phones. His bell is a set piece: it rings at the start of each wave.
+
+### Interface
+A points counter next to the coins, the wave number and a progress bar, the objective tracker, interact prompts ("Hold F: open door, 750"), the box's gear card with a comparison to what you wear, and a break timer. Phones use the existing hold-still gesture and a button.
+
+### Safe to release while building
+Mobile auto-releases on every commit, so Survival must stay hidden behind a flag until it's ready: reachable only from the playground and a debug switch. When you approve it in the playground, a later commit adds the Play picker card.
+
+### Milestones (a working session is one go at it)
+1. **Spike (1):** the clean profile swap with save lock, target list on enemies, and a stub Survival scene. Done when: a clean fighter fights waves in a box with two targets, and the real save is untouched afterwards.
+2. **Greybox (3):** the map, the wave director, points, style popups, doors, the HUD.
+3. **Box and gear (2):** the mystery box, gear offers, the teddy bear.
+4. **Cards, XP and merchant (2):** breaks, draws, run levels, patching.
+5. **The bot (3):** body poses, behavior, revive, tuning.
+6. **Objectives and boss (3):** the four objective types, the boss fight, the endless mode.
+7. **Survivor ranks and polish (2):** ranks, perks, results screen, Play picker card, phone controls.
+8. **Balance, QA and the playground (2):** play it with your eyes closed; then you test it in the playground and approve before release.
+
+About 18 sessions in total: weeks, not days.
+
+### Still open
+- Do the fighters' powers (fire, frost, storm, and so on) exist in Survival? My pick: they come from cards and the box, so run one is blank and run five has a build.
+- Is it available from the start, or after the tutorial? My pick: after the tutorial.
+- What does a lost run keep? My pick: Survivor XP only.
+- The mode's name.
 
 ## Launch readiness [In progress, 2026-10-15]
 
