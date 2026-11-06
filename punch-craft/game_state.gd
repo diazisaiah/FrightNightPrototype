@@ -30,11 +30,10 @@ const MAX_ARMOR_PIERCE := 0.75
 
 # Each class changes how you fight (the star budget, GAME_DESIGN.md "Stat
 # budget", 2026-11-06). stars: Power, Grit, Speed, Technique at 1-5 (3 = a
-# plain fighter), 11 in all, turned into numbers by STAR_STEP. perk: one line
-# and its mods (multipliers), worth about a star. mods: kit numbers that aren't
-# a star stat (combo growth, the Answer's counters), multiplied (or added, for
-# defense and combo_window). class_mods() puts the three together. Class
-# specials are in player.gd.
+# plain fighter), 11 in all, turned into numbers by STAR_STEP. perk: a named
+# pro and con (shown green and red in the picker) and their mods, which
+# multiply; "counter" replaces the base x2 counter. class_mods() puts stars
+# and perk together. Class specials are in player.gd.
 const CLASSES := {
 	"berserker": {
 		"name": "Berserker", "icon": "hammer",
@@ -42,19 +41,17 @@ const CLASSES := {
 		"tagline": "Takes a hit to give a bigger one.",
 		"traits": [["skull", "Grudge", "Hits back harder."], ["burst", "Massive Damage", "Big, slow punches."], ["flame", "Inferno Uppercut", "A flaming uppercut."]],
 		"stars": {"power": 5, "grit": 4, "speed": 1, "technique": 1},
-		"perk": {"text": "10% less damage taken", "mods": {"final_damage": 0.9}},
+		"perk": {"name": "Bulky", "pros": ["DMG Taken x0.9"], "cons": ["Combo Growth x0.6"], "mods": {"final_damage": 0.9, "combo_step": 0.6}},
 		"desc": "Big damage, tough knuckles, slow hands. Holds a grudge: whatever hits him is marked, and his next punch on it hits triple and staggers. Hooks and uppercuts need no setup. Combos grow slower.",
-		"mods": {"combo_step": 0.6},
 	},
 	"counter_master": {
 		"name": "Counter Master", "icon": "target",
 		"fighter": "The Answer", "color": Color(0.31, 0.83, 1.0),
 		"tagline": "Waits for you to swing.",
-		"traits": [["shield", "Perfect Defense", "Wider dodge windows."], ["target", "Counter Focus", "Counters hit x3."], ["star", "Perfect Counter", "Right hand, right time: x2.5."]],
+		"traits": [["shield", "Perfect Defense", "Wider dodge windows."], ["target", "Counter Focus", "Counters hit x3.5."], ["star", "Perfect Counter", "Right hand, right time: x2.5."]],
 		"stars": {"power": 2, "grit": 3, "speed": 2, "technique": 4},
-		"perk": {"text": "+20% counter damage", "mods": {"counter_scale": 1.2}},
-		"desc": "Less damage. Counters deal x3, dodge windows are wider, and counters have a 50% chance to cost no knuckle HP. Perfect counter: dodge, then a hook or uppercut with the matching hand deals x2.5 more (12s cooldown).",
-		"mods": {"counter": 3.0},
+		"perk": {"name": "Patient", "pros": ["Counter DMG x3.5"], "cons": ["Punch Speed x0.9"], "mods": {"counter": 3.5, "punch_speed": 0.9}},
+		"desc": "Less damage, slower hands. Counters deal x3.5, dodge windows are wider, and counters have a 50% chance to cost no knuckle HP. Perfect counter: dodge, then a hook or uppercut with the matching hand deals x2.5 more (12s cooldown).",
 	},
 	"combo_master": {
 		"name": "Combo Master", "icon": "bolt",
@@ -62,9 +59,8 @@ const CLASSES := {
 		"tagline": "Too many punches to count.",
 		"traits": [["swoosh", "Rapid Combos", "Combos grow faster."], ["bolt", "Fast Hands", "Quicker punches."], ["clock", "Temporal Break", "Stops time."]],
 		"stars": {"power": 2, "grit": 2, "speed": 4, "technique": 3},
-		"perk": {"text": "+12% punch speed", "mods": {"punch_speed": 1.12}},
-		"desc": "Faster punches, less damage. Combos grow faster and last longer. Every 5th hit in a combo stuns nearby enemies and freezes the combo timer for 1s.",
-		"mods": {"combo_step": 1.25, "combo_window": 1.0},
+		"perk": {"name": "Momentous", "pros": ["Combo Growth x1.25"], "cons": ["DMG x0.9"], "mods": {"combo_step": 1.25, "damage": 0.9}},
+		"desc": "Faster punches, less damage. Combos grow faster. Every 5th hit in a combo stuns nearby enemies and freezes the combo timer for 1s.",
 	},
 	"free_runner": {
 		"name": "Free Runner", "icon": "boot",
@@ -72,9 +68,8 @@ const CLASSES := {
 		"tagline": "Never where you aimed.",
 		"traits": [["boot", "Agile Movement", "Faster on your feet."], ["swoosh", "Dash Punches", "Dash in punching."], ["chain", "Highlight Reel", "Dash through a crowd."]],
 		"stars": {"power": 3, "grit": 2, "speed": 4, "technique": 2},
-		"perk": {"text": "x1.2 move speed", "mods": {"move": 1.2}},
+		"perk": {"name": "Shifty", "pros": ["Move Speed x1.25"], "cons": ["DMG Taken x1.1"], "mods": {"move": 1.25, "final_damage": 1.1}},
 		"desc": "Fast on his feet, light on his hands. Dash forward and punch: a left Spear Jab hits everything in a straight line, a right Haymaker blasts enemies back. Jump punches deal x2 to enemies under 30% HP.",
-		"mods": {},
 	},
 	"wise_guy": {
 		"name": "Wise Guy", "icon": "rage",
@@ -82,9 +77,8 @@ const CLASSES := {
 		"tagline": "Ey. I'm fightin' here.",
 		"traits": [["rage", "Big Mouth", "Taunt a monster into a duel."], ["burst", "Wise Up", "Hits harder. Bleeds more."], ["shield", "Fuggedaboudit", "Ignore one hit every 10s."]],
 		"stars": {"power": 3, "grit": 3, "speed": 3, "technique": 2},
-		"perk": {"text": "+3% damage, HP, defense and speed", "mods": {"damage": 1.03, "knuckles": 1.03, "defense_scale": 1.03, "punch_speed": 1.03, "move": 1.03}},
+		"perk": {"name": "Mouthy", "pros": ["DMG x1.1"], "cons": ["DMG Taken x1.1"], "mods": {"damage": 1.1, "final_damage": 1.1}},
 		"desc": "Found out too late that processed meat is a carcinogen. He's punching his way out of the underworld for one more bite of that deli sandwich. Big Mouth refills fast: insult a monster and it comes only for Tony, hitting 50% harder and taking double damage from him. Fuggedaboudit waves off one hit every 10s.",
-		"mods": {},
 	},
 	"elementalist": {
 		"name": "Elementalist", "icon": "flame",
@@ -92,9 +86,8 @@ const CLASSES := {
 		"tagline": "Why cast it when you can punch it?",
 		"traits": [["flame", "Dual Sigil", "Two powers at once."], ["bolt", "Elemental Fists", "Fire, ice, storm and blood."], ["burst", "Flame Burst", "Set the ring alight."]],
 		"stars": {"power": 2, "grit": 2, "speed": 3, "technique": 4},
-		"perk": {"text": "+10% power damage", "mods": {"power_damage": 1.1}},
+		"perk": {"name": "Studious", "pros": ["Power DMG x1.15"], "cons": ["DMG x0.9"], "mods": {"power_damage": 1.15, "damage": 0.9}},
 		"desc": "An old wizard who put his spells into his fists. Runs two powers at once. His ultimate turns punches into fireballs, icicles, lightning and blood.",
-		"mods": {},
 	},
 }
 ## The four star stats, in display order, with their attribute's icon and color.
@@ -112,15 +105,15 @@ const POWER_DAMAGE := ["fire_punch", "burn", "chain_damage", "quake_damage", "ga
 static var _class_mods := {}
 
 
-## A fighter's numbers from their stars, perk and kit: damage, knuckles,
-## punch_speed, move, dodge_window, counter_scale, defense_scale, final_damage
-## and power_damage multiply; defense and combo_window add; counter (the
-## Answer's x3) replaces the base counter multiplier.
+## A fighter's numbers from their stars and perk: damage, knuckles,
+## punch_speed, move, dodge_window, counter_scale, combo_step, final_damage
+## (damage taken, last, past every cap) and power_damage multiply; defense
+## adds; counter (the Answer's x3.5) replaces the base counter multiplier.
 static func class_mods(id: String) -> Dictionary:
 	if _class_mods.has(id):
 		return _class_mods[id]
 	var info: Dictionary = CLASSES.get(id, {})
-	var mods: Dictionary = info.get("mods", {}).duplicate()
+	var mods := {}
 	var stars: Dictionary = info.get("stars", {})
 	for stat in STAR_STATS:
 		var delta := int(stars.get(stat, 3)) - 3

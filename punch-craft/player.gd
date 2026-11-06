@@ -1020,8 +1020,9 @@ func hurt_knuckles(amount: float) -> void:
 	if _gravewalk_time > 0.0:
 		reduction += GameState.get_effect("gravewalker")
 	var taken := armored * (1.0 - minf(reduction, Gear.MAX_DAMAGE_REDUCTION))
-	# The Mauler's perk comes last, past every cap: 10 that gets through is 9.
-	# The 1-damage minimum stays as it is.
+	# The fighter's perk comes last, past every cap: the Mauler's x0.9 turns
+	# 10 into 9, the Stray's and Tony's x1.1 turn it into 11. The 1-damage
+	# minimum stays as it is.
 	_lose_knuckles(maxf(minf(armored, 1.0), taken * GameState.get_class_mod("final_damage")))
 
 

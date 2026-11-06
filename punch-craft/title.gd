@@ -92,7 +92,9 @@ var _detail_tagline: Label
 var _detail_stats: VBoxContainer
 var _detail_perk_box: StitchPanel
 var _detail_perk_tag: PanelContainer
-var _detail_perk: Label
+var _detail_perk_name: Label
+## The perk's pros (green) and cons (red), a line each.
+var _detail_perk_lines: VBoxContainer
 ## The < tab on the panel's right edge: hides the panel to show the clip.
 var _detail_tab: Button
 var _stats_hidden := false
@@ -1007,17 +1009,16 @@ func _build_fighter_detail() -> void:
 	_detail_perk_tag = PanelContainer.new()
 	_detail_perk_tag.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_detail_perk_tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var perk_tag := _card_text("PERK", 14, Color(0.1, 0.06, 0.02))
-	perk_tag.add_theme_constant_override("outline_size", 0)
-	perk_tag.add_theme_font_override("font", UiTheme.bold_font())
-	_detail_perk_tag.add_child(perk_tag)
+	_detail_perk_name = _card_text("", 20, Color(0.1, 0.06, 0.02))
+	_detail_perk_name.add_theme_constant_override("outline_size", 0)
+	_detail_perk_name.add_theme_font_override("font", UiTheme.display_font())
+	_detail_perk_tag.add_child(_detail_perk_name)
 	perk_row.add_child(_detail_perk_tag)
-	_detail_perk = _card_text("", 19, Color.WHITE)
-	_detail_perk.add_theme_font_override("font", UiTheme.bold_font())
-	_detail_perk.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_detail_perk.custom_minimum_size.x = 330
-	_detail_perk.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	perk_row.add_child(_detail_perk)
+	_detail_perk_lines = VBoxContainer.new()
+	_detail_perk_lines.add_theme_constant_override("separation", 0)
+	_detail_perk_lines.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_detail_perk_lines.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	perk_row.add_child(_detail_perk_lines)
 	var ult_box := VBoxContainer.new()
 	ult_box.add_theme_constant_override("separation", 2)
 	_detail_box.add_child(ult_box)
@@ -1143,7 +1144,13 @@ func _pick_fighter(id: String) -> void:
 		row.add_child(rating)
 		rating.pop(0.35 + 0.06 * row_index)
 		row_index += 1
-	_detail_perk.text = String(info.perk.text)
+	_detail_perk_name.text = String(info.perk.name).to_upper()
+	for child in _detail_perk_lines.get_children():
+		child.queue_free()
+	for line in info.perk.pros:
+		_detail_perk_lines.add_child(_perk_line(line, UiTheme.GOOD))
+	for line in info.perk.cons:
+		_detail_perk_lines.add_child(_perk_line(line, UiTheme.BAD))
 	_detail_perk_box.add_theme_stylebox_override("panel", UiTheme.box(Color(0, 0, 0, 0.3), Color(accent, 0.6), 1, 9, 10.0))
 	_detail_perk_tag.add_theme_stylebox_override("panel", UiTheme.box(accent, Color.TRANSPARENT, 0, 5, 5.0))
 	_detail_ult_tag.add_theme_color_override("font_color", accent)
@@ -1164,6 +1171,15 @@ func _pick_fighter(id: String) -> void:
 	_demo.play(id)
 	_demo.create_tween().tween_property(_demo, "modulate:a", 1.0, 0.5).set_delay(0.15)
 	_demo_shade.create_tween().tween_property(_demo_shade, "modulate:a", 1.0, 0.4)
+
+
+## One perk line: a pro in green or a con in red.
+func _perk_line(text: String, color: Color) -> Label:
+	var label := _card_text(text, 18, color.lightened(0.15))
+	label.add_theme_font_override("font", UiTheme.bold_font())
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.custom_minimum_size.x = 260
+	return label
 
 
 ## The tab on the panel's right edge, in the panel's leather, once the panel
