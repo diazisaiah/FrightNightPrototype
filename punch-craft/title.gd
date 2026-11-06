@@ -88,7 +88,14 @@ var _detail_box: VBoxContainer
 ## Opened from camp's Change fighter: Back goes back to camp.
 var _from_camp := false
 var _detail_tagline: Label
-var _detail_bars: GridContainer
+## The four star rows (2026-11-06, replaces the stat bars) and the perk strip.
+var _detail_stats: VBoxContainer
+var _detail_perk_box: StitchPanel
+var _detail_perk_tag: PanelContainer
+var _detail_perk: Label
+## The < tab on the panel's right edge: hides the panel to show the clip.
+var _detail_tab: Button
+var _stats_hidden := false
 var _detail_ult_tag: Label
 var _detail_ult_name: Label
 var _detail_ult_how: Label
@@ -988,11 +995,29 @@ func _build_fighter_detail() -> void:
 	_detail_tagline.add_theme_constant_override("outline_size", 10)
 	_detail_tagline.add_theme_font_override("font", UiTheme.display_font())
 	_detail_box.add_child(_detail_tagline)
-	_detail_bars = GridContainer.new()
-	_detail_bars.columns = 2
-	_detail_bars.add_theme_constant_override("h_separation", 14)
-	_detail_bars.add_theme_constant_override("v_separation", 5)
-	_detail_box.add_child(_detail_bars)
+	_detail_stats = VBoxContainer.new()
+	_detail_stats.add_theme_constant_override("separation", 6)
+	_detail_box.add_child(_detail_stats)
+	# The perk: a stitched strip with a PERK tag in the fighter's color.
+	_detail_perk_box = StitchPanel.new(9.0)
+	_detail_box.add_child(_detail_perk_box)
+	var perk_row := HBoxContainer.new()
+	perk_row.add_theme_constant_override("separation", 12)
+	_detail_perk_box.add_child(perk_row)
+	_detail_perk_tag = PanelContainer.new()
+	_detail_perk_tag.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_detail_perk_tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var perk_tag := _card_text("PERK", 14, Color(0.1, 0.06, 0.02))
+	perk_tag.add_theme_constant_override("outline_size", 0)
+	perk_tag.add_theme_font_override("font", UiTheme.bold_font())
+	_detail_perk_tag.add_child(perk_tag)
+	perk_row.add_child(_detail_perk_tag)
+	_detail_perk = _card_text("", 19, Color.WHITE)
+	_detail_perk.add_theme_font_override("font", UiTheme.bold_font())
+	_detail_perk.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_detail_perk.custom_minimum_size.x = 330
+	_detail_perk.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	perk_row.add_child(_detail_perk)
 	var ult_box := VBoxContainer.new()
 	ult_box.add_theme_constant_override("separation", 2)
 	_detail_box.add_child(ult_box)
@@ -1020,6 +1045,20 @@ func _build_fighter_detail() -> void:
 	_choose_button.add_theme_font_size_override("font_size", 19)
 	_choose_button.pressed.connect(_choose_picked)
 	buttons.add_child(_choose_button)
+	# The tab that hides the panel (the card stays) so the whole clip shows,
+	# and brings it back. Big enough for a thumb.
+	_detail_tab = Button.new()
+	_detail_tab.text = "<"
+	_detail_tab.size = Vector2(44, 88)
+	_detail_tab.custom_minimum_size = Vector2(44, 88)
+	_detail_tab.focus_mode = Control.FOCUS_NONE
+	_detail_tab.add_theme_font_override("font", UiTheme.display_font())
+	_detail_tab.add_theme_font_size_override("font_size", 30)
+	_detail_tab.add_theme_constant_override("outline_size", 8)
+	_detail_tab.add_theme_color_override("font_outline_color", Color.BLACK)
+	_detail_tab.visible = false
+	_detail_tab.pressed.connect(_toggle_stats)
+	_class_panel.add_child(_detail_tab)
 
 
 ## Along the bottom right, over the reel: which move is playing.
@@ -1075,22 +1114,38 @@ func _pick_fighter(id: String) -> void:
 	# Details.
 	_detail_tagline.text = String(info.tagline).to_upper()
 	_detail.add_theme_stylebox_override("panel", StitchPanel.leather(12.0, 18.0, accent))
-	for child in _detail_bars.get_children():
+	for child in _detail_stats.get_children():
 		child.queue_free()
-	var bars: Dictionary = info.bars
-	for stat in bars:
-		var label := _card_text(String(stat).to_upper(), 13, Color(0.8, 0.78, 0.84))
-		label.custom_minimum_size.x = 90
-		_detail_bars.add_child(label)
-		var bar := ProgressBar.new()
-		bar.show_percentage = false
-		bar.custom_minimum_size = Vector2(300, 9)
-		bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		bar.add_theme_stylebox_override("background", UiTheme.box(Color(1, 1, 1, 0.1), Color.TRANSPARENT, 0, 6))
-		bar.add_theme_stylebox_override("fill", UiTheme.box(accent, Color.TRANSPARENT, 0, 6))
-		bar.value = 0.0
-		_detail_bars.add_child(bar)
-		bar.create_tween().tween_property(bar, "value", float(bars[stat]), 0.6).set_delay(0.35).set_trans(Tween.TRANS_CUBIC)
+	var stars: Dictionary = info.stars
+	var row_index := 0
+	for stat in GameState.STAR_STATS:
+		var attribute: Dictionary = Attributes.LIST[stat]
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 10)
+		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_detail_stats.add_child(row)
+		var icon := IconView.new()
+		icon.icon = attribute.icon
+		icon.color = attribute.color
+		icon.tile_color = Color(0, 0, 0, 0.35)
+		icon.border_color = Color(1, 1, 1, 0.12)
+		icon.custom_minimum_size = Vector2(30, 30)
+		row.add_child(icon)
+		var label := _card_text(String(attribute.name).to_upper(), 19, Color(0.94, 0.91, 0.96))
+		label.add_theme_font_override("font", UiTheme.bold_font())
+		label.custom_minimum_size.x = 118
+		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		row.add_child(label)
+		var rating := StarRating.new()
+		rating.count = int(stars.get(stat, 3))
+		rating.color = accent.lightened(0.15)
+		rating.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row.add_child(rating)
+		rating.pop(0.35 + 0.06 * row_index)
+		row_index += 1
+	_detail_perk.text = String(info.perk.text)
+	_detail_perk_box.add_theme_stylebox_override("panel", UiTheme.box(Color(0, 0, 0, 0.3), Color(accent, 0.6), 1, 9, 10.0))
+	_detail_perk_tag.add_theme_stylebox_override("panel", UiTheme.box(accent, Color.TRANSPARENT, 0, 5, 5.0))
 	_detail_ult_tag.add_theme_color_override("font_color", accent)
 	# The ultimate they have on, not always the first.
 	var ult := Abilities.info(id, GameState.ultimate(id))
@@ -1102,6 +1157,7 @@ func _pick_fighter(id: String) -> void:
 	var detail_tween := _detail.create_tween().set_parallel()
 	detail_tween.tween_property(_detail, "modulate:a", 1.0, 0.3).set_delay(0.2)
 	detail_tween.tween_property(_detail, "position:x", _card_left + CARD_SIZE.x + 34, 0.4).set_delay(0.2).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	_show_stats_tab(accent)
 	# The reel.
 	_demo.visible = true
 	_demo.modulate.a = 0.0
@@ -1110,11 +1166,76 @@ func _pick_fighter(id: String) -> void:
 	_demo_shade.create_tween().tween_property(_demo_shade, "modulate:a", 1.0, 0.4)
 
 
+## The tab on the panel's right edge, in the panel's leather, once the panel
+## has its size.
+func _show_stats_tab(accent: Color) -> void:
+	_stats_hidden = false
+	_detail_tab.text = "<"
+	var style := StitchPanel.leather(10.0, 0.0, accent)
+	style.bg_color = Color(style.bg_color, 0.92)
+	style.corner_radius_top_left = 0
+	style.corner_radius_bottom_left = 0
+	style.border_width_left = 0
+	for state in ["normal", "hover", "pressed", "focus"]:
+		var look := style.duplicate() as StyleBoxFlat
+		if state == "hover":
+			look.bg_color = look.bg_color.lightened(0.12)
+		elif state == "pressed":
+			look.bg_color = look.bg_color.darkened(0.15)
+		_detail_tab.add_theme_stylebox_override(state, look)
+	for color_name in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
+		_detail_tab.add_theme_color_override(color_name, accent.lightened(0.3))
+	_detail_tab.modulate.a = 0.0
+	_detail_tab.visible = true
+	# Containers settle over a couple of frames; place it once they have.
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if _picked == "":
+		return
+	_detail_tab.position = _stats_tab_spot()
+	_detail_tab.create_tween().tween_property(_detail_tab, "modulate:a", 1.0, 0.3).set_delay(0.3)
+
+
+## Where the tab sits: on the panel's right edge, or on the card's when the
+## panel is hidden; level with the panel's middle either way.
+func _stats_tab_spot() -> Vector2:
+	var y := _detail.position.y + _detail.size.y / 2.0 - _detail_tab.size.y / 2.0
+	if _stats_hidden:
+		return Vector2(_card_left + CARD_SIZE.x, y)
+	return Vector2(_card_left + CARD_SIZE.x + 34 + _detail.get_combined_minimum_size().x - 2.0, y)
+
+
+## Hides the stats panel to show the clip, or brings it back.
+func _toggle_stats() -> void:
+	if _picked == "":
+		return
+	_stats_hidden = not _stats_hidden
+	Sfx.play("whoosh", -14.0, 1.4 if _stats_hidden else 1.1)
+	_detail_tab.text = ">" if _stats_hidden else "<"
+	var home := _card_left + CARD_SIZE.x + 34
+	var tween := create_tween().set_parallel()
+	tween.tween_property(_detail_tab, "position", _stats_tab_spot(), 0.35).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	if _stats_hidden:
+		_detail.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		tween.tween_property(_detail, "modulate:a", 0.0, 0.25)
+		tween.tween_property(_detail, "position:x", home - 60.0, 0.3).set_trans(Tween.TRANS_CUBIC)
+		tween.chain().tween_callback(func() -> void:
+			if _stats_hidden:
+				_detail.hide())
+	else:
+		_detail.show()
+		_detail.mouse_filter = Control.MOUSE_FILTER_STOP
+		tween.tween_property(_detail, "modulate:a", 1.0, 0.3)
+		tween.tween_property(_detail, "position:x", home, 0.35).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+
+
 func _unpick_fighter() -> void:
 	if _picked == "":
 		return
 	var id := _picked
 	_picked = ""
+	_stats_hidden = false
+	_detail_tab.hide()
 	Sfx.play("whoosh", -10.0, 1.2)
 	for card_id in _cards:
 		var card: Control = _cards[card_id].panel
@@ -1148,6 +1269,8 @@ func _reset_picker() -> void:
 	_demo.hide()
 	_demo_shade.modulate.a = 0.0
 	_detail.hide()
+	_stats_hidden = false
+	_detail_tab.hide()
 	_caption.modulate.a = 0.0
 	_class_heading.modulate.a = 1.0
 	_class_back.show()
@@ -1222,6 +1345,8 @@ func _recentre_classes() -> void:
 		(_cards[id].panel as Control).position.x += delta
 	if _detail:
 		_detail.position.x += delta
+	if _detail_tab:
+		_detail_tab.position.x += delta
 
 
 func _open_classes() -> void:

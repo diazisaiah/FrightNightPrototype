@@ -147,6 +147,8 @@ static func split(build: Dictionary) -> Vector2:
 	offense *= 1.0 + minf(fx.get("crit_chance", 0.0), 0.5) * (0.5 + fx.get("crit_damage", 0.0))
 	offense *= 1.0 + _weighted(fx, POWERS)
 	var defense: float = Progression.effective_hp(build.knuckles, build.defense) / 50.0 / (1.0 + maxf(fx.get("damage_taken", 0.0), -0.5))
+	# The Mauler's perk: the last cut on every hit, past the caps.
+	defense /= float(build.get("final_damage", 1.0))
 	# Deadweight's set bonus cuts every hit.
 	defense /= 1.0 - minf(fx.get("set_damage_reduction", 0.0), Gear.MAX_DAMAGE_REDUCTION)
 	defense *= 1.0 + _weighted(fx, DEFENSE)
@@ -168,11 +170,25 @@ static func player_build() -> Dictionary:
 	var passive_power := GameState.passive_power()
 	if passive_power > 0.0:
 		fx["passive_power"] = passive_power
+	_add_class_fx(fx, GameState.class_mods(GameState.player_class))
 	return {
 		"damage": GameState.get_damage(), "knuckles": GameState.get_max_knuckles(),
 		"defense": GameState.get_defense(), "punch_speed": GameState.get_punch_speed(),
 		"combo_step": GameState.get_combo_step(), "effects": fx, "perks": PERKS.keys().filter(GameState.perk),
+		"final_damage": GameState.get_class_mod("final_damage"),
 	}
+
+
+## The star and perk numbers that live outside damage, knuckles, defense and
+## punch speed, as effects POWER weighs: dodge window, move speed, and the
+## counter scale (as counter bonus on the base x2 counter).
+static func _add_class_fx(fx: Dictionary, mods: Dictionary) -> void:
+	if mods.has("dodge_window"):
+		fx["dodge_window"] = fx.get("dodge_window", 0.0) + float(mods.dodge_window) - 1.0
+	if mods.has("move"):
+		fx["move_speed"] = fx.get("move_speed", 0.0) + float(mods.move) - 1.0
+	if mods.has("counter_scale"):
+		fx["counter_bonus"] = fx.get("counter_bonus", 0.0) + Player.COUNTER_MULTIPLIER * (float(mods.counter_scale) - 1.0)
 
 
 ## A maxed fighter's (offense, defense) over what the True Coffin King's
@@ -466,15 +482,19 @@ static func climb_power(x: float) -> float:
 ## A par build (Progression.par) as the current fighter would have it.
 static func _par_as_player(par: Dictionary) -> Dictionary:
 	var fx: Dictionary = par.get("effects", {}).duplicate()
-	var mods: Dictionary = GameState.CLASSES[GameState.player_class].get("mods", {})
-	if mods.has("dodge_window"):
-		fx["dodge_window"] = fx.get("dodge_window", 0.0) + mods.dodge_window - 1.0
+	var mods: Dictionary = GameState.class_mods(GameState.player_class)
+	_add_class_fx(fx, mods)
+	# The Catalyst's perk on his power numbers (the player's own effects
+	# already carry it, through GameState.get_effect).
+	for key in GameState.POWER_DAMAGE:
+		if fx.has(key):
+			fx[key] = float(fx[key]) * float(mods.get("power_damage", 1.0))
 	return {
 		"damage": par.damage * mods.get("damage", 1.0), "knuckles": par.knuckles * mods.get("knuckles", 1.0),
-		"defense": par.defense + mods.get("defense", 0.0),
+		"defense": (par.defense + mods.get("defense", 0.0)) * mods.get("defense_scale", 1.0),
 		"punch_speed": (1.0 + fx.get("punch_speed", 0.0)) * mods.get("punch_speed", 1.0),
 		"combo_step": (0.25 + fx.get("combo_step", 0.0)) * mods.get("combo_step", 1.0),
-		"effects": fx,
+		"effects": fx, "final_damage": mods.get("final_damage", 1.0),
 	}
 
 

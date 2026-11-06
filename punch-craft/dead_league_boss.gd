@@ -87,7 +87,7 @@ const INSANO_FEINT := 0.32
 ## The share of that HP he gets (2026-10-29: the full share was too tanky).
 const TRUE_HP_SHARE := 0.33
 const TRUE_MAXED := {
-	"berserker": Vector2(19.6, 3.75), "counter_master": Vector2(17.95, 3.39),
+	"berserker": Vector2(20.1, 4.3), "counter_master": Vector2(17.95, 3.39),
 	"combo_master": Vector2(23.9, 3.36), "free_runner": Vector2(19.05, 3.38),
 	"wise_guy": Vector2(21.1, 3.32), "elementalist": Vector2(31.45, 2.9),
 }

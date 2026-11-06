@@ -28,65 +28,113 @@ const HAT_BOOSTS := {
 }
 const MAX_ARMOR_PIERCE := 0.75
 
-# Each class changes how you fight. mods multiply (or add, for defense and
-# combo_window) the base numbers; missing keys mean no change. Class specials
-# are implemented in player.gd.
+# Each class changes how you fight (the star budget, GAME_DESIGN.md "Stat
+# budget", 2026-11-06). stars: Power, Grit, Speed, Technique at 1-5 (3 = a
+# plain fighter), 11 in all, turned into numbers by STAR_STEP. perk: one line
+# and its mods (multipliers), worth about a star. mods: kit numbers that aren't
+# a star stat (combo growth, the Answer's counters), multiplied (or added, for
+# defense and combo_window). class_mods() puts the three together. Class
+# specials are in player.gd.
 const CLASSES := {
 	"berserker": {
 		"name": "Berserker", "icon": "hammer",
 		"fighter": "The Mauler", "color": Color(1.0, 0.42, 0.12),
 		"tagline": "Takes a hit to give a bigger one.",
 		"traits": [["skull", "Grudge", "Hits back harder."], ["burst", "Massive Damage", "Big, slow punches."], ["flame", "Inferno Uppercut", "A flaming uppercut."]],
-		"bars": {"Power": 95, "Defense": 80, "Speed": 40, "Combo": 35, "Counter": 55},
-		"desc": "Big damage, tough knuckles. Holds a grudge: whatever hits him is marked, and his next punch on it hits triple and staggers. Hooks and uppercuts need no setup. Combos grow slower.",
-		"mods": {"damage": 1.3, "knuckles": 1.25, "defense": 30.0, "combo_step": 0.6},
+		"stars": {"power": 5, "grit": 4, "speed": 1, "technique": 1},
+		"perk": {"text": "10% less damage taken", "mods": {"final_damage": 0.9}},
+		"desc": "Big damage, tough knuckles, slow hands. Holds a grudge: whatever hits him is marked, and his next punch on it hits triple and staggers. Hooks and uppercuts need no setup. Combos grow slower.",
+		"mods": {"combo_step": 0.6},
 	},
 	"counter_master": {
 		"name": "Counter Master", "icon": "target",
 		"fighter": "The Answer", "color": Color(0.31, 0.83, 1.0),
 		"tagline": "Waits for you to swing.",
 		"traits": [["shield", "Perfect Defense", "Wider dodge windows."], ["target", "Counter Focus", "Counters hit x3."], ["star", "Perfect Counter", "Right hand, right time: x2.5."]],
-		"bars": {"Power": 55, "Defense": 70, "Speed": 60, "Combo": 45, "Counter": 100},
-		"desc": "Less damage and knuckles. Counters deal x3, dodge windows are wider, and counters have a 50% chance to cost no knuckle HP. Perfect counter: dodge, then a hook or uppercut with the matching hand deals x2.5 more (12s cooldown).",
-		"mods": {"damage": 0.85, "knuckles": 0.9, "counter": 3.0, "dodge_window": 1.4},
+		"stars": {"power": 2, "grit": 3, "speed": 2, "technique": 4},
+		"perk": {"text": "+20% counter damage", "mods": {"counter_scale": 1.2}},
+		"desc": "Less damage. Counters deal x3, dodge windows are wider, and counters have a 50% chance to cost no knuckle HP. Perfect counter: dodge, then a hook or uppercut with the matching hand deals x2.5 more (12s cooldown).",
+		"mods": {"counter": 3.0},
 	},
 	"combo_master": {
 		"name": "Combo Master", "icon": "bolt",
 		"fighter": "The Blur", "color": Color(0.58, 0.4, 1.0),
 		"tagline": "Too many punches to count.",
 		"traits": [["swoosh", "Rapid Combos", "Combos grow faster."], ["bolt", "Fast Hands", "Quicker punches."], ["clock", "Temporal Break", "Stops time."]],
-		"bars": {"Power": 45, "Defense": 50, "Speed": 95, "Combo": 100, "Counter": 50},
+		"stars": {"power": 2, "grit": 2, "speed": 4, "technique": 3},
+		"perk": {"text": "+12% punch speed", "mods": {"punch_speed": 1.12}},
 		"desc": "Faster punches, less damage. Combos grow faster and last longer. Every 5th hit in a combo stuns nearby enemies and freezes the combo timer for 1s.",
-		"mods": {"damage": 0.75, "punch_speed": 1.35, "combo_step": 1.5, "combo_window": 1.0},
+		"mods": {"combo_step": 1.25, "combo_window": 1.0},
 	},
 	"free_runner": {
 		"name": "Free Runner", "icon": "boot",
 		"fighter": "The Stray", "color": Color(0.25, 0.9, 0.42),
 		"tagline": "Never where you aimed.",
-		"traits": [["boot", "Agile Movement", "Faster sprint."], ["swoosh", "Dash Punches", "Dash in punching."], ["chain", "Highlight Reel", "Dash through a crowd."]],
-		"bars": {"Power": 60, "Defense": 50, "Speed": 100, "Combo": 60, "Counter": 50},
-		"desc": "Faster sprint, normal stats. Dash forward and punch: a left Spear Jab hits everything in a straight line, a right Haymaker blasts enemies back. Jump punches deal x2 to enemies under 30% HP.",
-		"mods": {"sprint": 1.35},
+		"traits": [["boot", "Agile Movement", "Faster on your feet."], ["swoosh", "Dash Punches", "Dash in punching."], ["chain", "Highlight Reel", "Dash through a crowd."]],
+		"stars": {"power": 3, "grit": 2, "speed": 4, "technique": 2},
+		"perk": {"text": "x1.2 move speed", "mods": {"move": 1.2}},
+		"desc": "Fast on his feet, light on his hands. Dash forward and punch: a left Spear Jab hits everything in a straight line, a right Haymaker blasts enemies back. Jump punches deal x2 to enemies under 30% HP.",
+		"mods": {},
 	},
 	"wise_guy": {
 		"name": "Wise Guy", "icon": "rage",
 		"fighter": "Tony", "color": Color(1.0, 0.72, 0.18),
 		"tagline": "Ey. I'm fightin' here.",
 		"traits": [["rage", "Big Mouth", "Taunt a monster into a duel."], ["burst", "Wise Up", "Hits harder. Bleeds more."], ["shield", "Fuggedaboudit", "Ignore one hit every 10s."]],
-		"bars": {"Power": 65, "Defense": 35, "Speed": 60, "Combo": 55, "Counter": 85},
+		"stars": {"power": 3, "grit": 3, "speed": 3, "technique": 2},
+		"perk": {"text": "+3% damage, HP, defense and speed", "mods": {"damage": 1.03, "knuckles": 1.03, "defense_scale": 1.03, "punch_speed": 1.03, "move": 1.03}},
 		"desc": "Found out too late that processed meat is a carcinogen. He's punching his way out of the underworld for one more bite of that deli sandwich. Big Mouth refills fast: insult a monster and it comes only for Tony, hitting 50% harder and taking double damage from him. Fuggedaboudit waves off one hit every 10s.",
-		"mods": {"knuckles": 0.9},
+		"mods": {},
 	},
 	"elementalist": {
 		"name": "Elementalist", "icon": "flame",
 		"fighter": "The Catalyst", "color": Color(0.95, 0.4, 0.7),
 		"tagline": "Why cast it when you can punch it?",
 		"traits": [["flame", "Dual Sigil", "Two powers at once."], ["bolt", "Elemental Fists", "Fire, ice, storm and blood."], ["burst", "Flame Burst", "Set the ring alight."]],
-		"bars": {"Power": 60, "Defense": 60, "Speed": 55, "Combo": 55, "Counter": 55},
+		"stars": {"power": 2, "grit": 2, "speed": 3, "technique": 4},
+		"perk": {"text": "+10% power damage", "mods": {"power_damage": 1.1}},
 		"desc": "An old wizard who put his spells into his fists. Runs two powers at once. His ultimate turns punches into fireballs, icicles, lightning and blood.",
-		"mods": {"damage": 0.9},
+		"mods": {},
 	},
 }
+## The four star stats, in display order, with their attribute's icon and color.
+const STAR_STATS := ["power", "grit", "speed", "technique"]
+## What each star above or below 3 does (GAME_DESIGN.md "Stat budget").
+## Grit's defense only counts stars above 3.
+const STAR_STEP := {
+	"power": {"damage": 0.10},
+	"grit": {"knuckles": 0.07, "defense": 1.0},
+	"speed": {"punch_speed": 0.08, "move": 0.04},
+	"technique": {"dodge_window": 0.10, "counter_scale": 0.08},
+}
+## The Catalyst's perk lifts these power numbers (the ones that deal damage).
+const POWER_DAMAGE := ["fire_punch", "burn", "chain_damage", "quake_damage", "gale_damage", "doom"]
+static var _class_mods := {}
+
+
+## A fighter's numbers from their stars, perk and kit: damage, knuckles,
+## punch_speed, move, dodge_window, counter_scale, defense_scale, final_damage
+## and power_damage multiply; defense and combo_window add; counter (the
+## Answer's x3) replaces the base counter multiplier.
+static func class_mods(id: String) -> Dictionary:
+	if _class_mods.has(id):
+		return _class_mods[id]
+	var info: Dictionary = CLASSES.get(id, {})
+	var mods: Dictionary = info.get("mods", {}).duplicate()
+	var stars: Dictionary = info.get("stars", {})
+	for stat in STAR_STATS:
+		var delta := int(stars.get(stat, 3)) - 3
+		for key in STAR_STEP[stat]:
+			var step: float = STAR_STEP[stat][key]
+			if key == "defense":
+				mods.defense = mods.get("defense", 0.0) + step * maxi(delta, 0)
+			else:
+				mods[key] = mods.get(key, 1.0) * (1.0 + step * delta)
+	var perk: Dictionary = info.get("perk", {}).get("mods", {})
+	for key in perk:
+		mods[key] = mods.get(key, 1.0) * float(perk[key])
+	_class_mods[id] = mods
+	return mods
 ## Tony: the secret fighter, playable once all four Yonker hats are collected
 ## (tony_unlocked). Hidden from the class picker until then.
 const SECRET_CLASSES := ["wise_guy"]
@@ -1393,6 +1441,9 @@ func get_effect(effect: String) -> float:
 	# Tony's The Take: his cut of every coin.
 	if effect == "coin_bonus" and has_passive("the_take"):
 		total += 0.25 + 0.03 * passive_power()
+	# The Catalyst's perk: his powers hit harder.
+	if effect in POWER_DAMAGE:
+		total *= get_class_mod("power_damage")
 	return total
 
 
@@ -1916,7 +1967,7 @@ func has_effect(effect: String) -> bool:
 
 ## A number from the current class's mods, or default if it doesn't change it.
 func get_class_mod(key: String, default := 1.0) -> float:
-	return CLASSES[player_class].mods.get(key, default)
+	return float(class_mods(player_class).get(key, default))
 
 
 func get_current_night() -> int:
@@ -1996,7 +2047,7 @@ func get_damage() -> float:
 
 
 func get_defense() -> float:
-	return get_effect("defense") + get_class_mod("defense", 0.0)
+	return (get_effect("defense") + get_class_mod("defense", 0.0)) * get_class_mod("defense_scale")
 
 
 ## Defense (2026-11-03, the Path of Exile armor formula): a hit is cut by
@@ -2028,15 +2079,16 @@ func mitigate(hit: float) -> float:
 
 ## Share of a typical hit (TYPICAL_HIT of your max knuckles) that gets through.
 func get_knuckle_loss_multiplier() -> float:
-	return 1.0 - armor_reduction(get_defense(), TYPICAL_HIT * get_max_knuckles())
+	return (1.0 - armor_reduction(get_defense(), TYPICAL_HIT * get_max_knuckles())) * get_class_mod("final_damage")
 
 
 func get_max_knuckles() -> float:
 	return (50.0 + get_effect("max_knuckles")) * get_class_mod("knuckles") * (1.0 + get_effect("knuckles_percent"))
 
 
+## Walking and sprinting (Speed stars, the Stray's perk).
 func get_move_speed_multiplier() -> float:
-	return 1.0 + get_effect("move_speed")
+	return (1.0 + get_effect("move_speed")) * get_class_mod("move")
 
 
 ## Share (0-0.75) of an enemy's armor your punches ignore.
@@ -2093,7 +2145,8 @@ func get_counter_window_bonus() -> float:
 
 
 func get_counter_multiplier(base: float) -> float:
-	return get_class_mod("counter", base) + get_effect("counter_bonus")
+	# Technique stars and the Answer's perk scale the class's counter.
+	return get_class_mod("counter", base) * get_class_mod("counter_scale") + get_effect("counter_bonus")
 
 
 func get_sprint_multiplier() -> float:

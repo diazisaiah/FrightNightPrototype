@@ -706,8 +706,9 @@ func _test_gear_signatures() -> void:
 	wear.call({"gravewalker": 0.5, "set_damage_reduction": 0.5})
 	player.knuckles = player.max_knuckles
 	player.hurt_knuckles(40.0)
-	_check(is_equal_approx(player.max_knuckles - player.knuckles, maxf(1.0, GameState.mitigate(40.0) * 0.25)),
-			"Damage cuts stop at 75%%, after armor (%.2f taken)" % (player.max_knuckles - player.knuckles))
+	# The Mauler's perk (x0.9) comes after the cap.
+	_check(is_equal_approx(player.max_knuckles - player.knuckles, maxf(1.0, GameState.mitigate(40.0) * 0.25 * GameState.get_class_mod("final_damage"))),
+			"Damage cuts stop at 75%%, after armor, then the Mauler's 10%% (%.2f taken)" % (player.max_knuckles - player.knuckles))
 	player._gravewalk_time = 0.0
 	# Bone Breaker: hook counters ignore half the armor; other hooks don't.
 	wear.call({})

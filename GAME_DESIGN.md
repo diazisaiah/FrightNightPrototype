@@ -1943,13 +1943,16 @@ Today: Mauler spends +30% damage, +25% knuckles, +30 defense, slower combos (abo
 |---|---|---|---|---|---|
 | Mauler | 5 | 4 | 1 | 1 | 10% less damage taken |
 | Answer | 2 | 3 | 2 | 4 | +20% counter damage |
-| Blur | 3 | 2 | 4 | 2 | +12% punch speed |
-| Stray | 2 | 2 | 4 | 3 | x1.2 move speed (replaces the x1.35 sprint) |
+| Blur | 2 | 2 | 4 | 3 | +12% punch speed |
+| Stray | 3 | 2 | 4 | 2 | x1.2 move speed (replaces the x1.35 sprint) |
 | Tony | 3 | 3 | 3 | 2 | +3% damage, HP, defense and speed |
 | Catalyst | 2 | 2 | 3 | 4 | +10% power damage |
 
-- **Select screen:** four star rows and a perk line, built from the same table as the numbers. Tap for the exact numbers.
-- **Checks:** the Mauler's 10% shares the damage-taken cap with gear; the Catalyst's perk must not double-dip with his amplifier passive.
+- **Select screen (mockup approved 2026-11-06, https://claude.ai/artifact/UzPMVsfhAMqjyPhuwbunNy):** in the picker's leather panel, four star rows (attribute icon, name, five stars: filled in the fighter's color, empty ones dashed like the seam) and a stitched PERK strip above the Ultimate. No numbers shown. All panel text wraps inside the panel. A leather tab with a < arrow on the middle of the panel's right edge hides only the stats panel (the fighter card stays) to show the clip; it then sits at the card's right edge pointing > and brings the panel back. Later, with the clip revamp: a slideshow of a few clips per fighter.
+- **Mauler's perk goes past the caps (decided 2026-11-06):** it's the last step on every hit, after armor and every damage-taken cut and their caps: whatever gets through, he takes 10% less (100 cut to 10 becomes 9). It never counts toward a cap, so it's worth the same 10% from the first night to Endless.
+- **Early Mauler nerf is wanted:** today he can't lose the first night and can beat the Bellman on one bout's worth of upgrades. The new stars (about POWER 160 down to 104 at level 1) are meant to fix that.
+- **The Blur is already too strong late:** the audit looks at what carries him there (punch speed stacking, combo growth, Second Gear and Speed Bag rate highest of his cards in PowerRating). His combo growth moves into his passive at x1.25 (was x1.5), and a Power star moved to Technique (Power 2, Technique 3).
+- **Checks:** the Catalyst's perk must not double-dip with his amplifier passive. `balance_regression` (0.90-1.05 at par) will likely fail for the Mauler and the Blur until the passives and cards steps.
 - **Late unlocks:** the Catalyst is bought in the Soul Shop after beating the 3rd boss with another fighter, so the shared web already gives him Fire, Frost and Storm: his perk stays +10% power damage (a "starts with Fire" Spark was considered and dropped). Tony needs all 4 legendary hats (2% of monsters wear a hat, 1% of those are a given hat). Both join a late save at level 1, so the first-night gate below is for the Mauler, Answer, Blur and Stray; the Catalyst and Tony are checked at level 1 in the division the save has reached (level 1, no cards, the account's upgrades), mainly to see how fast they level.
 - **Gates (first night, Division 1 bout 1, no upgrades):** the good bot clears about 80% of runs and finishes low on knuckles (above 60% left is too easy). A beginner (average bot) with roughly 2-3 purses of ring 1 upgrades (about +3 damage, +15 knuckles, +5 defense) wins about half the time and more after. All six within about 15% on knuckles lost. Needs a Godot build for the bot runs.
 
