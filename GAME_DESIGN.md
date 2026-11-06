@@ -1884,7 +1884,7 @@ The bench doesn't replace playing: each step ends with a playground build for yo
 
 ### Steps
 1. **Audit sheet** (before the week starts): every stat, passive, ultimate and card with its real numbers, a bench measurement, notes on jank, and a verdict column (keep, fix, replace). I can make it as a page you can mark up from your phone.
-2. **Starting stats:** a stat budget. A plain fighter is 100 points; each stat (damage, knuckles, defense, punch speed, sprint, dodge window, counter strength, combo growth) costs points, and every fighter spends the same. Rebuild the six from scratch on it.
+2. **Starting stats:** the star budget below (4 stats, 1-5 stars, 11 stars + a perk each). Rebuild the six from scratch on it.
 3. **Passives:** test each of the 18 for jank (camera or movement grabs, effects that misfire, things that don't read) and for strength. Fix, retune, or replace.
 4. **Ultimates:** the same for the 12, plus the multiplayer column: what each one does to an ally, to the bot, and without slow-motion. The Family's goons lure enemies and can be hit; Temporal Break becomes a bubble in Survival; Big Mouth's taunt works with two targets.
 5. **Cards:** the 114 cards against the new numbers. Cap anything that stacks without limit, check every level's text matches what it does, and cut cards that only exist to fix a weak base.
@@ -1932,8 +1932,26 @@ The abilities don't share a job, so damage alone can't rate them. Each gets one 
 
 Findings: Sustain has almost nothing, Defense and Control are thin on passives, and The Take does nothing in a fight (it should become a fight passive or move to a perk). Each fighter should have one passive and one ultimate that fill different roles, so Mauler = Damage + Defense, Answer = Defense + Damage, Blur = Damage + Control, Stray = Mobility + Control, Tony = Control + Defense, Catalyst = amplifier + Damage.
 
-### Stat budget (proposal, to measure)
-Today: Mauler spends +30% damage, +25% knuckles, +30 defense, slower combos; Answer, Blur, Tony and the Catalyst spend a little and give up a little; the Stray has only +35% sprint. Rather than guess point costs, measure them with the bot: for each stat, run the benchmark at +10% on a plain fighter (a `--lab-stat=<stat>:<x>` hook) and price the stat by how much the score moves (damage dealt per second, damage avoided and taken together). Then every fighter spends the same 100 points and the camp bars are built from the table. This needs the bot runs on a real Godot build first.
+### Stat budget (decided 2026-11-06, to verify with the bot)
+Today: Mauler spends +30% damage, +25% knuckles, +30 defense, slower combos (about POWER 160 against about 100 for the Stray, Tony and the Catalyst, by hand); the strengths are written in three places (`mods`, hand-typed `bars`, `desc`). Enemies are built for a plain fighter, so the first night isn't equally hard for everyone.
+
+- **Four stars-stats, the same axes as the attributes:** Power, Grit, Speed, Technique. 1-5 stars each, whole stars only, 3 = a plain fighter. Fortune stays 0 for everyone. Attributes (level-ups) stay as they are, separate.
+- **Budget: 11 stars + one perk** (a perk is worth about one star, about 5% POWER). Fighter tricks that aren't one of the four stats (counters x3, combo growth, sprint) live in the passive or trait.
+- **Per star from 3:** Power ±10% damage; Grit ±7% knuckle HP and +1 defense per star above 3; Speed ±8% punch speed and ±4% move speed; Technique ±10% dodge window and ±8% counter damage. Class bonuses sit outside the upgrade caps.
+
+| Fighter | Power | Grit | Speed | Technique | Perk |
+|---|---|---|---|---|---|
+| Mauler | 5 | 4 | 1 | 1 | 10% less damage taken |
+| Answer | 2 | 3 | 2 | 4 | +20% counter damage |
+| Blur | 3 | 2 | 4 | 2 | +12% punch speed |
+| Stray | 2 | 2 | 4 | 3 | x1.2 move speed (replaces the x1.35 sprint) |
+| Tony | 3 | 3 | 3 | 2 | +3% damage, HP, defense and speed |
+| Catalyst | 2 | 2 | 3 | 4 | +10% power damage |
+
+- **Select screen:** four star rows and a perk line, built from the same table as the numbers. Tap for the exact numbers.
+- **Checks:** the Mauler's 10% shares the damage-taken cap with gear; the Catalyst's perk must not double-dip with his amplifier passive.
+- **Late unlocks:** the Catalyst is bought in the Soul Shop after beating the 3rd boss with another fighter, so the shared web already gives him Fire, Frost and Storm: his perk stays +10% power damage (a "starts with Fire" Spark was considered and dropped). Tony needs all 4 legendary hats (2% of monsters wear a hat, 1% of those are a given hat). Both join a late save at level 1, so the first-night gate below is for the Mauler, Answer, Blur and Stray; the Catalyst and Tony are checked at level 1 in the division the save has reached (level 1, no cards, the account's upgrades), mainly to see how fast they level.
+- **Gates (first night, Division 1 bout 1, no upgrades):** the good bot clears about 80% of runs and finishes low on knuckles (above 60% left is too easy). A beginner (average bot) with roughly 2-3 purses of ring 1 upgrades (about +3 damage, +15 knuckles, +5 defense) wins about half the time and more after. All six within about 15% on knuckles lost. Needs a Godot build for the bot runs.
 
 ### The original plan
 
