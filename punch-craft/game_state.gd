@@ -2076,7 +2076,11 @@ func get_knuckle_loss_multiplier() -> float:
 
 
 func get_max_knuckles() -> float:
-	return (50.0 + get_effect("max_knuckles")) * get_class_mod("knuckles") * (1.0 + get_effect("knuckles_percent"))
+	var knuckles := (50.0 + get_effect("max_knuckles")) * get_class_mod("knuckles") * (1.0 + get_effect("knuckles_percent"))
+	# Masochist (the Berserker's legendary): x1.5, but healing stops at 60%.
+	if has_effect("masochist") and has_passive("berserker"):
+		knuckles *= 1.5
+	return knuckles
 
 
 ## Walking and sprinting (Speed stars, the Stray's perk).

@@ -72,6 +72,9 @@ const INFERNO_SPLASH := 2.6
 const INFERNO_GAIN := 1.3
 const INFERNO_LAUNCH := 7.0
 const INFERNO_STUN := 1.6
+## Inferno II: the flame shockwave off the hit (radius, burn seconds).
+const INFERNO_II_RADIUS := 5.0
+const INFERNO_II_BURN := 3.0
 const INFERNO_BURN_TIME := 4.0
 # Combo Master
 ## 2026-10-24: twice as long, and the Blur can move during it.
@@ -469,17 +472,21 @@ func _try_inferno() -> void:
 	_spend()
 	_set_status("")
 	await _inferno_at(target)
-	# Inferno II: then at a second monster.
-	if _card("inferno_ii") and player.active:
-		var second: Enemy = null
-		for enemy in _alive_enemies():
-			if enemy != target and enemy.global_position.distance_to(player.global_position) <= reach \
-					and (second == null or enemy.global_position.distance_to(player.global_position) < second.global_position.distance_to(player.global_position)):
-				second = enemy
-		if second:
-			await _wait(0.25)
-			if is_instance_valid(second) and not second.is_dead():
-				await _inferno_at(second)
+
+
+## Inferno II: a ring of flame off the hit knocks down and ignites everything
+## close (0.5x your base damage a burn tick). Bosses reel (knock_down caps them).
+func _inferno_shockwave(center: Vector3, except: Enemy) -> void:
+	HitFx.burst(player.get_parent(), center + Vector3.UP * 0.3, Vector3.UP, FIRE_COLOR, 40, INFERNO_II_RADIUS * 1.6, true, 0.07)
+	HitFx.burst(player.get_parent(), center + Vector3.UP * 0.1, Vector3.UP, Color(1.0, 0.6, 0.15), 24, INFERNO_II_RADIUS, true, 0.05)
+	Sfx.play("heavy", 2.0, 0.55)
+	for enemy in _alive_enemies():
+		if enemy == except or enemy.global_position.distance_to(center) > INFERNO_II_RADIUS:
+			continue
+		var away := enemy.global_position - center
+		away.y = 0.0
+		enemy.ignite(GameState.get_damage(), INFERNO_II_BURN)
+		enemy.knock_down(INFERNO_STUN, away.normalized() * 4.0, true)
 
 
 ## The leap and the flaming uppercut, at one monster.
@@ -521,6 +528,9 @@ func _inferno_at(target: Enemy) -> void:
 	player._free_punch = true
 	player._land_punch("uppercut", "right", false, false, target, INFERNO_DAMAGE * (1.0 + 0.5 * _power()), "INFERNO UPPERCUT!")
 	var at := target.global_position + Vector3(0, 1.2, 0)
+	# Inferno II: the hit sets off a shockwave of flame.
+	if _card("inferno_ii"):
+		_inferno_shockwave(target.global_position, target)
 	HitFx.burst(player.get_parent(), at, Vector3.UP, FIRE_COLOR, 40, 8.0, true, 0.06)
 	HitFx.burst(player.get_parent(), at, Vector3.UP, Color(1.0, 0.6, 0.15), 20, 6.0, true, 0.03)
 	player._shake = maxf(player._shake, 0.12)

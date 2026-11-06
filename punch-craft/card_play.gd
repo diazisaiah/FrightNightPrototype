@@ -59,6 +59,8 @@ var _casting := false
 var _sting_from: Enemy
 var _sting_time := -10.0
 var _vault_target: Enemy
+## The monster a Shoulder Charge uppercut is about to launch.
+var _shoulder_target: Enemy
 var _dash_hits := {}
 ## The punch being landed (punch_mod to after_punch).
 var _ctx := {}
@@ -172,8 +174,9 @@ func speed_mult() -> float:
 		bonus += 0.3
 	if _attune_speed > 0.0:
 		bonus += 0.1
-	if fx("red_mist") > 0.0 and GameState.has_passive("berserker") and player.max_knuckles > 0.0:
-		bonus += 0.4 * clampf(1.0 - player.knuckles / player.max_knuckles, 0.0, 1.0)
+	# Red Mist: the Berserker's zone (below half knuckle HP) also speeds your hands.
+	if fx("red_mist") > 0.0 and GameState.has_passive("berserker") and player.max_knuckles > 0.0 			and player.knuckles < player.max_knuckles * Player.BERSERKER_LINE:
+		bonus += 0.25
 	return 1.0 + bonus
 
 
@@ -235,14 +238,10 @@ func hit_amount(amount: float, attacker: Enemy) -> float:
 	var cut := fx("hit_guard")
 	if fx("crowd_guard") > 0.0:
 		cut += minf(fx("crowd_guard") * _near_count(4.0), 0.25)
-	if fx("juggernaut") > 0.0 and player.knuckles > player.max_knuckles * 0.5:
-		cut += 0.25
 	if fx("untouchable_tony") > 0.0 and attacker and not attacker.is_taunted() and _any_enraged():
 		cut += 0.25
 	amount *= maxf(0.2, 1.0 - cut)
 	if _granite > 0.0:
-		amount *= 0.5
-	if _berserk > 0.0:
 		amount *= 0.5
 	# Slick: hits while sprinting only graze.
 	if fx("slick") > 0.0 and player.is_sprinting():
@@ -260,9 +259,7 @@ func hit_amount(amount: float, attacker: Enemy) -> float:
 
 ## How long a hit makes you flinch (1 = the usual).
 func flinch_scale() -> float:
-	if fx("juggernaut") > 0.0 and player.knuckles > player.max_knuckles * 0.5:
-		return 0.0
-	return maxf(0.0, 1.0 - fx("no_flinch"))
+	return 1.0
 
 
 ## The combo you keep after a hit (Bounce Back).
@@ -280,6 +277,10 @@ func on_hit(attacker: Enemy) -> void:
 		_granite = GRANITE_TIME
 	if fx("hit_ult") > 0.0:
 		player.ult.add(fx("hit_ult"))
+	# I Eat Those: a hit that landed can still open a counter.
+	if fx("eat_those") > 0.0 and randf() < fx("eat_those"):
+		player._ready_counter("any")
+		player.class_event.emit("I EAT THOSE!")
 	if attacker == null or attacker.is_dead():
 		return
 	if fx("shrug_rage") > 0.0:
@@ -289,18 +290,25 @@ func on_hit(attacker: Enemy) -> void:
 		_set_off_random(attacker)
 
 
-## Knuckle HP changed: Berserk wakes below half.
+## Knuckle HP changed (nothing wakes on this any more: Berserk now answers a
+## knockout, see save_from_knockout).
 func on_knuckles() -> void:
-	if fx("berserk") > 0.0 and not _berserk_used and player.knuckles > 0.0 and player.knuckles < player.max_knuckles * 0.5:
-		_berserk_used = true
-		_berserk = BERSERK_TIME
-		player.class_event.emit("BERSERK!  x2 damage, half damage taken")
-		Sfx.play("growl", 0.0, 0.7)
-		HitFx.burst(player.get_parent(), player.global_position + Vector3.UP, Vector3.UP, Color(1.0, 0.15, 0.05), 40, 6.0, true, 0.06)
+	pass
 
 
 ## Get Up: once a bout a knockout leaves you standing. True if it did.
 func save_from_knockout() -> bool:
+	# Berserk (the Mauler's legendary): once a bout the knockout leaves you at
+	# 1 HP, untouchable and hitting twice as hard for BERSERK_TIME.
+	if fx("berserk") > 0.0 and not _berserk_used:
+		_berserk_used = true
+		_berserk = BERSERK_TIME
+		untouchable = BERSERK_TIME
+		player.knuckles = 1.0
+		player.class_event.emit("BERSERK!  1 HP, untouchable, x2 damage")
+		Sfx.play("growl", 0.0, 0.7)
+		HitFx.burst(player.get_parent(), player.global_position + Vector3.UP, Vector3.UP, Color(1.0, 0.15, 0.05), 40, 6.0, true, 0.06)
+		return true
 	if not perk("get_up") or _get_up_used:
 		return false
 	_get_up_used = true
@@ -399,6 +407,12 @@ func punch_mod(target: Enemy, type: String, counter: bool, airborne: bool, set_u
 		captions.append("KNOCKOUT BLOW!")
 	if _berserk > 0.0:
 		result.mult *= 2.0
+	# Shoulder Charge: a dash then an uppercut launches a monster (once each,
+	# never a boss).
+	if fx("shoulder") > 0.0 and type == "uppercut" and not forced and player._dash_jab_time > 0.0 			and not target.is_boss and not target.has_meta("shouldered"):
+		target.set_meta("shouldered", true)
+		_shoulder_target = target
+		captions.append("LAUNCHED!")
 	# Spear Hands: Long Reach's punches at the edge of reach.
 	if fx("spear_hands") > 0.0 and GameState.has_passive("long_reach") \
 			and target.global_position.distance_to(player.global_position) > Player.PUNCH_REACH:
@@ -419,6 +433,16 @@ func after_punch(target: Enemy, type: String, hand: String, raw: float, dealt: f
 	var hp_before: float = _ctx.get("hp", 0.0)
 	var was_staggered: bool = _ctx.get("staggered", false)
 	_ctx = {}
+	# Shoulder Charge: the uppercut sends it flying and it takes more on top.
+	if _shoulder_target == target:
+		_shoulder_target = null
+		if not killed and is_instance_valid(target) and not target.is_boss:
+			var strong := fx("shoulder") >= 2.0
+			target.take_hit(base * (2.0 if strong else 1.5), target.global_position + Vector3(0, 1.2, 0), Vector3.ZERO, false, "LAUNCHED")
+			# Wraiths float: they only reel.
+			if not target.is_dead() and target.collision_mask != 0:
+				target.velocity.y = Ult.INFERNO_LAUNCH
+				target.global_position.y += 0.1
 	# The Power perk Follow Through: a knockout carries on.
 	if killed and perk("follow_through") and dealt > hp_before:
 		var next := _nearest(target.global_position, 3.0, [target])
@@ -556,18 +580,12 @@ func on_dash() -> void:
 	_dash_hits.clear()
 
 
-## The dash ran into a monster: Shoulder Charge knocks it down, Vault goes over.
+## The dash ran into a monster: Vault goes over it.
 func dash_contact(enemy: Enemy) -> void:
 	if _dash_hits.has(enemy) or enemy.is_dead():
 		return
 	_dash_hits[enemy] = true
 	var forward := player._flat_forward()
-	# Shoulder Charge: knocks it back and hurts, but never stuns (dashing into
-	# a boss again and again would hold it still).
-	if fx("shoulder") > 0.0:
-		var strong := fx("shoulder") >= 2.0
-		enemy.take_hit(GameState.get_damage() * (2.0 if strong else 1.0), enemy.global_position + Vector3(0, 1.1, 0),
-				forward * (10.0 if strong else 6.0), false, "SHOULDER CHARGE")
 	if fx("vault") > 0.0 and not enemy.is_dead():
 		var spot := player.teleport_spot(enemy, enemy.global_position + forward * 1.3)
 		if spot == Vector3.INF:

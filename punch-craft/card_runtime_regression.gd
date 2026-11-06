@@ -48,6 +48,7 @@ func _run() -> void:
 	await _test_perch_and_blood()
 	await _test_fighter_card_hover()
 	await _test_boss_poise()
+	await _test_mauler_revamp()
 	await _test_endless_powers()
 	TimeFx.clear()
 	GameState._reset_fields()
@@ -903,6 +904,78 @@ func _test_perch_and_blood() -> void:
 	_check(PowerPlay.COOLDOWNS.sigil_fire >= 3.0 and PowerPlay.COOLDOWNS.sigil_blood >= 4.0, "Fire and Blood proc at most every 3s / 4s")
 	await _free_rig(holder)
 	print("Card runtime: perch and blood OK")
+
+
+## The Mauler's revamp (2026-11-06): the Berserker passive's zone and kill
+## heal, Masochist, Berserk's second wind, I Eat Those, Shoulder Charge and
+## Inferno II's flame shockwave.
+func _test_mauler_revamp() -> void:
+	var rig := await _make_rig("berserker")
+	var holder: Node3D = rig[0]
+	var player: Player = rig[1]
+	var target: Enemy = rig[2][0]
+	var other: Enemy = rig[2][1]
+	GameState.loadouts.berserker.passive = "berserker"
+	player.cards._forget()
+	player.refresh_max_knuckles()
+	player.active = true
+	# Masochist: x1.5 max HP, healing stops at 60%.
+	var with_masochist := GameState.get_max_knuckles()
+	GameState._classes.berserker.cards.erase("juggernaut")
+	var without := GameState.get_max_knuckles()
+	GameState._classes.berserker.cards["juggernaut"] = 1
+	_check(is_equal_approx(with_masochist / without, 1.5), "Masochist: max knuckle HP x1.5 (%.2f)" % (with_masochist / without))
+	_check(is_equal_approx(player.heal_cap(), player.max_knuckles * 0.6), "Masochist: healing stops at 60%")
+	player.knuckles = 1.0
+	player.heal(player.max_knuckles * 5.0)
+	_check(is_equal_approx(player.knuckles, player.heal_cap()), "Masochist: a big heal stops at the cap")
+	# The Berserker zone: +40% below half, nothing above.
+	player.knuckles = player.max_knuckles * 0.4
+	_check(player._berserker_mult() >= 1.4, "Berserker: +40%% below half (x%.2f)" % player._berserker_mult())
+	player.knuckles = player.max_knuckles * 0.6
+	_check(is_equal_approx(player._berserker_mult(), 1.0), "Berserker: nothing above half")
+	# Kill heal: 1% of max, but only up to the half-way line.
+	target.set_meta("punched_out", true)
+	player.knuckles = player.max_knuckles * 0.6
+	var base_heal := player.kill_heal(target)
+	player.knuckles = player.max_knuckles * 0.3
+	_check(is_equal_approx(player.kill_heal(target) - base_heal, player.max_knuckles * 0.01), "Berserker: a knockout heals 1% below half")
+	player.knuckles = player.max_knuckles * 0.499
+	_check(player.kill_heal(target) - base_heal < player.max_knuckles * 0.0015, "Berserker: the kill heal stops at half")
+	# I Eat Those (rank 2: 50%): a landed hit sometimes opens a counter.
+	var opened := 0
+	for i in 60:
+		player._clear_counter()
+		player.cards.on_hit(target)
+		if player._counter_side != "":
+			opened += 1
+	player._clear_counter()
+	_check(opened >= 15 and opened <= 45, "I Eat Those opens a counter about half the time (%d of 60)" % opened)
+	# Shoulder Charge: dash then uppercut launches a monster once.
+	var at := target.global_position + Vector3(0, 1.3, 0)
+	player._dash_jab_time = 0.5
+	var mod: Dictionary = player.cards.punch_mod(target, "uppercut", false, false, true, at, false)
+	_check(target.has_meta("shouldered") and String(mod.caption).contains("LAUNCHED"), "Shoulder Charge: a dash then an uppercut launches")
+	player.cards.after_punch(target, "uppercut", "right", 1.0, 1.0, false, false, false, true, false)
+	var again: Dictionary = player.cards.punch_mod(target, "uppercut", false, false, true, at, false)
+	_check(not String(again.caption).contains("LAUNCHED"), "Shoulder Charge: once a monster")
+	player._dash_jab_time = 0.0
+	var plain: Dictionary = player.cards.punch_mod(other, "uppercut", false, false, true, other.global_position + Vector3(0, 1.3, 0), false)
+	_check(not String(plain.caption).contains("LAUNCHED"), "Shoulder Charge: needs the dash")
+	# Inferno II: the shockwave knocks down and ignites what is close.
+	other.global_position = target.global_position + Vector3(2.5, 0, 0)
+	player.ult._inferno_shockwave(target.global_position, target)
+	_check(other._burn_time > 0.0 and other.is_staggered(), "Inferno II: the shockwave ignites and knocks down (burn %.1f)" % other._burn_time)
+	# Berserk: a knockout leaves 1 HP, untouchable, once a bout.
+	player.cards.untouchable = 0.0
+	player.knuckles = 5.0
+	player._lose_knuckles(50.0)
+	_check(is_equal_approx(player.knuckles, 1.0) and player.cards.untouchable >= 7.9 and player.cards._berserk > 0.0,
+			"Berserk: a knockout leaves 1 HP, untouchable (%.1f HP, %.1fs)" % [player.knuckles, player.cards.untouchable])
+	var result := player.receive_attack(30.0, target.global_position, "jab", target)
+	_check(result == "dodged" and is_equal_approx(player.knuckles, 1.0), "Berserk: nothing touches you meanwhile (%s)" % result)
+	await _free_rig(holder)
+	print("Card runtime: Mauler revamp OK")
 
 
 ## The fighter picker (2026-10-29): hovering a card and leaving puts it back

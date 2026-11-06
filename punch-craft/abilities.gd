@@ -14,7 +14,7 @@ const PASSIVES := {
 		{"id": "wrecking_ball", "name": "Wrecking Ball", "icon": "hammer", "level": 5,
 			"desc": "Monsters you knock out fly like bowling balls, smashing every monster they hit."},
 		{"id": "berserker", "name": "Berserker", "icon": "rage", "level": 15,
-			"desc": "The lower your knuckles, the harder you hit: up to +60% damage near empty."},
+			"desc": "Below half knuckle HP you hit 40% harder, and every knockout heals 1% of max HP, up to half."},
 	],
 	"counter_master": [
 		{"id": "perfect_counter", "name": "Perfect Counter", "icon": "star", "level": 1,

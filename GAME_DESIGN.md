@@ -1957,6 +1957,18 @@ Today: Mauler spends +30% damage, +25% knuckles, +30 defense, slower combos (abo
 - **Late unlocks:** the Catalyst is bought in the Soul Shop after beating the 3rd boss with another fighter, so the shared web already gives him Fire, Frost and Storm: his perk works from level 1 (a "starts with Fire" Spark was considered and dropped). Tony needs all 4 legendary hats (2% of monsters wear a hat, 1% of those are a given hat). Both join a late save at level 1, so the first-night gate below is for the Mauler, Answer, Blur and Stray; the Catalyst and Tony are checked at level 1 in the division the save has reached (level 1, no cards, the account's upgrades), mainly to see how fast they level.
 - **Gates (first night, Division 1 bout 1, no upgrades):** the good bot clears about 80% of runs and finishes low on knuckles (above 60% left is too easy). A beginner (average bot) with roughly 2-3 purses of ring 1 upgrades (about +3 damage, +15 knuckles, +5 defense) wins about half the time and more after. All six within about 15% on knuckles lost. Needs a Godot build for the bot runs.
 
+### Mauler passives, ultimates and cards (built 2026-11-06, in the Lab and dev site only: no itch release until the user says)
+From the user's audit notes (the ability audit page, https://claude.ai/artifact/MEmAxXhAgfc91jSKQqU2cc, keeps notes per fighter). Card ids are kept so saves still work; only names and effects changed.
+- **Berserker (passive)** is a switch now: below half knuckle HP you hit 40% harder (+5% per passive power point), and each knockout your punch causes heals 1% of max HP, but only up to the half-way line. Replaces the sliding scale (up to +60%).
+- **Red Mist (epic):** below half knuckle HP you also punch 25% faster.
+- **Inferno II (epic):** the original Inferno Uppercut stays; when it hits, a shockwave of flame knocks down and ignites everything within 5m (0.5x base damage a burn tick for 3s, bosses reel). The second leap is gone.
+- **I Eat Those (rare, was Hold the Line):** a hit that lands on you has a 25% / 50% chance to open a counter. The "can't flinch" tier is gone.
+- **Shoulder Charge (rare):** the dash knock is gone. Dash, then uppercut a monster: it flies up and takes 1.5x / 2x base damage on top, once per monster, never a boss.
+- **Haymaker Swing (rare):** unchanged. Its arc hits are plain hits (`card_play._cleave`), so single-target powers don't spread; confirmed by reading the code.
+- **Masochist (legendary, Headless seal, was Juggernaut):** with the Berserker passive, max knuckle HP x1.5, but healing and every fresh start stop at 60% of it, so you live near the half-way line.
+- **Berserk (legendary, Coffin King seal):** once a bout a knockout leaves you at 1 HP, untouchable and hitting twice as hard for 8s (was: below half, x2 damage and half damage taken). Checked in `card_runtime_regression._test_mauler_revamp` with the rest.
+- **To watch:** Berserk and Second Breath (punches free below 30%) both live in the low-HP zone; Masochist keeps you at 50-60%, so they stack with the passive. Needs playtesting, not just numbers. Not yet touched: Grudge, Wrecking Ball, Brimstone Shield, the commons, Lights Out, Second Breath, Thrill of the Fight, Avalanche, Ultimate Surge.
+
 ### The original plan
 
 The user tests away from the computer, so the playground gets a phone version on a restricted itch page. Much simpler than the desktop playground: only the key features, with big buttons.

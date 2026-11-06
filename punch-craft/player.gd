@@ -68,7 +68,14 @@ const PERFECT_COUNTER_BONUS := 2.5
 const GRUDGE_MULT := 3.0
 const WRECKING_DAMAGE := 1.1
 const WRECKING_RADIUS := 1.8
-const BERSERKER_MAX := 0.6
+## The Berserker passive (2026-11-06, the user's switch style): below half
+## knuckle HP you hit BERSERKER_BONUS harder, and each knockout heals
+## BERSERKER_KILL_HEAL of max knuckle HP, but only up to the half-way line.
+const BERSERKER_BONUS := 0.4
+const BERSERKER_LINE := 0.5
+const BERSERKER_KILL_HEAL := 0.01
+## Masochist (Berserker): max knuckle HP x1.5, healing stops here.
+const MASOCHIST_HEAL_CAP := 0.6
 const PHANTOM_COOLDOWN := 3.0
 const PHANTOM_BEHIND := 1.3
 const DODGE_CHAIN_STEP := 0.4
@@ -477,7 +484,7 @@ func _ready() -> void:
 	add_to_group("fight_player")
 	_punch_ray.add_exception(self)
 	max_knuckles = GameState.get_max_knuckles()
-	knuckles = max_knuckles
+	knuckles = heal_cap()
 	_punch_ray.target_position = Vector3(0, 0, -(LONG_REACH + LONG_REACH_PER_POWER * GameState.passive_power()) if GameState.has_passive("long_reach") else -PUNCH_REACH)
 	_camera.fov = Settings.fov()
 	Settings.changed.connect(func() -> void: _camera.fov = Settings.fov())
@@ -917,7 +924,13 @@ func _resolve_attack(amount: float, from: Vector3, attack: String, attacker: Nod
 ## monster your own punch put down. Powers' blasts, burns and chains heal
 ## nothing (2026-10-29: Fire and Blood healed you once per monster in a burst).
 func kill_heal(enemy: Enemy) -> float:
-	return GameState.heal_amount("heal_on_kill", max_knuckles) if enemy and enemy.has_meta("punched_out") else 0.0
+	if enemy == null or not enemy.has_meta("punched_out"):
+		return 0.0
+	var healed := GameState.heal_amount("heal_on_kill", max_knuckles)
+	# Berserker: a knockout heals 1%, but never past half, so you stay in the zone.
+	if GameState.has_passive("berserker"):
+		healed += clampf(max_knuckles * BERSERKER_LINE - knuckles, 0.0, max_knuckles * BERSERKER_KILL_HEAL)
+	return healed
 
 
 func _take_damage(amount: float, attacker: Node3D) -> void:
@@ -952,17 +965,25 @@ func heal(amount: float) -> void:
 	# Bloodbath (Blood capstone): double healing under half knuckle HP.
 	if GameState.has_effect("bloodbath") and knuckles < max_knuckles * 0.5:
 		amount *= 2.0
-	knuckles = minf(max_knuckles, knuckles + amount)
+	knuckles = maxf(knuckles, minf(heal_cap(), knuckles + amount))
 	knuckles_changed.emit(knuckles, max_knuckles)
 	_fists.set_hurt(1.0 - knuckles / max_knuckles)
+
+
+## The most knuckle HP healing and a fresh start reach: max, or with Masochist
+## (the Berserker's legendary) 60% of it, so you live near the half-way line.
+func heal_cap() -> float:
+	if GameState.has_passive("berserker") and GameState.has_effect("masochist"):
+		return max_knuckles * MASOCHIST_HEAL_CAP
+	return max_knuckles
 
 
 ## Back to full knuckles and fighting again (used by the training ground).
 func restore() -> void:
 	active = true
-	knuckles = max_knuckles
+	knuckles = heal_cap()
 	knuckles_changed.emit(knuckles, max_knuckles)
-	_fists.set_hurt(0.0)
+	_fists.set_hurt(1.0 - knuckles / max_knuckles)
 
 
 ## Like the start of a new run: full knuckles, no combo or pending counter,
@@ -2193,7 +2214,9 @@ func _passive_punch(target: Enemy, forced: bool) -> Dictionary:
 func _berserker_mult() -> float:
 	if not GameState.has_passive("berserker") or max_knuckles <= 0.0:
 		return 1.0
-	return 1.0 + (BERSERKER_MAX + 0.05 * _pp()) * clampf(1.0 - knuckles / max_knuckles, 0.0, 1.0)
+	if knuckles >= max_knuckles * BERSERKER_LINE:
+		return 1.0
+	return 1.0 + BERSERKER_BONUS + 0.05 * _pp()
 
 
 func _momentum_mult() -> float:

@@ -61,10 +61,10 @@ const DEFENSE := {
 const CARDS := {
 	# The Mauler.
 	"payback": [0.15, 0.0], "hit_guard": [0.0, 1.0], "hit_ult": [0.01, 0.0], "mob_bonus": [1.5, 0.0],
-	"no_flinch": [0.0, 0.1], "staggered_bonus": [0.25, 0.0], "cleave": [0.02, 0.0], "shoulder": [0.03, 0.01],
+	"eat_those": [0.02, 0.06], "staggered_bonus": [0.25, 0.0], "cleave": [0.02, 0.0], "shoulder": [0.03, 0.01],
 	"second_breath": [0.0, 0.25], "blood_feud": [0.12, 0.0], "strike": [0.05, 0.0], "red_mist": [0.1, 0.0],
-	"inferno_ii": [0.04, 0.0], "brimstone_wall": [0.03, 0.03], "crowd_guard": [0.0, 2.0], "juggernaut": [0.0, 0.125],
-	"ult_surge": [0.05, 0.03], "avalanche": [0.03, 0.03], "berserk": [0.06, 0.04],
+	"inferno_ii": [0.04, 0.0], "brimstone_wall": [0.03, 0.03], "crowd_guard": [0.0, 2.0], "masochist": [0.1, 0.0],
+	"ult_surge": [0.05, 0.03], "avalanche": [0.03, 0.03], "berserk": [0.06, 0.06],
 	# The Answer.
 	"closing": [0.07, 0.0], "exploit": [0.08, 0.0], "sting_delay": [0.0, 0.15], "counter_ult": [0.08, 0.0],
 	"two_answers": [0.06, 0.0], "turnabout": [0.04, 0.05], "read_twice": [0.02, 0.0], "return_sender": [0.01, 0.0],
