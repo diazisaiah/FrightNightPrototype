@@ -1906,7 +1906,29 @@ Before Monday: the bench and the audit sheet. Mon: stats. Tue: passives. Wed: ul
 - **Free fight tools:** the fight's touch controls take every tap, so the spawn buttons, ELITE, GOD, FREEZE, FILL ULT, CLEAR and MENU show beside the pause menu (the pause button).
 - **Benchmark:** the 15 enemies are zombies x5, runners x3 and a skeleton, a brawler and a hulk, a mage, a priest and possessed armor, an elite brawler; then the boss (Bellman, Southpaw or Coffin King by level), with knuckles refilled before it. The clock only counts time in the fight. Time out: 120 s a group, 180 s for the boss. It records time, damage dealt and per second, damage taken and hits, knuckles left, dodges, grazes, counters, punches landed, best combo, ultimates used and each class event (passive procs) by name. Damage is read from the drop in each enemy's HP, so it works for every ability.
 - **Test hooks** (desktop, after `--`): `--lab-test=<fighter>,<0-2>` plays the benchmark with instant kills and prints the result (all six fighters pass at Easy and Hard); `--lab-idle` skips the kills (a Hard idle run ends in DEFEAT after about 15 s); `--lab-shot=<png>` saves a screenshot; `--lab-free=<enemy>` starts a free fight.
-- **Not done yet:** the bot's numbers (the headless fighter bench with a scripted player) still need to be added so they match this fight; dual powers for the Catalyst; no way to pick hats or emotes.
+- **Not done yet:** dual powers for the Catalyst; no way to pick hats or emotes; the headless fighter bench (it should call the same `lab_bot.gd`).
+
+**Lab update 1 (2026-11-06, written without a Godot binary: only syntax-checked with gdparse, to run on desktop first):**
+- **Open arena.** The ring (8 m) is replaced by a 30 m stone arena (`_build_ring` override in `lab.gd`): distance rings at 5 and 10 m, a low wall and pillars at the edge, torches pushed out, fog thinned. Groups spawn on a 10 m circle at fixed angles (crowd ahead, runners right, bruisers left, casters behind, elite ahead), so they walk in and ranged monsters can shoot; the boss starts 8 m away with a 9 m limit. The player is reset to the middle before the run and before the boss.
+- **Utility is measured, not just damage.** `Player.attack_resolved(result, amount, attack)` (new, no behaviour change) gives damage avoided by dodges, grazes and armor/shields. The Lab also records knuckles healed, enemy stun/hold seconds, distance moved, and, inside each ultimate's window (`ULT_WINDOWS`), damage dealt, taken, avoided and healed. Per-group damage dealt and taken is kept. Results compare against the last run of the same exact build (fighter, level, passive, ultimate, power, cards, player).
+- **Scripted player** (`lab_bot.gd`): menu button PLAYER: YOU / AVERAGE BOT / GOOD BOT. It walks in, faces the nearest monster, alternates jab and cross, reads `incoming_attack()` / `attack_eta()` and dodges (average: late, skips 30%, wrong 15%; good: early and clean), counters, plays Temporal Break, presses the ultimate for a boss, a crowd of 3 or under 40% knuckles. Fixed random seed. It does not play class tricks (head stomps, dash punches). Desktop: `--lab-test=<fighter>,<level> --lab-bot=average|good`.
+
+### Ability roles (what each passive and ultimate is for)
+The abilities don't share a job, so damage alone can't rate them. Each gets one primary role and is judged on that role's number, with the benchmark reporting all of them.
+
+| Role | Measured by | Passives | Ultimates |
+|---|---|---|---|
+| Damage | damage dealt, dps | Grudge, Berserker, Echo Fists, Dodge Chain, Momentum, Wrecking Ball | Temporal Break, Unbroken, The Family, Inferno Uppercut |
+| Defense | damage avoided, hits taken | Fuggedaboudit, Long Reach (hit them first) | Brimstone Shield, Flow State, Riposte Stance |
+| Sustain | knuckles healed | (none today) | Elemental Fists (blood share) |
+| Control | enemy stun/hold seconds | Rapid Combos, The Muscle, Head Stomp | Big Mouth, Flame Burst |
+| Mobility | distance, time out of reach | Phantom Step, Dash Punches | Highlight Reel, Hype Train |
+| Economy / amplifier | not a fight stat | The Take (coins), Dual Sigil, Attunement, Prism | (none) |
+
+Findings: Sustain has almost nothing, Defense and Control are thin on passives, and The Take does nothing in a fight (it should become a fight passive or move to a perk). Each fighter should have one passive and one ultimate that fill different roles, so Mauler = Damage + Defense, Answer = Defense + Damage, Blur = Damage + Control, Stray = Mobility + Control, Tony = Control + Defense, Catalyst = amplifier + Damage.
+
+### Stat budget (proposal, to measure)
+Today: Mauler spends +30% damage, +25% knuckles, +30 defense, slower combos; Answer, Blur, Tony and the Catalyst spend a little and give up a little; the Stray has only +35% sprint. Rather than guess point costs, measure them with the bot: for each stat, run the benchmark at +10% on a plain fighter (a `--lab-stat=<stat>:<x>` hook) and price the stat by how much the score moves (damage dealt per second, damage avoided and taken together). Then every fighter spends the same 100 points and the camp bars are built from the table. This needs the bot runs on a real Godot build first.
 
 ### The original plan
 

@@ -19,6 +19,10 @@ signal performed(move: String)
 signal grazed
 ## Exact knuckle HP lost to an enemy attack (not punch stamina costs).
 signal damage_taken(amount: float)
+## How an enemy attack ended: "hit", "dodged", "grazed" or "armored" (an
+## ultimate shield, Fuggedaboudit or Iron Will), with its raw damage. The
+## Lab reads it to measure damage avoided.
+signal attack_resolved(result: String, amount: float, attack: String)
 ## Emitted when a punch connects. kind is "hit", "setup" (heavy after an
 ## opposite-hand jab/cross), "counter", "blocked" or "evaded"; killed if it
 ## finished the enemy.
@@ -792,6 +796,12 @@ func _physics_process(delta: float) -> void:
 ## (an ultimate shield or other guard absorbed it) or "hit".
 ## attacker: the enemy throwing it, for melee attacks (Thorns hits it back).
 func receive_attack(amount: float, from: Vector3, attack: String, attacker: Node3D = null) -> String:
+	var result := _resolve_attack(amount, from, attack, attacker)
+	attack_resolved.emit(result, amount, attack)
+	return result
+
+
+func _resolve_attack(amount: float, from: Vector3, attack: String, attacker: Node3D = null) -> String:
 	_stop_emote()
 	if fixed_hit > 0.0:
 		amount = fixed_hit
