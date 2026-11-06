@@ -1648,7 +1648,7 @@ Not built yet. Versus comes first (it's cheaper, fits the game, and its networki
 - **Sending:** a monster you KO climbs out of a grave on your opponent's side, with an "INCOMING: Brute" warning about 2s ahead. Elites send elites, champions send champions. To consider: your KOs cancel what's incoming before anything extra goes over (Tetris style).
 - **First one down loses.**
 - **You see each other:** the opponent's sculpted body (`PlayerBody`, with their hat) is synced about 20 times a second (position, facing). Emotes play in full for them to see, and emoting mid-fight still leaves you open. Optionally their monsters show too, purely as visuals.
-- **Real builds:** players fight with their own upgrades and gear (not normalized).
+- **Builds (revised 2026-11-05):** Versus uses the multiplayer profile, not the single-player build, so both players start blank and even. How Versus progresses (its own XP and rank, or gear found mid-match) is still to design.
 - **No pauses in Versus:** the hat popup, tutorials and level-up cards stay off.
 
 ### The ladder (like Clash Royale)
@@ -1742,13 +1742,22 @@ Decided: points and XP both reset every run. A separate kind of XP, Survivor XP,
 - **Reuse:** the Crypt's rooms, doors, merchant, chests and boss-room code (`dungeon.gd`, `crypt_door.gd`), enemy types and tells (`enemy.gd` and the monster scripts), run-only gear (`gear.gd`, `begin_crypt_run`), the card pool and draw screen (`cards.gd`, `card_draw.gd`), the Dead League bosses (`dead_league_boss.gd`), the HUD pieces, and the phone controls ("hold a finger still to use things").
 - **New:** `survival.gd` (the map and the wave director), a points tracker, the mystery box, the objectives, a companion bot, a clean run profile, Survivor ranks, and the results screen.
 
+### Single player and Multiplayer profiles [Decided 2026-11-05]
+- **Title screen:** Play opens a choice: **Single Player** (everything that exists today) or **Multiplayer** (Survival, with a bot or a friend, and Versus).
+- **Two profiles per fighter.** Each fighter has single-player data (what's saved now: levels, upgrades, gear, seals, deck) and multiplayer data, kept apart. Progress in one never changes the other.
+- **What carries over:** cosmetics only: hats, emotes, skins, hand idles. They show in both modes.
+- **Hats give no boosts in multiplayer.** In single player a hat keeps its small boost. In multiplayer every hat is purely cosmetic, so nothing you wear gives an edge.
+- **How it's built:** the clean-profile swap (`begin_survival`, renamed `begin_multiplayer(fighter)`) already clears upgrades, levels and gear. It also zeroes the hats' effects, and saving stays locked during a run so the single-player save is never overwritten. The multiplayer data is its own save key: per fighter, Survivor XP and rank, and later Versus rank.
+- **Why it's good for balance:** everyone starts from the same blank fighter, so Versus doesn't need POWER-based matchmaking or real-build limits, and an edited single-player save can't leak in.
+- **The save code** (Settings, Codes) should carry both profiles.
+
 ### Three technical problems to solve first
 1. **A clean profile.** `GameState` holds every upgrade, level, seal, piece of gear and card for the whole game, and the player reads it directly. A Survival run needs a blank swap-in: `begin_survival(fighter)` snapshots the real values and clears the gameplay ones, and `end_survival()` restores them. Rules: saving is locked while the swap is active (a crash or quit must never write a blank profile over the real save), cosmetics (hats, skins, emotes) still show, and Survivor ranks live in their own key. Tests must use the test save and settings env vars.
 2. **Two targets, and allies as targets.** Enemies hold one `player` and call `player.receive_attack(...)`. Give them a target list and a pick rule (nearest, with the attack-turn limit counting everyone fighting). The bot gets the same `receive_attack` interface, `active` flag and position. This is the same change the ultimates audit needs: The Family's ghost goons should lure enemies and be attacked by them (today `goon.gd` hunts the `enemies` group, and enemies only ever look at the player; Big Mouth's `taunt` is the same idea). So the target list serves the bot, the goons and any future summon.
 3. **The ultimates audit (planned anyway; now a Survival prerequisite).** Check every ultimate and power for assumptions that break with two fighters or no slow-motion: summons and allies (the Family), taunts and lures, auras that follow "the player", anything that reads `get_first_node_in_group("player")`, pulls and knockbacks, and time effects (`time_fx.gd`, the Blur's Temporal Break and ultimate): in Survival they become a bubble around the caster. Output: a table of each ultimate and power with what it does to a second fighter, a fix, and a Survival rule.
 
 ### Rules (first-guess numbers; all of them to be tuned)
-**Run start:** pick fighter and map, then partner (bot, or later a friend or random). Level 1, no upgrades, no gear, the fighter's base deck, 0 points. Hats and emotes still work.
+**Run start:** Play, then Multiplayer, then Survival; pick fighter and map, then partner (bot, or later a friend or random). Level 1, no upgrades, no gear, the fighter's base deck, 0 points. Hats, skins and emotes show but give no boosts.
 
 **Points**
 - **Kills:** zombie 60, skeleton or runner 80, brawler 100, mage or priest 120, armor 140, hulk 150, elite 300, mini-boss 500.
@@ -1818,7 +1827,7 @@ Mobile auto-releases on every commit, so Survival must stay hidden behind a flag
 4. **Cards, XP and merchant (2):** breaks, draws, run levels, patching.
 5. **The bot (3):** body poses, behavior, revive, tuning.
 6. **Objectives and boss (3):** the four objective types, the boss fight, the endless mode.
-7. **Survivor ranks and polish (2):** ranks, perks, results screen, Play picker card, phone controls.
+7. **Survivor ranks and polish (2), including the title screen's Single Player / Multiplayer choice and the second profile:** ranks, perks, results screen, Play picker card, phone controls.
 8. **Balance, QA and the playground (2):** play it with your eyes closed; then you test it in the playground and approve before release.
 
 About 18 sessions in total: weeks, not days.
@@ -1827,6 +1836,9 @@ About 18 sessions in total: weeks, not days.
 - Powers: decided 2026-11-05. They come from perk vending machines (see Perk machines).
 - Is it available from the start, or after the tutorial? My pick: after the tutorial.
 - What does a lost run keep? My pick: Survivor XP only.
+- Does Survival with a bot live under Multiplayer too, even offline? My pick: yes, one Multiplayer menu for everything, with the bot as a partner choice.
+- Versus progression: its own XP and rank per fighter, or is each match even and only the ladder points persist? My pick: even matches, ladder points only, plus cosmetic rewards.
+- Does the single-player data matter at all in multiplayer, such as unlocking fighters? My pick: a fighter unlocked in single player is available in multiplayer, and that's all that carries.
 - The mode's name.
 
 ## Launch readiness [In progress, 2026-10-15]
