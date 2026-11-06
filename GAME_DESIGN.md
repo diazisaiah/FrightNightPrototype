@@ -1820,7 +1820,7 @@ A points counter next to the coins, the wave number and a progress bar, the obje
 Mobile auto-releases on every commit, so Survival must stay hidden behind a flag until it's ready: reachable only from the playground and a debug switch. When you approve it in the playground, a later commit adds the Play picker card.
 
 ### Milestones (a working session is one go at it)
-0. **Ultimates and powers audit (1 to 2):** the table described above; fix the Family and any other single-player assumption.
+0. **The character revamp (see "Character revamp"):** it covers the ultimates audit; Survival starts after it.
 1. **Spike (1):** the clean profile swap with save lock, target list on enemies, and a stub Survival scene. Done when: a clean fighter fights waves in a box with two targets, and the real save is untouched afterwards.
 2. **Greybox (3):** the map, the wave director, points, style popups, doors, the HUD.
 3. **Box, gear and perk machines (3):** the mystery box, gear offers, the teddy bear, and the power machines.
@@ -1836,10 +1836,67 @@ About 18 sessions in total: weeks, not days.
 - Powers: decided 2026-11-05. They come from perk vending machines (see Perk machines).
 - Is it available from the start, or after the tutorial? My pick: after the tutorial.
 - What does a lost run keep? My pick: Survivor XP only.
-- Does Survival with a bot live under Multiplayer too, even offline? My pick: yes, one Multiplayer menu for everything, with the bot as a partner choice.
-- Versus progression: its own XP and rank per fighter, or is each match even and only the ladder points persist? My pick: even matches, ladder points only, plus cosmetic rewards.
-- Does the single-player data matter at all in multiplayer, such as unlocking fighters? My pick: a fighter unlocked in single player is available in multiplayer, and that's all that carries.
+- Survival with a bot lives under Multiplayer, even offline: decided 2026-11-06.
+- Versus: separate from co-op and parked for now (2026-11-06). Its progression gets designed when it's picked up.
+- A fighter unlocked in single player is available in multiplayer; with cosmetics, that's all that carries (decided 2026-11-06).
 - The mode's name.
+
+## Character revamp [Planned, week of 2026-11-09]
+
+Every fighter gets rebuilt from scratch: starting stats, passives, ultimates, cards and first-person hands. Goal: everyone is equally strong, each in a different way. It also covers the ultimates audit Survival needs (two fighters, no slow-motion).
+
+### What there is today
+Six fighters: the Mauler, the Answer, the Blur, the Stray, plus Tony and the Catalyst (both secret). Each has 3 passives (levels 1, 5, 15), 2 ultimates (levels 1, 10) and 19 cards (5 common, 5 rare, 5 epic, 4 legendary): 18 passives, 12 ultimates and 114 cards in all. Hands are one 1,535-line script (`fists.gd`) with a hand-written paint function per fighter.
+
+| Fighter | Base stat changes today |
+|---|---|
+| Mauler | damage x1.3, knuckles x1.25, defense +30, combo growth x0.6 |
+| Answer | damage x0.85, knuckles x0.9, counters x3, dodge window x1.4 |
+| Blur | damage x0.75, punch speed x1.35, combo growth x1.5, combo window +1s |
+| Stray | sprint x1.35 |
+| Tony | knuckles x0.9 |
+| Catalyst | damage x0.9 |
+
+Already visible: the Stray has almost no stat identity, Tony and the Catalyst only have a drawback, and the strengths are written in three places (stat changes, the camp's bars, the description text) that can drift apart.
+
+### Rules every fighter must follow
+- **One clear identity**, readable in a sentence: what you do, and what you're weak at.
+- **Same total strength, different shape**, checked by measurement, not by feel alone.
+- **A passive explains itself in one line** and never moves the camera or the player without being asked (that's where most jank lives).
+- **An ultimate earns its moment:** it changes the fight for a few seconds, and it's never just a bigger number.
+- **Cards make things better, not different.** They can't stack without limit, can't double a passive's core number, and the four levels of a card grow evenly.
+- **Every piece works:** on phones with touch, with two fighters on the field (Survival: allies can be targeted, taunts and lures work on both), without slow-motion, and in the Dead League against one boss.
+- **One source of truth:** each fighter's numbers live in one data table, and the camp bars and the description are built from it.
+
+### How we measure: the fighter bench
+A headless test (like `balance_report.gd`, with the test save) that plays each fighter through the same fights with a scripted player:
+- **Fights:** a 30-zombie crowd, a mixed wave with ranged monsters, an elite, and a Dead League boss.
+- **Two skill levels:** "average" (slow reactions, misses some dodges) and "good" (clean slips and counters), so a fighter that only works in perfect hands shows up.
+- **Output per fighter:** damage per second, time to clear, damage taken, knuckles left, how often the passive fires and what it adds, and the ultimate's value (damage, or damage avoided) per use.
+- Run it before and after each change. The target is every fighter within about 10% of the others in each fight, with different fights being their best.
+
+The bench doesn't replace playing: each step ends with a playground build for you to try.
+
+### Steps
+1. **Audit sheet** (before the week starts): every stat, passive, ultimate and card with its real numbers, a bench measurement, notes on jank, and a verdict column (keep, fix, replace). I can make it as a page you can mark up from your phone.
+2. **Starting stats:** a stat budget. A plain fighter is 100 points; each stat (damage, knuckles, defense, punch speed, sprint, dodge window, counter strength, combo growth) costs points, and every fighter spends the same. Rebuild the six from scratch on it.
+3. **Passives:** test each of the 18 for jank (camera or movement grabs, effects that misfire, things that don't read) and for strength. Fix, retune, or replace.
+4. **Ultimates:** the same for the 12, plus the multiplayer column: what each one does to an ally, to the bot, and without slow-motion. The Family's goons lure enemies and can be hit; Temporal Break becomes a bubble in Survival; Big Mouth's taunt works with two targets.
+5. **Cards:** the 114 cards against the new numbers. Cap anything that stacks without limit, check every level's text matches what it does, and cut cards that only exist to fix a weak base.
+6. **Hands:** rebuild how hands are made. Instead of a paint function per fighter, a data description per fighter (glove or wrap shape, cuffs, sleeves, skin, colors) and one builder. Then clean new hands for each fighter, matched to their bodies, at a voxel size that reads well on phones.
+
+### Rough week
+Before Monday: the bench and the audit sheet. Mon: stats. Tue: passives. Wed: ultimates. Thu: cards. Fri: the hands builder and the first fighter's hands. The other hands and the playground review follow. Nothing ships until you approve it in the playground.
+
+### Things to handle along the way
+- **Existing saves:** players keep their levels, upgrades and cards. If a card or upgrade is removed, refund what it cost. If the numbers change, show a one-time "Fighters rebalanced" note.
+- **Text:** every description, card text and camp bar comes from the new numbers (and stays short, per the terse-text rule).
+- **Dead League:** contenders scale to a par build, so the par numbers get re-checked after the stats step.
+
+### Open questions
+- Are Tony and the Catalyst part of this pass, or only the four public fighters first?
+- Is there concept art or a reference for the new hands, or should I propose looks?
+- What already feels too strong, too weak or janky from your playtests? Those go to the top of the audit sheet.
 
 ## Launch readiness [In progress, 2026-10-15]
 
