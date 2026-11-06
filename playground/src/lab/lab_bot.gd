@@ -46,7 +46,8 @@ func _init(for_player: Player, skill_name: String) -> void:
 func step(delta: float, enemies: Array) -> void:
 	var alive: Array = []
 	for enemy in enemies:
-		if is_instance_valid(enemy) and not enemy.is_dead():
+		# $Enemies also holds hit particles and damage labels.
+		if is_instance_valid(enemy) and enemy.has_method("is_dead") and not enemy.is_dead():
 			alive.append(enemy)
 	if not player.active or alive.is_empty():
 		release()
