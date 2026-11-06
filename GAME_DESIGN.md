@@ -311,6 +311,11 @@ The web build is the only one released, and family testers found it laggy. On to
   - In the Crypt about 535 meshes become 28 batches.
 - The camp backdrop and fighter demo reel have no MSAA in the browser, and the camp backdrop redraws every other frame.
 - Upgrade-web nodes redraw every third frame while idle in the browser, and links every other frame. Hovering, buying and bursts stay at full rate.
+- **Phone heat and reload pass (2026-11-06, after a 15-minute phone session got hot and the page reloaded in the Crypt near a gilding altar):**
+  - **Frame cap** (Settings → Display → Frame rate: Auto / 30 / 60 / Max): nothing capped the frame rate, so phones rendered at their screen's 90-120 Hz. In a browser `Settings.FRAME_CAP_JS` lets the game loop's own `requestAnimationFrame` callback skip refreshes (`window.__fnFps`); the desktop app uses `Engine.max_fps`. Auto = 30 on phones (`Settings.is_phone()`: the mobile build or a browser on Android / iOS), 60 in a desktop browser, uncapped in the desktop app. `?bench` turns it off.
+  - **Phones only:** 3D pixel budget about 1024x576 (was 1280x720), 4 nearby scenery lights (was 6), and the Web Mobile page reports a pixel ratio of at most 2 (a 3x phone drew the whole canvas, HUD included, at 3x). Film effects stay off on phones even if a Graphics tile is tapped (they copied and mipmapped the screen every frame; the tiles turned them back on until a restart).
+  - **Everywhere, no visual change:** the new HUD's HP strap and bout card redraw only when what they show changes (or the low-HP pulse runs), not every frame. The Crypt frees the old floor before building the next, so two floors are never in memory at once.
+  - **Reloads:** a phone browser that runs out of memory reloads the page. Settings → Display → Performance shows fps, memory (and the session's peak), video memory, draw calls and nodes, to find what climbs. Not done yet: a Crypt run doesn't survive a reload (everything not gilded and carried out is lost).
 - **Bench:** open the web build with `?bench` in the URL (local server or a direct link, not the itch page). It runs a crowded night, the Crypt, camp, Dead League and the title, twice: optimizations off, then on. Each prints fps, worst frame, draw calls and resolution scale to the browser console, using its own save.
 
 ## Visual style [Built, 2026-10-11]

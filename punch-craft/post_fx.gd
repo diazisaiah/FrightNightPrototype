@@ -67,5 +67,7 @@ func set_param(name: String, value) -> void:
 
 
 func _apply() -> void:
-	var on: bool = Settings.get_value("post_effects")
+	# Never on phones (2026-11-06): it copies and mipmaps the whole screen
+	# every frame, and the Graphics tiles used to switch it back on.
+	var on: bool = Settings.get_value("post_effects") and not Settings.is_phone()
 	_rect.visible = on

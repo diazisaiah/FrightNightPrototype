@@ -26,6 +26,12 @@ const DEFAULTS := {
 	# 3D resolution: "auto" (browser: fits the screen, drops if the frame rate
 	# does), "full" or "low".
 	"render_scale": "auto",
+	# Frame rate cap (2026-11-06): "auto" (30 on phones, 60 in a desktop browser,
+	# the screen's own rate in the desktop app), "30", "60" or "max". Phones
+	# ran at their screen's 90-120 Hz and got hot.
+	"frame_rate": "auto",
+	# A small fps / memory readout for testing on a phone (PerfOverlay).
+	"perf_overlay": "off",
 	# Your own key bindings (Controls.bind): {action: "k:<key>" | "m:<button>"}.
 	"bindings": {},
 	# Controllers: your own button bindings, look speed, invert, rumble.
@@ -48,6 +54,32 @@ func new_hud() -> bool:
 	return str(values.get("hud_style", "new")) == "new"
 
 var _web_fullscreen_asked := false
+
+## Frame cap in a browser: the game's loop asks for every screen refresh
+## (60-120 a second on phones). This lets the loop's own callback skip
+## refreshes until 1000 / window.__fnFps ms have passed. Other callbacks run as
+## usual; if the loop's callback ever changes, it simply isn't capped.
+const FRAME_CAP_JS := """
+(function () {
+	if (window.__fnCap) { return; }
+	window.__fnCap = true;
+	window.__fnFps = window.__fnFps || 0;
+	var raf = window.requestAnimationFrame.bind(window);
+	var last = new WeakMap();
+	window.requestAnimationFrame = function (cb) {
+		return raf(function tick(t) {
+			var cap = window.__fnFps;
+			var before = last.get(cb);
+			if (cap > 0 && before !== undefined && t - before < 1000 / cap - 3) {
+				raf(tick);
+				return;
+			}
+			last.set(cb, t);
+			cb(t);
+		});
+	};
+})();
+"""
 
 const FULLSCREEN_JS := """
 (function () {
@@ -87,6 +119,7 @@ func _ready() -> void:
 		# made a frame later can miss that. So the page keeps what's wanted and
 		# retries on every tap or click until the browser says yes.
 		JavaScriptBridge.eval(FULLSCREEN_JS, true)
+		JavaScriptBridge.eval(FRAME_CAP_JS, true)
 	# One look everywhere: every menu, HUD screen, dropdown and dialog. Merged
 	# into Godot's default theme, since a theme set on the window stops at
 	# CanvasLayers (the HUD).
@@ -135,10 +168,14 @@ func screen_shake() -> float:
 ## Auto resolution aims for about this many 3D pixels (1280 x 720), so a big or
 ## high-DPI browser window doesn't render 2-4x the pixels.
 const WEB_PIXEL_BUDGET := 1280.0 * 720.0
+## Phones (2026-11-06): a phone screen is small, so fewer 3D pixels (about
+## 1024 x 576) look the same and run much cooler.
+const PHONE_PIXEL_BUDGET := 1024.0 * 576.0
 const MIN_RENDER_SCALE := 0.4
 ## At most this many scenery lights (torches, candles, glows) are on at once in
 ## the browser: the nearest to the camera. Lights on characters aren't touched.
 const WEB_LIGHT_BUDGET := 6
+const PHONE_LIGHT_BUDGET := 4
 const WEB_LIGHT_RANGE := 18.0
 
 var _scenery_lights: Array = []
@@ -179,6 +216,53 @@ func _process(delta: float) -> void:
 		apply_render_scale()
 
 
+## A phone or tablet: the mobile build, or a browser on Android or iOS.
+func is_phone() -> bool:
+	return OS.has_feature("mobile") or OS.has_feature("web_android") or OS.has_feature("web_ios")
+
+
+## Frames a second to cap at (0 = no cap: the screen's own rate).
+func frame_cap() -> int:
+	match str(get_value("frame_rate")):
+		"30":
+			return 30
+		"60":
+			return 60
+		"max":
+			return 0
+	if is_phone():
+		return 30
+	return 60 if OS.has_feature("web") else 0
+
+
+## Loaded by path, not class name, so a build whose class list wasn't
+## refreshed still starts.
+const PERF_OVERLAY := preload("res://perf_overlay.gd")
+var _perf_overlay: CanvasLayer
+
+
+func _apply_perf_overlay() -> void:
+	var on := str(get_value("perf_overlay")) == "on"
+	if on and _perf_overlay == null:
+		_perf_overlay = PERF_OVERLAY.new()
+		add_child(_perf_overlay)
+	elif not on and _perf_overlay != null:
+		_perf_overlay.queue_free()
+		_perf_overlay = null
+
+
+## Benchmarks turn the cap off to measure the real cost.
+var frame_cap_off := false
+
+
+func apply_frame_cap() -> void:
+	var cap := 0 if frame_cap_off else frame_cap()
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("window.__fnFps = %d;" % cap, true)
+	else:
+		Engine.max_fps = cap
+
+
 ## The 3D resolution scale for the main view (and SubViewports that ask).
 func render_scale() -> float:
 	match get_value("render_scale"):
@@ -189,7 +273,7 @@ func render_scale() -> float:
 	if not use_web_profile():
 		return 1.0
 	var pixels := float(get_tree().root.size.x * get_tree().root.size.y) if get_tree() else WEB_PIXEL_BUDGET
-	var fit := sqrt(WEB_PIXEL_BUDGET / maxf(pixels, 1.0))
+	var fit := sqrt((PHONE_PIXEL_BUDGET if is_phone() else WEB_PIXEL_BUDGET) / maxf(pixels, 1.0))
 	return clampf(minf(fit, 1.0) - _quality_drop, MIN_RENDER_SCALE, 1.0)
 
 
@@ -225,7 +309,7 @@ func _budget_lights() -> void:
 		return a.global_position.distance_squared_to(from) < b.global_position.distance_squared_to(from))
 	for i in sorted.size():
 		var light: Light3D = sorted[i]
-		light.visible = i < WEB_LIGHT_BUDGET and light.global_position.distance_to(from) < WEB_LIGHT_RANGE
+		light.visible = i < (PHONE_LIGHT_BUDGET if is_phone() else WEB_LIGHT_BUDGET) and light.global_position.distance_to(from) < WEB_LIGHT_RANGE
 
 
 func use_web_profile() -> bool:
@@ -235,6 +319,8 @@ func use_web_profile() -> bool:
 func apply() -> void:
 	Controls.apply()
 	apply_render_scale()
+	apply_frame_cap()
+	_apply_perf_overlay()
 	_set_volume("Master", get_value("master"))
 	_set_volume("Effects", get_value("effects"))
 	_set_volume("Ambience", get_value("ambience"))

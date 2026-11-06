@@ -49,7 +49,10 @@ static func start_if_requested(tree: SceneTree) -> bool:
 func _ready() -> void:
 	for last in [false, true]:
 		get_tree().root.add_child.call_deferred(BenchProbe.new(last))
-	# Desktop: uncapped, so the numbers are the real cost.
+	# Uncapped, so the numbers are the real cost (the browser frame cap too).
+	Settings.frame_cap_off = true
+	Settings.apply_frame_cap()
+	# Desktop: no vsync either.
 	if not OS.has_feature("web"):
 		DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
 		Engine.max_fps = 0

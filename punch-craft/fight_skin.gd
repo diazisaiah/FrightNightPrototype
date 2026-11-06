@@ -12,6 +12,9 @@ const CARD_WIDTH := 300.0
 
 var hud: Hud
 var _time := 0.0
+## What was drawn last (2026-11-06): it redraws only when that changes or the
+## low-HP pulse runs, instead of every frame.
+var _drawn: Array = []
 
 
 func _init(owner_hud: Hud) -> void:
@@ -22,7 +25,22 @@ func _init(owner_hud: Hud) -> void:
 
 func _process(delta: float) -> void:
 	_time += delta
-	queue_redraw()
+	var state := _state()
+	var hp_max := maxf(hud._knuckle_bar.max_value, 1.0)
+	if state != _drawn or hud._knuckle_bar.value / hp_max < 0.25:
+		_drawn = state
+		queue_redraw()
+
+
+## Everything the strap and the bout card show.
+func _state() -> Array:
+	return [
+		size, GameState.fighter_color(), GameState.fighter_name(),
+		hud._knuckle_bar.value, hud._knuckle_bar.max_value,
+		hud._knuckle_ghost.value if hud._knuckle_ghost else -1.0,
+		hud._level_label.visible, hud._level_label.text, hud._xp_bar.value, hud._xp_bar.max_value,
+		hud._boss_bar.visible, hud._wave_label.text, hud._night_bar.visible, hud._night_bar.value, hud._night_bar.max_value,
+	]
 
 
 func _draw() -> void:

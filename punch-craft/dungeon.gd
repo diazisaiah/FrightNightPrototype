@@ -339,8 +339,14 @@ func _build_floor() -> void:
 	_dice_left = int(GameState.get_effect("loaded_dice"))
 	# One attacker at a time until the Plague tier's floors (7 on), like the Arena.
 	Enemy.max_attackers = 1 if _floor < 7 else 2
+	# Freed now, not at the end of the frame (2026-11-06): the new floor used to
+	# be built while the old one was still in memory, two floors at once, the
+	# peak phones run out on. Floors are only rebuilt from the HUD's Continue
+	# button, never from inside the level, so nothing of it is running.
 	if _level:
-		_level.queue_free()
+		remove_child(_level)
+		_level.free()
+		_level = null
 	for enemy in _enemies.get_children():
 		enemy.queue_free()
 	_alive = 0
@@ -358,7 +364,8 @@ func _build_floor() -> void:
 	Themes.apply_environment($WorldEnvironment.environment, _theme)
 	Sfx.play_music(_theme.music)
 	if _hazards:
-		_hazards.queue_free()
+		remove_child(_hazards)
+		_hazards.free()
 	_hazards = Node3D.new()
 	add_child(_hazards)
 	_level = Node3D.new()
