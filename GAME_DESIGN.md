@@ -1744,8 +1744,8 @@ Decided: points and XP both reset every run. A separate kind of XP, Survivor XP,
 
 ### Three technical problems to solve first
 1. **A clean profile.** `GameState` holds every upgrade, level, seal, piece of gear and card for the whole game, and the player reads it directly. A Survival run needs a blank swap-in: `begin_survival(fighter)` snapshots the real values and clears the gameplay ones, and `end_survival()` restores them. Rules: saving is locked while the swap is active (a crash or quit must never write a blank profile over the real save), cosmetics (hats, skins, emotes) still show, and Survivor ranks live in their own key. Tests must use the test save and settings env vars.
-2. **Two targets.** Enemies hold one `player` and call `player.receive_attack(...)`. Give them a target list and a pick rule (nearest, with the attack-turn limit counting both fighters). The bot gets the same `receive_attack` interface, `active` flag and position.
-3. **No slow-motion.** Survival has no slow-down. Hit-stop stays local. Time-stop powers (the Blur's) become a bubble around the caster in this mode. Audit `time_fx.gd`, the Blur's ultimate and Temporal Break for anything that touches the whole world.
+2. **Two targets, and allies as targets.** Enemies hold one `player` and call `player.receive_attack(...)`. Give them a target list and a pick rule (nearest, with the attack-turn limit counting everyone fighting). The bot gets the same `receive_attack` interface, `active` flag and position. This is the same change the ultimates audit needs: The Family's ghost goons should lure enemies and be attacked by them (today `goon.gd` hunts the `enemies` group, and enemies only ever look at the player; Big Mouth's `taunt` is the same idea). So the target list serves the bot, the goons and any future summon.
+3. **The ultimates audit (planned anyway; now a Survival prerequisite).** Check every ultimate and power for assumptions that break with two fighters or no slow-motion: summons and allies (the Family), taunts and lures, auras that follow "the player", anything that reads `get_first_node_in_group("player")`, pulls and knockbacks, and time effects (`time_fx.gd`, the Blur's Temporal Break and ultimate): in Survival they become a bubble around the caster. Output: a table of each ultimate and power with what it does to a second fighter, a fix, and a Survival rule.
 
 ### Rules (first-guess numbers; all of them to be tuned)
 **Run start:** pick fighter and map, then partner (bot, or later a friend or random). Level 1, no upgrades, no gear, the fighter's base deck, 0 points. Hats and emotes still work.
@@ -1761,6 +1761,14 @@ Decided: points and XP both reset every run. A separate kind of XP, Survivor XP,
 - Sits in one of 4 or 5 fixed spots on the map. A spin costs 300 and offers one piece of gear (gloves, wraps, boots or charm) for a few seconds; take it or leave it. Taking it replaces what you wear in that slot and is kept for the run only.
 - **Level up the box:** 1000 points, up to 3 times. Each level raises the gear level it offers.
 - **Teddy bear:** after 8 spins, give or take, the box leaves and appears at another spot; the last spin is refunded.
+
+**Perk machines (powers)**
+- Powers are no longer your starting kit: they come from haunted vending machines (working name: Soul Fizz machines), the way perks come from the machines in the zombies mode. One machine per power: fire, frost, storm, blood, doom, quake, gale, iron.
+- Each machine sits in a particular room, so the map's layout decides what you can get first. A power costs 1500 to 3000 points, by strength, and you buy each once per run.
+- **Carry limit:** 4 powers at a time (the game's Prism already uses 4 slots). A fifth swaps one out for a refund of half.
+- **Keep them when downed and revived.** Both down ends the run anyway, so there's no extra loss rule.
+- Cards and the box can still improve a power you own (cooldown, damage, radius), but not give it.
+- Names and look: each machine is lit in its power's color, with a fizzy flavor name (Ember Fizz, Frostbite Pop, Thunder Soda...). No real-world drink branding, per the parody rule.
 
 **Waves**
 - The director spends a budget per wave from the existing enemy types; new types unlock by wave number as they do by bar fullness in the Arena.
@@ -1803,9 +1811,10 @@ A points counter next to the coins, the wave number and a progress bar, the obje
 Mobile auto-releases on every commit, so Survival must stay hidden behind a flag until it's ready: reachable only from the playground and a debug switch. When you approve it in the playground, a later commit adds the Play picker card.
 
 ### Milestones (a working session is one go at it)
+0. **Ultimates and powers audit (1 to 2):** the table described above; fix the Family and any other single-player assumption.
 1. **Spike (1):** the clean profile swap with save lock, target list on enemies, and a stub Survival scene. Done when: a clean fighter fights waves in a box with two targets, and the real save is untouched afterwards.
 2. **Greybox (3):** the map, the wave director, points, style popups, doors, the HUD.
-3. **Box and gear (2):** the mystery box, gear offers, the teddy bear.
+3. **Box, gear and perk machines (3):** the mystery box, gear offers, the teddy bear, and the power machines.
 4. **Cards, XP and merchant (2):** breaks, draws, run levels, patching.
 5. **The bot (3):** body poses, behavior, revive, tuning.
 6. **Objectives and boss (3):** the four objective types, the boss fight, the endless mode.
@@ -1815,7 +1824,7 @@ Mobile auto-releases on every commit, so Survival must stay hidden behind a flag
 About 18 sessions in total: weeks, not days.
 
 ### Still open
-- Do the fighters' powers (fire, frost, storm, and so on) exist in Survival? My pick: they come from cards and the box, so run one is blank and run five has a build.
+- Powers: decided 2026-11-05. They come from perk vending machines (see Perk machines).
 - Is it available from the start, or after the tutorial? My pick: after the tutorial.
 - What does a lost run keep? My pick: Survivor XP only.
 - The mode's name.
