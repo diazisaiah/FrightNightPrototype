@@ -1310,6 +1310,11 @@ func _use_stairs() -> void:
 		"rewards": {"coins": _run_coins, "xp": _run_xp, "souls": _run_souls},
 		"note": note,
 	}, "" if seal != "" else "Go deeper" if _floor >= FINAL_FLOOR else "Descend to Floor %d" % (_floor + 1), false, "Leave the Crypt")
+	# With the next floor sealed there is no Continue button, and only that
+	# path paused the game: the phone's touch controls stayed up over the Leave
+	# button and ate the tap (2026-11-06).
+	if seal != "":
+		get_tree().paused = true
 
 
 # --- Gilding: keeping what you find ------------------------------------------
