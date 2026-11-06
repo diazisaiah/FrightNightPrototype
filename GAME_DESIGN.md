@@ -1899,7 +1899,16 @@ Before Monday: the bench and the audit sheet. Mon: stats. Tue: passives. Wed: ul
 - The user's list of what's too strong, weak or janky is long; it gets collected during the audit.
 - The bench and audit sheet can start before the week, but not yet: wait for the go-ahead.
 
-## The Lab: a phone playground on itch [Planned, 2026-11-06]
+## The Lab: a phone playground on itch [Built 2026-11-06, to test]
+
+**What was built** (`playground/src/lab/lab.gd`, `lab.tscn`): the menu (fighter, Easy / Medium / Hard, passive, ultimate, power cycle button, cards on/off), the BENCHMARK, FREE FIGHT, a results card with COPY RESULTS and a last-10-runs list (`user://lab_history.json`). It extends the training ring like the playground does and reuses `BalanceReport.set_build` for the level presets (tiers 1, 3, 5), so the builds match the balance report.
+- **Hosting:** itch page `isaiahd0221/fn-mobile-playground` (restricted). `bash release_lab.sh <version>` syncs, exports the "Web Lab" preset (added by `playground/sync.py`: the phone preset plus the `lab` feature, which switches the main scene to the Lab) and pushes it. `release_mobile.sh` calls it after every mobile push.
+- **Free fight tools:** the fight's touch controls take every tap, so the spawn buttons, ELITE, GOD, FREEZE, FILL ULT, CLEAR and MENU show beside the pause menu (the pause button).
+- **Benchmark:** the 15 enemies are zombies x5, runners x3 and a skeleton, a brawler and a hulk, a mage, a priest and possessed armor, an elite brawler; then the boss (Bellman, Southpaw or Coffin King by level), with knuckles refilled before it. The clock only counts time in the fight. Time out: 120 s a group, 180 s for the boss. It records time, damage dealt and per second, damage taken and hits, knuckles left, dodges, grazes, counters, punches landed, best combo, ultimates used and each class event (passive procs) by name. Damage is read from the drop in each enemy's HP, so it works for every ability.
+- **Test hooks** (desktop, after `--`): `--lab-test=<fighter>,<0-2>` plays the benchmark with instant kills and prints the result (all six fighters pass at Easy and Hard); `--lab-idle` skips the kills (a Hard idle run ends in DEFEAT after about 15 s); `--lab-shot=<png>` saves a screenshot; `--lab-free=<enemy>` starts a free fight.
+- **Not done yet:** the bot's numbers (the headless fighter bench with a scripted player) still need to be added so they match this fight; dual powers for the Catalyst; no way to pick hats or emotes.
+
+### The original plan
 
 The user tests away from the computer, so the playground gets a phone version on a restricted itch page. Much simpler than the desktop playground: only the key features, with big buttons.
 

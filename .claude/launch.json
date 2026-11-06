@@ -73,6 +73,19 @@
       ],
       "port": 8063,
       "autoPort": false
+    },
+    {
+      "name": "lab-build",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8064",
+        "--directory",
+        "builds/lab"
+      ],
+      "port": 8064,
+      "autoPort": false
     }
   ]
 }

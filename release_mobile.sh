@@ -17,3 +17,5 @@ mkdir -p builds/mobile
 
 butler push builds/mobile isaiahd0221/fright-night-mobile:html5 --userversion "$arg"
 echo "Pushed mobile $arg to itch (fright-night-mobile)."
+# The restricted Lab page follows every mobile push (a failure here never undoes the release).
+bash release_lab.sh "$arg" || echo "Lab push failed (mobile is out)."

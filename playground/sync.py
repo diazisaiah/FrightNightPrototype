@@ -61,13 +61,34 @@ def main():
     project = open(os.path.join(GAME, "project.godot"), encoding="utf-8").read()
     project = re.sub(r'config/name=".*"', 'config/name="Fright Night Playground"', project)
     project = re.sub(r'run/main_scene=".*"', 'run/main_scene="res://playground/playground.tscn"', project)
+    # The Lab (phone playground): exports built with the "lab" feature start on its screen.
+    main_line = 'run/main_scene="res://playground/playground.tscn"'
+    project = project.replace(main_line, main_line + "\n" + 'run/main_scene.lab="res://playground/lab/lab.tscn"', 1)
     if "[editor_plugins]" not in project:
         project += '\n[editor_plugins]\n\nenabled=PackedStringArray("res://addons/playground_sync/plugin.cfg")\n'
     path = os.path.join(OUT, "project.godot")
     if not os.path.exists(path) or open(path, encoding="utf-8").read() != project:
         open(path, "w", encoding="utf-8", newline="").write(project)
         copied += 1
+    copied += add_lab_preset()
     print("Playground synced: %d file(s) updated, %d removed." % (copied + extra, removed))
+
+
+def add_lab_preset():
+    """Adds a "Web Lab" export preset (the phone preset plus the "lab" feature,
+    exported to builds/lab) to the playground project's presets."""
+    path = os.path.join(OUT, "export_presets.cfg")
+    text = open(path, encoding="utf-8").read()
+    if 'name="Web Lab"' in text:
+        return 0
+    start = text.index("[preset.2]")
+    block = text[start:]
+    block = block.replace("[preset.2]", "[preset.3]").replace("[preset.2.options]", "[preset.3.options]")
+    block = block.replace('name="Web Mobile"', 'name="Web Lab"')
+    block = block.replace('custom_features="release,mobile"', 'custom_features="release,mobile,lab"')
+    block = block.replace('export_path="../builds/mobile/index.html"', 'export_path="../../builds/lab/index.html"')
+    open(path, "w", encoding="utf-8", newline="").write(text.rstrip("\n") + "\n\n" + block)
+    return 1
 
 
 if __name__ == "__main__":
