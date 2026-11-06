@@ -1893,10 +1893,48 @@ Before Monday: the bench and the audit sheet. Mon: stats. Tue: passives. Wed: ul
 - **Text:** every description, card text and camp bar comes from the new numbers (and stays short, per the terse-text rule).
 - **Dead League:** contenders scale to a par build, so the par numbers get re-checked after the stats step.
 
-### Open questions
-- Are Tony and the Catalyst part of this pass, or only the four public fighters first?
-- Is there concept art or a reference for the new hands, or should I propose looks?
-- What already feels too strong, too weak or janky from your playtests? Those go to the top of the audit sheet.
+### Decided (2026-11-06)
+- All six fighters are in this pass, Tony and the Catalyst included.
+- No concept art for the hands: propose looks. The new hands must stay riggable with the same hand idles (same joints and pivots, so every idle plays on them).
+- The user's list of what's too strong, weak or janky is long; it gets collected during the audit.
+- The bench and audit sheet can start before the week, but not yet: wait for the go-ahead.
+
+## The Lab: a phone playground on itch [Planned, 2026-11-06]
+
+The user tests away from the computer, so the playground gets a phone version on a restricted itch page. Much simpler than the desktop playground: only the key features, with big buttons.
+
+### What it is
+- **A second main screen in the playground project** (`playground/src/lab/`), exported with the phone preset (touch, landscape, fills the screen). Same game code, synced by `sync.py`, so it always runs the latest build.
+- **Its own save** (the playground's), never the game's.
+- **Hosting:** a new itch page, Restricted (only you and people you let in; itch can also put a password on it). The user creates the page once; then a script (`release_lab.sh`) pushes each build with butler. It goes out alongside every mobile release, so the Lab always matches what's on the mobile page.
+
+### The screen
+Big tiles, one tap each, in the game's stitched-leather look:
+1. **Fighter:** the six fighters.
+2. **Level:** Easy, Medium, Hard. Each one sets upgrades, attributes, class level and a typical hand of cards to a point on the climb (first guess: Easy = the Tier 1 par build, Medium = Tier 3, Hard = Tier 5, reusing the playground's `_set_upgrade_tier`).
+3. **Abilities:** pick the passive, the ultimate and the power(s), whatever the fighter's level.
+4. **Go:** Benchmark, or Free fight.
+
+Free fight: a short enemy grid (tap one to spawn it), plus god mode, freeze enemies, and reset. Nothing else from the desktop playground.
+
+### The benchmark
+A fixed fight, the same every time (same enemies, same order, same spawn spots), so runs compare:
+- **15 enemies in 5 groups, then a boss:** a zombie crowd; runners with a skeleton archer; a brawler and a hulk; a mage, a priest and possessed armor; an elite. Then the boss: the Dead League contender that matches the level (first guess: Easy = Bellman, Medium = the Southpaw, Hard = the Coffin King).
+- **What it measures:** total time and time per group, damage per second, damage taken, knuckles left, clean dodges and hits taken, counters, best combo, how often the passive fired and how much damage it did, ultimate uses and their damage, power damage, and whether you went down.
+- **Results card** at the end, with **Copy results**: a short text block you can paste to me, so I see the same numbers you do. The Lab keeps the last 10 runs per fighter on the phone to compare before and after a change.
+- **Shared with the fighter bench:** the headless bench (Character revamp) runs this same fight with a scripted player, so the bot's numbers and yours line up.
+
+### Steps
+1. The Lab screen and its tiles (reusing the playground's fighter, level, ability and power code).
+2. The benchmark fight and its results card with Copy results.
+3. The itch page (the user makes it, Restricted) and `release_lab.sh`.
+4. Hook it into the mobile release, so every release updates the Lab too.
+
+About 2 to 3 sessions. It comes before the revamp week, since the revamp is tested with it.
+
+### To decide
+- The level presets and their bosses (the first guesses above).
+- The page's name on itch (first guess: Fright Night Lab).
 
 ## Launch readiness [In progress, 2026-10-15]
 
