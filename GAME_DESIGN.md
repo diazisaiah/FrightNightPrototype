@@ -1942,7 +1942,7 @@ Today: Mauler spends +30% damage, +25% knuckles, +30 defense, slower combos (abo
 | Fighter | Power | Grit | Speed | Technique | Perk | Pro (green) | Con (red) |
 |---|---|---|---|---|---|---|---|
 | Mauler | 5 | 4 | 1 | 1 | Bulky | DMG Taken x0.9 | Combo Growth x0.6 |
-| Answer | 2 | 3 | 2 | 4 | Patient | Counter DMG x3.5 (base x2) | Punch Speed x0.9 |
+| Answer | 3 | 2 | 1 | 5 | Patient | Counter DMG x3.5 (base x2) | Punch Speed x0.9 |
 | Blur | 2 | 2 | 4 | 3 | Momentous | Combo Growth x1.25 | DMG x0.9 |
 | Stray | 3 | 2 | 4 | 2 | Shifty | Move Speed x1.25 (walk and sprint; replaces the x1.35 sprint) | DMG Taken x1.1 |
 | Tony | 3 | 3 | 3 | 2 | Mouthy | DMG x1.1 | DMG Taken x1.1 |
@@ -1950,6 +1950,7 @@ Today: Mauler spends +30% damage, +25% knuckles, +30 defense, slower combos (abo
 
 - **Select screen (mockup approved 2026-11-06, https://claude.ai/artifact/UzPMVsfhAMqjyPhuwbunNy):** in the picker's leather panel, four star rows (attribute icon, name, five stars: filled in the fighter's color, empty ones dashed like the seam) and a stitched perk strip above the Ultimate (the perk's name on a tag in the fighter's color, then its pro in green and con in red). No numbers shown. All panel text wraps inside the panel. A leather tab with a < arrow on the middle of the panel's right edge hides only the stats panel (the fighter card stays) to show the clip; it then sits at the card's right edge pointing > and brings the panel back. Later, with the clip revamp: a slideshow of a few clips per fighter.
 - **DMG Taken perks go past the caps (decided 2026-11-06):** the last step on every hit, after armor and every damage-taken cut and their caps: the Mauler takes 10% less of whatever gets through (100 cut to 10 becomes 9), the Stray and Tony 10% more. It never counts toward a cap.
+- **Answer buffed after playtesting (2026-11-06):** the user beat or nearly beat the first bout on the first try with the Mauler, Blur and Stray but got beaten badly with the Answer at 2/3/2/4. Moved a Speed star to Technique and a Grit star to Power: 3/2/1/5.
 - **Early Mauler nerf is wanted:** today he can't lose the first night and can beat the Bellman on one bout's worth of upgrades. The new stars (about POWER 160 down to 104 at level 1) are meant to fix that.
 - **The Blur is already too strong late:** the audit looks at what carries him there (punch speed stacking, combo growth, Second Gear and Speed Bag rate highest of his cards in PowerRating). His combo growth is x1.25 (was x1.5, now in his perk with DMG x0.9), and a Power star moved to Technique (Power 2, Technique 3).
 - **Checks:** the Catalyst's perk must not double-dip with his amplifier passive. `balance_regression` (0.90-1.05 at par) will likely fail for the Mauler and the Blur until the passives and cards steps.

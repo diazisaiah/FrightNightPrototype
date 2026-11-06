@@ -49,9 +49,9 @@ const CLASSES := {
 		"fighter": "The Answer", "color": Color(0.31, 0.83, 1.0),
 		"tagline": "Waits for you to swing.",
 		"traits": [["shield", "Perfect Defense", "Wider dodge windows."], ["target", "Counter Focus", "Counters hit x3.5."], ["star", "Perfect Counter", "Right hand, right time: x2.5."]],
-		"stars": {"power": 2, "grit": 3, "speed": 2, "technique": 4},
+		"stars": {"power": 3, "grit": 2, "speed": 1, "technique": 5},
 		"perk": {"name": "Patient", "pros": ["Counter DMG x3.5"], "cons": ["Punch Speed x0.9"], "mods": {"counter": 3.5, "punch_speed": 0.9}},
-		"desc": "Less damage, slower hands. Counters deal x3.5, dodge windows are wider, and counters have a 50% chance to cost no knuckle HP. Perfect counter: dodge, then a hook or uppercut with the matching hand deals x2.5 more (12s cooldown).",
+		"desc": "Slow hands, thin knuckles. Counters deal x3.5, dodge windows are wider, and counters have a 50% chance to cost no knuckle HP. Perfect counter: dodge, then a hook or uppercut with the matching hand deals x2.5 more (12s cooldown).",
 	},
 	"combo_master": {
 		"name": "Combo Master", "icon": "bolt",
