@@ -1,0 +1,149 @@
+<title>Fright Night Armory Layouts</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: three Armory mock-ups in game-sized frames over a dim camp backdrop. Single dark look to match the game. */
+:root{
+  --bg:#0d0a14; --panel:#15101f; --card:rgba(29,21,48,.72); --line:#3a2a58; --fg:#f1ecf8; --muted:#9d93b3;
+  --gold:#ffc447; --common:#cfcfcf; --unc:#5ae673; --rare:#5aa8ff; --epic:#cc73ff; --leg:#ff9e1f;
+  --display:"Anton","Impact",sans-serif; --body:"Nunito","Segoe UI",sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font:15px/1.4 var(--body);margin:0;
+  padding-block:24px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1{font:400 30px var(--display);letter-spacing:.04em;color:var(--gold);margin:0 0 4px}
+.lead{color:var(--muted);max-width:66ch;margin:0 0 28px}
+.opt{max-width:960px;margin:0 auto 44px}
+.opt h2{font:400 20px var(--display);letter-spacing:.05em;margin:0 0 4px}
+.opt p{color:var(--muted);margin:0 0 10px;max-width:72ch}
+.frame{border:1px solid var(--line);border-radius:12px;padding:14px;min-width:0;
+  background:radial-gradient(ellipse at 40% 80%,rgba(255,120,40,.18),transparent 55%),linear-gradient(#1a1430,#0b0912)}
+.head{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin-bottom:10px}
+.t{font:400 24px var(--display);color:var(--gold);letter-spacing:.04em}
+.sub{color:var(--muted);font-size:13px;font-weight:700}
+.pill{padding:5px 12px;border-radius:99px;border:1px solid var(--line);font-size:12px;font-weight:800;color:var(--muted);background:rgba(20,15,32,.7)}
+.pill.on{background:var(--gold);color:#1b1205;border-color:var(--gold)}
+.row{display:flex;gap:6px;flex-wrap:wrap}
+.btn{border-radius:8px;padding:7px 10px;font-weight:800;font-size:12px;text-align:center;background:rgba(36,27,56,.9);border:1px solid var(--line)}
+.btn.go{background:var(--gold);color:#1b1205;border-color:var(--gold)}
+.c{--r:var(--common);background:var(--card);border:1.5px solid var(--r);border-radius:10px;padding:8px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.c.u{--r:var(--unc)} .c.r{--r:var(--rare)} .c.e{--r:var(--epic)} .c.l{--r:var(--leg)}
+.c.worn{box-shadow:0 0 0 2px var(--gold)}
+.art{height:64px;border-radius:7px;background:radial-gradient(circle at 50% 75%,color-mix(in srgb,var(--r) 35%,transparent),rgba(0,0,0,.45));display:grid;place-items:center}
+.art i{display:block;width:26px;height:30px;border-radius:4px;background:var(--r);opacity:.85;box-shadow:inset -6px -4px rgba(0,0,0,.35)}
+.n{font:400 14px var(--display);letter-spacing:.03em;color:var(--r);line-height:1.15}
+.k{font-size:10px;color:var(--muted);font-weight:700}
+.fx{font-size:11px;color:#9ff0a8;line-height:1.3}
+.tag{font-size:9px;font-weight:900;letter-spacing:.08em;color:var(--gold)}
+.grid{display:grid;gap:8px;grid-template-columns:repeat(auto-fill,minmax(118px,1fr))}
+/* A */
+.doll{display:grid;gap:12px;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr)}
+.ring{position:relative;aspect-ratio:1/1;max-width:100%;border-radius:50%;
+  background:radial-gradient(circle,rgba(255,255,255,.04) 0 55%,transparent 56%),repeating-conic-gradient(rgba(255,255,255,.08) 0 3deg,transparent 3deg 9deg);
+  -webkit-mask:radial-gradient(circle,#000 70%,#000);}
+.ring .fig{position:absolute;inset:28% 36%;border-radius:10px;background:linear-gradient(#5a3a30,#2a1a18);opacity:.9}
+.slot{position:absolute;width:30%;transform:translate(-50%,-50%)}
+.slot .c{padding:6px}
+.slot .art{height:40px}
+.set{margin-top:8px;font-size:12px;color:var(--muted)}
+.set b{color:var(--gold)}
+/* B */
+.lane{display:grid;grid-template-columns:150px minmax(0,1fr);gap:10px;align-items:stretch;margin-bottom:8px}
+.lane .lbl{font:400 13px var(--display);letter-spacing:.08em;color:var(--muted);margin-bottom:4px}
+.strip{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px}
+.strip .c{flex:0 0 120px}
+.empty{border:1.5px dashed rgba(255,255,255,.15);border-radius:10px;display:grid;place-items:center;color:var(--muted);font-size:12px;min-height:110px}
+/* C */
+.inv{display:grid;gap:12px;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr)}
+.slots{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:10px}
+.slots .c .art{height:44px}
+.detail{background:rgba(20,15,32,.6);border:1.5px solid var(--rare);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:6px}
+.detail .art{height:150px}
+.cmp{font-size:12px;line-height:1.5}
+.up{color:#7ff08a}.down{color:#ff7a6e}
+@media(max-width:640px){.doll,.inv{grid-template-columns:1fr}.lane{grid-template-columns:1fr}.slots{grid-template-columns:repeat(2,minmax(0,1fr))}}
+</style>
+
+<h1>ARMORY</h1>
+<p class="lead">Your gear has four slots (Gloves, Wraps, Boots, Charm). Wearing four pieces of one set turns on its bonus, and kept pieces can be levelled up with Souls or sold for coins. All three layouts use the Shop look (no big panel, translucent cards, turning 3D models on real cards). The coloured boxes stand in for those models.</p>
+
+<section class="opt">
+<h2>A · PAPER DOLL</h2>
+<p>Your fighter in the middle with the four worn slots around them, like the attribute ring. Tap a slot and the right side shows only kept pieces for that slot. Set progress sits under the doll.</p>
+<div class="frame">
+ <div class="head"><span class="t">ARMORY</span><span class="sub">Kept 9</span></div>
+ <div class="doll">
+  <div>
+   <div class="ring">
+    <div class="fig"></div>
+    <div class="slot" style="left:20%;top:24%"><div class="c r worn"><div class="art"><i></i></div><div class="n">Drowned Fists</div><div class="k">Gloves · Lv 3</div></div></div>
+    <div class="slot" style="left:80%;top:24%"><div class="c u"><div class="art"><i></i></div><div class="n">Dead Money Wraps</div><div class="k">Wraps · Lv 2</div></div></div>
+    <div class="slot" style="left:20%;top:78%"><div class="c"><div class="art"><i></i></div><div class="n">Deadweight Treads</div><div class="k">Boots · Lv 1</div></div></div>
+    <div class="slot" style="left:80%;top:78%"><div class="c e"><div class="art"><i></i></div><div class="n">Grandmaster's Seal</div><div class="k">Charm · Lv 4</div></div></div>
+   </div>
+   <div class="set">Drowned <b>1/4</b> · Dead Money <b>1/4</b> · Deadweight <b>1/4</b></div>
+  </div>
+  <div>
+   <div class="row" style="margin-bottom:8px"><span class="pill on">Gloves</span><span class="pill">Wraps</span><span class="pill">Boots</span><span class="pill">Charm</span></div>
+   <div class="grid">
+    <div class="c r worn"><span class="tag">WORN</span><div class="art"><i></i></div><div class="n">Drowned Fists</div><div class="fx">+3.4 damage</div><div class="btn">Level up 6</div></div>
+    <div class="c l"><div class="art"><i></i></div><div class="n">Iron Mike's Gloves</div><div class="fx">+9% boss damage</div><div class="btn go">Wear</div></div>
+    <div class="c u"><div class="art"><i></i></div><div class="n">Grave Mitts</div><div class="fx">+2% crit</div><div class="btn go">Wear</div></div>
+    <div class="c"><div class="art"><i></i></div><div class="n">Dead Money Gloves</div><div class="fx">+4% coins</div><div class="btn go">Wear</div></div>
+   </div>
+  </div>
+ </div>
+</div></section>
+
+<section class="opt">
+<h2>B · SLOT LANES</h2>
+<p>One lane per slot. What you wear sits at the left of each lane; kept pieces for that slot scroll beside it. You see everything at once, with no tapping to find a slot.</p>
+<div class="frame">
+ <div class="head"><span class="t">ARMORY</span><span class="sub">Kept 9 · Set: Drowned 1/4</span></div>
+ <div class="lane"><div><div class="lbl">GLOVES</div><div class="c r worn"><span class="tag">WORN</span><div class="art"><i></i></div><div class="n">Drowned Fists</div><div class="k">Lv 3</div></div></div>
+  <div><div class="lbl">&nbsp;</div><div class="strip">
+   <div class="c l"><div class="art"><i></i></div><div class="n">Iron Mike's Gloves</div><div class="btn go">Wear</div></div>
+   <div class="c u"><div class="art"><i></i></div><div class="n">Grave Mitts</div><div class="btn go">Wear</div></div>
+   <div class="c"><div class="art"><i></i></div><div class="n">Dead Money Gloves</div><div class="btn go">Wear</div></div>
+  </div></div></div>
+ <div class="lane"><div><div class="lbl">WRAPS</div><div class="c u worn"><span class="tag">WORN</span><div class="art"><i></i></div><div class="n">Dead Money Wraps</div><div class="k">Lv 2</div></div></div>
+  <div><div class="lbl">&nbsp;</div><div class="strip">
+   <div class="c r"><div class="art"><i></i></div><div class="n">Grandmaster's Wraps</div><div class="btn go">Wear</div></div>
+  </div></div></div>
+ <div class="lane"><div><div class="lbl">BOOTS</div><div class="empty">Nothing worn</div></div>
+  <div><div class="lbl">&nbsp;</div><div class="strip">
+   <div class="c"><div class="art"><i></i></div><div class="n">Deadweight Treads</div><div class="btn go">Wear</div></div>
+  </div></div></div>
+</div></section>
+
+<section class="opt">
+<h2>C · LOCKER + DETAIL</h2>
+<p>Worn slots in a strip on top. Below, every kept piece in an even grid with slot pills. Tap one and the panel on the right shows its big turning card, how it compares to what you wear (green better, red worse), and Wear / Level up / Sell. Closest to how loot games usually do it.</p>
+<div class="frame">
+ <div class="head"><span class="t">ARMORY</span><span class="sub">Kept 9</span></div>
+ <div class="slots">
+  <div class="c r worn"><span class="tag">GLOVES</span><div class="art"><i></i></div><div class="n">Drowned Fists</div></div>
+  <div class="c u worn"><span class="tag">WRAPS</span><div class="art"><i></i></div><div class="n">Dead Money Wraps</div></div>
+  <div class="c"><span class="tag">BOOTS</span><div class="art"><i></i></div><div class="n" style="color:var(--muted)">Empty</div></div>
+  <div class="c e worn"><span class="tag">CHARM</span><div class="art"><i></i></div><div class="n">Grandmaster's Seal</div></div>
+ </div>
+ <div class="inv">
+  <div>
+   <div class="row" style="margin-bottom:8px"><span class="pill on">All</span><span class="pill">Gloves</span><span class="pill">Wraps</span><span class="pill">Boots</span><span class="pill">Charm</span></div>
+   <div class="grid">
+    <div class="c l" style="box-shadow:0 0 0 2px #fff"><div class="art"><i></i></div><div class="n">Iron Mike's Gloves</div><div class="k">Gloves · Lv 3</div></div>
+    <div class="c u"><div class="art"><i></i></div><div class="n">Grave Mitts</div><div class="k">Gloves · Lv 1</div></div>
+    <div class="c r"><div class="art"><i></i></div><div class="n">Grandmaster's Wraps</div><div class="k">Wraps · Lv 2</div></div>
+    <div class="c"><div class="art"><i></i></div><div class="n">Deadweight Treads</div><div class="k">Boots · Lv 1</div></div>
+    <div class="c"><div class="art"><i></i></div><div class="n">Dead Money Coin</div><div class="k">Charm · Lv 1</div></div>
+   </div>
+  </div>
+  <div class="detail" style="border-color:var(--leg)">
+   <div class="c l" style="border:0;background:none;padding:0"><div class="art"><i></i></div></div>
+   <div class="n" style="color:var(--leg);font-size:18px">Iron Mike's Gloves</div>
+   <div class="k">Legendary Gloves · Lv 3 · Iron Mike set 0/4</div>
+   <div class="cmp"><span class="up">+9.3% damage to bosses</span><br><span class="up">+9.5% damage to enemies under 30% HP</span><br><span class="down">Lose: +3.4 damage</span></div>
+   <div class="row" style="margin-top:auto"><span class="btn go" style="flex:1">Wear</span><span class="btn" style="flex:1">Level up 9</span><span class="btn" style="flex:1">Sell +40</span></div>
+  </div>
+ </div>
+</div></section>

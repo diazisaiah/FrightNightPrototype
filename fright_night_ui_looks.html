@@ -1,0 +1,297 @@
+<title>Fright Night UI Looks</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: the camp now, then the two proposals on the same live board (Voxel Blocks, Polished Camp). Single dark theme on purpose: game UI. */
+:root {
+  --ground: #0d0b10;
+  --ground-2: #16131b;
+  --ink: #ece7f0;
+  --muted: #9a92a6;
+  --rule: #2b2633;
+  --panel: #16141b;
+  --panel-hi: #24212b;
+  --border: #423d4c;
+  --text: #ede8f0;
+  --gold: #ffc252;
+  --gold-hi: #ffdc8f;
+  --gold-lo: #b97d22;
+  --gold-side: #7a4f12;
+  --bone: #efe6cf;
+  --moss: #8fc45a;
+  --good: #80db8f;
+  --rare: #59a6ff;
+  --epic: #c873ff;
+  --display: "Anton", "Impact", "Arial Narrow", sans-serif;
+  --body: "Barlow", "Segoe UI", system-ui, sans-serif;
+  --label: "Barlow Condensed", "Arial Narrow", sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--ground); color: var(--ink); font: 400 16px/1.5 var(--body); }
+.wrap { max-width: 1180px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 40px 72px; }
+h1, h2, h3 { text-wrap: balance; margin: 0; }
+p { margin: 0; }
+.eyebrow { font: 600 13px/1 var(--label); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.top { display: grid; gap: 18px; padding-bottom: 28px; border-bottom: 1px solid var(--rule); }
+.top h1 { font: 400 clamp(40px, 6.4vw, 76px)/.95 var(--display); letter-spacing: .01em; }
+.top h1 span { color: var(--gold); }
+.top p.lede { max-width: 70ch; color: #c9c1d3; font-size: 17px; }
+.jump { display: flex; flex-wrap: wrap; gap: 8px; }
+.jump a { font: 600 15px/1 var(--label); letter-spacing: .06em; text-transform: uppercase; color: var(--ink); text-decoration: none; padding: 10px 14px; border: 1px solid var(--rule); border-radius: 6px; background: var(--ground-2); }
+.jump a:hover, .jump a:focus-visible { border-color: var(--gold); outline: none; }
+
+.look { padding-block: 40px; border-bottom: 1px solid var(--rule); display: grid; gap: 20px; scroll-margin-top: 12px; }
+.look-head { display: grid; grid-template-columns: auto 1fr; gap: 6px 18px; align-items: baseline; }
+.look-head .letter { grid-row: span 2; font: 400 58px/.9 var(--display); color: var(--muted); min-width: 1.2em; }
+.look-head h2 { font: 400 32px/1 var(--display); letter-spacing: .02em; }
+.look-head p { color: #c9c1d3; max-width: 74ch; }
+.traits { display: flex; flex-wrap: wrap; gap: 6px; }
+.traits span { font: 600 13px/1 var(--label); letter-spacing: .05em; text-transform: uppercase; padding: 6px 9px; border-radius: 4px; background: var(--ground-2); border: 1px solid var(--rule); color: #cfc7da; }
+.board { border-radius: 10px; padding: 24px 22px; display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 24px; overflow: hidden;
+  background: radial-gradient(90% 80% at 55% 70%, #3a2412 0%, #1a1214 45%, #0c0a0e 100%); }
+@media (max-width: 860px) { .board { grid-template-columns: 1fr; } }
+.col { display: grid; gap: 16px; align-content: start; min-width: 0; }
+.row { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; }
+.cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 520px) { .cards { grid-template-columns: 1fr; } }
+.cap { font: 600 12px/1 var(--label); letter-spacing: .12em; text-transform: uppercase; color: #8d8598; }
+.verdict { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; font-size: 15px; }
+.verdict div { min-width: 0; }
+.verdict b { display: block; font: 600 13px/1.2 var(--label); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+@media (max-width: 700px) { .verdict { grid-template-columns: 1fr; } }
+button { font: inherit; cursor: pointer; }
+button:focus-visible { outline: 2px solid var(--gold); outline-offset: 4px; }
+.coin { display: inline-block; width: 18px; height: 18px; border-radius: 50%; vertical-align: -3px; background: radial-gradient(circle at 35% 35%, #ffe6a3, #c58b22 60%, #7a5210); box-shadow: inset 0 0 0 2px rgba(0,0,0,.25); }
+.stat { color: var(--good); }
+.tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+.tab { border: 0; background: transparent; color: #8f879a; padding: 8px 12px; font: 600 20px/1 var(--body); position: relative; }
+
+/* ===================== NOW ===================== */
+.cur .btn { border: 1px solid var(--border); border-radius: 8px; padding: 12px 22px; color: var(--text); font: 600 18px/1 var(--body);
+  background: linear-gradient(180deg, #2c2833, #1e1b24); box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 3px 0 #0b0a0e; }
+.cur .btn:hover { box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 3px 0 #0b0a0e, 0 0 0 2px rgba(255,194,82,.5); }
+.cur .btn:active, .cur .btn.pressed { transform: translateY(2px); }
+.cur .btn.main { background: linear-gradient(180deg, #ffd37a, #e9a93a); color: #24170a; border-color: #8a5f1c; font-weight: 700; }
+.cur .btn[disabled] { opacity: .45; cursor: not-allowed; }
+.cur .tab[aria-selected="true"] { color: var(--gold); box-shadow: inset 0 -3px 0 var(--gold); }
+.cur .panel { background: rgba(22,20,27,.94); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 8px 20px rgba(0,0,0,.4); }
+.cur .card { position: relative; display: grid; gap: 8px; padding: 16px; }
+.cur .card.rare { border-color: var(--rare); }
+.cur .kind { font: 600 12px/1 var(--label); letter-spacing: .14em; text-transform: uppercase; color: var(--gold); }
+.cur .card h3 { font: 400 23px/1 var(--display); letter-spacing: .02em; }
+.cur .card p { color: #d3ccdc; font-size: 14.5px; }
+.cur .cost { display: flex; justify-content: space-between; font: 700 16px/1 var(--label); color: var(--gold); padding-top: 8px; border-top: 1px solid rgba(255,255,255,.08); }
+.cur .chip { display: inline-flex; gap: 8px; align-items: center; padding: 8px 14px; font: 700 18px/1 var(--label); }
+.cur .dialog { display: grid; gap: 12px; padding: 22px; text-align: center; }
+.cur .dialog h3 { font: 400 26px/1 var(--display); }
+.cur .dialog .row { justify-content: center; }
+
+/* ===================== VOXEL BLOCKS ===================== */
+/* Stepped corners (cut in 4 px steps, like a voxel model's edge); buttons are blocks: a lit top face, a darker side face under it, and they sink when pressed. Goofy comes from motion. */
+.vox {
+  --step: polygon(0 8px, 4px 8px, 4px 4px, 8px 4px, 8px 0, calc(100% - 8px) 0, calc(100% - 8px) 4px, calc(100% - 4px) 4px, calc(100% - 4px) 8px, 100% 8px,
+    100% calc(100% - 8px), calc(100% - 4px) calc(100% - 8px), calc(100% - 4px) calc(100% - 4px), calc(100% - 8px) calc(100% - 4px), calc(100% - 8px) 100%,
+    8px 100%, 8px calc(100% - 4px), 4px calc(100% - 4px), 4px calc(100% - 8px), 0 calc(100% - 8px));
+}
+.vox .block { --face: #3a3543; --top: #514a5c; --side: #1c1922; --ink-c: var(--text);
+  position: relative; border: 0; padding: 0 0 7px; background: transparent; color: var(--ink-c); transition: transform .12s cubic-bezier(.3,1.7,.5,1); }
+.vox .block .side { position: absolute; inset: 7px 0 0; background: var(--side); clip-path: var(--step); }
+.vox .block .face { position: relative; display: block; padding: 12px 22px 11px; font: 400 21px/1 var(--display); letter-spacing: .05em; text-transform: uppercase;
+  background: linear-gradient(180deg, var(--top) 0 4px, var(--face) 4px); clip-path: var(--step); transition: transform .08s; text-shadow: 0 2px 0 rgba(0,0,0,.35); }
+.vox .block:hover { transform: translateY(-3px); }
+.vox .block:hover .face { filter: brightness(1.12); }
+.vox .block:active .face, .vox .block.pressed .face { transform: translateY(6px); }
+.vox .block:active { transform: scale(1.05, .94); }
+.vox .block.main { --face: #f2ac38; --top: var(--gold-hi); --side: var(--gold-side); --ink-c: #2a1704; }
+.vox .block.main .face { text-shadow: 0 2px 0 rgba(255,240,200,.45); }
+.vox .block.bone { --face: #d8ccae; --top: #f5ecd6; --side: #7f7457; --ink-c: #2c2418; }
+.vox .block[disabled] { --face: #26232c; --top: #2e2a35; --side: #141217; --ink-c: #6d6677; cursor: not-allowed; }
+.vox .block[disabled]:hover { transform: none; }
+.vox .tab { font: 400 21px/1 var(--display); letter-spacing: .04em; text-transform: uppercase; }
+.vox .tab[aria-selected="true"] { color: var(--gold); }
+.vox .tab[aria-selected="true"]::after { content: ""; position: absolute; left: 12px; right: 12px; bottom: -4px; height: 8px;
+  background: linear-gradient(90deg, var(--gold) 0 8px, transparent 8px 12px) 0 0 / 12px 8px repeat-x; }
+.vox .panel { background: #17151c; clip-path: var(--step); box-shadow: inset 0 0 0 2px var(--edge, #3b3644), inset 0 4px 0 2px rgba(255,255,255,.05); }
+.vox .card { position: relative; display: grid; gap: 8px; padding: 18px 16px 16px; transition: transform .2s cubic-bezier(.3,1.7,.5,1); }
+.vox .card:hover { transform: translateY(-4px) rotate(-.6deg); }
+.vox .card::before { content: ""; position: absolute; left: 2px; right: 2px; top: 2px; height: 10px; background: var(--edge, #3b3644); clip-path: polygon(6px 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 0 100%, 0 6px); }
+.vox .card.rare { --edge: var(--rare); }
+.vox .kind { font: 600 12px/1 var(--label); letter-spacing: .14em; text-transform: uppercase; color: var(--gold); padding-top: 4px; }
+.vox .card.rare .kind { color: #9ccaff; }
+.vox .card h3 { font: 400 24px/1 var(--display); letter-spacing: .03em; }
+.vox .card p { color: #d3ccdc; font-size: 14.5px; }
+.vox .cost { display: flex; justify-content: space-between; align-items: center; font: 400 20px/1 var(--display); color: var(--gold); padding: 8px 10px; margin-top: 4px;
+  background: #0f0e13; clip-path: var(--step); }
+.vox .chip { display: inline-flex; gap: 8px; align-items: center; padding: 9px 16px; font: 400 21px/1 var(--display); letter-spacing: .03em; --edge: #6b5321; }
+.vox .chip .coin { border-radius: 0; clip-path: polygon(0 4px, 4px 4px, 4px 0, 14px 0, 14px 4px, 18px 4px, 18px 14px, 14px 14px, 14px 18px, 4px 18px, 4px 14px, 0 14px); }
+.vox .dialog { display: grid; gap: 12px; padding: 24px 22px 22px; text-align: center; --edge: #6b5321; }
+.vox .dialog h3 { font: 400 28px/1 var(--display); letter-spacing: .04em; color: var(--gold); }
+.vox .dialog .row { justify-content: center; }
+.vox .skull { display: inline-block; width: 22px; height: 20px; vertical-align: -3px; margin-right: 6px; background: var(--bone);
+  clip-path: polygon(3px 0, 19px 0, 19px 3px, 22px 3px, 22px 13px, 18px 13px, 18px 20px, 4px 20px, 4px 13px, 0 13px, 0 3px, 3px 3px);
+  box-shadow: inset 5px -9px 0 -3px #17151c; }
+.pop { animation: pop .45s cubic-bezier(.3,1.8,.5,1); }
+@keyframes pop { 0% { transform: scale(1); } 35% { transform: scale(1.25, .8); } 70% { transform: scale(.92, 1.1); } 100% { transform: scale(1); } }
+
+/* ===================== POLISHED CAMP ===================== */
+/* The same camp, done properly: one type system, bigger buttons with a press squish and a gold glow, cards with a rarity glow and a darker inner well, cleaner cost rows. */
+.pol .btn { position: relative; border: 1px solid #4a4455; border-radius: 10px; padding: 14px 24px 13px; color: var(--text); font: 400 20px/1 var(--display); letter-spacing: .05em; text-transform: uppercase;
+  background: linear-gradient(180deg, #34303c 0%, #25222c 100%); box-shadow: inset 0 1px 0 rgba(255,255,255,.14), inset 0 -3px 0 rgba(0,0,0,.35), 0 4px 10px rgba(0,0,0,.35);
+  transition: transform .14s cubic-bezier(.3,1.7,.5,1), box-shadow .15s, border-color .15s; }
+.pol .btn:hover { border-color: rgba(255,194,82,.75); box-shadow: inset 0 1px 0 rgba(255,255,255,.14), inset 0 -3px 0 rgba(0,0,0,.35), 0 0 18px rgba(255,194,82,.25); transform: translateY(-1px); }
+.pol .btn:active, .pol .btn.pressed { transform: translateY(2px) scale(.97); box-shadow: inset 0 2px 4px rgba(0,0,0,.4); }
+.pol .btn.main { border-color: #a26a17; color: #2a1704; background: linear-gradient(180deg, #ffdc8f 0%, #f5b444 55%, #e29a2a 100%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.5), inset 0 -3px 0 rgba(120,70,10,.35), 0 0 22px rgba(255,180,60,.28); }
+.pol .btn[disabled] { opacity: .45; cursor: not-allowed; transform: none; }
+.pol .tab { font: 400 21px/1 var(--display); letter-spacing: .04em; text-transform: uppercase; padding-bottom: 12px; }
+.pol .tab[aria-selected="true"] { color: var(--gold); text-shadow: 0 0 14px rgba(255,194,82,.5); }
+.pol .tab[aria-selected="true"]::after { content: ""; position: absolute; left: 12px; right: 12px; bottom: 0; height: 3px; border-radius: 2px; background: var(--gold); box-shadow: 0 0 10px rgba(255,194,82,.8); }
+.pol .panel { background: linear-gradient(180deg, rgba(30,27,36,.95), rgba(18,16,22,.95)); border: 1px solid #3a3544; border-radius: 12px; box-shadow: 0 10px 26px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.05); }
+.pol .card { position: relative; display: grid; gap: 9px; padding: 18px; transition: transform .2s, box-shadow .2s; }
+.pol .card:hover { transform: translateY(-3px); }
+.pol .card.rare { border-color: rgba(89,166,255,.7); box-shadow: 0 10px 26px rgba(0,0,0,.45), 0 0 22px rgba(89,166,255,.18), inset 0 1px 0 rgba(255,255,255,.05); }
+.pol .kind { justify-self: start; font: 700 12px/1 var(--label); letter-spacing: .14em; text-transform: uppercase; color: var(--gold); padding: 4px 8px; border-radius: 4px; background: rgba(255,194,82,.12); }
+.pol .card.rare .kind { color: #9ccaff; background: rgba(89,166,255,.14); }
+.pol .card h3 { font: 400 25px/1 var(--display); letter-spacing: .03em; }
+.pol .card p { color: #d6cfdf; font-size: 15px; }
+.pol .well { padding: 10px 12px; border-radius: 8px; background: rgba(0,0,0,.35); display: grid; gap: 4px; }
+.pol .cost { display: flex; justify-content: space-between; align-items: center; font: 400 21px/1 var(--display); color: var(--gold); }
+.pol .cost small { font: 600 12px/1 var(--label); letter-spacing: .14em; color: var(--muted); }
+.pol .chip { display: inline-flex; gap: 8px; align-items: center; padding: 8px 16px 8px 10px; border-radius: 999px; font: 400 21px/1 var(--display); letter-spacing: .03em; }
+.pol .dialog { display: grid; gap: 14px; padding: 26px 24px; text-align: center; border-color: rgba(255,194,82,.45); }
+.pol .dialog h3 { font: 400 30px/1 var(--display); letter-spacing: .04em; color: var(--gold); text-shadow: 0 0 18px rgba(255,194,82,.35); }
+.pol .dialog p { color: #d6cfdf; font-size: 16px; }
+.pol .dialog .row { justify-content: center; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <span class="eyebrow">Fright Night · UI revamp · round 4</span>
+    <h1>Built like the world, or <span>the camp done right</span></h1>
+    <p class="lede">Two proposals next to the camp as it is now. Voxel Blocks builds the menus out of cubes like everything else in the game. Polished Camp keeps today's look and fixes the craft. Hover, press and switch tabs: the motion is part of each idea. (Press the coin counter in Voxel Blocks.)</p>
+    <nav class="jump" aria-label="Jump to a look">
+      <a href="#now">Camp now</a>
+      <a href="#vox">1 · Voxel Blocks</a>
+      <a href="#pol">2 · Polished Camp</a>
+    </nav>
+  </header>
+
+  <!-- NOW -->
+  <section class="look cur" id="now">
+    <div class="look-head"><span class="letter">·</span><h2>The camp now</h2><p>For comparison.</p></div>
+    <div class="board">
+      <div class="col">
+        <span class="cap">Tabs</span>
+        <div class="tabs" role="tablist"><button class="tab" role="tab" aria-selected="true">Upgrades</button><button class="tab" role="tab" aria-selected="false">Deck</button><button class="tab" role="tab" aria-selected="false">Shop</button></div>
+        <span class="cap">Buttons: main · secondary · pressed · can't afford</span>
+        <div class="row"><button class="btn main">Arena</button><button class="btn">Training</button><button class="btn pressed">Daily</button><button class="btn" disabled>Need 60 more</button></div>
+        <span class="cap">Coins and a dialog</span>
+        <div class="row"><span class="chip panel"><span class="coin"></span>1,240</span></div>
+        <div class="dialog panel"><h3>THE DEAD LEAGUE</h3><p>Beat your first Arena bout to prove your worth.</p><div class="row"><button class="btn main">OK</button></div></div>
+      </div>
+      <div class="col">
+        <span class="cap">Cards: upgrade · item</span>
+        <div class="cards">
+          <article class="card panel"><span class="kind">Core</span><h3>TAPED UP</h3><p>Wrap your hands. Everything else on the web grows out from here.</p><p class="stat">+1 damage, +5 max knuckle HP</p><div class="cost"><span>COST</span><span><span class="coin"></span> 60</span></div></article>
+          <article class="card panel rare"><span class="kind" style="color:var(--rare)">Rare · Gloves</span><h3>GRAVEDIGGER'S WRAPS</h3><p>+8% damage on hooks<br>+4 max knuckle HP<br>Counters heal 2</p><div class="cost"><span>POWER</span><span>212</span></div></article>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- VOXEL BLOCKS -->
+  <section class="look vox" id="vox">
+    <div class="look-head"><span class="letter">1</span><h2>Voxel Blocks</h2>
+      <p>The menus are made of cubes like the fighters and monsters. Buttons are chunky blocks with a lit top and a darker side, and they sink into the screen when pressed. Every panel and card has stepped, pixel-cut corners. Cards get a thick block band in their rarity colour. Goofy comes from motion: buttons hop on hover and squash on press, coins pop, cards wobble. Graveyard comes from bone-white blocks and little cube skulls.</p></div>
+    <div class="traits"><span>Matches the voxel art</span><span>Bouncy and goofy</span><span>Keeps camp's gold and Anton</span></div>
+    <div class="board">
+      <div class="col">
+        <span class="cap">Tabs</span>
+        <div class="tabs" role="tablist"><button class="tab" role="tab" aria-selected="true">Upgrades</button><button class="tab" role="tab" aria-selected="false">Deck</button><button class="tab" role="tab" aria-selected="false">Shop</button></div>
+        <span class="cap">Buttons: main · secondary · bone · can't afford</span>
+        <div class="row">
+          <button class="block main"><span class="side"></span><span class="face">Arena</span></button>
+          <button class="block"><span class="side"></span><span class="face">Training</span></button>
+          <button class="block bone"><span class="side"></span><span class="face"><span class="skull" aria-hidden="true"></span>League</span></button>
+          <button class="block" disabled><span class="side"></span><span class="face">Need 60</span></button>
+        </div>
+        <span class="cap">Coins (press it) and a dialog</span>
+        <div class="row"><button class="chip panel" id="coinchip" style="border:0;color:var(--text)"><span class="coin"></span><span id="coins">1,240</span></button></div>
+        <div class="dialog panel"><h3><span class="skull" aria-hidden="true"></span>THE DEAD LEAGUE</h3><p>Beat your first Arena bout to prove your worth.</p>
+          <div class="row"><button class="block main"><span class="side"></span><span class="face">OK</span></button></div></div>
+      </div>
+      <div class="col">
+        <span class="cap">Cards: upgrade · item (hover them)</span>
+        <div class="cards">
+          <article class="card panel"><span class="kind">Core</span><h3>TAPED UP</h3><p>Wrap your hands. Everything else on the web grows out from here.</p><p class="stat">+1 damage, +5 max knuckle HP</p><div class="cost"><span>COST</span><span><span class="coin" style="border-radius:0"></span> 60</span></div></article>
+          <article class="card panel rare"><span class="kind">Rare · Gloves</span><h3>GRAVEDIGGER'S WRAPS</h3><p>+8% damage on hooks<br>+4 max knuckle HP<br>Counters heal 2</p><div class="cost"><span>POWER</span><span>212</span></div></article>
+        </div>
+      </div>
+    </div>
+    <div class="verdict">
+      <div><b>Good at</b>The menus look like they came out of the same game as the fighters. Very clear what's pressable.</div>
+      <div><b>Watch out</b>Stepped corners everywhere can look busy at phone size; small chips use one step instead of two.</div>
+      <div><b>Build cost</b>Medium. A stepped-corner box, a two-face block button, and tweens for hop, squash and pop.</div>
+    </div>
+  </section>
+
+  <!-- POLISHED CAMP -->
+  <section class="look pol" id="pol">
+    <div class="look-head"><span class="letter">2</span><h2>Polished Camp</h2>
+      <p>The look you have now, done properly. Anton on every button and tab, bigger tap targets, buttons with a soft bevel that squish when pressed and glow gold on hover. Cards get a rarity glow, a coloured tag for their type and a darker well for the stats. Pill-shaped coin counters, a bigger and brighter dialog title.</p></div>
+    <div class="traits"><span>Same look, cleaner</span><span>Lowest risk</span><span>Easy on phones</span></div>
+    <div class="board">
+      <div class="col">
+        <span class="cap">Tabs</span>
+        <div class="tabs" role="tablist"><button class="tab" role="tab" aria-selected="true">Upgrades</button><button class="tab" role="tab" aria-selected="false">Deck</button><button class="tab" role="tab" aria-selected="false">Shop</button></div>
+        <span class="cap">Buttons: main · secondary · pressed · can't afford</span>
+        <div class="row"><button class="btn main">Arena</button><button class="btn">Training</button><button class="btn pressed">Daily</button><button class="btn" disabled>Need 60 more</button></div>
+        <span class="cap">Coins and a dialog</span>
+        <div class="row"><span class="chip panel"><span class="coin"></span>1,240</span></div>
+        <div class="dialog panel"><h3>THE DEAD LEAGUE</h3><p>Beat your first Arena bout to prove your worth.</p><div class="row"><button class="btn main">OK</button></div></div>
+      </div>
+      <div class="col">
+        <span class="cap">Cards: upgrade · item (hover them)</span>
+        <div class="cards">
+          <article class="card panel"><span class="kind">Core</span><h3>TAPED UP</h3><p>Wrap your hands. Everything else on the web grows out from here.</p>
+            <div class="well"><p class="stat">+1 damage</p><p class="stat">+5 max knuckle HP</p></div>
+            <div class="cost"><small>COST</small><span><span class="coin"></span> 60</span></div></article>
+          <article class="card panel rare"><span class="kind">Rare · Gloves</span><h3>GRAVEDIGGER'S WRAPS</h3>
+            <div class="well"><p>+8% damage on hooks</p><p>+4 max knuckle HP</p><p>Counters heal 2</p></div>
+            <div class="cost"><small>POWER</small><span>212</span></div></article>
+        </div>
+      </div>
+    </div>
+    <div class="verdict">
+      <div><b>Good at</b>Feels like the same game, just finished. Nothing for players to relearn.</div>
+      <div><b>Watch out</b>Least personality; the goofy undead side stays in the 3D, not the menus.</div>
+      <div><b>Build cost</b>Low. Theme changes in one file, plus press and hover tweens.</div>
+    </div>
+  </section>
+</div>
+
+<script>
+document.querySelectorAll('[role="tablist"]').forEach(function (list) {
+  list.addEventListener('click', function (e) {
+    var tab = e.target.closest('[role="tab"]');
+    if (!tab) return;
+    list.querySelectorAll('[role="tab"]').forEach(function (t) { t.setAttribute('aria-selected', t === tab ? 'true' : 'false'); });
+  });
+});
+// The coin counter pops and counts up when pressed (Voxel Blocks).
+(function () {
+  var chip = document.getElementById('coinchip');
+  var label = document.getElementById('coins');
+  var coins = 1240;
+  chip.addEventListener('click', function () {
+    coins += 15;
+    label.textContent = coins.toLocaleString('en-US');
+    chip.classList.remove('pop');
+    void chip.offsetWidth;
+    chip.classList.add('pop');
+  });
+})();
+</script>
