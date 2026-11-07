@@ -66,11 +66,11 @@ const CARDS := {
 	"inferno_ii": [0.04, 0.0], "brimstone_wall": [0.03, 0.03], "crowd_guard": [0.0, 2.0], "masochist": [0.1, 0.0],
 	"ult_surge": [0.05, 0.03], "avalanche": [0.03, 0.03], "berserk": [0.06, 0.06],
 	# The Answer.
-	"closing": [0.07, 0.0], "exploit": [0.08, 0.0], "sting_delay": [0.0, 0.15], "counter_ult": [0.08, 0.0],
+	"closing": [0.07, 0.0], "exploit": [0.08, 0.0], "shadow_counter": [0.12, 0.0], "counter_ult": [0.08, 0.0],
 	"two_answers": [0.06, 0.0], "turnabout": [0.04, 0.05], "read_twice": [0.02, 0.0], "return_sender": [0.01, 0.0],
 	"crowd_reader": [0.0, 0.15], "checkmate": [0.1, 0.0], "ghost_walk": [0.03, 0.04], "stored_answers": [0.12, 0.0],
-	"riposte_ii": [0.04, 0.03], "untouchable_flow": [0.0, 0.06], "free_flow": [0.06, 0.0], "mirror_match": [0.0, 0.06],
-	"last_word": [0.06, 0.0],
+	"riposte_ii": [0.04, 0.03], "untouchable_flow": [0.0, 0.08], "free_flow": [0.06, 0.0], "mirror_match": [0.0, 0.06],
+	"last_word": [0.0, 0.1],
 	# The Blur.
 	"second_gear": [0.7, 0.0], "bounce_back": [0.1, 0.0], "speed_bag": [0.3, 0.0],
 	"ricochet": [0.03, 0.0], "afterimage": [0.03, 0.0], "light_hands": [0.0, 0.25], "light_hooks": [0.0, 0.05], "aftershock": [0.08, 0.03],

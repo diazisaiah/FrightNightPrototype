@@ -1982,6 +1982,16 @@ The user's idea: ultimates play like finishers in other games. The player is imm
 - **To do later (user, 2026-11-06): first-use lag.** The first time a third-person ultimate or an aura plays it hitches (building the shaders, the first particles, the slab and body meshes). Plan: a silent warm-up during the loading screen that builds one slab, flashes the aura and the ring and pillar materials off-screen for a frame, so nothing compiles mid-fight. Measure on a phone first.
 - **Open questions for playtesting:** how long the hold should be; whether the first frames of the pull-out (the camera passes through the back of the head) need a cut instead of a glide; shake and FOV kicks don't apply to the outside camera yet; phones (body already built by then, so no hitch expected, but not measured).
 
+### Answer passives, ultimates and cards (built 2026-11-06, Lab and dev site only: no itch release until the user says)
+From the user's notes on the audit page. Card ids are kept so saves still work.
+- **Riposte Stance (kept, "the most fun ultimate"), now a third-person shot in his aura:** the whole stance plays as the shot. The camera drifts round him (a world-fixed yaw, `Player.cine_world`, so it doesn't swing when he turns), the controls are locked (`Ult.busy()` while the shot runs), and the stance still answers every attack itself; each slip, roll, back step and counter hook plays its own body clip (`_riposte_clip`: a guard, a peak, back to guard). Blue lightning aura and eyes the whole time. The shot ends with the stance, then 0.5s of immunity.
+- **Flow State becomes Aura Farm** (id `flow_state` kept so loadouts and saves work): no more automatic dodging; for 15s (+1s per passive power point) every dodge heals 1% of max HP and a clean dodge 2%. The Answer's sustain, the roster's missing role. Its epic (Untouchable, now **Aura Farm II**) makes it 2% and 3%.
+- **Stored Answers (epic, Dodge Chain):** each punch spends half your stored dodges, rounded up (was one), and chains still go to 10.
+- **Stinging Jab (common) becomes Shadow Counter:** dodging a monster hits it for 0.2 / 0.4 / 0.6 / 0.8x your base damage. (The move-speed helper the user also suggested for the Answer's slowness is not built: it's the alternative if he still feels too slow.)
+- **Two Answers (rare) is renamed Multiple Choice** (same effect).
+- **The Last Word (legendary, Coffin King seal) becomes Close Call:** a graze has a 50% chance to count as a dodge and open a counter (the time slow is gone). A graze that counts is a plain dodge, like the Slipknot Wraps.
+- **Tests:** `_test_answer_revamp` (Aura Farm's four heal values and no charging, half-charge spending, Shadow Counter, Close Call's chance, the Riposte shot's lock, slip and end).
+
 ### The original plan
 
 The user tests away from the computer, so the playground gets a phone version on a restricted itch page. Much simpler than the desktop playground: only the key features, with big buttons.

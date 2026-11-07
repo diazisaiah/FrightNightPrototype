@@ -51,6 +51,7 @@ func _run() -> void:
 	await _test_mauler_revamp()
 	await _test_cinematic_ult()
 	await _test_brimstone_slabs()
+	await _test_answer_revamp()
 	await _test_endless_powers()
 	TimeFx.clear()
 	GameState._reset_fields()
@@ -1039,6 +1040,72 @@ func _test_brimstone_slabs() -> void:
 	boss.queue_free()
 	await _free_rig(holder)
 	print("Card runtime: Brimstone slabs OK")
+
+
+## The Answer's revamp (2026-11-06): Aura Farm, Stored Answers' half charges,
+## Shadow Counter, Close Call, and the Riposte Stance as a third-person shot.
+func _test_answer_revamp() -> void:
+	var rig := await _make_rig("counter_master", "flow_state")
+	var holder: Node3D = rig[0]
+	var player: Player = rig[1]
+	var target: Enemy = rig[2][0]
+	player.active = true
+	# Aura Farm: dodges heal 1% (2% with the epic), clean dodges 2% (3%).
+	player.ult.fill()
+	player.ult.activate()
+	_check(player.ult._farm > 0.0, "Aura Farm starts")
+	var share := 0.02
+	player.knuckles = player.max_knuckles * 0.5
+	player.ult.on_dodge(false)
+	_check(is_equal_approx(player.knuckles, player.max_knuckles * (0.5 + share)), "Aura Farm II: a dodge heals 2%% (%.3f)" % (player.knuckles / player.max_knuckles))
+	player.knuckles = player.max_knuckles * 0.5
+	player.ult.on_dodge(true)
+	_check(is_equal_approx(player.knuckles, player.max_knuckles * 0.53), "Aura Farm II: a clean dodge heals 3%% (%.3f)" % (player.knuckles / player.max_knuckles))
+	GameState._classes.counter_master.cards.erase("untouchable_flow")
+	player.knuckles = player.max_knuckles * 0.5
+	player.ult.on_dodge(false)
+	_check(is_equal_approx(player.knuckles, player.max_knuckles * 0.51), "Aura Farm: a dodge heals 1%% (%.3f)" % (player.knuckles / player.max_knuckles))
+	player.knuckles = player.max_knuckles * 0.5
+	player.ult.on_dodge(true)
+	_check(is_equal_approx(player.knuckles, player.max_knuckles * 0.52), "Aura Farm: a clean dodge heals 2%% (%.3f)" % (player.knuckles / player.max_knuckles))
+	var before_meter: float = player.ult.meter
+	player.ult.add(50.0)
+	_check(is_equal_approx(player.ult.meter, before_meter), "Aura Farm doesn't charge while it's up")
+	GameState._classes.counter_master.cards["untouchable_flow"] = 1
+	# Stored Answers: a punch spends half the stored dodges, rounded up.
+	GameState.loadouts.counter_master.passive = "dodge_chain"
+	player.cards._forget()
+	player._dodge_chain_charge = 8
+	player._passive_punch(target, false)
+	_check(player._dodge_chain_charge == 4, "Stored Answers: 8 stored dodges leave 4 (%d)" % player._dodge_chain_charge)
+	player._dodge_chain_charge = 5
+	player._passive_punch(target, false)
+	_check(player._dodge_chain_charge == 2, "Stored Answers: 5 leave 2 (%d)" % player._dodge_chain_charge)
+	# Shadow Counter: dodging a monster hits it.
+	player.cards.on_dodge(false, "jab", target)
+	var shadow: float = target._last_damage
+	_check(shadow > 0.0, "Shadow Counter: a dodge hits the monster (%.1f)" % shadow)
+	# Close Call: a graze may count as a dodge (the effect is the chance).
+	_check(is_equal_approx(GameState.get_effect("last_word"), 0.5), "Close Call: 50%% (%.2f)" % GameState.get_effect("last_word"))
+	await _free_rig(holder)
+	# Riposte Stance as a shot: the camera's out, the controls are locked, the
+	# stance still answers, and it ends with the stance.
+	rig = await _make_rig("counter_master", "riposte")
+	holder = rig[0]
+	player = rig[1]
+	target = rig[2][0]
+	player.active = true
+	player.ult.fill()
+	player.ult.activate()
+	_check(player.ult._riposte_shot and player.cinematic and player.ult.busy(), "Riposte Stance: a third-person shot with the controls locked")
+	var before := player.knuckles
+	var result := player.receive_attack(20.0, target.global_position, "jab", target)
+	_check(result == "dodged" and is_equal_approx(player.knuckles, before), "Riposte Stance: still slips every attack in the shot (%s)" % result)
+	player.ult._riposte = 0.01
+	await get_tree().create_timer(0.2, false, false, true).timeout
+	_check(not player.cinematic and not player.ult._riposte_shot and not player.ult.busy(), "Riposte Stance: the shot ends with the stance")
+	await _free_rig(holder)
+	print("Card runtime: Answer revamp OK")
 
 
 ## The fighter picker (2026-10-29): hovering a card and leaving puts it back

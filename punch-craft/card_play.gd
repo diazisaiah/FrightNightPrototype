@@ -36,7 +36,6 @@ var _crowd := 0.0
 var _slick_cooldown := 0.0
 var _afterglow := 0.0
 var _attune_speed := 0.0
-var _last_word := 0.0
 var _unbroken_after := 0.0
 var _body_cooldown := 0.0
 # Counts and flags.
@@ -56,8 +55,6 @@ var _ward := 0.0
 var _powers_gone := 0
 var _spectrum: Array[String] = []
 var _casting := false
-var _sting_from: Enemy
-var _sting_time := -10.0
 var _vault_target: Enemy
 ## The monster a Shoulder Charge uppercut is about to launch.
 var _shoulder_target: Enemy
@@ -126,7 +123,6 @@ func tick(delta: float) -> void:
 	_slick_cooldown -= delta
 	_afterglow -= delta
 	_attune_speed -= delta
-	_last_word -= delta
 	_unbroken_after -= delta
 	_body_cooldown -= delta
 	if _berserk > 0.0:
@@ -459,10 +455,6 @@ func after_punch(target: Enemy, type: String, hand: String, raw: float, dealt: f
 		_cleave(target, raw)
 	if fx("avalanche") > 0.0 and _landed % 4 == 0:
 		_avalanche()
-	# The Answer: a jab on a monster you just dodged.
-	if type == "jab" and target == _sting_from and _now() - _sting_time <= 1.0 and fx("sting_delay") > 0.0 and not killed:
-		_sting_from = null
-		target.delay(fx("sting_delay"), "STUNG")
 	# The Blur.
 	if fx("thousand_fists") > 0.0 and combo >= int(fx("thousand_fists")) and not killed:
 		_extra_hit(target, raw * 0.5)
@@ -508,9 +500,6 @@ func _counter_landed(target: Enemy, hand: String, killed: bool) -> void:
 			for enemy in _enemies():
 				if enemy != target and enemy.global_position.distance_to(target.global_position) <= 2.0:
 					enemy.stun(Enemy.STAGGER_TIME)
-	if fx("last_word") > 0.0 and _counters % 10 == 0:
-		_last_word = TIME_SLOW_TIME
-		_slow_time("THE LAST WORD")
 	if killed and _two_answers < int(fx("two_answers")):
 		_two_answers += 1
 		player._ready_counter(_other(hand))
@@ -530,10 +519,8 @@ static func _other(hand: String) -> String:
 	return "right" if hand == "left" else "left"
 
 
-## Perfect Counters off cooldown: The Last Word's slow, Riposte II's stance.
+## Perfect Counters off cooldown: Riposte II's stance.
 func free_perfect() -> bool:
-	if _last_word > 0.0:
-		return true
 	return fx("riposte_ii") > 0.0 and player.ult._riposte > 0.0 and player.ult._riposte_counters
 
 
@@ -555,8 +542,9 @@ func on_dodge(clean: bool, attack: String, attacker: Enemy) -> void:
 		if clean:
 			_clean_dodge(null)
 		return
-	_sting_from = attacker
-	_sting_time = _now()
+	# Shadow Counter: dodging a monster hits it.
+	if fx("shadow_counter") > 0.0:
+		attacker.take_hit(GameState.get_damage() * fx("shadow_counter"), attacker.global_position + Vector3(0, 1.2, 0), Vector3.ZERO, false, "SHADOW")
 	if clean:
 		_clean_dodge(attacker)
 	if attack in ["arrow", "fireball", "bolt"] and fx("return_sender") > 0.0:

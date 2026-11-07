@@ -109,7 +109,10 @@ const SHIELD_HITS := 3
 const SHIELD_TIME := 12.0
 const SHIELD_RADIUS := 4.0
 const SHIELD_BLAST := 2.0
-const FLOW_TIME := 10.0
+## Aura Farm (was Flow State, 2026-11-06): how long it lasts, and what dodges heal (share of max HP).
+const FARM_TIME := 15.0
+const FARM_HEAL := Vector2(0.01, 0.02)
+const FARM_HEAL_II := Vector2(0.02, 0.03)
 const UNBROKEN_TIME := 10.0
 const HYPE_TIME := 6.0
 const HYPE_SPEED := 1.6
@@ -165,6 +168,9 @@ var mode := ""
 var _riposte := 0.0
 ## Riposte counters back; Flow State only dodges.
 var _riposte_counters := true
+## Aura Farm's seconds left, and whether the Riposte stance is playing as a third-person shot.
+var _farm := 0.0
+var _riposte_shot := false
 ## Brimstone Shield: hits left, damage soaked, seconds left.
 var _shield_hits := 0
 var _shield_soaked := 0.0
@@ -210,11 +216,11 @@ func is_full() -> bool:
 
 ## True while an ultimate has taken over movement and punching.
 func busy() -> bool:
-	return mode != ""
+	return mode != "" or (_riposte_shot and player.cinematic)
 
 
 func add(amount: float) -> void:
-	if busy() or _riposte > 0.0 or spellfists > 0.0 or _shield_hits > 0 or hype > 0.0 or player.unbroken_time > 0.0:
+	if busy() or _riposte > 0.0 or _farm > 0.0 or spellfists > 0.0 or _shield_hits > 0 or hype > 0.0 or player.unbroken_time > 0.0:
 		return  # No charging while an ultimate runs.
 	var was_full := is_full()
 	if amount > 0.0:
@@ -264,6 +270,12 @@ func on_punch(kind: String, clean: bool, running: bool) -> void:
 
 func on_dodge(clean: bool) -> void:
 	add(GAIN["clean_dodge" if clean else "dodge"] * player.get_combo_multiplier())
+	if _farm > 0.0:
+		var share: Vector2 = FARM_HEAL_II if _card("untouchable_flow") else FARM_HEAL
+		var healed := player.max_knuckles * (share.y if clean else share.x)
+		player.heal(healed)
+		DamagePopup.spawn(player.get_parent(), "+%d" % roundi(healed), Color(0.4, 1.0, 0.65), 40, player.global_position + player._flat_forward() + Vector3(0, 1.7, 0))
+		HitFx.burst(player.get_parent(), player.global_position + Vector3.UP * 1.0, Vector3.UP, Color(0.4, 1.0, 0.65), 8, 2.5, true, 0.04)
 
 
 ## A clean hit drains the meter, except the Mauler's: he's built to take
@@ -278,7 +290,7 @@ func on_hit() -> void:
 # --- Firing -----------------------------------------------------------------------
 
 func activate() -> void:
-	if busy() or _riposte > 0.0:
+	if busy() or _riposte > 0.0 or _farm > 0.0:
 		return
 	if not is_full():
 		_set_status("Ultimate not charged  (%d%%)" % int(meter), 1.2)
@@ -315,10 +327,10 @@ func activate() -> void:
 ## Called by the player before an attack resolves. Returns "" to let it through,
 ## or what happened instead.
 func intercept_attack(attack: String, attacker: Node3D, amount := 0.0) -> String:
-	if busy():
-		return "dodged"
 	if _riposte > 0.0:
 		_riposte_dodge(attack, attacker as Enemy)
+		return "dodged"
+	if busy():
 		return "dodged"
 	if _shield_hits > 0:
 		_shield_absorb(amount, attacker as Enemy)
@@ -330,8 +342,18 @@ func _process(delta: float) -> void:
 	var real_delta := delta / maxf(Engine.time_scale, 0.01)
 	if _riposte > 0.0:
 		_riposte -= real_delta
-		var label := "RIPOSTE STANCE" if _riposte_counters else "FLOW STATE"
-		_set_status("%s  %.1fs" % [label, maxf(_riposte, 0.0)] if _riposte > 0.0 else "")
+		_set_status("RIPOSTE STANCE  %.1fs" % maxf(_riposte, 0.0) if _riposte > 0.0 else "")
+		if _riposte_shot:
+			if _riposte > 0.0 and player.cinematic:
+				# The camera drifts round him; he moves in the middle of it.
+				player.cine_orbit.x += real_delta * 0.4
+				player.cine_focus = player.global_position + Vector3.UP * 1.1
+			else:
+				_riposte_shot = false
+				player.end_cinematic()
+	if _farm > 0.0:
+		_farm -= real_delta
+		_set_status("AURA FARM  %.0fs" % maxf(_farm, 0.0) if _farm > 0.0 else "")
 	_update_slabs(real_delta)
 	if _shield_hits > 0:
 		_shield_time -= real_delta
@@ -976,6 +998,41 @@ func _start_riposte() -> void:
 	_riposte = (RIPOSTE_TIME + 2.0 * _power()) * (1.5 if _card("riposte_ii") else 1.0)
 	Sfx.play("tell", 0.0, 1.1)
 	player.class_event.emit("RIPOSTE STANCE")
+	# The user's idea (2026-11-06): see The Answer do his work in third person,
+	# in his aura. The whole stance plays as the shot, the camera drifting round
+	# him, controls locked (he does it all himself), and ends with it.
+	if player.cinematic_enabled():
+		_riposte_shot = true
+		player._aura.flare(1.2)
+		player.start_cinematic(Emotes.parse(_riposte_clip({})), player.global_position + Vector3.UP * 1.1, Vector2(player.rotation.y + PI * 0.8, 0.12), 3.2)
+		player.cine_world = true
+		HitFx.ring(player.get_parent(), player.global_position + Vector3.UP * 0.2, Color(0.4, 0.8, 1.0, 0.8), 3.0)
+
+
+## The Answer's guard, and a body clip for each thing the stance does: a slip, a
+## roll, a back step, a hook. Each leaves the guard again when it's done.
+const GUARD := {"torso": [-4, 0, 0], "head": [0, 0, 0], "ls": [78, 0, -10], "le": [112, 0, 0], "rs": [78, 0, 10], "re": [112, 0, 0],
+	"lh": [18, 0, 0], "lk": [-34, 0, 0], "rh": [14, 0, 0], "rk": [-28, 0, 0], "pos": [0, -3.5, 0]}
+
+
+func _riposte_clip(peak: Dictionary) -> Dictionary:
+	var move := GUARD.merged(peak, true)
+	return Emotes.parse({"name": "Riposte", "length": 3.0, "loop": false, "plant": false, "keys": [
+		{"t": 0.0, "pose": GUARD},
+		{"t": 0.1, "ease": "snap", "pose": move},
+		{"t": 0.34, "pose": GUARD},
+		{"t": 3.0, "pose": GUARD},
+	]})
+
+
+## What the body does for a slip, roll or back step.
+func _riposte_peak(move: String) -> Dictionary:
+	var side := -1.0 if move.ends_with("left") else 1.0
+	if move.begins_with("slip"):
+		return {"torso": [-6, 0, -16.0 * side], "head": [0, 0, -12.0 * side], "pos": [10.0 * side, -5, 0]}
+	if move.begins_with("roll"):
+		return {"torso": [-34, 0, -10.0 * side], "head": [-10, 0, 0], "pos": [8.0 * side, -20, 0]}
+	return {"torso": [10, 0, 0], "head": [4, 0, 0], "pos": [0, -3, 12]}
 
 
 ## Slips the attack and, if the attacker is in reach, answers with a hook.
@@ -983,6 +1040,8 @@ func _riposte_dodge(attack: String, attacker: Enemy) -> void:
 	var answers: Array = Player.ANSWERS.get(attack, [])
 	var move: String = answers[0] if not answers.is_empty() else "back_step"
 	player._animate_defense(move)
+	if _riposte_shot and player.cinematic:
+		player._body.play_clip(_riposte_clip(_riposte_peak(move)))
 	# The attack whips past: a swoosh across the view, toward the slip.
 	MoveFx.swoosh(player._camera, -1.0 if move.ends_with("left") else (1.0 if move.ends_with("right") else [-1.0, 1.0].pick_random()), Color(0.4, 0.8, 1.0))
 	player._on_dodge(move, true)
@@ -997,6 +1056,9 @@ func _riposte_counter(enemy: Enemy) -> void:
 		return
 	_face(enemy)
 	var hand := "right" if player._counter_side != "left" else "left"
+	if _riposte_shot and player.cinematic:
+		var hook := {"torso": [0, 28, 0], "rs": [96, 0, -52], "re": [95, 0, 0]} if hand == "right" else {"torso": [0, -28, 0], "ls": [96, 0, 52], "le": [95, 0, 0]}
+		player._body.play_clip(_riposte_clip(hook))
 	player._fists.play_punch("hook", hand, 0.08, 0.3)
 	player._animate_head("hook", hand, 0.08, 0.3)
 	await _wait(0.08)
@@ -1307,13 +1369,15 @@ func _shield_break() -> void:
 	player.class_event.emit("BRIMSTONE!")
 
 
-## The Answer's Flow State: every attack slips past, for a long while.
+## The Answer's Aura Farm (was Flow State; the user's notes, 2026-11-06): for
+## 15s every dodge heals 1% of your HP and a clean dodge 2% (Aura Farm II: 2%
+## and 3%). The Answer's sustain.
 func _start_flow() -> void:
 	_spend()
-	_riposte_counters = false
-	_riposte = FLOW_TIME + 3.0 * _power()
+	_farm = FARM_TIME + _power()
 	Sfx.play("tell", 0.0, 1.3)
-	player.class_event.emit("FLOW STATE")
+	player.class_event.emit("AURA FARM")
+	HitFx.burst(player.get_parent(), player.global_position + Vector3.UP, Vector3.UP, Color(0.4, 1.0, 0.65), 30, 4.0, true, 0.05)
 
 
 ## The Blur's Unbroken: every hit builds the combo, which can't drop.
@@ -1371,9 +1435,6 @@ func _start_spellfists() -> void:
 
 ## A punch landed during Elemental Fists: each element rolls on its own.
 func on_landed(target: Enemy, dealt: float, hand: String) -> void:
-	# Untouchable (the Answer's card): Flow State grows with every punch.
-	if _riposte > 0.0 and not _riposte_counters and _card("untouchable_flow"):
-		_riposte += 0.2
 	if spellfists <= 0.0 or target == null or not is_instance_valid(target):
 		return
 	var chance := SPELL_CHANCE

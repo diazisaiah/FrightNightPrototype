@@ -68,8 +68,8 @@ const ULTIMATES := {
 	"counter_master": [
 		{"id": "riposte", "name": "Riposte Stance", "icon": "target", "level": 1,
 			"desc": "For a few seconds every attack is slipped automatically and answered with a counter hook."},
-		{"id": "flow_state", "name": "Flow State", "icon": "swoosh", "level": 10,
-			"desc": "For a long while you dodge everything automatically. Punch freely; nothing touches you."},
+		{"id": "flow_state", "name": "Aura Farm", "icon": "heart_plus", "level": 10,
+			"desc": "For 15s every dodge heals 1% of your HP, and a clean dodge 2%."},
 	],
 	"combo_master": [
 		{"id": "temporal_break", "name": "Temporal Break", "icon": "clock", "level": 1,

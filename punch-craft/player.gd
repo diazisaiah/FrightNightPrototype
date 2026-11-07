@@ -484,6 +484,8 @@ var cinematic := false
 var cine_focus := Vector3.ZERO
 var cine_orbit := Vector2.ZERO
 var cine_distance := 3.4
+## True: cine_orbit.x is a world yaw (the camera doesn't turn when you do).
+var cine_world := false
 var _cine_cam := false
 var _immune_after := 0.0
 var _wheel: EmoteWheel
@@ -844,7 +846,7 @@ func _resolve_attack(amount: float, from: Vector3, attack: String, attacker: Nod
 	if not active:
 		return "dodged"
 	# A third-person ultimate and the half second after it: nothing touches you.
-	if is_cinematic_immune():
+	if is_cinematic_immune() and ult._riposte <= 0.0:
 		return "dodged"
 	# Get Up: back on your feet, untouchable for a moment.
 	if cards.untouchable > 0.0:
@@ -889,6 +891,13 @@ func _resolve_attack(amount: float, from: Vector3, attack: String, attacker: Nod
 			_on_dodge(move, false, true)
 			_dodged_attack = ""
 			class_event.emit("SLIPKNOT")
+			return "dodged"
+		# Close Call (the Answer's legendary): a graze may count as a dodge too.
+		if randf() < GameState.get_effect("last_word"):
+			_dodged_attack = attack
+			_on_dodge(move, false, true)
+			_dodged_attack = ""
+			class_event.emit("CLOSE CALL")
 			return "dodged"
 		_defense_cooldown = minf(_defense_cooldown, GRAZE_RECOVERY)
 		Sfx.play("block", -6.0, 0.7)
@@ -1289,6 +1298,7 @@ func start_cinematic(clip: Dictionary, focus: Vector3, orbit: Vector2, distance 
 	cine_focus = focus
 	cine_orbit = orbit
 	cine_distance = distance
+	cine_world = false
 	_emote_cam.global_transform = _camera.global_transform
 	_emote_cam.fov = _camera.fov
 	_body.finish_build()
@@ -1319,7 +1329,7 @@ func is_cinematic_immune() -> bool:
 ## The cinematic camera spot: orbiting cine_focus, pulled in where a wall is
 ## in the way.
 func _cine_spot() -> Transform3D:
-	var yaw := rotation.y + cine_orbit.x
+	var yaw := cine_orbit.x if cine_world else rotation.y + cine_orbit.x
 	var pitch := cine_orbit.y
 	var away := (Vector3(sin(yaw), 0, cos(yaw)) * cos(pitch) + Vector3.UP * sin(pitch)) * cine_distance
 	var spot := cine_focus + away
@@ -2294,8 +2304,8 @@ func _passive_punch(target: Enemy, forced: bool) -> Dictionary:
 				result.mult = 1.0 + (DODGE_CHAIN_STEP + 0.05 * _pp()) * _dodge_chain_charge
 				result.caption = "CHAIN x%d!" % _dodge_chain_charge
 				result.stagger = _dodge_chain_charge >= 3
-				# Stored Answers: one dodge a punch.
-				_dodge_chain_charge = _dodge_chain_charge - 1 if GameState.has_effect("stored_answers") else 0
+				# Stored Answers: half your stored dodges a punch (rounded up).
+				_dodge_chain_charge = _dodge_chain_charge - ceili(_dodge_chain_charge / 2.0) if GameState.has_effect("stored_answers") else 0
 		"momentum":
 			if _momentum > 0.1:
 				result.mult = _momentum_mult()
