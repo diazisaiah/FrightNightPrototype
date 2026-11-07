@@ -25,12 +25,12 @@ const PASSIVES := {
 			"desc": "Every dodge in a row charges your next punch (+40% a dodge, up to 6). It spends it all."},
 	],
 	"combo_master": [
-		{"id": "rapid_combos", "name": "Reboot", "icon": "heartbeat", "level": 1,
-			"desc": "When your combo ends you heal your combo multiplier in percent of your knuckle HP (x3 is 3%), plus 0.5% for every hit in it."},
+		{"id": "long_reach", "name": "Ultraviolet", "icon": "star", "level": 1,
+			"desc": "At your top combo multiplier your punches also fire ranged violet fists (0.25x damage) that hold your combo."},
 		{"id": "echo_fists", "name": "Killswitch", "icon": "bolt", "level": 5,
 			"desc": "From a 15-hit combo you go ultraviolent: every knockout light-dashes you to the nearest monster."},
-		{"id": "long_reach", "name": "Ultraviolet", "icon": "star", "level": 15,
-			"desc": "At your top combo multiplier your punches also fire ranged violet fists (0.25x damage) that hold your combo."},
+		{"id": "rapid_combos", "name": "Reboot", "icon": "heartbeat", "level": 15,
+			"desc": "When your combo ends you heal your combo multiplier in percent of your knuckle HP (x3 is 3%), plus 0.5% for every hit in it."},
 	],
 	"free_runner": [
 		{"id": "dash_punches", "name": "Dash Punches", "icon": "swoosh", "level": 1,

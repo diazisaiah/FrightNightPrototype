@@ -2012,6 +2012,7 @@ From the user's notes on the audit page ("every ability of his needs work"). Ids
 - **Cash Out has no third-person shot:** a "CASH OUT +N" pop-up and a green aura field (`AuraField`): a pulsing disc and ring on the ground, green motes rising round you, and a soft green glow at the screen's edges. It shrinks and dims as the shield is used up, flares when it soaks a hit, and fades when it's gone.
   - **Reboot has a green aura flash:** when it heals, the same green field (`AuraField.burst`) flashes round you for about a second (the ring, the rising motes and the glow at the screen's edges), bigger for a bigger heal, with a green "REBOOT +N" pop-up.
   - **Killswitch's look:** while ultraviolent you get his own, faster, deeper purple speed lines and a slightly wider view (+8 degrees of field of view, eased in and out).
+- **New order (the user, 2026-11-07: Reboot shouldn't be the starter):** Ultraviolet is the level-1 passive (and the default), Killswitch level 5, Reboot level 15. Saves with Reboot equipped below level 15 fall back to Ultraviolet by the existing locked-pick rule; Reboot II (the epic) is now drawn from level 15.
 - **Tests:** `_test_blur_revamp` (Reboot's heal, the Killswitch threshold and light dash, Ultraviolet's fist, Limit Break's soft cap, Instinct, Retaliation) and the Cash Out checks in `_exercise_ultimate`.
 
 ### The original plan
