@@ -489,26 +489,79 @@ func _inferno_shockwave(center: Vector3, except: Enemy) -> void:
 		enemy.knock_down(INFERNO_STUN, away.normalized() * 4.0, true)
 
 
-## The leap and the flaming uppercut, at one monster.
+## The Inferno Uppercut as a third-person shot (2026-11-06, the user's
+## experiment: Settings > Display > Third-person ultimates). The body's moves
+## (Emotes format): a crouch, the leap with the legs tucked, the uppercut.
+const INFERNO_CLIP := {
+	"name": "Inferno", "length": 3.0, "loop": false, "plant": false,
+	"keys": [
+		{"t": 0.0, "pose": {"torso": [-14.3, 20.1, 0], "head": [8, 0, 0], "ls": [55, 0, -14], "le": [108, 0, 0], "rs": [-20, 0, 12], "re": [100, 0, 0],
+			"lh": [42, 0, 0], "lk": [-84, 0, 0], "rh": [26, 0, 0], "rk": [-62, 0, 0], "pos": [0, -22, 0]}},
+		{"t": 0.2, "pose": {"torso": [-10, 20.1, 0], "head": [8, 0, 0], "ls": [55, 0, -14], "le": [108, 0, 0], "rs": [-24, 0, 12], "re": [100, 0, 0],
+			"lh": [62, 0, 0], "lk": [-104, 0, 0], "rh": [14, 0, 0], "rk": [-72, 0, 0], "pos": [0, 4, 0]}},
+		{"t": 0.38, "ease": "snap", "pose": {"torso": [8.6, -17.2, 0], "head": [12, 0, 0], "ls": [55, 0, -14], "le": [108, 0, 0], "rs": [168, 0, 6], "re": [46, 0, 0],
+			"lh": [-6, 0, 0], "lk": [-20, 0, 0], "rh": [16, 0, 0], "rk": [-42, 0, 0], "pos": [0, 2, 0]}},
+		{"t": 3.0, "pose": {"torso": [8.6, -17.2, 0], "head": [12, 0, 0], "ls": [55, 0, -14], "le": [108, 0, 0], "rs": [168, 0, 6], "re": [46, 0, 0],
+			"lh": [-6, 0, 0], "lk": [-20, 0, 0], "rh": [16, 0, 0], "rk": [-42, 0, 0], "pos": [0, 2, 0]}},
+	],
+}
+## How long the camera stays out after the hit, so the launch plays in shot.
+const INFERNO_SHOT_HOLD := 0.9
+
+
+## The leap and the flaming uppercut at one monster, as a shot when the
+## setting is on: the camera pulls out, you can't be touched, then it comes
+## back and you stay untouchable half a second more.
 func _inferno_at(target: Enemy) -> void:
+	var shot := player.cinematic_enabled()
+	if shot:
+		mode = "inferno"
+		player.start_cinematic(Emotes.parse(INFERNO_CLIP), player.global_position + Vector3.UP * 1.2, Vector2(0.6, 0.3), 3.6)
+	await _inferno_run(target, shot)
+	if shot:
+		await _wait(INFERNO_SHOT_HOLD)
+		player.end_cinematic()
+	mode = ""
+
+
+## One step of the leap (t 0-1): the arc, trailing fire, and in the shot the
+## camera behind and above you, swinging toward your side as you close in.
+func _leap_step(t: float, from: Vector3, to: Vector3, shot: bool) -> void:
+	player.global_position = from.lerp(to, t) + Vector3.UP * sin(t * PI) * 1.8
+	HitFx.burst(player.get_parent(), player.global_position + Vector3.UP, Vector3.DOWN, FIRE_COLOR, 2, 1.0, true, 0.04)
+	if shot:
+		player.cine_focus = player.global_position + Vector3.UP * 1.2
+		player.cine_orbit = Vector2(lerpf(0.6, 1.0, t), lerpf(0.3, 0.18, t))
+		player.cine_distance = lerpf(3.6, 3.0, t)
+
+
+func _inferno_run(target: Enemy, shot: bool) -> void:
 	_face(target)
 	# The leap: an arc up and in, trailing fire, to right in front of it.
 	mode = "inferno"
 	Sfx.play("whoosh", 2.0, 0.5)
-	player._kick_fov(10.0)
+	if not shot:
+		player._kick_fov(10.0)
 	var from := player.global_position
 	var flat := target.global_position - from
 	flat.y = 0.0
 	var to := from + flat - flat.normalized() * 1.1 if flat.length() > 1.1 else from
 	var leap := player.create_tween()
-	leap.tween_method(func(t: float) -> void:
-		player.global_position = from.lerp(to, t) + Vector3.UP * sin(t * PI) * 1.8
-		HitFx.burst(player.get_parent(), player.global_position + Vector3.UP, Vector3.DOWN, FIRE_COLOR, 2, 1.0, true, 0.04),
-		0.0, 1.0, INFERNO_LEAP_TIME)
+	leap.tween_method(_leap_step.bind(from, to, shot), 0.0, 1.0, INFERNO_LEAP_TIME)
 	await leap.finished
-	mode = ""
+	if not shot:
+		mode = ""
 	if not is_instance_valid(target) or target.is_dead():
 		return
+	if shot:
+		# The hit, from your right side, then a slow drift back to show it fly.
+		var middle := (player.global_position + target.global_position) / 2.0 + Vector3.UP * 1.3
+		var swing := player.create_tween().set_parallel()
+		swing.tween_property(player, "cine_focus", middle, 0.35).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		swing.tween_property(player, "cine_orbit", Vector2(PI * 0.5, 0.05), 0.35).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		swing.tween_property(player, "cine_distance", 2.7, 0.35).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		swing.chain().tween_property(player, "cine_orbit", Vector2(PI * 0.68, 0.14), INFERNO_SHOT_HOLD + 0.2).set_trans(Tween.TRANS_SINE)
+		swing.parallel().tween_property(player, "cine_distance", 3.3, INFERNO_SHOT_HOLD + 0.2).set_trans(Tween.TRANS_SINE)
 	TimeFx.slowmo(0.4, 0.3)
 	Sfx.play("heavy", 4.0, 0.5)
 	player._fists.play_punch("uppercut", "right", 0.1, 0.45)

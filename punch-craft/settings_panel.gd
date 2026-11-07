@@ -211,6 +211,7 @@ func _ready() -> void:
 	_choice(display, "frame_rate", "clock", "Frame rate", "Lower runs cooler on phones")
 	_choice(display, "perf_overlay", "eye", "Performance", "A readout for testing")
 	_choice(display, "hud_style", "eye", "Fight HUD", "Takes effect next fight")
+	_toggle(display, "cinematic_ults", "bolt", "Third-person ultimates", "The camera pulls out while an ultimate plays")
 	_toggle(display, "fullscreen", "chevrons", "Fullscreen", "Fill the whole screen")
 
 	if show_save_data:

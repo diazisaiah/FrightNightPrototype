@@ -49,6 +49,7 @@ func _run() -> void:
 	await _test_fighter_card_hover()
 	await _test_boss_poise()
 	await _test_mauler_revamp()
+	await _test_cinematic_ult()
 	await _test_endless_powers()
 	TimeFx.clear()
 	GameState._reset_fields()
@@ -976,6 +977,34 @@ func _test_mauler_revamp() -> void:
 	_check(result == "dodged" and is_equal_approx(player.knuckles, 1.0), "Berserk: nothing touches you meanwhile (%s)" % result)
 	await _free_rig(holder)
 	print("Card runtime: Mauler revamp OK")
+
+
+## Third-person ultimates (2026-11-06): the camera is out and nothing touches
+## you during the shot or for half a second after, then the camera is back.
+func _test_cinematic_ult() -> void:
+	var rig := await _make_rig("berserker")
+	var holder: Node3D = rig[0]
+	var player: Player = rig[1]
+	var target: Enemy = rig[2][0]
+	player.active = true
+	player.knuckles = player.max_knuckles
+	player.start_cinematic(Emotes.parse(Ult.INFERNO_CLIP), player.global_position + Vector3.UP, Vector2(0.6, 0.3), 3.6)
+	_check(player.cinematic and player._emote_cam.current and not player._fists.visible, "The shot pulls the camera out")
+	var before := player.knuckles
+	var result := player.receive_attack(25.0, target.global_position, "jab", target)
+	player.hurt_knuckles(25.0)
+	_check(result == "dodged" and is_equal_approx(player.knuckles, before), "Untouchable during the shot (%s, %.1f of %.1f)" % [result, player.knuckles, before])
+	player.end_cinematic()
+	_check(player.is_cinematic_immune() and is_equal_approx(player._immune_after, Player.CINEMATIC_AFTER), "Half a second of immunity after")
+	result = player.receive_attack(25.0, target.global_position, "jab", target)
+	_check(result == "dodged", "Still untouchable just after the shot (%s)" % result)
+	player._update_emote(Player.CINEMATIC_AFTER + 0.05)
+	_check(not player.is_cinematic_immune(), "Then it is over")
+	for i in 20:
+		player._update_emote(0.05)
+	_check(player._camera.current and player._fists.visible and not player._body.visible, "The camera is back in first person")
+	await _free_rig(holder)
+	print("Card runtime: third-person ultimate OK")
 
 
 ## The fighter picker (2026-10-29): hovering a card and leaving puts it back

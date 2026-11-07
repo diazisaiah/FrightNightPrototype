@@ -467,6 +467,23 @@ var _emote_cam: Camera3D
 var _emote_orbit := Vector2.ZERO
 ## 0 = first person, 1 = all the way out.
 var _emote_out := 0.0
+
+## Third-person ultimates (2026-11-06, an experiment): an ultimate calls
+## start_cinematic() and the camera pulls out round your fighter's body (the
+## emote camera) while it plays. You can't be touched meanwhile; end_cinematic()
+## glides the camera back and leaves CINEMATIC_AFTER more seconds of immunity,
+## so you're ready for whatever comes next.
+const CINEMATIC_IN := 0.22
+const CINEMATIC_AFTER := 0.5
+var cinematic := false
+## Where the cinematic camera looks (a world spot) and sits: yaw round you
+## (0 = behind, PI / 2 = your right side), pitch (up) and distance. The ultimate
+## moves these as it plays.
+var cine_focus := Vector3.ZERO
+var cine_orbit := Vector2.ZERO
+var cine_distance := 3.4
+var _cine_cam := false
+var _immune_after := 0.0
 var _wheel: EmoteWheel
 ## How long the emote key has been held (-1: the wheel is closed).
 var _wheel_time := -1.0
@@ -821,6 +838,9 @@ func _resolve_attack(amount: float, from: Vector3, attack: String, attacker: Nod
 		amount *= 1.0 - Powers.dead_weight()
 	if not active:
 		return "dodged"
+	# A third-person ultimate and the half second after it: nothing touches you.
+	if is_cinematic_immune():
+		return "dodged"
 	# Get Up: back on your feet, untouchable for a moment.
 	if cards.untouchable > 0.0:
 		return "dodged"
@@ -1032,6 +1052,8 @@ func shake(amount: float) -> void:
 ## Knuckle damage from enemy hits. Defense reduces it; Glass Jaw raises it;
 ## Grit lowers it while knuckles are low.
 func hurt_knuckles(amount: float) -> void:
+	if is_cinematic_immune():
+		return
 	var armored := GameState.mitigate(amount * (1.0 + GameState.get_effect("damage_taken")))
 	# Damage-taken cuts (Deadweight's set bonus, Grit when low, Gravewalker
 	# after a dodge) share one cap, after armor (still at least 1 damage).
@@ -1216,23 +1238,89 @@ func _orbit_emote_cam(turn: Vector2) -> void:
 
 ## Moves the emote camera between your eyes and its orbit spot.
 func _update_emote(delta: float) -> void:
+	_immune_after = maxf(0.0, _immune_after - delta)
 	if emote != "" and (not active or ult.busy()):
 		_stop_emote(not active)
-	if emote == "" and _emote_out <= 0.0:
+	# A knockout (or a scene change) ends a cinematic on the spot.
+	if cinematic and not active:
+		cinematic = false
+		_emote_out = 0.0
+		_finish_emote_cam()
 		return
-	_emote_out = move_toward(_emote_out, 1.0 if emote != "" else 0.0, delta / EMOTE_CAM_TIME)
-	if emote == "" and _emote_out <= 0.0:
+	if emote == "" and not cinematic and _emote_out <= 0.0:
+		return
+	var out := emote != "" or cinematic
+	_emote_out = move_toward(_emote_out, 1.0 if out else 0.0, delta / (CINEMATIC_IN if cinematic else EMOTE_CAM_TIME))
+	if not out and _emote_out <= 0.0:
 		_finish_emote_cam()
 		return
 	var blend := smoothstep(0.0, 1.0, _emote_out)
-	_emote_cam.global_transform = _camera.global_transform.interpolate_with(_emote_orbit_spot(), blend)
+	_emote_cam.global_transform = _camera.global_transform.interpolate_with(_cine_spot() if _cine_cam else _emote_orbit_spot(), blend)
 
 
 func _finish_emote_cam() -> void:
+	_cine_cam = false
 	if _emote_cam.current:
 		_camera.make_current()
 	_body.visible = false
 	_fists.visible = true
+
+
+## The Settings toggle for third-person ultimates.
+func cinematic_enabled() -> bool:
+	return bool(Settings.get_value("cinematic_ults")) and _body != null
+
+
+## An ultimate starts its third-person shot: the body plays clip (Emotes.parse
+## format) and the camera pulls out to the spot cine_focus / cine_orbit /
+## cine_distance describe (the ultimate keeps moving them). Untouchable until
+## end_cinematic() plus CINEMATIC_AFTER.
+func start_cinematic(clip: Dictionary, focus: Vector3, orbit: Vector2, distance := 3.4) -> void:
+	_stop_emote(true)
+	cinematic = true
+	_cine_cam = true
+	cine_focus = focus
+	cine_orbit = orbit
+	cine_distance = distance
+	_emote_cam.global_transform = _camera.global_transform
+	_emote_cam.fov = _camera.fov
+	_body.finish_build()
+	_body.visible = true
+	_body.play_clip(clip)
+	_fists.visible = false
+	_emote_cam.make_current()
+
+
+## The shot's over: the camera glides back to your eyes and you stay
+## untouchable for CINEMATIC_AFTER more seconds.
+func end_cinematic() -> void:
+	if not cinematic:
+		return
+	cinematic = false
+	_immune_after = CINEMATIC_AFTER
+	_body.stop()
+	# The camera never got out (a very short shot): nothing to glide back from.
+	if _emote_out <= 0.0:
+		_finish_emote_cam()
+
+
+## No hit touches you during a third-person ultimate or just after it.
+func is_cinematic_immune() -> bool:
+	return cinematic or _immune_after > 0.0
+
+
+## The cinematic camera spot: orbiting cine_focus, pulled in where a wall is
+## in the way.
+func _cine_spot() -> Transform3D:
+	var yaw := rotation.y + cine_orbit.x
+	var pitch := cine_orbit.y
+	var away := (Vector3(sin(yaw), 0, cos(yaw)) * cos(pitch) + Vector3.UP * sin(pitch)) * cine_distance
+	var spot := cine_focus + away
+	var query := PhysicsRayQueryParameters3D.create(cine_focus, spot, 1 | Scenery.LAYER, [get_rid()])
+	var hit := get_world_3d().direct_space_state.intersect_ray(query)
+	if not hit.is_empty():
+		spot = hit.position - away.normalized() * 0.25
+	return Transform3D(Basis.IDENTITY, spot).looking_at(cine_focus, Vector3.UP)
 
 
 ## The orbit spot, pulled in where a wall is in the way.

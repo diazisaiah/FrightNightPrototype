@@ -15,6 +15,9 @@ const DEFAULTS := {
 	"master": 0.8, "effects": 1.0, "ambience": 0.7, "music": 0.6, "muted": false,
 	"mouse_sensitivity": 1.0, "fov": 75.0, "screen_shake": 1.0, "fullscreen": false,
 	"post_effects": true, "shadows": true,
+	# Third-person ultimates (2026-11-06, an experiment): the camera pulls out
+	# while an ultimate plays, you are untouchable, then it goes back.
+	"cinematic_ults": true,
 	# Control scheme (see Controls).
 	"punch_mode": "modifiers", "dodge_mode": "shift_qe", "slip_mode": "qe",
 	# Bumped when a default control scheme changes (see _load).
