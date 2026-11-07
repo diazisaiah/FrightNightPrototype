@@ -97,7 +97,8 @@ const TIME_STOP_REPEAT_MIN := 0.5
 ## Each hit makes the clock run this much faster.
 const TIME_STOP_SPEEDUP := 0.12
 const TIME_STOP_RANGE := 12.0
-const TIME_STOP_COMBO_GAIN := 2
+## Temporal Break: a hit grows the combo by 1 (every other one by 2 with the epic).
+const TIME_STOP_COMBO_GAIN := 1
 const TIME_STOP_STUN := 1.0
 const TIME_COLOR := Color(0.65, 0.85, 1.0)
 ## Impact sparks left hanging in stopped time, at most.
@@ -114,7 +115,9 @@ const SHIELD_BLAST := 2.0
 const FARM_TIME := 15.0
 const FARM_HEAL := Vector2(0.01, 0.02)
 const FARM_HEAL_II := Vector2(0.02, 0.03)
-const UNBROKEN_TIME := 10.0
+## Cash Out (was Unbroken): the least combo it needs, and how long its shield lasts.
+const CASH_MIN := 5
+const CASH_TIME := 15.0
 const HYPE_TIME := 6.0
 const HYPE_SPEED := 1.6
 const HYPE_DAMAGE := 2.0
@@ -171,6 +174,9 @@ var _riposte := 0.0
 var _riposte_counters := true
 ## Aura Farm's seconds left, and whether the Riposte stance is playing as a third-person shot.
 var _farm := 0.0
+## Cash Out: the shield left (knuckle HP) and its seconds.
+var _cash := 0.0
+var _cash_time := 0.0
 var _riposte_shot := false
 ## Which stance clip the body is in (-1 none, 0 still, 1 walking) and when a reaction clip ends.
 var _stance_state := -1
@@ -230,7 +236,7 @@ func input_locked() -> bool:
 
 
 func add(amount: float) -> void:
-	if busy() or _riposte > 0.0 or _farm > 0.0 or spellfists > 0.0 or _shield_hits > 0 or hype > 0.0 or player.unbroken_time > 0.0:
+	if busy() or _riposte > 0.0 or _farm > 0.0 or _cash_time > 0.0 or spellfists > 0.0 or _shield_hits > 0 or hype > 0.0 or player.unbroken_time > 0.0:
 		return  # No charging while an ultimate runs.
 	var was_full := is_full()
 	if amount > 0.0:
@@ -365,6 +371,14 @@ func _process(delta: float) -> void:
 	if _farm > 0.0:
 		_farm -= real_delta
 		_set_status("AURA FARM  %.0fs" % maxf(_farm, 0.0) if _farm > 0.0 else "")
+	if _cash_time > 0.0:
+		_cash_time -= real_delta
+		if _cash_time <= 0.0 or _cash <= 0.0:
+			_cash = 0.0
+			_cash_time = 0.0
+			_set_status("")
+		else:
+			_set_status("CASH OUT  shield %d  %.0fs" % [roundi(_cash), maxf(_cash_time, 0.0)])
 	_update_slabs(real_delta)
 	if _shield_hits > 0:
 		_shield_time -= real_delta
@@ -866,7 +880,7 @@ func _stop_punch(hand: String, type := "") -> void:
 	player._last_hand = ""  # Every punch counts toward the combo, whatever the hand.
 	player._last_punch_hand = hand
 	player._combo_timer = GameState.get_combo_window()
-	player._set_combo(player.combo + TIME_STOP_COMBO_GAIN + (1 if _card("temporal_break_ii") else 0))
+	player._set_combo(player.combo + TIME_STOP_COMBO_GAIN + (1 if _card("temporal_break_ii") and _hits % 2 == 0 else 0))
 	var damage: float = GameState.get_damage() * player.get_combo_multiplier() * punch.mult
 	var at := target.global_position + Vector3(randf_range(-0.3, 0.3), 1.3 + randf_range(-0.35, 0.35), randf_range(-0.3, 0.3))
 	var entry: Array = _held.get(target, [0.0, []])
@@ -1535,12 +1549,46 @@ func _aura_farm_intro() -> void:
 		player.end_cinematic()
 
 
-## The Blur's Unbroken: every hit builds the combo, which can't drop.
+## The Blur's Cash Out (was Unbroken; the user's notes, 2026-11-06): spend your
+## combo (5 hits or more) for a shield worth 1% of your knuckle HP for every hit
+## of it (1.5% with Cash Out II). While it's up a hit halves your combo instead
+## of ending it.
 func _start_unbroken() -> void:
+	if player.combo < CASH_MIN:
+		_set_status("Cash Out needs a %d-hit combo" % CASH_MIN, 1.4)
+		return
+	var hits := player.combo
 	_spend()
-	player.unbroken_time = (UNBROKEN_TIME + 2.0 * _power()) * (1.5 if _card("unbroken_ii") else 1.0)
-	Sfx.play("tell", 0.0, 0.9)
-	player.class_event.emit("UNBROKEN")
+	player._skip_reboot = true
+	player._set_combo(0)
+	player._skip_reboot = false
+	_cash = player.max_knuckles * 0.01 * hits * (1.5 if _card("unbroken_ii") else 1.0)
+	_cash_time = CASH_TIME + _power()
+	Sfx.play("unlock", 0.0, 1.2)
+	player.class_event.emit("CASH OUT  -  shield %d" % roundi(_cash))
+	HitFx.burst(player.get_parent(), player.global_position + Vector3.UP, Vector3.UP, Color(1.0, 0.82, 0.3), 30, 5.0, true, 0.05)
+	HitFx.ring(player.get_parent(), player.global_position + Vector3.UP * 0.2, Color(1.0, 0.82, 0.3, 0.8), 2.5)
+
+
+## Cash Out's shield is up.
+func cash_up() -> bool:
+	return _cash > 0.0
+
+
+## What gets through a hit after the shield soaks what it can.
+func soak_cash(loss: float) -> float:
+	if _cash <= 0.0 or loss <= 0.0:
+		return loss
+	var soaked := minf(_cash, loss)
+	_cash -= soaked
+	Sfx.play("block", -4.0, 1.3)
+	DamagePopup.spawn(player.get_parent(), "-%d" % roundi(soaked), Color(1.0, 0.85, 0.35), 36, player.global_position + player._flat_forward() + Vector3(0, 1.6, 0))
+	HitFx.burst(player.get_parent(), player.global_position + Vector3.UP * 1.2, Vector3.UP, Color(1.0, 0.82, 0.3), 8, 3.0, true, 0.04)
+	if _cash <= 0.0:
+		_cash_time = 0.0
+		_set_status("")
+		player.class_event.emit("SHIELD BROKEN")
+	return loss - soaked
 
 
 ## The Stray's Hype Train: faster, and anything in the way goes flying.

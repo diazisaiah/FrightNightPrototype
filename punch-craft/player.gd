@@ -95,9 +95,13 @@ const MOMENTUM_MAX := 1.0
 const MUSCLE_EVERY := 15.0
 const MUSCLE_HOLD := 2.0
 const MUSCLE_RANGE := 8.0
-const SHOCKWAVE_EVERY := 5
-const SHOCKWAVE_RADIUS := 4.0
-const SHOCKWAVE_STUN := 1.5
+## Killswitch's light dash (how fast, how far it looks), Ultraviolet's fist (how far, how long it flies),
+## and how fast Limit Break's soft cap grows past the top.
+const LIGHT_DASH_TIME := 0.12
+const LIGHT_DASH_RANGE := 14.0
+const ULTRAVIOLET_RANGE := 14.0
+const ULTRAVIOLET_TIME := 0.18
+const LIMIT_BREAK_GROWTH := 1.2
 const COMBO_FREEZE_TIME := 1.0
 const RUNNING_PUNCH_LUNGE := 6.0
 const OPENER_MULTIPLIER := 2.0
@@ -377,6 +381,9 @@ var _stomp_cooldown := 0.0
 var _muscle_timer := 6.0
 ## Unbroken (the Blur's alternate ultimate): seconds left.
 var unbroken_time := 0.0
+## Killswitch: the combo is long enough to be ultraviolent. Cash Out spends a combo without Reboot healing it.
+var _ultraviolent := false
+var _skip_reboot := false
 var _combo_freeze := 0.0
 var _class_status := "-"
 ## How full the passive is, 0-1 (1 = ready), for the HUD's chip. -1: a passive
@@ -506,7 +513,7 @@ func _ready() -> void:
 	_punch_ray.add_exception(self)
 	max_knuckles = GameState.get_max_knuckles()
 	knuckles = heal_cap()
-	_punch_ray.target_position = Vector3(0, 0, -(LONG_REACH + LONG_REACH_PER_POWER * GameState.passive_power()) if GameState.has_passive("long_reach") else -PUNCH_REACH)
+	_punch_ray.target_position = Vector3(0, 0, -PUNCH_REACH)
 	_camera.fov = Settings.fov()
 	Settings.changed.connect(func() -> void: _camera.fov = Settings.fov())
 	if not TouchUi.enabled:
@@ -1080,7 +1087,8 @@ func hurt_knuckles(amount: float) -> void:
 	# The fighter's perk comes last, past every cap: the Mauler's x0.9 turns
 	# 10 into 9, the Stray's and Tony's x1.1 turn it into 11. The 1-damage
 	# minimum stays as it is.
-	_lose_knuckles(maxf(minf(armored, 1.0), taken * GameState.get_class_mod("final_damage")))
+	var loss := maxf(minf(armored, 1.0), taken * GameState.get_class_mod("final_damage"))
+	_lose_knuckles(ult.soak_cash(loss))
 
 
 func _lose_knuckles(amount: float) -> void:
@@ -1361,8 +1369,13 @@ func last_hand() -> String:
 
 
 func get_combo_multiplier() -> float:
-	# Gear's combo_cap raises the cap (2026-11-04).
-	return minf(_base_combo_multiplier() + _rhythm, _combo_cap())
+	# Gear's combo_cap raises the cap (2026-11-04). Limit Break (the Blur's
+	# legendary) makes it a soft one: past the top it still grows, slower.
+	var raw := _base_combo_multiplier() + _rhythm
+	var cap := _combo_cap()
+	if raw > cap and GameState.has_effect("fifty"):
+		return cap + LIMIT_BREAK_GROWTH * sqrt(raw - cap)
+	return minf(raw, cap)
 
 
 func _base_combo_multiplier() -> float:
@@ -1747,6 +1760,8 @@ func _land_punch(type: String, hand: String, _dashing := false, airborne := fals
 			hit_point = target.global_position + Vector3(0, 1.3, 0)
 	if target == null:
 		Sfx.play("whoosh", -10.0, 1.3)
+		if GameState.has_passive("long_reach") and at_combo_cap():
+			_ultraviolet_shot(null)  # A whiff still throws the ranged fist.
 		return  # Whiffs cost nothing and don't affect the combo.
 
 	var counter_ready := is_counter_ready() and (_counter_side == "any" or _counter_side == hand)
@@ -1817,8 +1832,11 @@ func _land_punch(type: String, hand: String, _dashing := false, airborne := fals
 	var same_kind := _last_hand != "" and not new_target and punch_kind(type) == punch_kind(_last_type)
 	_kind_run = _kind_run + 1 if same_kind else 1
 	var move := combo_move(type, hand, _last_type, _last_hand, _jab_run, _kind_run, new_target, dodged, counter)
+	var ultraviolet := GameState.has_passive("long_reach") and at_combo_cap()
+	if ultraviolet and move == "grow":
+		move = "hold"  # Ultraviolet: at the top a punch only holds the combo.
 	if unbroken_time > 0.0:
-		move = "grow"  # Unbroken: nothing drops it and it keeps climbing.
+		move = "grow"  # (Unbroken's old rule; nothing sets unbroken_time any more.)
 	elif move == "lose":
 		combo = 0  # This punch starts a fresh combo.
 		_jab_run = 1 if type == "jab" else 0
@@ -1828,6 +1846,8 @@ func _land_punch(type: String, hand: String, _dashing := false, airborne := fals
 	_last_set_up = set_up
 	_combo_timer = GameState.get_combo_window() * cards.combo_window_scale()
 	_combo_grew = move != "hold"
+	if ultraviolet:
+		_ultraviolet_shot(target)
 	if _combo_grew:
 		_set_combo(combo + 1)
 	else:
@@ -2004,12 +2024,6 @@ func _land_punch(type: String, hand: String, _dashing := false, airborne := fals
 	punch_landed.emit(kind, killed)
 	punch_connected.emit(type, kind)
 	_trigger_powers(target, raw_damage, set_up or counter, counter)
-	# A same-hand repeat resets the combo to zero; zero is divisible by every
-	# number, but it is not a combo milestone. Stalled straight-punch strings
-	# likewise do not get free repeated shockwaves.
-	if GameState.has_passive("rapid_combos") and _combo_grew and combo > 0 \
-			and combo % _shockwave_every() == 0:
-		_shockwave()
 	_pay_for_punch(punch, counter, type)
 
 
@@ -2246,28 +2260,110 @@ func _check_ground_pound(was_airborne: bool, delta: float) -> void:
 
 # --- Class specials ---------------------------------------------------------------
 
-## Combo Master: every 5th hit stuns everything nearby and freezes the combo timer.
-func _shockwave() -> void:
-	var damage := GameState.get_damage() * 0.2 * _pp()
-	# Aftershock: the stun hits too, and holds the combo longer.
-	var aftershock := GameState.has_effect("aftershock")
-	if aftershock:
-		damage += GameState.get_damage()
+## The Blur's passives (2026-11-06, the user's notes; ids kept so saves work):
+## Reboot (rapid_combos), Killswitch (echo_fists), Ultraviolet (long_reach).
+
+## Reboot: when a combo ends you heal your combo multiplier in percent of your
+## knuckle HP (x3.2 is 3.2%), 1.5x as much with Reboot II.
+func _reboot(multiplier: float) -> void:
+	var healed := max_knuckles * 0.01 * multiplier * (1.0 + 0.05 * _pp()) * (1.5 if GameState.has_effect("aftershock") else 1.0)
+	if healed <= 0.0:
+		return
+	heal(healed)
+	DamagePopup.spawn(get_parent(), "REBOOT +%d" % roundi(healed), Color(0.55, 0.9, 1.0), 40, global_position + _flat_forward() + Vector3(0, 1.8, 0))
+	HitFx.burst(get_parent(), global_position + Vector3.UP, Vector3.UP, Color(0.55, 0.9, 1.0), 12, 3.0, true, 0.04)
+
+
+## Killswitch: the combo length that makes you ultraviolent (15 hits, 10 with
+## Killswitch II, a quarter hit less for every passive power point).
+func killswitch_hits() -> int:
+	return maxi(8, (10 if GameState.has_effect("double_echo") else 15) - floori(0.25 * _pp()))
+
+
+func is_ultraviolent() -> bool:
+	return GameState.has_passive("echo_fists") and combo >= killswitch_hits()
+
+
+## Ultraviolent: a knockout light-dashes you to the nearest other monster (a
+## very fast violet dash that ends right in front of it; Killswitch II makes
+## the monster flinch out of whatever it was doing).
+func _light_dash(from: Enemy) -> void:
+	var best: Enemy = null
+	var best_distance := LIGHT_DASH_RANGE
 	for node in get_tree().get_nodes_in_group("enemies"):
 		var enemy := node as Enemy
-		if enemy and not enemy.is_dead() and enemy.global_position.distance_to(global_position) <= SHOCKWAVE_RADIUS:
-			# Rolling Thunder: the shockwave hits too.
-			if damage > 0.0:
-				var away := enemy.global_position - global_position
-				away.y = 0.0
-				enemy.take_hit(damage, enemy.global_position + Vector3(0, 1.0, 0), away.normalized() * 3.0, false, "SHOCK")
-			if not enemy.is_dead():
-				enemy.stun(SHOCKWAVE_STUN)
-	_combo_freeze = 2.0 if aftershock else COMBO_FREEZE_TIME
-	HitFx.burst(get_parent(), global_position + Vector3.UP, Vector3.UP, Color(1, 0.8, 0.3), 40, 7.0, true, 0.06)
-	Sfx.play("counter", -2.0, 0.7)
-	_kick_fov(5.0)
-	class_event.emit("SHOCKWAVE!")
+		if enemy == null or enemy == from or enemy.is_dead():
+			continue
+		var distance := enemy.global_position.distance_to(global_position)
+		if distance < best_distance:
+			best = enemy
+			best_distance = distance
+	if best == null:
+		return
+	var to := best.global_position - global_position
+	to.y = 0.0
+	if to.length() < 1.8:
+		return
+	var spot := teleport_spot(best, best.global_position - to.normalized() * 1.3)
+	if spot == Vector3.INF:
+		return
+	MoveFx.afterimage(get_parent(), global_position, Color(0.7, 0.45, 1.0))
+	rotation.y = atan2(-to.x, -to.z)
+	_dash = Vector3.ZERO
+	var dash := create_tween()
+	dash.tween_property(self, "global_position", Vector3(spot.x, global_position.y, spot.z), LIGHT_DASH_TIME).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
+	Sfx.play("whoosh", 0.0, 1.8)
+	_kick_fov(9.0)
+	HitFx.burst(get_parent(), global_position + Vector3.UP, to.normalized(), Color(0.7, 0.45, 1.0), 18, 7.0, true, 0.04)
+	_combo_timer = maxf(_combo_timer, GameState.get_combo_window() * cards.combo_window_scale())
+	if GameState.has_effect("double_echo"):
+		best.stun(0.6)
+		DamagePopup.spawn(get_parent(), "INTERRUPTED", Color(0.8, 0.6, 1.0), 36, best.global_position + Vector3(0, 2.0, 0))
+
+
+## Ultraviolet: at your top combo multiplier (not the soft cap of Limit Break) punches
+## stop growing the combo.
+func at_combo_cap() -> bool:
+	return _base_combo_multiplier() + _rhythm >= _combo_cap() - 0.001
+
+
+## A ranged violet fist at the monster you're facing (the nearest in front, one
+## your punch didn't hit if there's another): 0.25x your base damage (0.4x with
+## Ultraviolet II), and when it lands it holds the combo.
+func _ultraviolet_shot(melee: Enemy) -> void:
+	var forward := _flat_forward()
+	var pick: Enemy = null
+	var best := 1e9
+	for node in get_tree().get_nodes_in_group("enemies"):
+		var enemy := node as Enemy
+		if enemy == null or enemy.is_dead():
+			continue
+		var to := enemy.global_position - global_position
+		to.y = 0.0
+		var distance := to.length()
+		if distance < 0.1 or distance > ULTRAVIOLET_RANGE:
+			continue
+		var facing := forward.dot(to / distance)
+		if facing < 0.8:
+			continue
+		var score := (1.0 - facing) * 10.0 + distance * 0.05 + (3.0 if enemy == melee else 0.0)
+		if score < best:
+			best = score
+			pick = enemy
+	if pick == null:
+		return
+	var side := -1.0 if _last_hand == "left" else 1.0
+	var from := _camera.global_position + _camera.global_basis * Vector3(0.25 * side, -0.3, -0.5)
+	MoveFx.ghost_fist(get_parent(), from, pick.global_position + Vector3(0, 1.3, 0), Color(0.6, 0.35, 1.0), ULTRAVIOLET_TIME)
+	await get_tree().create_timer(ULTRAVIOLET_TIME, false).timeout
+	if not is_instance_valid(pick) or pick.is_dead() or not active:
+		return
+	var share := (0.4 if GameState.has_effect("spear_hands") else 0.25) + 0.02 * _pp()
+	var at := pick.global_position + Vector3(0, 1.3, 0)
+	pick.take_hit(GameState.get_damage() * share, at, Vector3.ZERO, false, "ULTRAVIOLET")
+	HitFx.burst(get_parent(), at, Vector3.UP, Color(0.6, 0.35, 1.0), 10, 3.0, true, 0.04)
+	Sfx.play_at("hit", at, -6.0, 1.6)
+	_combo_timer = maxf(_combo_timer, GameState.get_combo_window() * cards.combo_window_scale())
 
 
 # --- Passives (Abilities) --------------------------------------------------------------
@@ -2345,28 +2441,11 @@ func _after_punch_passives(target: Enemy, damage: float, killed: bool, push: Vec
 		return
 	match GameState.passive():
 		"echo_fists":
-			_echo(target, damage)
+			if killed and is_ultraviolent():
+				_light_dash(target)
 		"wrecking_ball":
 			if killed:
 				_wrecking_ball(target.global_position, push)
-
-
-## A violet echo of the punch, a beat later (Double Echo: it echoes again, for half).
-func _echo(target: Enemy, damage: float, again := true) -> void:
-	# The echo is a violet ghost of the fist, flying in a beat behind.
-	var side := -1.0 if _last_hand == "left" else 1.0
-	var from := _camera.global_position + _camera.global_basis * Vector3(0.25 * side, -0.3, -0.5)
-	MoveFx.ghost_fist(get_parent(), from, target.global_position + Vector3(0, 1.3, 0), Color(0.7, 0.45, 1.0), ECHO_DELAY)
-	await get_tree().create_timer(ECHO_DELAY, false).timeout
-	if not is_instance_valid(target) or target.is_dead() or not active:
-		return
-	var at := target.global_position + Vector3(0, 1.3, 0)
-	var echo := damage * (ECHO_SHARE + 0.04 * _pp())
-	target.take_hit(echo, at, Vector3.ZERO, false, "ECHO")
-	HitFx.burst(get_parent(), at, Vector3.UP, Color(0.7, 0.45, 1.0), 10, 3.0, true, 0.04)
-	Sfx.play_at("hit", at, -6.0, 1.5)
-	if again and GameState.has_effect("double_echo"):
-		_echo(target, damage * 0.5, false)
 
 
 ## The knocked-out monster bowls through the ones behind it.
@@ -2681,14 +2760,12 @@ func _passive_progress() -> float:
 		"dodge_chain":
 			return clampf(_dodge_chain_charge / 3.0, 0.0, 1.0)
 		"rapid_combos":
-			return clampf(float(combo % _shockwave_every()) / float(_shockwave_every()), 0.0, 1.0)
+			return clampf((get_combo_multiplier() - 1.0) / maxf(_combo_cap() - 1.0, 0.1), 0.0, 1.0)
+		"echo_fists":
+			return clampf(float(combo) / float(killswitch_hits()), 0.0, 1.0)
 		"momentum":
 			return clampf(_momentum, 0.0, 1.0)
 	return -1.0
-
-
-func _shockwave_every() -> int:
-	return SHOCKWAVE_EVERY
 
 
 func _update_class_timers(delta: float) -> void:
@@ -2716,7 +2793,11 @@ func _update_class_timers(delta: float) -> void:
 		"dodge_chain":
 			status = "x%d" % _dodge_chain_charge
 		"rapid_combos":
-			status = "%d hits" % (_shockwave_every() - combo % _shockwave_every())
+			status = "x%.1f" % get_combo_multiplier()
+		"echo_fists":
+			status = "ULTRAVIOLENT" if is_ultraviolent() else "%d/%d" % [combo, killswitch_hits()]
+		"long_reach":
+			status = "MAX" if at_combo_cap() else ""
 		"momentum":
 			status = "x%.1f" % _momentum_mult()
 		"fuggedaboudit":
@@ -2744,8 +2825,12 @@ func _update_hand_effects() -> void:
 			ability = _phantom_cooldown <= 0.0
 		"dodge_chain":
 			ability = _dodge_chain_charge >= 3
-		"rapid_combos", "echo_fists":
+		"rapid_combos":
 			ability = combo >= 3
+		"echo_fists":
+			ability = is_ultraviolent()
+		"long_reach":
+			ability = at_combo_cap()
 		"momentum":
 			ability = _momentum >= 0.9
 		"fuggedaboudit":
@@ -2789,7 +2874,17 @@ func _set_combo(value: int) -> void:
 	# punch and a shield used to; 2026-10-29). A knockout still does.
 	if unbroken_time > 0.0 and active and value < combo:
 		return
+	# Reboot: a combo that ends heals you.
+	if value == 0 and combo >= 2 and active and not _skip_reboot and GameState.has_passive("rapid_combos"):
+		_reboot(get_combo_multiplier())
 	combo = value
+	var violent := is_ultraviolent()
+	if violent != _ultraviolent:
+		_ultraviolent = violent
+		if violent:
+			class_event.emit("ULTRAVIOLENT")
+			Sfx.play("tell", -2.0, 1.5)
+			_kick_fov(6.0)
 	if combo >= 25:
 		Achievements.earn("combo_25")
 	if combo >= 10:

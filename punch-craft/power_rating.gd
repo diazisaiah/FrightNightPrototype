@@ -72,9 +72,9 @@ const CARDS := {
 	"riposte_ii": [0.04, 0.03], "untouchable_flow": [0.0, 0.08], "free_flow": [0.06, 0.0], "mirror_match": [0.0, 0.06],
 	"last_word": [0.0, 0.1],
 	# The Blur.
-	"second_gear": [0.7, 0.0], "bounce_back": [0.1, 0.0], "speed_bag": [0.3, 0.0],
-	"ricochet": [0.03, 0.0], "afterimage": [0.03, 0.0], "light_hands": [0.0, 0.25], "light_hooks": [0.0, 0.05], "aftershock": [0.08, 0.03],
-	"double_echo": [0.08, 0.0], "spear_hands": [0.08, 0.04], "temporal_break_ii": [0.05, 0.0], "unbroken_ii": [0.05, 0.0],
+	"second_gear": [0.7, 0.0], "retaliation": [0.04, 0.0], "speed_bag": [0.0, 0.25],
+	"ricochet": [0.03, 0.0], "afterimage": [0.04, 0.0], "light_hands": [0.0, 0.25], "light_hooks": [0.0, 0.05], "aftershock": [0.0, 0.1],
+	"double_echo": [0.06, 0.0], "spear_hands": [0.08, 0.0], "temporal_break_ii": [0.05, 0.0], "unbroken_ii": [0.05, 0.0],
 	"flurry": [0.06, 0.0], "perpetual_motion": [0.06, 0.0], "blur": [0.03, 0.08], "fifty": [0.04, 0.04],
 	# The Stray.
 	"dash_reach": [0.0, 0.1], "cheap_shot": [0.25, 0.0], "hang_time": [0.15, 0.0], "opportunist": [0.3, 0.0],

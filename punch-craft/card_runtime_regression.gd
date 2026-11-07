@@ -52,6 +52,7 @@ func _run() -> void:
 	await _test_cinematic_ult()
 	await _test_brimstone_slabs()
 	await _test_answer_revamp()
+	await _test_blur_revamp()
 	await _test_endless_powers()
 	TimeFx.clear()
 	GameState._reset_fields()
@@ -298,6 +299,8 @@ func _exercise_ultimate(fighter: String, ultimate: String) -> void:
 	var holder: Node3D = rig[0]
 	var player: Player = rig[1]
 	player.ult.fill()
+	if ultimate == "unbroken":
+		player._set_combo(8)  # Cash Out spends a combo (5 hits or more)
 	player.ult.activate()
 	# Inferno II performs two leap tweens and Highlight Reel visits every live
 	# target. Freeing their Player mid-await strands the coroutine, so those two
@@ -326,16 +329,16 @@ func _exercise_ultimate(fighter: String, ultimate: String) -> void:
 		_check(boss.is_staggered(), "Flame Burst stuns a boss through its poise")
 		boss.queue_free()
 	if ultimate == "unbroken":
-		# Nothing drops the combo while it lasts: not a real hit, not a
-		# slipped punch or a shield (their _set_combo(0)).
+		# Cash Out: the combo was spent for a shield; a hit halves a rebuilt combo
+		# and the shield soaks it.
+		_check(player.ult.cash_up() and player.combo == 0, "Cash Out: spends the combo for a shield (%d hits left, shield %.1f)" % [player.combo, player.ult._cash])
+		var shield_before: float = player.ult._cash
+		player._set_combo(8)
 		player.invulnerable = false
-		player._set_combo(6)
+		var hp_before := player.knuckles
 		player.receive_attack(2.0, player.global_position + Vector3(0, 0, -1.5), "jab", null)
-		player._set_combo(0)
-		_check(player.combo == 6, "Unbroken: the combo doesn't drop (%d, was 6)" % player.combo)
-		player.unbroken_time = 0.0
-		player._set_combo(0)
-		_check(player.combo == 0, "Unbroken: once it ends, the combo can drop")
+		_check(player.combo == 4, "Cash Out: a hit halves the combo (%d)" % player.combo)
+		_check(player.ult._cash < shield_before and is_equal_approx(player.knuckles, hp_before), "Cash Out: the shield soaks the hit (%.1f of %.1f left)" % [player.ult._cash, shield_before])
 	if ultimate == "the_family":
 		# Stacked on one spot inside a dummy, they step apart and out, and stay
 		# that way round it.
@@ -1108,6 +1111,72 @@ func _test_answer_revamp() -> void:
 	_check(not player.cinematic and not player.ult._riposte_shot and not player.ult.input_locked(), "Riposte Stance: the shot ends with the stance")
 	await _free_rig(holder)
 	print("Card runtime: Answer revamp OK")
+
+
+## The Blur's revamp (2026-11-06): Reboot, Killswitch's light dash, Ultraviolet's
+## ranged fists, Limit Break's soft cap, Retaliation, Instinct and Ricochet.
+func _test_blur_revamp() -> void:
+	var rig := await _make_rig("combo_master")
+	var holder: Node3D = rig[0]
+	var player: Player = rig[1]
+	var target: Enemy = rig[2][0]
+	var other: Enemy = rig[2][3]
+	player.active = true
+	# Reboot: a combo that ends heals its multiplier in percent of your HP.
+	GameState.loadouts.combo_master.passive = "rapid_combos"
+	player.cards._forget()
+	player.knuckles = player.max_knuckles * 0.5
+	player._set_combo(8)
+	var mult := player.get_combo_multiplier()
+	var expected := player.max_knuckles * 0.01 * mult * (1.0 + 0.05 * GameState.passive_power()) * 1.5
+	player._set_combo(0)
+	_check(is_equal_approx(player.knuckles, player.max_knuckles * 0.5 + expected), "Reboot II: a combo of x%.2f heals %.2f (%.2f)" % [mult, expected, player.knuckles - player.max_knuckles * 0.5])
+	# Killswitch: ultraviolent from the combo length, and a knockout light-dashes.
+	GameState.loadouts.combo_master.passive = "echo_fists"
+	player.cards._forget()
+	player._set_combo(player.killswitch_hits())
+	_check(player.is_ultraviolent() and player.killswitch_hits() <= 10, "Killswitch II: ultraviolent from %d hits" % player.killswitch_hits())
+	# The next monster is the only other one near: the rest stand well behind.
+	rig[2][1].global_position = Vector3(-8, 0, 14)
+	rig[2][2].global_position = Vector3(8, 0, 14)
+	other.global_position = player.global_position + Vector3(0, 0, -7)
+	other.set_physics_process(false)
+	var start := player.global_position.distance_to(other.global_position)
+	player._light_dash(target)
+	await get_tree().create_timer(0.4, false, false, true).timeout
+	_check(player.global_position.distance_to(other.global_position) < 2.2 and start > 5.0, "Killswitch: the light dash ends in front of the next monster (%.1f from %.1f)" % [player.global_position.distance_to(other.global_position), start])
+	# Ultraviolet: at the top multiplier a ranged fist hits what you face.
+	GameState.loadouts.combo_master.passive = "long_reach"
+	player.cards._forget()
+	player.global_position = Vector3.ZERO
+	player.rotation.y = 0.0
+	rig[2][1].global_position = Vector3(-1.2, 0, -2.5)
+	rig[2][2].global_position = Vector3(1.2, 0, -2.5)
+	player._set_combo(60)
+	_check(player.at_combo_cap(), "Ultraviolet: the top multiplier is reached")
+	target._last_damage = 0.0
+	player._ultraviolet_shot(null)
+	await get_tree().create_timer(0.35, false, false, true).timeout
+	_check(target._last_damage > 0.0 or rig[2][1]._last_damage > 0.0 or rig[2][2]._last_damage > 0.0, "Ultraviolet: the ranged fist lands")
+	# Limit Break: the multiplier is a soft cap.
+	player._set_combo(80)
+	var soft := player.get_combo_multiplier()
+	GameState._classes.combo_master.cards.erase("fifty")
+	var hard := player.get_combo_multiplier()
+	GameState._classes.combo_master.cards["fifty"] = 1
+	_check(soft > hard and soft < player._base_combo_multiplier(), "Limit Break: a soft cap (x%.2f over the hard x%.2f, raw x%.2f)" % [soft, hard, player._base_combo_multiplier()])
+	# Instinct: a dodge adds to the combo hit counter (rank 2: 2).
+	player._set_combo(3)
+	player.cards.on_dodge(false, "jab", null)
+	_check(player.combo == 5, "Instinct: a dodge adds 2 hits (%d)" % player.combo)
+	# Retaliation: getting hit hurts the attacker, more with a big combo.
+	player._set_combo(8)
+	player.cards.combo_after_hit(player.combo)
+	target._last_damage = 0.0
+	player.cards.on_hit(target)
+	_check(target._last_damage > 0.0, "Retaliation: the attacker takes damage (%.2f)" % target._last_damage)
+	await _free_rig(holder)
+	print("Card runtime: Blur revamp OK")
 
 
 ## The fighter picker (2026-10-29): hovering a card and leaving puts it back

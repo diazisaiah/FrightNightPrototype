@@ -47,6 +47,8 @@ var _counters := 0
 var _two_answers := 0
 var _free_flow_used := false
 var _ricochet := 0.0
+## The combo multiplier you had when the last hit landed on you (Retaliation).
+var _hit_mult := 1.0
 var _fifty_done := false
 var _moving := 0.0
 var _free_running := false
@@ -162,8 +164,6 @@ func speed_mult() -> float:
 	var combo := player.combo
 	if combo >= 4:
 		bonus += fx("second_gear")
-	if combo < 5:
-		bonus += fx("speed_bag")
 	if perk("tempo"):
 		bonus += minf(0.02 * combo, 0.2)
 	if _blur_step > 0.0:
@@ -178,6 +178,9 @@ func speed_mult() -> float:
 
 func move_mult() -> float:
 	var bonus := 0.0
+	# Speed Bag: your combo multiplier speeds your feet too.
+	if fx("speed_bag") > 0.0:
+		bonus += minf(fx("speed_bag") * (player.get_combo_multiplier() - 1.0), 0.4)
 	if _blur_step > 0.0:
 		bonus += 0.3
 	if fx("blur") > 0.0 and player.combo >= 30:
@@ -260,7 +263,9 @@ func flinch_scale() -> float:
 
 ## The combo you keep after a hit (Bounce Back).
 func combo_after_hit(combo: int) -> int:
-	var kept := floori(combo * fx("bounce_back"))
+	_hit_mult = player.get_combo_multiplier()
+	# Cash Out's shield: a hit halves the combo instead of ending it.
+	var kept := combo / 2 if player.ult.cash_up() else 0
 	if kept > 0:
 		player._combo_timer = maxf(player._combo_timer, 1.0)
 	return kept
@@ -273,6 +278,9 @@ func on_hit(attacker: Enemy) -> void:
 		_granite = GRANITE_TIME
 	if fx("hit_ult") > 0.0:
 		player.ult.add(fx("hit_ult"))
+	# Retaliation: getting hit hurts the attacker, more with a big combo.
+	if fx("retaliation") > 0.0 and attacker and not attacker.is_dead():
+		attacker.take_hit(GameState.get_damage() * fx("retaliation") * _hit_mult, attacker.global_position + Vector3(0, 1.2, 0), Vector3.ZERO, false, "RETALIATION")
 	# I Eat Those: a hit that landed can still open a counter.
 	if fx("eat_those") > 0.0 and randf() < fx("eat_those"):
 		player._ready_counter("any")
@@ -410,10 +418,6 @@ func punch_mod(target: Enemy, type: String, counter: bool, airborne: bool, set_u
 		_shoulder_target = target
 		captions.append("LAUNCHED!")
 	# Spear Hands: Long Reach's punches at the edge of reach.
-	if fx("spear_hands") > 0.0 and GameState.has_passive("long_reach") \
-			and target.global_position.distance_to(player.global_position) > Player.PUNCH_REACH:
-		result.mult *= 1.3
-		result.push = 2.5
 	if airborne and fx("dive_kick") >= 2.0:
 		result.push = maxf(result.push, 3.0)
 	if set_up and target.is_taunted() and fx("wake_up_call") >= 2.0:
@@ -458,16 +462,15 @@ func after_punch(target: Enemy, type: String, hand: String, raw: float, dealt: f
 	# The Blur.
 	if fx("thousand_fists") > 0.0 and combo >= int(fx("thousand_fists")) and not killed:
 		_extra_hit(target, raw * 0.5)
-	if killed and combo > 1 and fx("ricochet") > 0.0:
-		player._combo_timer = GameState.get_combo_window()
-		_ricochet = fx("ricochet")
+	# Ricochet: the punch that knocks a monster out carries on to another.
+	if killed and fx("ricochet") > 0.0:
+		var other := _nearest(target.global_position, 4.0, [target])
+		if other:
+			other.take_hit(dealt * fx("ricochet"), other.global_position + Vector3(0, 1.2, 0), Vector3.ZERO, false, "RICOCHET")
 	if player._combo_grew and fx("rhythm_guard") > 0.0 and combo % int(fx("rhythm_guard")) == 0:
 		_guard = true
 	if player._combo_grew and fx("flurry") > 0.0 and combo > 0 and combo % 25 == 0 and not killed:
 		_flurry(target)
-	if fx("fifty") > 0.0 and combo >= 50 and not _fifty_done:
-		_fifty_done = true
-		_slow_time("FIFTY BEFORE THEY BLINK")
 	# The Stray.
 	if airborne and fx("parkour") > 0.0:
 		player._forward_dash_cooldown = 0.0
@@ -538,6 +541,10 @@ func on_dodge(clean: bool, attack: String, attacker: Enemy) -> void:
 	_free_flow_used = false
 	if fx("perpetual_motion") > 0.0:
 		player._combo_freeze = maxf(player._combo_freeze, 1.0)
+	# Instinct: a dodge adds to your combo hit counter.
+	if fx("afterimage") > 0.0:
+		player._set_combo(player.combo + int(fx("afterimage")))
+		player._combo_timer = maxf(player._combo_timer, GameState.get_combo_window() * combo_window_scale())
 	if attacker == null or attacker.is_dead():
 		if clean:
 			_clean_dodge(null)
@@ -549,8 +556,6 @@ func on_dodge(clean: bool, attack: String, attacker: Enemy) -> void:
 		_clean_dodge(attacker)
 	if attack in ["arrow", "fireball", "bolt"] and fx("return_sender") > 0.0:
 		attacker.take_hit(GameState.get_damage() * fx("return_sender"), attacker.global_position + Vector3(0, 1.3, 0), Vector3.ZERO, true, "RETURN TO SENDER")
-	if fx("afterimage") > 0.0:
-		_afterimage(attacker, int(fx("afterimage")))
 
 
 func _clean_dodge(attacker: Enemy) -> void:
@@ -736,17 +741,6 @@ func _flurry(target: Enemy) -> void:
 		target.take_hit(damage, at, Vector3.ZERO, i == 7, "FLURRY" if i == 7 else "")
 		HitFx.burst(player.get_parent(), at, Vector3.UP, Color(0.7, 0.5, 1.0), 6, 3.0, true, 0.03)
 		Sfx.play_at("hit", at, -6.0, 1.3 + i * 0.08)
-
-
-## Afterimage: a violet copy punches the attacker.
-func _afterimage(attacker: Enemy, times: int) -> void:
-	for i in times:
-		await get_tree().create_timer(0.15, false).timeout
-		if not is_instance_valid(attacker) or attacker.is_dead():
-			return
-		var at := attacker.global_position + Vector3(0, 1.3, 0)
-		HitFx.burst(player.get_parent(), at, Vector3.UP, Color(0.7, 0.45, 1.0), 14, 3.0, true, 0.05)
-		attacker.take_hit(GameState.get_damage(), at, Vector3.ZERO, false, "AFTERIMAGE")
 
 
 ## Time slows for every monster (not for you).

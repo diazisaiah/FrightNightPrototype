@@ -1994,6 +1994,20 @@ From the user's notes on the audit page. Card ids are kept so saves still work.
 - **The Last Word (legendary, Coffin King seal) becomes Close Call:** a graze has a 50% chance to count as a dodge and open a counter (the time slow is gone). A graze that counts is a plain dodge, like the Slipknot Wraps.
 - **Tests:** `_test_answer_revamp` (Aura Farm's four heal values and no charging, half-charge spending, Shadow Counter, Close Call's chance, the Riposte shot's lock, slip and end).
 
+### Blur passives, ultimates and cards (built 2026-11-07, Lab and dev site only: no itch release until the user says)
+From the user's notes on the audit page ("every ability of his needs work"). Ids are kept so saves and loadouts work; names, text and effects changed. Where a note left a number or a reading open, this is what I built (change it if it's wrong):
+- **Reboot (was Rapid Combos):** no more stun shockwave. When a combo ends you heal your combo multiplier in percent of max knuckle HP (x3.2 heals 3.2%; +5% per passive power point). Fires when the combo drops to 0 from 2 or more hits: a hit, a timeout or a mistake, but not a Cash Out. Epic Aftershock is **Reboot II**: 1.5x as much.
+- **Killswitch (was Echo Fists):** no more echo damage. From a 15-hit combo (10 with the epic; a quarter hit less per passive power point, never under 8) you're ultraviolent ("ULTRAVIOLENT" callout and chip), and every knockout light-dashes you (a 0.12s violet dash, up to 14m) to the nearest other monster, ending 1.3m in front of it. Epic Double Echo is **Killswitch II**: the threshold drops to 10 and the dash makes the monster flinch (stun 0.6s). Reading: the user's "15/10" is base and epic, and "epic interrupts" is the same epic.
+- **Ultraviolet (was Long Reach):** reach is back to normal. At your top combo multiplier (not Limit Break's soft cap) a punch only holds the combo (the count stops growing) and fires a ranged violet fist at the monster you face (nearest in the front cone within 14m, preferring one the punch didn't hit; whiffs fire it too) for 0.25x base damage (+0.02 per passive power point); when it lands it holds the combo. Epic Spear Hands is **Ultraviolet II**: 0.4x. Side effect: with it equipped the count never reaches Flurry's 25th hit.
+- **Temporal Break:** a punch in it grows the combo by 1 (was 2); the epic makes every other punch 2 (was 3). The break and the rest are unchanged. (Survival's ranged-bubble version is still the plan.)
+- **Unbroken becomes Cash Out:** needs a combo of 5 or more; it spends the combo for a shield of 1% of max knuckle HP per hit of it (1.5% with Cash Out II), lasting 15s (+1s per power point) or until it is used up. While it's up, a hit halves your combo instead of ending it, and the ultimate meter doesn't charge.
+- **Bounce Back becomes Retaliation (common):** getting hit deals 3 / 6 / 9 / 12% of your base damage per 1x of the combo multiplier you had when hit (x4 at rank 4 is 48%).
+- **Speed Bag (common):** your combo multiplier also speeds your feet: +10 / 12 / 14 / 16% move speed per 1x above 1, capped at +40%. Reading: the user suggested move speed instead of punch speed (80% punch speed was too much).
+- **Ricochet (rare):** the dash is gone (Killswitch has it). The punch that knocks a monster out carries 25% / 40% of its damage to the nearest other monster within 4m.
+- **Afterimage becomes Instinct (rare):** a dodge adds 1 / 2 to your combo hit counter (and holds the combo timer).
+- **Fifty Before They Blink becomes Limit Break (legendary):** the combo multiplier is a soft cap: past the top it grows as the square root of what's over (x1.2 factor), so a long combo keeps growing, slowly.
+- **Tests:** `_test_blur_revamp` (Reboot's heal, the Killswitch threshold and light dash, Ultraviolet's fist, Limit Break's soft cap, Instinct, Retaliation) and the Cash Out checks in `_exercise_ultimate`.
+
 ### The original plan
 
 The user tests away from the computer, so the playground gets a phone version on a restricted itch page. Much simpler than the desktop playground: only the key features, with big buttons.
