@@ -1439,16 +1439,29 @@ const FARM_WALK_CLIP := {"name": "Farm walk", "length": 1.2, "loop": true, "plan
 	{"t": 0.6, "pose": {"torso": [3, 0, 0], "head": [0, 0, 0], "ls": [18, 0, -6], "le": [28, 0, 0], "rs": [18, 0, 6], "re": [28, 0, 0],
 		"lh": [-18, 0, 0], "lk": [-4, 0, 0], "rh": [24, 0, 0], "rk": [-8, 0, 0], "pos": [0, -1, 0]}},
 ]}
-const FARM_NECK_CLIP := {"name": "Farm neck", "length": 3.0, "loop": false, "plant": false, "keys": [
+const FARM_NECK_CLIP := {"name": "Farm neck", "length": 4.0, "loop": false, "plant": false, "keys": [
 	{"t": 0.0, "pose": {"torso": [2, 0, 0], "head": [0, 0, 0], "ls": [18, 0, -6], "le": [28, 0, 0], "rs": [18, 0, 6], "re": [28, 0, 0],
 		"lh": [2, 0, 0], "lk": [-4, 0, 0], "rh": [2, 0, 0], "rk": [-4, 0, 0], "pos": [0, -1, 0]}},
-	{"t": 0.18, "ease": "snap", "pose": {"torso": [2, 0, 5], "head": [4, 0, 30], "ls": [24, 0, -6], "le": [34, 0, 0], "rs": [18, 0, 6], "re": [28, 0, 0],
+	# Slowly over to the left, held, then a small push for the crack.
+	{"t": 0.55, "ease": "ease", "pose": {"torso": [2, 0, 3], "head": [6, 0, 20], "ls": [18, 0, -6], "le": [28, 0, 0], "rs": [18, 0, 6], "re": [28, 0, 0],
 		"lh": [2, 0, 0], "lk": [-4, 0, 0], "rh": [2, 0, 0], "rk": [-4, 0, 0], "pos": [0, -1, 0]}},
-	{"t": 0.5, "ease": "snap", "pose": {"torso": [2, 0, -5], "head": [4, 0, -30], "ls": [18, 0, -6], "le": [28, 0, 0], "rs": [24, 0, 6], "re": [34, 0, 0],
+	{"t": 0.85, "pose": {"torso": [2, 0, 3], "head": [6, 0, 20], "ls": [18, 0, -6], "le": [28, 0, 0], "rs": [18, 0, 6], "re": [28, 0, 0],
 		"lh": [2, 0, 0], "lk": [-4, 0, 0], "rh": [2, 0, 0], "rk": [-4, 0, 0], "pos": [0, -1, 0]}},
-	{"t": 0.78, "pose": {"torso": [4, 0, 0], "head": [-4, 0, 0], "ls": [40, 0, -14], "le": [70, 0, 0], "rs": [40, 0, 14], "re": [70, 0, 0],
+	{"t": 0.95, "ease": "snap", "pose": {"torso": [2, 0, 4], "head": [6, 0, 24], "ls": [18, 0, -6], "le": [28, 0, 0], "rs": [18, 0, 6], "re": [28, 0, 0],
 		"lh": [2, 0, 0], "lk": [-4, 0, 0], "rh": [2, 0, 0], "rk": [-4, 0, 0], "pos": [0, -1, 0]}},
-	{"t": 3.0, "pose": {"torso": [4, 0, 0], "head": [-4, 0, 0], "ls": [40, 0, -14], "le": [70, 0, 0], "rs": [40, 0, 14], "re": [70, 0, 0],
+	# Back through the middle, slowly, to the right, the same.
+	{"t": 1.4, "pose": {"torso": [2, 0, 0], "head": [2, 0, 0], "ls": [18, 0, -6], "le": [28, 0, 0], "rs": [18, 0, 6], "re": [28, 0, 0],
+		"lh": [2, 0, 0], "lk": [-4, 0, 0], "rh": [2, 0, 0], "rk": [-4, 0, 0], "pos": [0, -1, 0]}},
+	{"t": 1.85, "ease": "ease", "pose": {"torso": [2, 0, -3], "head": [6, 0, -20], "ls": [18, 0, -6], "le": [28, 0, 0], "rs": [18, 0, 6], "re": [28, 0, 0],
+		"lh": [2, 0, 0], "lk": [-4, 0, 0], "rh": [2, 0, 0], "rk": [-4, 0, 0], "pos": [0, -1, 0]}},
+	{"t": 2.1, "pose": {"torso": [2, 0, -3], "head": [6, 0, -20], "ls": [18, 0, -6], "le": [28, 0, 0], "rs": [18, 0, 6], "re": [28, 0, 0],
+		"lh": [2, 0, 0], "lk": [-4, 0, 0], "rh": [2, 0, 0], "rk": [-4, 0, 0], "pos": [0, -1, 0]}},
+	{"t": 2.2, "ease": "snap", "pose": {"torso": [2, 0, -4], "head": [6, 0, -24], "ls": [18, 0, -6], "le": [28, 0, 0], "rs": [18, 0, 6], "re": [28, 0, 0],
+		"lh": [2, 0, 0], "lk": [-4, 0, 0], "rh": [2, 0, 0], "rk": [-4, 0, 0], "pos": [0, -1, 0]}},
+	# Level again, the gloves coming up.
+	{"t": 2.7, "pose": {"torso": [4, 0, 0], "head": [-2, 0, 0], "ls": [40, 0, -14], "le": [70, 0, 0], "rs": [40, 0, 14], "re": [70, 0, 0],
+		"lh": [2, 0, 0], "lk": [-4, 0, 0], "rh": [2, 0, 0], "rk": [-4, 0, 0], "pos": [0, -1, 0]}},
+	{"t": 4.0, "pose": {"torso": [4, 0, 0], "head": [-2, 0, 0], "ls": [40, 0, -14], "le": [70, 0, 0], "rs": [40, 0, 14], "re": [70, 0, 0],
 		"lh": [2, 0, 0], "lk": [-4, 0, 0], "rh": [2, 0, 0], "rk": [-4, 0, 0], "pos": [0, -1, 0]}},
 ]}
 const FARM_CLAP_CLIP := {"name": "Farm clap", "length": 3.0, "loop": false, "plant": false, "keys": [
@@ -1498,12 +1511,12 @@ func _aura_farm_intro() -> void:
 	# The neck crack: head over to one side, then the other, a crack each.
 	player._body.play_clip(Emotes.parse(FARM_NECK_CLIP))
 	var push := player.create_tween().set_parallel()
-	push.tween_property(player, "cine_distance", 2.4, 1.0).set_trans(Tween.TRANS_SINE)
-	push.tween_property(player, "cine_orbit", Vector2(yaw - signf(sin(yaw - player.rotation.y - PI)) * 0.12, 0.02), 1.0).set_trans(Tween.TRANS_SINE)
-	await _wait(0.16)
+	push.tween_property(player, "cine_distance", 2.4, 2.6).set_trans(Tween.TRANS_SINE)
+	push.tween_property(player, "cine_orbit", Vector2(yaw - signf(sin(yaw - player.rotation.y - PI)) * 0.12, 0.02), 2.6).set_trans(Tween.TRANS_SINE)
+	await _wait(0.95)
+	Sfx.play("block", -4.0, 1.7)
+	await _wait(1.25)
 	Sfx.play("block", -4.0, 1.9)
-	await _wait(0.34)
-	Sfx.play("block", -4.0, 2.1)
 	await _wait(0.5)
 	if not is_instance_valid(player):
 		return

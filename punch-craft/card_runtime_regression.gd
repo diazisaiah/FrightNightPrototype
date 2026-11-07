@@ -302,7 +302,7 @@ func _exercise_ultimate(fighter: String, ultimate: String) -> void:
 	# Inferno II performs two leap tweens and Highlight Reel visits every live
 	# target. Freeing their Player mid-await strands the coroutine, so those two
 	# get time to finish; the other ultimates start synchronously.
-	var settle := 3.6 if ultimate in ["inferno", "highlight_reel", "bulwark", "flow_state"] else (0.8 if ultimate == "flame_burst" else 0.25)
+	var settle := 5.0 if ultimate in ["inferno", "highlight_reel", "bulwark", "flow_state"] else (0.8 if ultimate == "flame_burst" else 0.25)
 	await get_tree().create_timer(settle, false, false, true).timeout
 	_check(player.ult.meter < Ult.MAX_METER,
 			"%s's %s activates and spends meter" % [fighter, ultimate])
@@ -1054,7 +1054,7 @@ func _test_answer_revamp() -> void:
 	player.ult.fill()
 	player.ult.activate()
 	_check(player.ult.mode == "aura_farm" and player.cinematic and player.ult._farm <= 0.0, "Aura Farm opens with its third-person intro")
-	await get_tree().create_timer(3.8, false, false, true).timeout
+	await get_tree().create_timer(5.2, false, false, true).timeout
 	_check(player.ult._farm > 0.0 and not player.cinematic and player.ult.mode == "", "Aura Farm starts when the intro ends (%.1fs)" % player.ult._farm)
 	var share := 0.02
 	player.knuckles = player.max_knuckles * 0.5
