@@ -1157,7 +1157,7 @@ func _test_blur_revamp() -> void:
 	rig[2][1].global_position = Vector3(-1.2, 0, -2.5)
 	rig[2][2].global_position = Vector3(1.2, 0, -2.5)
 	player._set_combo(60)
-	_check(player.at_combo_cap(), "Ultraviolet: the top multiplier is reached")
+	_check(player.ultraviolet_ready(), "Ultraviolet: half the top multiplier is reached")
 	target._last_damage = 0.0
 	player._ultraviolet_shot(null)
 	await get_tree().create_timer(0.35, false, false, true).timeout

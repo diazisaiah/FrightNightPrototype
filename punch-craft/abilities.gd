@@ -26,7 +26,7 @@ const PASSIVES := {
 	],
 	"combo_master": [
 		{"id": "long_reach", "name": "Ultraviolet", "icon": "star", "level": 1,
-			"desc": "At your top combo multiplier your punches also fire ranged violet fists (0.25x damage) that hold your combo."},
+			"desc": "From half your top combo multiplier your punches also fire ranged violet fists (0.25x damage) that hold your combo."},
 		{"id": "echo_fists", "name": "Killswitch", "icon": "bolt", "level": 5,
 			"desc": "From a 15-hit combo you go ultraviolent: every knockout light-dashes you to the nearest monster."},
 		{"id": "rapid_combos", "name": "Reboot", "icon": "heartbeat", "level": 15,

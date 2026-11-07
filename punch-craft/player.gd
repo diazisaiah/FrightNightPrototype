@@ -1770,7 +1770,7 @@ func _land_punch(type: String, hand: String, _dashing := false, airborne := fals
 			hit_point = target.global_position + Vector3(0, 1.3, 0)
 	if target == null:
 		Sfx.play("whoosh", -10.0, 1.3)
-		if GameState.has_passive("long_reach") and at_combo_cap():
+		if GameState.has_passive("long_reach") and ultraviolet_ready():
 			_ultraviolet_shot(null)  # A whiff still throws the ranged fist.
 		return  # Whiffs cost nothing and don't affect the combo.
 
@@ -1845,7 +1845,7 @@ func _land_punch(type: String, hand: String, _dashing := false, airborne := fals
 	# Ultraviolet: at the top multiplier your punches also fire ranged fists. Your
 	# own punches keep growing the combo (the soft cap and the rest still count);
 	# only the ranged fists merely hold it.
-	var ultraviolet := GameState.has_passive("long_reach") and at_combo_cap()
+	var ultraviolet := GameState.has_passive("long_reach") and ultraviolet_ready()
 	if unbroken_time > 0.0:
 		move = "grow"  # (Unbroken's old rule; nothing sets unbroken_time any more.)
 	elif move == "lose":
@@ -2335,10 +2335,11 @@ func _light_dash(from: Enemy) -> void:
 		DamagePopup.spawn(get_parent(), "INTERRUPTED", Color(0.8, 0.6, 1.0), 36, best.global_position + Vector3(0, 2.0, 0))
 
 
-## Ultraviolet: your top combo multiplier is reached (the hard cap; Limit Break's soft
-## cap goes on past it).
-func at_combo_cap() -> bool:
-	return _base_combo_multiplier() + _rhythm >= _combo_cap() - 0.001
+## Ultraviolet (2026-11-07, the user: it's the level-1 passive, so it starts at half
+## your top combo multiplier, not the top): the combo multiplier has reached half
+## the cap.
+func ultraviolet_ready() -> bool:
+	return _base_combo_multiplier() + _rhythm >= _combo_cap() * 0.5 - 0.001
 
 
 ## A ranged violet fist at the monster you're facing (the nearest in front, one
@@ -2818,7 +2819,7 @@ func _update_class_timers(delta: float) -> void:
 		"echo_fists":
 			status = "ULTRAVIOLENT" if is_ultraviolent() else "%d/%d" % [combo, killswitch_hits()]
 		"long_reach":
-			status = "MAX" if at_combo_cap() else ""
+			status = "READY" if ultraviolet_ready() else ""
 		"momentum":
 			status = "x%.1f" % _momentum_mult()
 		"fuggedaboudit":
@@ -2851,7 +2852,7 @@ func _update_hand_effects() -> void:
 		"echo_fists":
 			ability = is_ultraviolent()
 		"long_reach":
-			ability = at_combo_cap()
+			ability = ultraviolet_ready()
 		"momentum":
 			ability = _momentum >= 0.9
 		"fuggedaboudit":
