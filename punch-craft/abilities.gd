@@ -26,7 +26,7 @@ const PASSIVES := {
 	],
 	"combo_master": [
 		{"id": "rapid_combos", "name": "Reboot", "icon": "heartbeat", "level": 1,
-			"desc": "When your combo ends you heal your combo multiplier in percent of your knuckle HP: x3 heals 3%."},
+			"desc": "When your combo ends you heal your combo multiplier in percent of your knuckle HP (x3 is 3%), plus 0.5 for every hit in it."},
 		{"id": "echo_fists", "name": "Killswitch", "icon": "bolt", "level": 5,
 			"desc": "From a 15-hit combo you go ultraviolent: every knockout light-dashes you to the nearest monster."},
 		{"id": "long_reach", "name": "Ultraviolet", "icon": "star", "level": 15,

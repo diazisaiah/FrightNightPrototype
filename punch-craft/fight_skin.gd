@@ -15,6 +15,7 @@ var _time := 0.0
 ## What was drawn last (2026-11-06): it redraws only when that changes or the
 ## low-HP pulse runs, instead of every frame.
 var _drawn: Array = []
+var _player: Player
 
 
 func _init(owner_hud: Hud) -> void:
@@ -40,7 +41,15 @@ func _state() -> Array:
 		hud._knuckle_ghost.value if hud._knuckle_ghost else -1.0,
 		hud._level_label.visible, hud._level_label.text, hud._xp_bar.value, hud._xp_bar.max_value,
 		hud._boss_bar.visible, hud._wave_label.text, hud._night_bar.visible, hud._night_bar.value, hud._night_bar.max_value,
+		roundi(_shield() * 4.0),
 	]
+
+
+## Cash Out's shield (knuckle HP), 0 for none.
+func _shield() -> float:
+	if _player == null or not is_instance_valid(_player):
+		_player = get_tree().get_first_node_in_group("fight_player") as Player
+	return _player.ult.shield() if _player and _player.ult else 0.0
 
 
 func _draw() -> void:
@@ -62,6 +71,13 @@ func _strap() -> void:
 	var numbers := "%d / %d" % [ceili(hp), roundi(hp_max)]
 	var width := bold.get_string_size(numbers, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x
 	_text(bold, rect.position + Vector2(rect.size.x - 14 - width, 24), numbers, 15, Color(0.95, 0.92, 0.88))
+	# Cash Out's shield: a blue +N beside the numbers.
+	var shield := _shield()
+	var blue := Color(0.3, 0.62, 1.0)
+	if shield > 0.0:
+		var plus := "+%d" % ceili(shield)
+		var plus_width := bold.get_string_size(plus, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x
+		_text(bold, rect.position + Vector2(rect.size.x - 14 - width - 8.0 - plus_width, 24), plus, 15, blue.lightened(0.15))
 	# The bar: a trail of pale where you just lost it, red where you have it.
 	var bar := Rect2(rect.position + Vector2(14, 32), Vector2(rect.size.x - 28, 15))
 	draw_rect(bar.grow(2.0), Color(0.03, 0.02, 0.015, 0.95))
@@ -72,6 +88,11 @@ func _strap() -> void:
 	var fill_color := Color(0.78, 0.12, 0.1) * Color(low, low, low, 1.0)
 	draw_rect(Rect2(bar.position, Vector2(bar.size.x * ratio, bar.size.y)), fill_color)
 	draw_rect(Rect2(bar.position, Vector2(bar.size.x * ratio, 3.0)), fill_color.lightened(0.4))
+	# The shield fills the bar in blue over the red, from the left.
+	if shield > 0.0:
+		var share := clampf(shield / hp_max, 0.0, 1.0)
+		draw_rect(Rect2(bar.position, Vector2(bar.size.x * share, bar.size.y)), blue)
+		draw_rect(Rect2(bar.position, Vector2(bar.size.x * share, 3.0)), blue.lightened(0.5))
 	var steps := int(hp_max / 10.0)
 	for i in range(1, steps):
 		var x := bar.position.x + bar.size.x * (i * 10.0) / hp_max

@@ -1132,7 +1132,7 @@ func _test_blur_revamp() -> void:
 	player.knuckles = player.max_knuckles * 0.5
 	player._set_combo(8)
 	var mult := player.get_combo_multiplier()
-	var expected := player.max_knuckles * 0.01 * mult * (1.0 + 0.05 * GameState.passive_power()) * 1.5
+	var expected := (player.max_knuckles * 0.01 * mult * (1.0 + 0.05 * GameState.passive_power()) + Player.REBOOT_FLAT * 8) * 1.5
 	player._set_combo(0)
 	_check(is_equal_approx(player.knuckles, player.max_knuckles * 0.5 + expected), "Reboot II: a combo of x%.2f heals %.2f (%.2f)" % [mult, expected, player.knuckles - player.max_knuckles * 0.5])
 	# Killswitch: ultraviolent from the combo length, and a knockout light-dashes.

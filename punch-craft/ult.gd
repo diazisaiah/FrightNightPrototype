@@ -1689,6 +1689,11 @@ func cash_up() -> bool:
 	return _cash > 0.0
 
 
+## The shield's knuckle HP left (the HP strap shows it in blue).
+func shield() -> float:
+	return _cash
+
+
 ## What gets through a hit after the shield soaks what it can.
 func soak_cash(loss: float) -> float:
 	if _cash <= 0.0 or loss <= 0.0:
