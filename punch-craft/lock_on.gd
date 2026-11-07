@@ -66,6 +66,9 @@ func _process(_delta: float) -> void:
 
 ## The strength in use right now: "off", "soft", "blend" or "hard".
 func level() -> String:
+	# Hype Train: no lock-on while it runs (you steer the train yourself).
+	if player.ult.hype > 0.0:
+		return "off"
 	var chosen := str(Settings.get_value("lock_on"))
 	if chosen == "auto":
 		chosen = "blend" if TouchUi.enabled else "off"

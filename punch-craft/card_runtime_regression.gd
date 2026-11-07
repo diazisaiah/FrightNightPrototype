@@ -307,7 +307,7 @@ func _exercise_ultimate(fighter: String, ultimate: String) -> void:
 	# Inferno II performs two leap tweens and Highlight Reel visits every live
 	# target. Freeing their Player mid-await strands the coroutine, so those two
 	# get time to finish; the other ultimates start synchronously.
-	var settle := 4.0 if ultimate in ["inferno", "highlight_reel", "bulwark", "flow_state", "temporal_break"] else (0.8 if ultimate == "flame_burst" else 0.25)
+	var settle := 4.0 if ultimate in ["inferno", "highlight_reel", "hype_train", "bulwark", "flow_state", "temporal_break"] else (0.8 if ultimate == "flame_burst" else 0.25)
 	await get_tree().create_timer(settle, false, false, true).timeout
 	_check(player.ult.meter < Ult.MAX_METER,
 			"%s's %s activates and spends meter" % [fighter, ultimate])
@@ -533,6 +533,20 @@ func _test_reel_shot() -> void:
 		if dummies[i]._last_damage > 0.0:
 			hit += 1
 	_check(hit >= 3, "Every monster in view got hit (%d of 3)" % hit)
+	await _free_rig(holder)
+	# Hype Train: the same pose shot, then first person with no lock-on and a wider view.
+	rig = await _make_rig("free_runner", "hype_train")
+	holder = rig[0]
+	player = rig[1]
+	player.active = true
+	player.ult.meter = Ult.MAX_METER
+	player.ult.activate()
+	await get_tree().create_timer(0.3, false, false, true).timeout
+	_check(player.cinematic and player.ult.mode == "hype_intro" and player.ult.hype <= 0.0, "Hype Train opens with the third-person pose")
+	await get_tree().create_timer(1.5, false, false, true).timeout
+	_check(not player.cinematic and player.ult.hype > 0.0, "Then first person with the train running")
+	_check(player.lock.level() == "off", "No lock-on during Hype Train")
+	_check(player._fov_goal() > Settings.fov() + 10.0, "A wider view during Hype Train (%.0f)" % player._fov_goal())
 	await _free_rig(holder)
 	print("Card runtime: highlight reel shot OK")
 

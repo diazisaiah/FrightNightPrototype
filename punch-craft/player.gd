@@ -379,6 +379,8 @@ var _speed_lines: CPUParticles3D
 var _ultra_lines: CPUParticles3D
 ## Killswitch: how much wider the view gets while you are ultraviolent.
 const ULTRAVIOLENT_FOV := 8.0
+## Hype Train: a wider view all the way through it.
+const HYPE_FOV := 14.0
 ## Blood Feud: hits the grudge monster has landed since it was marked.
 var _grudge_hits := 0
 ## Bounce House: bounces since you last touched the floor.
@@ -2847,7 +2849,7 @@ func _update_speed_lines() -> void:
 	if _ultra_lines:
 		_ultra_lines.emitting = _ultraviolent and active and emote == "" and not cinematic
 	# And a slightly wider view, eased in and out (a kick in flight keeps it for a moment).
-	var goal := Settings.fov() + (ULTRAVIOLENT_FOV if _ultraviolent else 0.0)
+	var goal := _fov_goal()
 	if _fov_tween == null or not _fov_tween.is_running():
 		_camera.fov = lerpf(_camera.fov, goal, 1.0 - exp(-6.0 * get_process_delta_time()))
 
@@ -2981,10 +2983,16 @@ func _play_impact(punch: Dictionary, kind: String, killed: bool) -> void:
 	_shake = maxf(_shake, shake)
 
 
+## The field of view to rest at: the setting, a little wider while ultraviolent, wider
+## still on the Hype Train.
+func _fov_goal() -> float:
+	return Settings.fov() + (ULTRAVIOLENT_FOV if _ultraviolent else 0.0) + (HYPE_FOV if ult.hype > 0.0 else 0.0)
+
+
 func _kick_fov(amount: float) -> void:
 	if _fov_tween:
 		_fov_tween.kill()
-	var goal := Settings.fov() + (ULTRAVIOLENT_FOV if _ultraviolent else 0.0)
+	var goal := _fov_goal()
 	_camera.fov = goal - amount
 	_fov_tween = create_tween()
 	_fov_tween.tween_property(_camera, "fov", goal, 0.25).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)

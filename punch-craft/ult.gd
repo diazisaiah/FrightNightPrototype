@@ -1729,11 +1729,22 @@ func soak_cash(loss: float) -> float:
 ## The Stray's Hype Train: faster, and anything in the way goes flying.
 func _start_hype() -> void:
 	_spend()
-	hype = HYPE_TIME + _power()
 	_express = 0.0
+	player.class_event.emit("HYPE TRAIN!")
+	# The user's idea (2026-11-07): the same third-person pose as Highlight Reel's start
+	# (the crouch into the sprinting stance, feet blazing), then first person with the
+	# train running, no lock-on and a wider view.
+	if player.cinematic_enabled():
+		mode = "hype_intro"
+		await _reel_intro(0.55)
+		await _wait(0.35)
+		if not is_instance_valid(player):
+			return
+		player.end_cinematic()
+		mode = ""
+	hype = HYPE_TIME + _power()
 	Sfx.play("whoosh", 4.0, 0.6)
 	player._kick_fov(12.0)
-	player.class_event.emit("HYPE TRAIN!")
 
 
 ## Express (the Stray's card): every monster bowled over keeps the train going.
@@ -2132,7 +2143,7 @@ func _reel_swing(hand: String, last: bool) -> Dictionary:
 
 ## The shot opens: a crouch into the sprinting stance, the feet blazing, the camera
 ## behind and low.
-func _reel_intro() -> void:
+func _reel_intro(hold := 0.55) -> void:
 	var yaw := player.rotation.y
 	player.start_cinematic(Emotes.parse(REEL_CROUCH_CLIP), player.global_position + Vector3.UP * 1.0, Vector2(yaw, 0.1), 3.6)
 	player.cine_world = true
@@ -2141,7 +2152,7 @@ func _reel_intro() -> void:
 	Sfx.play("whoosh", -2.0, 0.7)
 	var pull := player.create_tween()
 	pull.tween_property(player, "cine_distance", 3.0, 0.5).set_trans(Tween.TRANS_SINE)
-	await _wait(0.55)
+	await _wait(hold)
 	if is_instance_valid(player):
 		player._body.play_clip(Emotes.parse(REEL_RUN_CLIP))
 		player._aura.flare(2.2)

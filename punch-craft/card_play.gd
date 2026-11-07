@@ -369,8 +369,8 @@ func punch_mod(target: Enemy, type: String, counter: bool, airborne: bool, set_u
 	var facing := target.facing(player.global_position)
 	if facing < 0.3:
 		bonus += fx("cheap_shot")
-	# Ghost Step: your bonus move speed becomes damage (half of it, all of it at II).
-	if fx("ghost_step") > 0.0:
+	# Ghost Step: while sprinting, your bonus move speed becomes damage (half of it, all of it at II).
+	if fx("ghost_step") > 0.0 and player.is_sprinting():
 		bonus += maxf(0.0, player.move_speed_bonus()) * 0.5 * fx("ghost_step")
 	if airborne:
 		bonus += fx("hang_time")
