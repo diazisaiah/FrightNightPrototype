@@ -50,6 +50,7 @@ func _run() -> void:
 	await _test_boss_poise()
 	await _test_mauler_revamp()
 	await _test_cinematic_ult()
+	await _test_brimstone_slabs()
 	await _test_endless_powers()
 	TimeFx.clear()
 	GameState._reset_fields()
@@ -300,7 +301,7 @@ func _exercise_ultimate(fighter: String, ultimate: String) -> void:
 	# Inferno II performs two leap tweens and Highlight Reel visits every live
 	# target. Freeing their Player mid-await strands the coroutine, so those two
 	# get time to finish; the other ultimates start synchronously.
-	var settle := 2.5 if ultimate in ["inferno", "highlight_reel"] else (0.8 if ultimate == "flame_burst" else 0.25)
+	var settle := 3.0 if ultimate in ["inferno", "highlight_reel", "bulwark"] else (0.8 if ultimate == "flame_burst" else 0.25)
 	await get_tree().create_timer(settle, false, false, true).timeout
 	_check(player.ult.meter < Ult.MAX_METER,
 			"%s's %s activates and spends meter" % [fighter, ultimate])
@@ -1005,6 +1006,39 @@ func _test_cinematic_ult() -> void:
 	_check(player._camera.current and player._fists.visible and not player._body.visible, "The camera is back in first person")
 	await _free_rig(holder)
 	print("Card runtime: third-person ultimate OK")
+
+
+## The Brimstone Shield as slabs of rock (2026-11-06): one per hit it can take,
+## the third-person shot ends in first person with them standing, each hit
+## breaks one (a boss's punch two), and the last one detonates.
+func _test_brimstone_slabs() -> void:
+	var rig := await _make_rig("berserker", "bulwark")
+	var holder: Node3D = rig[0]
+	var player: Player = rig[1]
+	var target: Enemy = rig[2][0]
+	player.active = true
+	player.ult.fill()
+	player.ult.activate()
+	await get_tree().create_timer(3.2, false, false, true).timeout
+	var hits: int = player.ult._shield_hits
+	_check(hits >= Ult.SHIELD_HITS and player.ult._slabs.size() == hits and not player.cinematic and player.ult.mode == "",
+			"Brimstone Shield: one slab per hit, standing in first person (%d slabs, %d hits)" % [player.ult._slabs.size(), hits])
+	var boss: Enemy = load("res://dead_league_boss.tscn").instantiate()
+	boss.configure(4, 1)
+	boss.setup(player, false)
+	boss.position = player.global_position + Vector3(0, 0, -3)
+	holder.add_child(boss)
+	await get_tree().process_frame
+	player.ult.intercept_attack("jab", target, 3.0)
+	_check(player.ult._shield_hits == hits - 1 and player.ult._slabs.size() == hits - 1, "Brimstone Shield: a hit breaks one slab")
+	player.ult.intercept_attack("hook", boss, 3.0)
+	_check(player.ult._shield_hits == hits - 3 or player.ult._shield_hits <= 0, "Brimstone Shield: a boss's punch breaks two")
+	for i in 6:
+		player.ult.intercept_attack("jab", target, 3.0)
+	_check(player.ult._shield_hits == 0 and player.ult._slabs.is_empty() and player.ult._shield_root == null, "Brimstone Shield: the last one detonates and clears the slabs")
+	boss.queue_free()
+	await _free_rig(holder)
+	print("Card runtime: Brimstone slabs OK")
 
 
 ## The fighter picker (2026-10-29): hovering a card and leaving puts it back

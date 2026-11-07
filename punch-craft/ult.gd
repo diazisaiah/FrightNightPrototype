@@ -169,7 +169,6 @@ var _riposte_counters := true
 var _shield_hits := 0
 var _shield_soaked := 0.0
 var _shield_time := 0.0
-var _shield_ring: MeshInstance3D
 ## Hype Train: seconds left (the player reads it for speed and bowling).
 var hype := 0.0
 ## Elemental Fists time left.
@@ -333,12 +332,10 @@ func _process(delta: float) -> void:
 		_riposte -= real_delta
 		var label := "RIPOSTE STANCE" if _riposte_counters else "FLOW STATE"
 		_set_status("%s  %.1fs" % [label, maxf(_riposte, 0.0)] if _riposte > 0.0 else "")
+	_update_slabs(real_delta)
 	if _shield_hits > 0:
 		_shield_time -= real_delta
 		_set_status("BRIMSTONE SHIELD  %d  -  %.0fs" % [_shield_hits, maxf(_shield_time, 0.0)])
-		if is_instance_valid(_shield_ring):
-			_shield_ring.global_position = player.global_position + Vector3(0, 0.05, 0)
-			_shield_ring.rotation.y += real_delta * 2.0
 		if _shield_time <= 0.0:
 			_shield_break()
 	if spellfists > 0.0:
@@ -498,12 +495,12 @@ func _inferno_shockwave(center: Vector3, except: Enemy) -> void:
 
 ## The look of it: two rings of fire racing out to the full radius, pillars of
 ## flame rising behind them, a flash of light and a heavy burst.
-func _shockwave_fx(parent: Node, center: Vector3) -> void:
+func _shockwave_fx(parent: Node, center: Vector3, radius := INFERNO_II_RADIUS, pillars := true, soft := false) -> void:
 	var ground := Vector3(center.x, center.y + 0.08, center.z)
 	HitFx.burst(parent, ground + Vector3.UP * 0.3, Vector3.UP, FIRE_COLOR, 70, 12.0, true, 0.07)
 	HitFx.burst(parent, ground + Vector3.UP * 0.2, Vector3.UP, Color(1.0, 0.8, 0.3), 40, 8.0, true, 0.04)
 	for ring: Array in [[0.0, 0.5, Color(0.9, 0.3, 0.04)], [0.1, 0.7, Color(0.95, 0.6, 0.15)]]:
-		var material := _fire_material(ring[2])
+		var material := _fire_material(ring[2], 0.35 if soft else 0.75)
 		var torus := TorusMesh.new()
 		torus.inner_radius = 0.78
 		torus.outer_radius = 1.0
@@ -511,15 +508,15 @@ func _shockwave_fx(parent: Node, center: Vector3) -> void:
 		var node := MeshInstance3D.new()
 		node.mesh = torus
 		node.position = ground
-		node.scale = Vector3(0.3, 3.0, 0.3)
+		node.scale = Vector3(0.3, 1.0 if soft else 3.0, 0.3)
 		parent.add_child(node)
 		var tween := node.create_tween().set_parallel()
-		tween.tween_property(node, "scale", Vector3(INFERNO_II_RADIUS, 4.0, INFERNO_II_RADIUS), ring[1]).set_delay(ring[0]).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		tween.tween_property(node, "scale", Vector3(radius, 1.2 if soft else 4.0, radius), ring[1]).set_delay(ring[0]).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 		tween.tween_property(material, "albedo_color:a", 0.0, 0.35).set_delay(ring[0] + ring[1] - 0.2)
 		tween.chain().tween_callback(node.queue_free)
-	for i in 14:
+	for i in (14 if pillars else 0):
 		var angle := TAU * i / 14.0 + randf() * 0.35
-		var radius := randf_range(1.2, INFERNO_II_RADIUS - 0.3)
+		var reach := randf_range(1.2, radius - 0.3)
 		var material := _fire_material(Color(0.9, 0.32, 0.05).lerp(Color(0.95, 0.6, 0.15), randf()), 0.6)
 		var box := BoxMesh.new()
 		box.size = Vector3(0.4, 1.0, 0.4)
@@ -530,10 +527,10 @@ func _shockwave_fx(parent: Node, center: Vector3) -> void:
 		cube.mesh = box
 		cube.position = Vector3(0, 0.5, 0)
 		pillar.add_child(cube)
-		pillar.position = ground + Vector3(cos(angle) * radius, 0, sin(angle) * radius)
+		pillar.position = ground + Vector3(cos(angle) * reach, 0, sin(angle) * reach)
 		pillar.scale = Vector3(1, 0.05, 1)
 		parent.add_child(pillar)
-		var delay := radius / INFERNO_II_RADIUS * 0.35
+		var delay := reach / radius * 0.35
 		var rise := pillar.create_tween()
 		rise.tween_property(pillar, "scale", Vector3(0.5, randf_range(1.4, 2.6), 0.5), 0.22).set_delay(delay).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 		rise.tween_property(material, "albedo_color:a", 0.0, 0.4)
@@ -545,7 +542,7 @@ func _shockwave_fx(parent: Node, center: Vector3) -> void:
 	flash.position = ground + Vector3.UP * 1.2
 	parent.add_child(flash)
 	var glow := flash.create_tween()
-	glow.tween_property(flash, "light_energy", 9.0, 0.08)
+	glow.tween_property(flash, "light_energy", 3.0 if soft else 9.0, 0.08)
 	glow.tween_property(flash, "light_energy", 0.0, 0.6)
 	glow.tween_callback(flash.queue_free)
 
@@ -1009,23 +1006,259 @@ func _riposte_counter(enemy: Enemy) -> void:
 
 # --- Alternate ultimates (Abilities) ---------------------------------------------------
 
-## The Mauler's Brimstone Shield: soaks the next hits, then bursts.
+## The Mauler's Brimstone Shield (2026-11-06, a third-person shot like the
+## Inferno Uppercut's): he lifts a leg and stomps, and one slab of igneous rock
+## per hit it can take rises round him and turns, molten lava flowing and
+## glowing through the cracks. Then it's first person again with the slabs still
+## turning round you: each hit that lands breaks one (a boss's punch breaks
+## two), and when the last breaks, or the time runs out, the shield detonates
+## (in first person, so the camera doesn't go out and in twice).
+##
+## The body's moves (Emotes format): a knee lifted high, fists up; then the stomp.
+const BULWARK_LIFT_CLIP := {
+	"name": "Brimstone lift", "length": 3.0, "loop": false, "plant": false,
+	"keys": [
+		{"t": 0.0, "pose": {"torso": [0, 0, 0], "head": [0, 0, 0], "ls": [34, 0, -6], "le": [100, 0, 0], "rs": [34, 0, 6], "re": [100, 0, 0],
+			"lh": [0, 0, 0], "lk": [0, 0, 0], "rh": [0, 0, 0], "rk": [0, 0, 0], "pos": [0, 0, 0]}},
+		{"t": 0.5, "pose": {"torso": [8, -8, 0], "head": [-8, 0, 0], "ls": [95, 0, -24], "le": [115, 0, 0], "rs": [95, 0, 24], "re": [115, 0, 0],
+			"lh": [-4, 0, 0], "lk": [-10, 0, 0], "rh": [102, 0, 0], "rk": [-108, 0, 0], "pos": [0, -1, 0]}},
+		{"t": 3.0, "pose": {"torso": [8, -8, 0], "head": [-8, 0, 0], "ls": [95, 0, -24], "le": [115, 0, 0], "rs": [95, 0, 24], "re": [115, 0, 0],
+			"lh": [-4, 0, 0], "lk": [-10, 0, 0], "rh": [102, 0, 0], "rk": [-108, 0, 0], "pos": [0, -1, 0]}},
+	],
+}
+const BULWARK_STOMP_CLIP := {
+	"name": "Brimstone stomp", "length": 3.0, "loop": false, "plant": false,
+	"keys": [
+		{"t": 0.0, "pose": {"torso": [8, -8, 0], "head": [-8, 0, 0], "ls": [95, 0, -24], "le": [115, 0, 0], "rs": [95, 0, 24], "re": [115, 0, 0],
+			"lh": [-4, 0, 0], "lk": [-10, 0, 0], "rh": [102, 0, 0], "rk": [-108, 0, 0], "pos": [0, -1, 0]}},
+		{"t": 0.1, "ease": "snap", "pose": {"torso": [-20, 0, 0], "head": [10, 0, 0], "ls": [26, 0, -14], "le": [92, 0, 0], "rs": [26, 0, 14], "re": [92, 0, 0],
+			"lh": [38, 0, 0], "lk": [-76, 0, 0], "rh": [30, 0, 0], "rk": [-70, 0, 0], "pos": [0, -16, 0]}},
+		{"t": 3.0, "pose": {"torso": [-20, 0, 0], "head": [10, 0, 0], "ls": [26, 0, -14], "le": [92, 0, 0], "rs": [26, 0, 14], "re": [92, 0, 0],
+			"lh": [38, 0, 0], "lk": [-76, 0, 0], "rh": [30, 0, 0], "rk": [-70, 0, 0], "pos": [0, -16, 0]}},
+	],
+}
+const BULWARK_LIFT_TIME := 0.55
+const BULWARK_HOLD := 1.1
+## The slabs: the radius they turn at, how fast, and how they're built.
+const SLAB_ORBIT := 2.3
+const SLAB_SPIN := 0.9
+const SLAB_CELL := 0.19
+const SLAB_COLS := 7
+const SLAB_ROWS := 8
+## Lava that pulses up the cracks (the vertex colors are the lava's own).
+const LAVA_SHADER := "shader_type spatial;\nrender_mode unshaded, cull_disabled;\nvarying float h;\nvoid vertex() { h = VERTEX.y; }\nvoid fragment() {\n\tfloat pulse = 0.55 + 0.5 * sin(h * 7.0 - TIME * 3.2 + COLOR.r * 6.0);\n\tALBEDO = COLOR.rgb * (0.7 + 0.55 * pulse);\n}\n"
+
+var _slabs: Array[Node3D] = []
+var _shield_root: Node3D
+var _shield_light: OmniLight3D
+var _shield_spin := 0.0
+static var _rock_material: StandardMaterial3D
+static var _lava_material: ShaderMaterial
+
+
 func _start_shield() -> void:
 	_spend()
 	# Brimstone Wall: one more hit.
-	_shield_hits = SHIELD_HITS + int(_power()) + (1 if _card("brimstone_wall") else 0)
-	_shield_soaked = 0.0
-	_shield_time = SHIELD_TIME + 3.0 * _power()
+	var hits := SHIELD_HITS + int(_power()) + (1 if _card("brimstone_wall") else 0)
+	var time := SHIELD_TIME + 3.0 * _power()
 	Sfx.play("unlock", 0.0, 0.6)
 	player.class_event.emit("BRIMSTONE SHIELD")
-	_shield_ring = MeshInstance3D.new()
-	var ring := TorusMesh.new()
-	ring.inner_radius = 0.85
-	ring.outer_radius = 1.0
-	ring.material = Enemy._glow_material(FIRE_COLOR)
-	_shield_ring.mesh = ring
-	_shield_ring.top_level = true
-	player.add_child(_shield_ring)
+	if player.cinematic_enabled():
+		mode = "bulwark"
+		await _bulwark_shot(hits)
+		mode = ""
+	else:
+		_raise_slabs(hits, 0.07)
+		Sfx.play("quake", 0.0, 0.7)
+	if not is_instance_valid(player):
+		return
+	_shield_soaked = 0.0
+	_shield_time = time
+	_shield_hits = hits
+
+
+## The shot: the knee lifts (the camera behind and low, easing in), the stomp
+## (a ring of fire along the ground, a shake, slow motion), the slabs rise while
+## the camera swings round to his front to show them, then back to first person.
+func _bulwark_shot(hits: int) -> void:
+	var parent := player.get_parent()
+	player._aura.flare(0.6)
+	player.start_cinematic(Emotes.parse(BULWARK_LIFT_CLIP), player.global_position + Vector3.UP * 1.2, Vector2(0.95, 0.12), 3.5)
+	var lift := player.create_tween().set_parallel()
+	lift.tween_property(player, "cine_distance", 3.0, BULWARK_LIFT_TIME).set_trans(Tween.TRANS_SINE)
+	lift.tween_property(player, "cine_orbit", Vector2(0.7, 0.0), BULWARK_LIFT_TIME).set_trans(Tween.TRANS_SINE)
+	await _wait(BULWARK_LIFT_TIME)
+	if not is_instance_valid(player):
+		return
+	player._body.play_clip(Emotes.parse(BULWARK_STOMP_CLIP))
+	player._aura.flare(1.8)
+	var ground := player.global_position + Vector3.UP * 0.05
+	HitFx.burst(parent, ground + Vector3.UP * 0.1, Vector3.UP, FIRE_COLOR, 36, 5.0, true, 0.06)
+	HitFx.burst(parent, ground + Vector3.UP * 0.1, Vector3.UP, Color(0.25, 0.2, 0.18), 24, 4.0, false, 0.09)
+	_shockwave_fx(parent, ground, 3.4, false, true)
+	Sfx.play("quake", 4.0, 0.6)
+	Sfx.play("heavy", 2.0, 0.4)
+	player._shake = maxf(player._shake, 0.3)
+	TimeFx.slowmo(0.35, 0.35)
+	_raise_slabs(hits, 0.08)
+	var sweep := player.create_tween().set_parallel()
+	sweep.tween_property(player, "cine_orbit", Vector2(PI * 0.88, 0.14), BULWARK_HOLD + 0.2).set_trans(Tween.TRANS_SINE)
+	sweep.tween_property(player, "cine_distance", 4.2, BULWARK_HOLD + 0.2).set_trans(Tween.TRANS_SINE)
+	await _wait(BULWARK_HOLD)
+	if is_instance_valid(player):
+		player.end_cinematic()
+
+
+## One slab of igneous rock per hit, rising out of the ground round you.
+func _raise_slabs(count: int, stagger: float) -> void:
+	_clear_slabs()
+	var parent := player.get_parent()
+	_shield_root = Node3D.new()
+	_shield_root.top_level = true
+	parent.add_child(_shield_root)
+	_shield_root.global_position = player.global_position
+	_shield_light = OmniLight3D.new()
+	_shield_light.light_color = Color(1.0, 0.45, 0.12)
+	_shield_light.light_energy = 0.9
+	_shield_light.omni_range = 4.5
+	_shield_light.position = Vector3(0, 1.0, 0)
+	_shield_root.add_child(_shield_light)
+	_shield_spin = 0.0
+	for i in count:
+		var slab := _make_slab(1000 + i * 7)
+		slab.set_meta("angle", TAU * i / float(count))
+		slab.position = Vector3(0, -2.4, 0)
+		_shield_root.add_child(slab)
+		_slabs.append(slab)
+		var rise := slab.create_tween()
+		rise.tween_property(slab, "position:y", 0.0, 0.5).set_delay(i * stagger).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		var timer := get_tree().create_timer(i * stagger + 0.1, false, false, true)
+		timer.timeout.connect(func() -> void:
+			if is_instance_valid(slab) and is_instance_valid(parent):
+				HitFx.burst(parent, slab.global_position + Vector3.UP * 0.15, Vector3.UP, Color(0.3, 0.22, 0.18), 8, 3.0, false, 0.07)
+				HitFx.burst(parent, slab.global_position + Vector3.UP * 0.2, Vector3.UP, FIRE_COLOR, 8, 3.5, true, 0.04))
+
+
+## Where each slab sits, every frame: turning round you, spaced evenly among
+## those left (a break closes the gap).
+func _update_slabs(real_delta: float) -> void:
+	if _shield_root == null or not is_instance_valid(_shield_root):
+		return
+	_shield_spin += SLAB_SPIN * real_delta
+	_shield_root.global_position = player.global_position
+	for i in _slabs.size():
+		var slab := _slabs[i]
+		var goal := TAU * i / float(_slabs.size())
+		slab.set_meta("angle", lerp_angle(float(slab.get_meta("angle")), goal, clampf(real_delta * 5.0, 0.0, 1.0)))
+		var a := _shield_spin + float(slab.get_meta("angle"))
+		slab.position = Vector3(sin(a) * SLAB_ORBIT, slab.position.y, cos(a) * SLAB_ORBIT)
+		slab.rotation.y = a
+
+
+func _clear_slabs() -> void:
+	for slab in _slabs:
+		if is_instance_valid(slab):
+			slab.queue_free()
+	_slabs.clear()
+	if is_instance_valid(_shield_root):
+		_shield_root.queue_free()
+	_shield_root = null
+	_shield_light = null
+
+
+## A slab breaks: rock and sparks fly out from it.
+func _break_slab(slab: Node3D) -> void:
+	var parent := player.get_parent()
+	var at := slab.global_position + Vector3.UP * 0.8
+	var out := (slab.global_position - player.global_position)
+	out.y = 0.0
+	HitFx.burst(parent, at, out.normalized(), Color(0.22, 0.17, 0.15), 16, 6.0, false, 0.1)
+	HitFx.burst(parent, at, Vector3.UP, FIRE_COLOR, 14, 5.0, true, 0.05)
+	_slabs.erase(slab)
+	slab.queue_free()
+
+
+## One slab of rock: dark basalt cubes, bent round you, a few jagged cracks of
+## glowing lava running through it. Two meshes (rock and lava), however many cubes.
+func _make_slab(seed_value: int) -> Node3D:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_value
+	var rock := SurfaceTool.new()
+	var lava := SurfaceTool.new()
+	rock.begin(Mesh.PRIMITIVE_TRIANGLES)
+	lava.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var vein := {}
+	var main := rng.randi_range(2, SLAB_COLS - 3)
+	var along := main
+	for row in SLAB_ROWS:
+		vein[Vector2i(along, row)] = true
+		along = clampi(along + rng.randi_range(-1, 1), 0, SLAB_COLS - 1)
+	# A short branch off it.
+	var branch_row := rng.randi_range(2, SLAB_ROWS - 3)
+	var side := -1 if rng.randf() < 0.5 else 1
+	for step in rng.randi_range(2, 3):
+		vein[Vector2i(clampi(main + side * step, 0, SLAB_COLS - 1), branch_row + (step % 2))] = true
+	for col in SLAB_COLS:
+		var edge := col == 0 or col == SLAB_COLS - 1
+		var height := SLAB_ROWS - rng.randi_range(0, 2 if edge else 1)
+		for row in height:
+			var dx := (col - (SLAB_COLS - 1) / 2.0) * SLAB_CELL
+			for layer in 2:
+				var at := Vector3(dx, (row + 0.5) * SLAB_CELL, -dx * dx * 0.55 + (layer - 0.5) * SLAB_CELL)
+				if vein.has(Vector2i(col, row)):
+					# Through the whole slab, so the lava shows from inside too.
+					var heat := rng.randf()
+					_add_cube(lava, at, SLAB_CELL * 1.03, Color(1.0, 0.3 + 0.4 * heat, 0.03 + 0.1 * heat))
+				elif (col == 0 or col == SLAB_COLS - 1 or row >= SLAB_ROWS - 2) and rng.randf() < 0.18:
+					continue  # chipped, jagged edges
+				else:
+					var warm := _near_vein(vein, col, row)
+					var shade := rng.randf_range(0.75, 1.35)
+					var color := Color(0.34, 0.14, 0.08) * shade if warm else Color(0.2, 0.17, 0.15) * shade
+					_add_cube(rock, at, SLAB_CELL * 0.98, Color(color, 1.0))
+	if _rock_material == null:
+		_rock_material = StandardMaterial3D.new()
+		_rock_material.vertex_color_use_as_albedo = true
+		_rock_material.roughness = 0.95
+		_rock_material.cull_mode = BaseMaterial3D.CULL_DISABLED
+		_lava_material = ShaderMaterial.new()
+		var shader := Shader.new()
+		shader.code = LAVA_SHADER
+		_lava_material.shader = shader
+	var holder := Node3D.new()
+	var rock_node := MeshInstance3D.new()
+	rock_node.mesh = rock.commit()
+	rock_node.material_override = _rock_material
+	holder.add_child(rock_node)
+	var lava_node := MeshInstance3D.new()
+	lava_node.mesh = lava.commit()
+	lava_node.material_override = _lava_material
+	holder.add_child(lava_node)
+	return holder
+
+
+func _near_vein(vein: Dictionary, col: int, row: int) -> bool:
+	for d: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+		if vein.has(Vector2i(col, row) + d):
+			return true
+	return false
+
+
+## One cube, with its own color on every vertex.
+static func _add_cube(st: SurfaceTool, center: Vector3, size: float, color: Color) -> void:
+	var h := size / 2.0
+	for face: Array in [[Vector3.RIGHT, Vector3.UP, Vector3.BACK], [Vector3.LEFT, Vector3.BACK, Vector3.UP],
+			[Vector3.UP, Vector3.BACK, Vector3.RIGHT], [Vector3.DOWN, Vector3.RIGHT, Vector3.BACK],
+			[Vector3.BACK, Vector3.RIGHT, Vector3.UP], [Vector3.FORWARD, Vector3.UP, Vector3.RIGHT]]:
+		var n: Vector3 = face[0]
+		var u: Vector3 = face[1]
+		var v: Vector3 = face[2]
+		var c := center + n * h
+		var corners := [c - u * h - v * h, c + u * h - v * h, c + u * h + v * h, c - u * h + v * h]
+		for index in [0, 1, 2, 0, 2, 3]:
+			st.set_color(color)
+			st.set_normal(n)
+			st.add_vertex(corners[index])
 
 
 func _shield_absorb(amount: float, attacker: Enemy = null) -> void:
@@ -1037,23 +1270,33 @@ func _shield_absorb(amount: float, attacker: Enemy = null) -> void:
 		attacker.take_hit(GameState.get_damage(), attacker.global_position + Vector3(0, 1.2, 0), Vector3.ZERO, false, "BRIMSTONE")
 	Sfx.play("block", 0.0, 0.7)
 	player._shake = maxf(player._shake, 0.05)
-	HitFx.burst(player.get_parent(), player.global_position + Vector3.UP * 1.2, Vector3.UP, FIRE_COLOR, 12, 3.0, true, 0.04)
+	# One slab breaks for every hit it took (the one nearest what hit you).
+	while _slabs.size() > maxi(_shield_hits, 0):
+		var nearest := _slabs[0]
+		if attacker and is_instance_valid(attacker):
+			for slab in _slabs:
+				if slab.global_position.distance_to(attacker.global_position) < nearest.global_position.distance_to(attacker.global_position):
+					nearest = slab
+		_break_slab(nearest)
 	if _shield_hits <= 0:
 		_shield_break()
 
 
-## The shield bursts: everything near takes what it soaked, and burns.
+## The shield detonates: what's left of the slabs flies apart, and everything
+## near takes what it soaked, and burns.
 func _shield_break() -> void:
 	_shield_hits = 0
 	_set_status("")
-	if is_instance_valid(_shield_ring):
-		_shield_ring.queue_free()
+	for slab in _slabs.duplicate():
+		_break_slab(slab)
+	_clear_slabs()
 	var radius := SHIELD_RADIUS + 0.5 * _power()
 	var damage := _shield_soaked * (SHIELD_BLAST + 0.5 * _power()) + GameState.get_damage() * 3.0
 	Sfx.play("quake", 4.0, 0.7)
-	player._shake = maxf(player._shake, 0.15)
+	player._shake = maxf(player._shake, 0.3)
 	HitFx.burst(player.get_parent(), player.global_position + Vector3.UP, Vector3.UP, FIRE_COLOR, 60, 10.0, true, 0.08)
 	HitFx.ring(player.get_parent(), player.global_position + Vector3.UP * 0.2, Color(FIRE_COLOR, 0.8), radius)
+	_shockwave_fx(player.get_parent(), player.global_position, radius, false, true)
 	for enemy in _alive_enemies():
 		var away := enemy.global_position - player.global_position
 		if away.length() <= radius:
