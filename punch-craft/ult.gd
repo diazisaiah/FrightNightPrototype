@@ -117,6 +117,9 @@ const FARM_HEAL := Vector2(0.01, 0.02)
 const FARM_HEAL_II := Vector2(0.02, 0.03)
 ## Cash Out (was Unbroken): the least combo it needs, and how long its shield lasts.
 const CASH_MIN := 5
+## The flat start of the shield (8 with Cash Out II); every hit landed in the combo adds 1.
+const CASH_BASE := 5.0
+const CASH_BASE_II := 8.0
 const CASH_TIME := 15.0
 const HYPE_TIME := 6.0
 const HYPE_SPEED := 1.6
@@ -1661,14 +1664,18 @@ func _aura_farm_intro() -> void:
 ## of ending it.
 func _start_unbroken() -> void:
 	if player.combo < CASH_MIN:
+		# Not spent: say so where you can see it.
 		_set_status("Cash Out needs a %d-hit combo" % CASH_MIN, 1.4)
+		DamagePopup.spawn(player.get_parent(), "NEEDS A %d-HIT COMBO" % CASH_MIN, Color(1.0, 0.82, 0.3), 44, player.global_position + player._flat_forward() * 1.4 + Vector3(0, 1.8, 0))
+		Sfx.play("block", -2.0, 0.8)
 		return
 	var hits := player.combo
 	_spend()
 	player._skip_reboot = true
 	player._set_combo(0)
 	player._skip_reboot = false
-	_cash = player.max_knuckles * 0.01 * hits * (1.5 if _card("unbroken_ii") else 1.0)
+	# The shield: a flat 5 (8 with Cash Out II) plus 1 for every hit in the combo (the user, 2026-11-07).
+	_cash = (CASH_BASE_II if _card("unbroken_ii") else CASH_BASE) + hits
 	_cash_max = _cash
 	_cash_time = CASH_TIME + _power()
 	Sfx.play("unlock", 0.0, 1.2)
