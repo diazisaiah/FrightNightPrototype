@@ -567,14 +567,14 @@ func touch_punch(hand: String, type: String) -> void:
 	_stop_emote()
 	if ult.mode == "time_stop":
 		ult._stop_punch(hand, type)
-	elif not ult.busy():
+	elif not ult.input_locked():
 		_buffered[hand] = [type, INPUT_BUFFER_TIME]
 
 
 ## A swipe away from the middle (slip) or down (roll) on one side. Weenie Hut
 ## Junior Mode picks the dodge that beats the attack, like Q / E.
 func touch_dodge(side: String, kind: String) -> void:
-	if not active or ult.busy():
+	if not active or ult.input_locked():
 		return
 	if kind == "roll" and not Controls.junior():
 		_try_defense("roll_" + side)
@@ -584,7 +584,7 @@ func touch_dodge(side: String, kind: String) -> void:
 
 ## The back step and forward dash buttons.
 func touch_move(move: String) -> void:
-	if active and not ult.busy():
+	if active and not ult.input_locked():
 		_do_move(move)
 
 
@@ -642,7 +642,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				_stop_emote()
 				if ult.mode == "time_stop":
 					ult.answer_direct(type)
-				elif not ult.busy():
+				elif not ult.input_locked():
 					_buffered["left" if _last_punch_hand == "right" else "right"] = [type, INPUT_BUFFER_TIME]
 				get_viewport().set_input_as_handled()
 
@@ -695,7 +695,7 @@ func _process(delta: float) -> void:
 				_set_combo(0)
 	_update_class_timers(delta)
 
-	if _live_input():
+	if _live_input() and not ult.input_locked():
 		if Pad.active and Input.is_action_just_pressed("sprint"):
 			_pad_sprint = not _pad_sprint
 		# (Shift + Q / E rolls in that scheme, and Q / E alone still slip.)
@@ -1316,6 +1316,7 @@ func end_cinematic() -> void:
 	cinematic = false
 	_immune_after = CINEMATIC_AFTER
 	_body.stop()
+	_body.rotation.y = 0.0
 	# The camera never got out (a very short shot): nothing to glide back from.
 	if _emote_out <= 0.0:
 		_finish_emote_cam()

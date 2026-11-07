@@ -103,7 +103,8 @@ const TIME_COLOR := Color(0.65, 0.85, 1.0)
 ## Impact sparks left hanging in stopped time, at most.
 const TIME_SPARKS := 60
 # Counter Master
-const RIPOSTE_TIME := 4.0
+## Riposte Stance (2026-11-06: 1.5s longer, per the user).
+const RIPOSTE_TIME := 5.5
 # Alternate ultimates (Abilities, 2026-10-24).
 const SHIELD_HITS := 3
 const SHIELD_TIME := 12.0
@@ -171,6 +172,9 @@ var _riposte_counters := true
 ## Aura Farm's seconds left, and whether the Riposte stance is playing as a third-person shot.
 var _farm := 0.0
 var _riposte_shot := false
+## Which stance clip the body is in (-1 none, 0 still, 1 walking) and when a reaction clip ends.
+var _stance_state := -1
+var _reaction_until := 0.0
 ## Brimstone Shield: hits left, damage soaked, seconds left.
 var _shield_hits := 0
 var _shield_soaked := 0.0
@@ -216,7 +220,13 @@ func is_full() -> bool:
 
 ## True while an ultimate has taken over movement and punching.
 func busy() -> bool:
-	return mode != "" or (_riposte_shot and player.cinematic)
+	return mode != ""
+
+
+## Punches, dodges and the ultimate key are locked: an ultimate has the controls,
+## or the Riposte Stance is a shot (you can still walk and look in that one).
+func input_locked() -> bool:
+	return busy() or (_riposte_shot and player.cinematic)
 
 
 func add(amount: float) -> void:
@@ -345,9 +355,10 @@ func _process(delta: float) -> void:
 		_set_status("RIPOSTE STANCE  %.1fs" % maxf(_riposte, 0.0) if _riposte > 0.0 else "")
 		if _riposte_shot:
 			if _riposte > 0.0 and player.cinematic:
-				# The camera drifts round him; he moves in the middle of it.
-				player.cine_orbit.x += real_delta * 0.4
-				player.cine_focus = player.global_position + Vector3.UP * 1.1
+				# A follow camera behind you; looking up and down tilts it.
+				player.cine_focus = player.global_position + Vector3.UP * 1.25
+				player.cine_orbit.y = clampf(0.22 - player._camera.rotation.x * 0.7, -0.1, 0.9)
+				_update_stance(Vector2(player.velocity.x, player.velocity.z).length() > 0.6)
 			else:
 				_riposte_shot = false
 				player.end_cinematic()
@@ -1003,20 +1014,45 @@ func _start_riposte() -> void:
 	# him, controls locked (he does it all himself), and ends with it.
 	if player.cinematic_enabled():
 		_riposte_shot = true
+		_stance_state = -1
 		player._aura.flare(1.2)
-		player.start_cinematic(Emotes.parse(_riposte_clip({})), player.global_position + Vector3.UP * 1.1, Vector2(player.rotation.y + PI * 0.8, 0.12), 3.2)
-		player.cine_world = true
+		# Behind you, following: you can walk and look while it runs.
+		player.start_cinematic(Emotes.parse(_riposte_clip({})), player.global_position + Vector3.UP * 1.25, Vector2(0.0, 0.22), 3.0)
 		HitFx.ring(player.get_parent(), player.global_position + Vector3.UP * 0.2, Color(0.4, 0.8, 1.0, 0.8), 3.0)
 
 
 ## The Answer's guard, and a body clip for each thing the stance does: a slip, a
 ## roll, a back step, a hook. Each leaves the guard again when it's done.
-const GUARD := {"torso": [-4, 0, 0], "head": [0, 0, 0], "ls": [78, 0, -10], "le": [112, 0, 0], "rs": [78, 0, 10], "re": [112, 0, 0],
-	"lh": [18, 0, 0], "lk": [-34, 0, 0], "rh": [14, 0, 0], "rk": [-28, 0, 0], "pos": [0, -3.5, 0]}
+const GUARD := {"torso": [-18, 14, 0], "head": [8, 0, 0], "ls": [84, 0, -8], "le": [120, 0, 0], "rs": [88, 0, 8], "re": [120, 0, 0],
+	"lh": [50, 0, 0], "lk": [-97, 0, 0], "rh": [38, 0, 0], "rk": [-88, 0, 0], "pos": [0, -14, 0]}
 
 
-func _riposte_clip(peak: Dictionary) -> Dictionary:
+## The crouched stance, walking: the legs trade places slowly, the guard stays up.
+func _stance_clip(moving: bool) -> Dictionary:
+	if not moving:
+		return _riposte_clip({}, true)
+	var a := GUARD.merged({"lh": [60, 0, 0], "lk": [-92, 0, 0], "rh": [28, 0, 0], "rk": [-104, 0, 0], "pos": [0, -13, 0]}, true)
+	var b := GUARD.merged({"lh": [28, 0, 0], "lk": [-104, 0, 0], "rh": [60, 0, 0], "rk": [-92, 0, 0], "pos": [0, -13, 0]}, true)
+	return Emotes.parse({"name": "Riposte walk", "length": 0.7, "loop": true, "plant": false, "keys": [
+		{"t": 0.0, "pose": a}, {"t": 0.35, "pose": b}]})
+
+
+## The body's clip for standing or walking in the stance, unless a reaction is playing.
+func _update_stance(moving: bool) -> void:
+	if Time.get_ticks_msec() / 1000.0 < _reaction_until:
+		_stance_state = -1
+		return
+	var state := 1 if moving else 0
+	if state != _stance_state:
+		_stance_state = state
+		player._body.play_clip(_stance_clip(moving))
+
+
+func _riposte_clip(peak: Dictionary, hold := false) -> Dictionary:
 	var move := GUARD.merged(peak, true)
+	if hold:
+		return Emotes.parse({"name": "Riposte guard", "length": 3.0, "loop": false, "plant": false, "keys": [
+			{"t": 0.0, "pose": GUARD}, {"t": 3.0, "pose": GUARD}]})
 	return Emotes.parse({"name": "Riposte", "length": 3.0, "loop": false, "plant": false, "keys": [
 		{"t": 0.0, "pose": GUARD},
 		{"t": 0.1, "ease": "snap", "pose": move},
@@ -1029,10 +1065,10 @@ func _riposte_clip(peak: Dictionary) -> Dictionary:
 func _riposte_peak(move: String) -> Dictionary:
 	var side := -1.0 if move.ends_with("left") else 1.0
 	if move.begins_with("slip"):
-		return {"torso": [-6, 0, -16.0 * side], "head": [0, 0, -12.0 * side], "pos": [10.0 * side, -5, 0]}
+		return {"torso": [-14, 0, -16.0 * side], "head": [4, 0, -12.0 * side], "pos": [10.0 * side, -12, 0]}
 	if move.begins_with("roll"):
-		return {"torso": [-34, 0, -10.0 * side], "head": [-10, 0, 0], "pos": [8.0 * side, -20, 0]}
-	return {"torso": [10, 0, 0], "head": [4, 0, 0], "pos": [0, -3, 12]}
+		return {"torso": [-40, 0, -10.0 * side], "head": [-6, 0, 0], "pos": [8.0 * side, -24, 0]}
+	return {"torso": [-4, 0, 0], "head": [4, 0, 0], "pos": [0, -12, 12]}
 
 
 ## Slips the attack and, if the attacker is in reach, answers with a hook.
@@ -1041,6 +1077,7 @@ func _riposte_dodge(attack: String, attacker: Enemy) -> void:
 	var move: String = answers[0] if not answers.is_empty() else "back_step"
 	player._animate_defense(move)
 	if _riposte_shot and player.cinematic:
+		_reaction_until = Time.get_ticks_msec() / 1000.0 + 0.4
 		player._body.play_clip(_riposte_clip(_riposte_peak(move)))
 	# The attack whips past: a swoosh across the view, toward the slip.
 	MoveFx.swoosh(player._camera, -1.0 if move.ends_with("left") else (1.0 if move.ends_with("right") else [-1.0, 1.0].pick_random()), Color(0.4, 0.8, 1.0))
@@ -1054,11 +1091,18 @@ func _riposte_counter(enemy: Enemy) -> void:
 	await _wait(0.12)
 	if not is_instance_valid(enemy) or enemy.is_dead() or not player.active:
 		return
-	_face(enemy)
 	var hand := "right" if player._counter_side != "left" else "left"
 	if _riposte_shot and player.cinematic:
-		var hook := {"torso": [0, 28, 0], "rs": [96, 0, -52], "re": [95, 0, 0]} if hand == "right" else {"torso": [0, -28, 0], "ls": [96, 0, 52], "le": [95, 0, 0]}
+		# In the shot the camera stays behind you: only the body turns to the monster.
+		var to := enemy.global_position - player.global_position
+		to.y = 0.0
+		player._body.rotation.y = wrapf(atan2(-to.x, -to.z) - player.rotation.y, -PI, PI)
+		player._body.create_tween().tween_property(player._body, "rotation:y", 0.0, 0.4).set_delay(0.2)
+		var hook := {"torso": [-12, 28, 0], "rs": [96, 0, -52], "re": [95, 0, 0]} if hand == "right" else {"torso": [-12, -28, 0], "ls": [96, 0, 52], "le": [95, 0, 0]}
+		_reaction_until = Time.get_ticks_msec() / 1000.0 + 0.45
 		player._body.play_clip(_riposte_clip(hook))
+	else:
+		_face(enemy)
 	player._fists.play_punch("hook", hand, 0.08, 0.3)
 	player._animate_head("hook", hand, 0.08, 0.3)
 	await _wait(0.08)
@@ -1374,10 +1418,112 @@ func _shield_break() -> void:
 ## and 3%). The Answer's sustain.
 func _start_flow() -> void:
 	_spend()
-	_farm = FARM_TIME + _power()
 	Sfx.play("tell", 0.0, 1.3)
 	player.class_event.emit("AURA FARM")
+	if player.cinematic_enabled():
+		mode = "aura_farm"
+		await _aura_farm_intro()
+		mode = ""
+	if not is_instance_valid(player):
+		return
+	_farm = FARM_TIME + _power()
 	HitFx.burst(player.get_parent(), player.global_position + Vector3.UP, Vector3.UP, Color(0.4, 1.0, 0.65), 30, 4.0, true, 0.05)
+
+
+## The intro (the user's idea, 2026-11-06): in third person from the front he walks
+## forward slowly, tilts his head side to side (a neck crack), claps his gloves
+## together, and it's first person again with the Aura Farm running.
+const FARM_WALK_CLIP := {"name": "Farm walk", "length": 1.2, "loop": true, "plant": false, "keys": [
+	{"t": 0.0, "pose": {"torso": [3, 0, 0], "head": [0, 0, 0], "ls": [18, 0, -6], "le": [28, 0, 0], "rs": [18, 0, 6], "re": [28, 0, 0],
+		"lh": [24, 0, 0], "lk": [-8, 0, 0], "rh": [-18, 0, 0], "rk": [-4, 0, 0], "pos": [0, -1, 0]}},
+	{"t": 0.6, "pose": {"torso": [3, 0, 0], "head": [0, 0, 0], "ls": [18, 0, -6], "le": [28, 0, 0], "rs": [18, 0, 6], "re": [28, 0, 0],
+		"lh": [-18, 0, 0], "lk": [-4, 0, 0], "rh": [24, 0, 0], "rk": [-8, 0, 0], "pos": [0, -1, 0]}},
+]}
+const FARM_NECK_CLIP := {"name": "Farm neck", "length": 3.0, "loop": false, "plant": false, "keys": [
+	{"t": 0.0, "pose": {"torso": [2, 0, 0], "head": [0, 0, 0], "ls": [18, 0, -6], "le": [28, 0, 0], "rs": [18, 0, 6], "re": [28, 0, 0],
+		"lh": [2, 0, 0], "lk": [-4, 0, 0], "rh": [2, 0, 0], "rk": [-4, 0, 0], "pos": [0, -1, 0]}},
+	{"t": 0.18, "ease": "snap", "pose": {"torso": [2, 0, 5], "head": [4, 0, 30], "ls": [24, 0, -6], "le": [34, 0, 0], "rs": [18, 0, 6], "re": [28, 0, 0],
+		"lh": [2, 0, 0], "lk": [-4, 0, 0], "rh": [2, 0, 0], "rk": [-4, 0, 0], "pos": [0, -1, 0]}},
+	{"t": 0.5, "ease": "snap", "pose": {"torso": [2, 0, -5], "head": [4, 0, -30], "ls": [18, 0, -6], "le": [28, 0, 0], "rs": [24, 0, 6], "re": [34, 0, 0],
+		"lh": [2, 0, 0], "lk": [-4, 0, 0], "rh": [2, 0, 0], "rk": [-4, 0, 0], "pos": [0, -1, 0]}},
+	{"t": 0.78, "pose": {"torso": [4, 0, 0], "head": [-4, 0, 0], "ls": [40, 0, -14], "le": [70, 0, 0], "rs": [40, 0, 14], "re": [70, 0, 0],
+		"lh": [2, 0, 0], "lk": [-4, 0, 0], "rh": [2, 0, 0], "rk": [-4, 0, 0], "pos": [0, -1, 0]}},
+	{"t": 3.0, "pose": {"torso": [4, 0, 0], "head": [-4, 0, 0], "ls": [40, 0, -14], "le": [70, 0, 0], "rs": [40, 0, 14], "re": [70, 0, 0],
+		"lh": [2, 0, 0], "lk": [-4, 0, 0], "rh": [2, 0, 0], "rk": [-4, 0, 0], "pos": [0, -1, 0]}},
+]}
+const FARM_CLAP_CLIP := {"name": "Farm clap", "length": 3.0, "loop": false, "plant": false, "keys": [
+	{"t": 0.0, "pose": {"torso": [4, 0, 0], "head": [-4, 0, 0], "ls": [40, 0, -14], "le": [70, 0, 0], "rs": [40, 0, 14], "re": [70, 0, 0],
+		"lh": [2, 0, 0], "lk": [-4, 0, 0], "rh": [2, 0, 0], "rk": [-4, 0, 0], "pos": [0, -1, 0]}},
+	{"t": 0.16, "ease": "snap", "pose": {"torso": [-8, 0, 0], "head": [8, 0, 0], "ls": [84, 0, 20], "le": [104, 0, 0], "rs": [84, 0, -20], "re": [104, 0, 0],
+		"lh": [2, 0, 0], "lk": [-4, 0, 0], "rh": [2, 0, 0], "rk": [-4, 0, 0], "pos": [0, -2, 0]}},
+	{"t": 3.0, "pose": {"torso": [-8, 0, 0], "head": [8, 0, 0], "ls": [84, 0, 20], "le": [104, 0, 0], "rs": [84, 0, -20], "re": [104, 0, 0],
+		"lh": [2, 0, 0], "lk": [-4, 0, 0], "rh": [2, 0, 0], "rk": [-4, 0, 0], "pos": [0, -2, 0]}},
+]}
+
+
+## The camera yaw nearest to the wanted one (front first, then a little to either
+## side, then further round) with no monster near where the camera would sit.
+func _clear_yaw(wanted: float, distance: float) -> float:
+	var enemies := _alive_enemies()
+	for turn in [0.0, 0.7, -0.7, 1.4, -1.4, 2.1, -2.1]:
+		var yaw: float = wanted + turn
+		var spot := player.global_position + Vector3(sin(yaw), 0, cos(yaw)) * (distance + 1.5)
+		var clear := true
+		for enemy in enemies:
+			if enemy.global_position.distance_to(spot) < 2.6 or enemy.global_position.distance_to(player.global_position.lerp(spot, 0.5)) < 1.6:
+				clear = false
+				break
+		if clear:
+			return yaw
+	return wanted
+
+
+func _aura_farm_intro() -> void:
+	var parent := player.get_parent()
+	# From the front, low and wide; the camera is fixed in the world while he walks into it.
+	var yaw := _clear_yaw(player.rotation.y + PI, 4.2)
+	player.start_cinematic(Emotes.parse(FARM_WALK_CLIP), player.global_position + Vector3.UP * 1.15, Vector2(yaw, 0.04), 4.2)
+	player.cine_world = true
+	player._aura.flare(0.5)
+	var from := player.global_position
+	var step := player._flat_forward() * 1.5
+	var walk := player.create_tween().set_parallel()
+	walk.tween_method(func(t: float) -> void:
+		player.global_position = from + step * t
+		player.cine_focus = player.global_position + Vector3.UP * 1.15, 0.0, 1.0, 1.2)
+	walk.tween_property(player, "cine_distance", 3.0, 1.2).set_trans(Tween.TRANS_SINE)
+	await _wait(1.2)
+	if not is_instance_valid(player):
+		return
+	# The neck crack: head over to one side, then the other, a crack each.
+	player._body.play_clip(Emotes.parse(FARM_NECK_CLIP))
+	var push := player.create_tween().set_parallel()
+	push.tween_property(player, "cine_distance", 2.4, 1.0).set_trans(Tween.TRANS_SINE)
+	push.tween_property(player, "cine_orbit", Vector2(yaw - signf(sin(yaw - player.rotation.y - PI)) * 0.12, 0.02), 1.0).set_trans(Tween.TRANS_SINE)
+	await _wait(0.16)
+	Sfx.play("block", -4.0, 1.9)
+	await _wait(0.34)
+	Sfx.play("block", -4.0, 2.1)
+	await _wait(0.5)
+	if not is_instance_valid(player):
+		return
+	# The clap: gloves together, the aura flares and a ring of light goes out.
+	player._body.play_clip(Emotes.parse(FARM_CLAP_CLIP))
+	await _wait(0.16)
+	if not is_instance_valid(player):
+		return
+	var chest := player.global_position + player._flat_forward() * 0.35 + Vector3.UP * 1.25
+	player._aura.flare(2.2)
+	Sfx.play("counter", 0.0, 0.8)
+	Sfx.play("heavy", -2.0, 0.9)
+	player._shake = maxf(player._shake, 0.2)
+	TimeFx.slowmo(0.5, 0.25)
+	HitFx.ring(parent, chest, Color(0.4, 1.0, 0.65, 0.9), 2.4)
+	HitFx.burst(parent, chest, Vector3.UP, Color(0.4, 1.0, 0.65), 36, 6.0, true, 0.05)
+	HitFx.burst(parent, chest, Vector3.UP, Color(0.7, 0.95, 1.0), 20, 4.0, true, 0.03)
+	await _wait(0.55)
+	if is_instance_valid(player):
+		player.end_cinematic()
 
 
 ## The Blur's Unbroken: every hit builds the combo, which can't drop.

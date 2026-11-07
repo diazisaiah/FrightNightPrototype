@@ -302,7 +302,7 @@ func _exercise_ultimate(fighter: String, ultimate: String) -> void:
 	# Inferno II performs two leap tweens and Highlight Reel visits every live
 	# target. Freeing their Player mid-await strands the coroutine, so those two
 	# get time to finish; the other ultimates start synchronously.
-	var settle := 3.0 if ultimate in ["inferno", "highlight_reel", "bulwark"] else (0.8 if ultimate == "flame_burst" else 0.25)
+	var settle := 3.6 if ultimate in ["inferno", "highlight_reel", "bulwark", "flow_state"] else (0.8 if ultimate == "flame_burst" else 0.25)
 	await get_tree().create_timer(settle, false, false, true).timeout
 	_check(player.ult.meter < Ult.MAX_METER,
 			"%s's %s activates and spends meter" % [fighter, ultimate])
@@ -1053,7 +1053,9 @@ func _test_answer_revamp() -> void:
 	# Aura Farm: dodges heal 1% (2% with the epic), clean dodges 2% (3%).
 	player.ult.fill()
 	player.ult.activate()
-	_check(player.ult._farm > 0.0, "Aura Farm starts")
+	_check(player.ult.mode == "aura_farm" and player.cinematic and player.ult._farm <= 0.0, "Aura Farm opens with its third-person intro")
+	await get_tree().create_timer(3.8, false, false, true).timeout
+	_check(player.ult._farm > 0.0 and not player.cinematic and player.ult.mode == "", "Aura Farm starts when the intro ends (%.1fs)" % player.ult._farm)
 	var share := 0.02
 	player.knuckles = player.max_knuckles * 0.5
 	player.ult.on_dodge(false)
@@ -1097,13 +1099,13 @@ func _test_answer_revamp() -> void:
 	player.active = true
 	player.ult.fill()
 	player.ult.activate()
-	_check(player.ult._riposte_shot and player.cinematic and player.ult.busy(), "Riposte Stance: a third-person shot with the controls locked")
+	_check(player.ult._riposte_shot and player.cinematic and player.ult.input_locked(), "Riposte Stance: a third-person shot with punches and dodges locked")
 	var before := player.knuckles
 	var result := player.receive_attack(20.0, target.global_position, "jab", target)
 	_check(result == "dodged" and is_equal_approx(player.knuckles, before), "Riposte Stance: still slips every attack in the shot (%s)" % result)
 	player.ult._riposte = 0.01
 	await get_tree().create_timer(0.2, false, false, true).timeout
-	_check(not player.cinematic and not player.ult._riposte_shot and not player.ult.busy(), "Riposte Stance: the shot ends with the stance")
+	_check(not player.cinematic and not player.ult._riposte_shot and not player.ult.input_locked(), "Riposte Stance: the shot ends with the stance")
 	await _free_rig(holder)
 	print("Card runtime: Answer revamp OK")
 
