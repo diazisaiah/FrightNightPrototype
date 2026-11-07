@@ -474,12 +474,19 @@ func _try_inferno() -> void:
 	await _inferno_at(target)
 
 
-## Inferno II: a ring of flame off the hit knocks down and ignites everything
-## close (0.5x your base damage a burn tick). Bosses reel (knock_down caps them).
+## Inferno II: the hit sets off a shockwave of flame (2026-11-06: made big, the
+## user wanted the card to be way more apparent). Everything close is knocked
+## down and ignited (0.5x your base damage a burn tick; bosses reel, knock_down
+## caps them), and it looks like it: rings of fire racing out along the ground,
+## pillars of flame, a flash, a shake and a callout.
 func _inferno_shockwave(center: Vector3, except: Enemy) -> void:
-	HitFx.burst(player.get_parent(), center + Vector3.UP * 0.3, Vector3.UP, FIRE_COLOR, 40, INFERNO_II_RADIUS * 1.6, true, 0.07)
-	HitFx.burst(player.get_parent(), center + Vector3.UP * 0.1, Vector3.UP, Color(1.0, 0.6, 0.15), 24, INFERNO_II_RADIUS, true, 0.05)
-	Sfx.play("heavy", 2.0, 0.55)
+	var parent := player.get_parent()
+	_shockwave_fx(parent, center)
+	Sfx.play("heavy", 4.0, 0.45)
+	Sfx.play("counter", 0.0, 0.5)
+	TimeFx.slowmo(0.3, 0.3)
+	player._shake = maxf(player._shake, 0.4)
+	DamagePopup.spawn(parent, "INFERNO II!", Color(1.0, 0.6, 0.15), 64, center + Vector3(0, 3.0, 0))
 	for enemy in _alive_enemies():
 		if enemy == except or enemy.global_position.distance_to(center) > INFERNO_II_RADIUS:
 			continue
@@ -489,24 +496,119 @@ func _inferno_shockwave(center: Vector3, except: Enemy) -> void:
 		enemy.knock_down(INFERNO_STUN, away.normalized() * 4.0, true)
 
 
+## The look of it: two rings of fire racing out to the full radius, pillars of
+## flame rising behind them, a flash of light and a heavy burst.
+func _shockwave_fx(parent: Node, center: Vector3) -> void:
+	var ground := Vector3(center.x, center.y + 0.08, center.z)
+	HitFx.burst(parent, ground + Vector3.UP * 0.3, Vector3.UP, FIRE_COLOR, 70, 12.0, true, 0.07)
+	HitFx.burst(parent, ground + Vector3.UP * 0.2, Vector3.UP, Color(1.0, 0.8, 0.3), 40, 8.0, true, 0.04)
+	for ring: Array in [[0.0, 0.5, Color(0.9, 0.3, 0.04)], [0.1, 0.7, Color(0.95, 0.6, 0.15)]]:
+		var material := _fire_material(ring[2])
+		var torus := TorusMesh.new()
+		torus.inner_radius = 0.78
+		torus.outer_radius = 1.0
+		torus.material = material
+		var node := MeshInstance3D.new()
+		node.mesh = torus
+		node.position = ground
+		node.scale = Vector3(0.3, 3.0, 0.3)
+		parent.add_child(node)
+		var tween := node.create_tween().set_parallel()
+		tween.tween_property(node, "scale", Vector3(INFERNO_II_RADIUS, 4.0, INFERNO_II_RADIUS), ring[1]).set_delay(ring[0]).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		tween.tween_property(material, "albedo_color:a", 0.0, 0.35).set_delay(ring[0] + ring[1] - 0.2)
+		tween.chain().tween_callback(node.queue_free)
+	for i in 14:
+		var angle := TAU * i / 14.0 + randf() * 0.35
+		var radius := randf_range(1.2, INFERNO_II_RADIUS - 0.3)
+		var material := _fire_material(Color(0.9, 0.32, 0.05).lerp(Color(0.95, 0.6, 0.15), randf()), 0.6)
+		var box := BoxMesh.new()
+		box.size = Vector3(0.4, 1.0, 0.4)
+		box.material = material
+		# The pillar grows from its base: the cube sits half a unit up its holder.
+		var pillar := Node3D.new()
+		var cube := MeshInstance3D.new()
+		cube.mesh = box
+		cube.position = Vector3(0, 0.5, 0)
+		pillar.add_child(cube)
+		pillar.position = ground + Vector3(cos(angle) * radius, 0, sin(angle) * radius)
+		pillar.scale = Vector3(1, 0.05, 1)
+		parent.add_child(pillar)
+		var delay := radius / INFERNO_II_RADIUS * 0.35
+		var rise := pillar.create_tween()
+		rise.tween_property(pillar, "scale", Vector3(0.5, randf_range(1.4, 2.6), 0.5), 0.22).set_delay(delay).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		rise.tween_property(material, "albedo_color:a", 0.0, 0.4)
+		rise.tween_callback(pillar.queue_free)
+	var flash := OmniLight3D.new()
+	flash.light_color = Color(1.0, 0.5, 0.15)
+	flash.omni_range = 9.0
+	flash.light_energy = 0.0
+	flash.position = ground + Vector3.UP * 1.2
+	parent.add_child(flash)
+	var glow := flash.create_tween()
+	glow.tween_property(flash, "light_energy", 9.0, 0.08)
+	glow.tween_property(flash, "light_energy", 0.0, 0.6)
+	glow.tween_callback(flash.queue_free)
+
+
+## Bright, see-through, added to the light: flames.
+static func _fire_material(color: Color, alpha := 0.75) -> StandardMaterial3D:
+	var material := StandardMaterial3D.new()
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	material.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	material.albedo_color = Color(color, alpha)
+	return material
+
+
 ## The Inferno Uppercut as a third-person shot (2026-11-06, the user's
-## experiment: Settings > Display > Third-person ultimates). The body's moves
-## (Emotes format): a crouch, the leap with the legs tucked, the uppercut.
+## experiment: Settings > Display > Third-person ultimates). Three body clips
+## (Emotes format; the body is posed by phase, so slow motion can't put them
+## out of step): the leap with the legs tucked, landing in a deep crouch in
+## front of the monster, then exploding upward with the uppercut using the
+## whole body. The Mauler's aura (FighterAura) burns the whole time.
 const INFERNO_CLIP := {
-	"name": "Inferno", "length": 3.0, "loop": false, "plant": false,
+	"name": "Inferno leap", "length": 3.0, "loop": false, "plant": false,
 	"keys": [
 		{"t": 0.0, "pose": {"torso": [-14.3, 20.1, 0], "head": [8, 0, 0], "ls": [55, 0, -14], "le": [108, 0, 0], "rs": [-20, 0, 12], "re": [100, 0, 0],
-			"lh": [42, 0, 0], "lk": [-84, 0, 0], "rh": [26, 0, 0], "rk": [-62, 0, 0], "pos": [0, -22, 0]}},
+			"lh": [42, 0, 0], "lk": [-84, 0, 0], "rh": [26, 0, 0], "rk": [-62, 0, 0], "pos": [0, -23, 0]}},
 		{"t": 0.2, "pose": {"torso": [-10, 20.1, 0], "head": [8, 0, 0], "ls": [55, 0, -14], "le": [108, 0, 0], "rs": [-24, 0, 12], "re": [100, 0, 0],
 			"lh": [62, 0, 0], "lk": [-104, 0, 0], "rh": [14, 0, 0], "rk": [-72, 0, 0], "pos": [0, 4, 0]}},
-		{"t": 0.38, "ease": "snap", "pose": {"torso": [8.6, -17.2, 0], "head": [12, 0, 0], "ls": [55, 0, -14], "le": [108, 0, 0], "rs": [168, 0, 6], "re": [46, 0, 0],
-			"lh": [-6, 0, 0], "lk": [-20, 0, 0], "rh": [16, 0, 0], "rk": [-42, 0, 0], "pos": [0, 2, 0]}},
-		{"t": 3.0, "pose": {"torso": [8.6, -17.2, 0], "head": [12, 0, 0], "ls": [55, 0, -14], "le": [108, 0, 0], "rs": [168, 0, 6], "re": [46, 0, 0],
-			"lh": [-6, 0, 0], "lk": [-20, 0, 0], "rh": [16, 0, 0], "rk": [-42, 0, 0], "pos": [0, 2, 0]}},
+		{"t": 0.4, "pose": {"torso": [-20, 20.1, 0], "head": [0, 0, 0], "ls": [60, 0, -12], "le": [108, 0, 0], "rs": [-28, 0, 14], "re": [100, 0, 0],
+			"lh": [18, 0, 0], "lk": [-30, 0, 0], "rh": [-6, 0, 0], "rk": [-24, 0, 0], "pos": [0, -3, 0]}},
+		{"t": 3.0, "pose": {"torso": [-20, 20.1, 0], "head": [0, 0, 0], "ls": [60, 0, -12], "le": [108, 0, 0], "rs": [-28, 0, 14], "re": [100, 0, 0],
+			"lh": [18, 0, 0], "lk": [-30, 0, 0], "rh": [-6, 0, 0], "rk": [-24, 0, 0], "pos": [0, -3, 0]}},
 	],
 }
-## How long the camera stays out after the hit, so the launch plays in shot.
-const INFERNO_SHOT_HOLD := 0.9
+const INFERNO_CROUCH_CLIP := {
+	"name": "Inferno crouch", "length": 3.0, "loop": false, "plant": false,
+	"keys": [
+		{"t": 0.28, "pose": {"torso": [-30, 22, 0], "head": [-14, 0, 0], "ls": [66, 0, -14], "le": [110, 0, 0], "rs": [-42, 0, 16], "re": [100, 0, 0],
+			"lh": [50, 0, 0], "lk": [-97, 0, 0], "rh": [42, 0, 0], "rk": [-92, 0, 0], "pos": [0, -30, 0]}},
+		{"t": 3.0, "pose": {"torso": [-30, 22, 0], "head": [-14, 0, 0], "ls": [66, 0, -14], "le": [110, 0, 0], "rs": [-42, 0, 16], "re": [100, 0, 0],
+			"lh": [50, 0, 0], "lk": [-97, 0, 0], "rh": [42, 0, 0], "rk": [-92, 0, 0], "pos": [0, -30, 0]}},
+	],
+}
+const INFERNO_EXPLODE_CLIP := {
+	"name": "Inferno explode", "length": 3.0, "loop": false, "plant": false,
+	"keys": [
+		{"t": 0.0, "pose": {"torso": [-30, 22, 0], "head": [-14, 0, 0], "ls": [66, 0, -14], "le": [110, 0, 0], "rs": [-42, 0, 16], "re": [100, 0, 0],
+			"lh": [50, 0, 0], "lk": [-97, 0, 0], "rh": [42, 0, 0], "rk": [-92, 0, 0], "pos": [0, -30, 0]}},
+		{"t": 0.14, "ease": "snap", "pose": {"torso": [16, -24, 0], "head": [18, 0, 0], "ls": [-25, 0, -10], "le": [60, 0, 0], "rs": [172, 0, 6], "re": [26, 0, 0],
+			"lh": [-14, 0, 0], "lk": [-6, 0, 0], "rh": [-6, 0, 0], "rk": [-16, 0, 0], "pos": [0, 10, 0]}},
+		{"t": 0.55, "pose": {"torso": [10, -18, 0], "head": [14, 0, 0], "ls": [-20, 0, -12], "le": [70, 0, 0], "rs": [168, 0, 6], "re": [30, 0, 0],
+			"lh": [10, 0, 0], "lk": [-40, 0, 0], "rh": [4, 0, 0], "rk": [-30, 0, 0], "pos": [0, 6, 0]}},
+		{"t": 1.0, "pose": {"torso": [4, -12, 0], "head": [6, 0, 0], "ls": [20, 0, -12], "le": [90, 0, 0], "rs": [150, 0, 6], "re": [40, 0, 0],
+			"lh": [24, 0, 0], "lk": [-50, 0, 0], "rh": [10, 0, 0], "rk": [-36, 0, 0], "pos": [0, 0, 0]}},
+		{"t": 3.0, "pose": {"torso": [4, -12, 0], "head": [6, 0, 0], "ls": [20, 0, -12], "le": [90, 0, 0], "rs": [150, 0, 6], "re": [40, 0, 0],
+			"lh": [24, 0, 0], "lk": [-50, 0, 0], "rh": [10, 0, 0], "rk": [-36, 0, 0], "pos": [0, 0, 0]}},
+	],
+}
+## The crouch on landing, the climb, and how long the camera stays out after.
+const INFERNO_CROUCH_TIME := 0.5
+const INFERNO_RISE_TIME := 0.85
+const INFERNO_RISE_HEIGHT := 1.7
+const INFERNO_SHOT_HOLD := 0.8
 
 
 ## The leap and the flaming uppercut at one monster, as a shot when the
@@ -516,6 +618,7 @@ func _inferno_at(target: Enemy) -> void:
 	var shot := player.cinematic_enabled()
 	if shot:
 		mode = "inferno"
+		player._aura.flare(0.6)
 		player.start_cinematic(Emotes.parse(INFERNO_CLIP), player.global_position + Vector3.UP * 1.2, Vector2(0.6, 0.3), 3.6)
 	await _inferno_run(target, shot)
 	if shot:
@@ -533,6 +636,29 @@ func _leap_step(t: float, from: Vector3, to: Vector3, shot: bool) -> void:
 		player.cine_focus = player.global_position + Vector3.UP * 1.2
 		player.cine_orbit = Vector2(lerpf(0.6, 1.0, t), lerpf(0.3, 0.18, t))
 		player.cine_distance = lerpf(3.6, 3.0, t)
+
+
+## The spring up (u 0-1): the body climbs and falls back, the camera on it.
+func _rise_step(u: float, base_y: float) -> void:
+	player.global_position.y = base_y + sin(u * PI) * INFERNO_RISE_HEIGHT
+	player.cine_focus = player.global_position + Vector3.UP * 1.2
+
+
+## Landing in front of it: a deep crouch, the aura flaring, the camera dropping
+## low and pushing in. Real-time wait, whatever slow motion is doing.
+func _inferno_crouch() -> void:
+	player._body.play_clip(Emotes.parse(INFERNO_CROUCH_CLIP))
+	player._aura.flare(1.4)
+	var floor_spot := player.global_position + Vector3.UP * 0.15
+	HitFx.burst(player.get_parent(), floor_spot, Vector3.UP, FIRE_COLOR, 26, 3.5, true, 0.05)
+	HitFx.burst(player.get_parent(), floor_spot, Vector3.UP, Color(1.0, 0.8, 0.3), 14, 2.0, true, 0.03)
+	Sfx.play("heavy", 0.0, 0.4)
+	TimeFx.slowmo(0.5, INFERNO_CROUCH_TIME)
+	var low := player.create_tween().set_parallel()
+	low.tween_property(player, "cine_focus", player.global_position + Vector3.UP * 0.9, 0.25).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	low.tween_property(player, "cine_orbit", Vector2(PI * 0.42, -0.04), 0.3).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	low.tween_property(player, "cine_distance", 2.0, INFERNO_CROUCH_TIME).set_trans(Tween.TRANS_SINE)
+	await _wait(INFERNO_CROUCH_TIME)
 
 
 func _inferno_run(target: Enemy, shot: bool) -> void:
@@ -554,14 +680,20 @@ func _inferno_run(target: Enemy, shot: bool) -> void:
 	if not is_instance_valid(target) or target.is_dead():
 		return
 	if shot:
-		# The hit, from your right side, then a slow drift back to show it fly.
-		var middle := (player.global_position + target.global_position) / 2.0 + Vector3.UP * 1.3
-		var swing := player.create_tween().set_parallel()
-		swing.tween_property(player, "cine_focus", middle, 0.35).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-		swing.tween_property(player, "cine_orbit", Vector2(PI * 0.5, 0.05), 0.35).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-		swing.tween_property(player, "cine_distance", 2.7, 0.35).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-		swing.chain().tween_property(player, "cine_orbit", Vector2(PI * 0.68, 0.14), INFERNO_SHOT_HOLD + 0.2).set_trans(Tween.TRANS_SINE)
-		swing.parallel().tween_property(player, "cine_distance", 3.3, INFERNO_SHOT_HOLD + 0.2).set_trans(Tween.TRANS_SINE)
+		await _inferno_crouch()
+		if not is_instance_valid(target) or target.is_dead():
+			return
+		# Up through the hit with the whole body, the camera pulling back and
+		# tilting up with him, then drifting round to show the launch.
+		player._body.play_clip(Emotes.parse(INFERNO_EXPLODE_CLIP))
+		player._aura.flare(1.6)
+		var rise := player.create_tween()
+		rise.tween_method(_rise_step.bind(player.global_position.y), 0.0, 1.0, INFERNO_RISE_TIME)
+		var cam := player.create_tween().set_parallel()
+		cam.tween_property(player, "cine_orbit", Vector2(PI * 0.5, 0.3), 0.4).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		cam.tween_property(player, "cine_distance", 3.5, 0.4).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		cam.chain().tween_property(player, "cine_orbit", Vector2(PI * 0.7, 0.14), INFERNO_SHOT_HOLD + 0.3).set_trans(Tween.TRANS_SINE)
+		cam.parallel().tween_property(player, "cine_distance", 4.0, INFERNO_SHOT_HOLD + 0.3).set_trans(Tween.TRANS_SINE)
 	TimeFx.slowmo(0.4, 0.3)
 	Sfx.play("heavy", 4.0, 0.5)
 	player._fists.play_punch("uppercut", "right", 0.1, 0.45)
@@ -574,7 +706,7 @@ func _inferno_run(target: Enemy, shot: bool) -> void:
 		if enemy != target and enemy.global_position.distance_to(player.global_position) <= INFERNO_SPLASH:
 			enemy.take_hit(GameState.get_damage() * 1.5, enemy.global_position + Vector3(0, 1.0, 0), (enemy.global_position - player.global_position).normalized() * 4.0, true, "SCORCHED")
 			enemy.ignite(GameState.get_damage(), INFERNO_BURN_TIME)
-	await _wait(0.1)
+	await _wait(0.12)
 	if not is_instance_valid(target) or target.is_dead():
 		return
 	var boss := target.is_boss

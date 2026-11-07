@@ -462,6 +462,8 @@ const EMOTE_STOPS := ["punch_left", "punch_right", "punch_hook", "punch_uppercut
 var emote := ""
 var _last_emote := "default"
 var _body: PlayerBody
+## The body's ultimate-ready aura (FighterAura).
+var _aura: FighterAura
 var _emote_cam: Camera3D
 ## Where the emote camera sits: yaw around you (0 = behind) and pitch (up).
 var _emote_orbit := Vector2.ZERO
@@ -528,6 +530,9 @@ func _ready() -> void:
 	_body = FighterBody.new()
 	_body.visible = false
 	add_child(_body)
+	# The aura the body wears while the ultimate is ready (emotes, third-person ultimates).
+	_aura = FighterAura.new()
+	_aura.setup(_body, _body.fighter)
 	_emote_cam = Camera3D.new()
 	_emote_cam.top_level = true
 	_emote_cam.near = 0.05
@@ -1239,6 +1244,8 @@ func _orbit_emote_cam(turn: Vector2) -> void:
 ## Moves the emote camera between your eyes and its orbit spot.
 func _update_emote(delta: float) -> void:
 	_immune_after = maxf(0.0, _immune_after - delta)
+	if _aura:
+		_aura.set_on(_body.visible and (ult.is_full() or _cine_cam))
 	if emote != "" and (not active or ult.busy()):
 		_stop_emote(not active)
 	# A knockout (or a scene change) ends a cinematic on the spot.
