@@ -117,7 +117,7 @@ const FARM_HEAL := Vector2(0.01, 0.02)
 const FARM_HEAL_II := Vector2(0.02, 0.03)
 ## Cash Out (was Unbroken): the least combo it needs, and how long its shield lasts.
 const CASH_MIN := 5
-## The flat start of the shield (8 with Cash Out II); every hit landed in the combo adds 1.
+## The start of the shield, in percent of max knuckle HP (8 with Cash Out II); every hit landed in the combo adds 1%.
 const CASH_BASE := 5.0
 const CASH_BASE_II := 8.0
 const CASH_TIME := 15.0
@@ -1674,8 +1674,9 @@ func _start_unbroken() -> void:
 	player._skip_reboot = true
 	player._set_combo(0)
 	player._skip_reboot = false
-	# The shield: a flat 5 (8 with Cash Out II) plus 1 for every hit in the combo (the user, 2026-11-07).
-	_cash = (CASH_BASE_II if _card("unbroken_ii") else CASH_BASE) + hits
+	# The shield: (5 + the combo's hits)% of your max knuckle HP, 8 + hits with Cash Out II
+	# (the user, 2026-11-07: percent, not flat).
+	_cash = player.max_knuckles * 0.01 * ((CASH_BASE_II if _card("unbroken_ii") else CASH_BASE) + hits)
 	_cash_max = _cash
 	_cash_time = CASH_TIME + _power()
 	Sfx.play("unlock", 0.0, 1.2)

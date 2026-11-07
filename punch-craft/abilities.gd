@@ -26,7 +26,7 @@ const PASSIVES := {
 	],
 	"combo_master": [
 		{"id": "rapid_combos", "name": "Reboot", "icon": "heartbeat", "level": 1,
-			"desc": "When your combo ends you heal your combo multiplier in percent of your knuckle HP (x3 is 3%), plus 0.5 for every hit in it."},
+			"desc": "When your combo ends you heal your combo multiplier in percent of your knuckle HP (x3 is 3%), plus 0.5% for every hit in it."},
 		{"id": "echo_fists", "name": "Killswitch", "icon": "bolt", "level": 5,
 			"desc": "From a 15-hit combo you go ultraviolent: every knockout light-dashes you to the nearest monster."},
 		{"id": "long_reach", "name": "Ultraviolet", "icon": "star", "level": 15,
@@ -75,7 +75,7 @@ const ULTIMATES := {
 		{"id": "temporal_break", "name": "Temporal Break", "icon": "clock", "level": 1,
 			"desc": "Time stops. Your punches land when it resumes, all at once. Alternate hands to buy back time."},
 		{"id": "unbroken", "name": "Cash Out", "icon": "coin", "level": 10,
-			"desc": "Spend a combo of 5 hits or more for a shield of 5 knuckle HP plus 1 for every hit. While it's up a hit halves your combo instead of ending it."},
+			"desc": "Spend a combo of 5 hits or more for a shield of 5% of your knuckle HP plus 1% for every hit. While it's up a hit halves your combo instead of ending it."},
 	],
 	"free_runner": [
 		{"id": "highlight_reel", "name": "Highlight Reel", "icon": "chain", "level": 1,

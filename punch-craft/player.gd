@@ -97,8 +97,8 @@ const MUSCLE_HOLD := 2.0
 const MUSCLE_RANGE := 8.0
 ## Killswitch's light dash (how fast, how far it looks), Ultraviolet's fist (how far, how long it flies),
 ## and how fast Limit Break's soft cap grows past the top.
-## Reboot's flat knuckle HP for every hit landed in the combo.
-const REBOOT_FLAT := 0.5
+## Reboot's extra percent of max knuckle HP for every hit landed in the combo.
+const REBOOT_PER_HIT := 0.5
 const LIGHT_DASH_TIME := 0.12
 const LIGHT_DASH_RANGE := 14.0
 const ULTRAVIOLET_RANGE := 14.0
@@ -2274,17 +2274,16 @@ func _check_ground_pound(was_airborne: bool, delta: float) -> void:
 ## The Blur's passives (2026-11-06, the user's notes; ids kept so saves work):
 ## Reboot (rapid_combos), Killswitch (echo_fists), Ultraviolet (long_reach).
 
-## Reboot: when a combo ends you heal your combo multiplier in percent of your
-## knuckle HP (x3.2 is 3.2%) plus REBOOT_FLAT for every hit landed in it (the
-## flat part is what carries it early, when 1% of your HP is nothing), 1.5x as
-## much with Reboot II.
+## Reboot: when a combo ends you heal your combo multiplier plus REBOOT_PER_HIT for
+## every hit landed in it, in percent of your knuckle HP (x3.2 over 8 hits is
+## 7.2%), 1.5x as much with Reboot II.
 func _reboot(multiplier: float, hits: int) -> void:
-	var healed := (max_knuckles * 0.01 * multiplier * (1.0 + 0.05 * _pp()) + REBOOT_FLAT * hits) * (1.5 if GameState.has_effect("aftershock") else 1.0)
+	var healed := max_knuckles * 0.01 * (multiplier + REBOOT_PER_HIT * hits) * (1.0 + 0.05 * _pp()) * (1.5 if GameState.has_effect("aftershock") else 1.0)
 	if healed <= 0.0:
 		return
 	heal(healed)
 	# A green aura flash round you, bigger for a bigger heal (1-4% of your HP).
-	AuraField.burst(self, healed / maxf(max_knuckles, 1.0) * 25.0)
+	AuraField.burst(self, healed / maxf(max_knuckles, 1.0) * 10.0)
 	DamagePopup.spawn(get_parent(), "REBOOT +%d" % roundi(healed), AuraField.COLOR, 40, global_position + _flat_forward() + Vector3(0, 1.8, 0))
 	HitFx.burst(get_parent(), global_position + Vector3.UP, Vector3.UP, AuraField.COLOR, 14, 3.0, true, 0.04)
 

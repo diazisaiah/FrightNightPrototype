@@ -155,7 +155,7 @@ const DECKS := {
 		"temporal_break_ii": {"name": "Temporal Break II", "rarity": "epic", "icon": "clock", "tags": ["Ultimate"], "upgrades": "temporal_break",
 			"text": ["Temporal Break: every other punch grows your combo by 2, and the break lasts 30% longer"], "effects": {"temporal_break_ii": [1]}},
 		"unbroken_ii": {"name": "Cash Out II", "rarity": "epic", "icon": "coin", "tags": ["Ultimate"], "upgrades": "unbroken",
-			"text": ["Cash Out: the shield starts at 8 instead of 5"], "effects": {"unbroken_ii": [1]}},
+			"text": ["Cash Out: the shield starts at 8% instead of 5%"], "effects": {"unbroken_ii": [1]}},
 		"flurry": {"name": "Flurry", "rarity": "legendary", "icon": "burst", "tags": ["Combo"], "seal": "bellman",
 			"text": ["Every 25th hit in a combo unleashes 8 lightning-fast hits on the target"], "effects": {"flurry": [1]}},
 		"perpetual_motion": {"name": "Perpetual Motion", "rarity": "legendary", "icon": "infinity", "tags": ["Combo"], "seal": "headless",
