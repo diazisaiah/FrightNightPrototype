@@ -33,6 +33,8 @@ var _blur_step := 0.0
 var _precision := 0.0
 var _mirror := 0.0
 var _crowd := 0.0
+## Slick II: the chance a sprinting hit is a full dodge.
+const SLICK_CHANCE := 0.2
 var _slick_cooldown := 0.0
 var _afterglow := 0.0
 var _attune_speed := 0.0
@@ -57,7 +59,6 @@ var _ward := 0.0
 var _powers_gone := 0
 var _spectrum: Array[String] = []
 var _casting := false
-var _vault_target: Enemy
 ## The monster a Shoulder Charge uppercut is about to launch.
 var _shoulder_target: Enemy
 var _dash_hits := {}
@@ -204,7 +205,7 @@ func combo_window_scale() -> float:
 # --- Getting hit ------------------------------------------------------------------
 
 ## An attack nobody defended that a card slips for you: "" or what slipped it.
-func auto_slip(attack: String, _attacker: Enemy) -> String:
+func auto_slip(attack: String, attacker: Enemy) -> String:
 	if attack in ["quake", "zone"]:
 		return ""
 	if _crowd > 0.0:
@@ -215,10 +216,9 @@ func auto_slip(attack: String, _attacker: Enemy) -> String:
 	if _guard:
 		_guard = false
 		return "IN RHYTHM"
-	if player.dash_time > 0.0 and fx("ghost_step") > 0.0:
-		if fx("ghost_step") >= 2.0:
-			player._forward_dash_cooldown = 0.0
-		return "GHOST STEP"
+	# Vault (the Stray's passive): dashing at a monster as its attack lands vaults it.
+	if attacker and player.vault_ready() and attack not in ["arrow", "fireball", "bolt"] 			and player.vault_over(attacker, false):
+		return "VAULT"
 	if fx("blur") > 0.0 and player.combo >= 30 and randf() < 0.2:
 		return "BLUR"
 	if player.is_sprinting():
@@ -226,8 +226,7 @@ func auto_slip(attack: String, _attacker: Enemy) -> String:
 			_never += 1
 			if _never % 3 == 0:
 				return "NOT THERE"
-		if fx("slick") >= 2.0 and _slick_cooldown <= 0.0:
-			_slick_cooldown = 3.0
+		if fx("slick") >= 2.0 and randf() < SLICK_CHANCE:
 			return "SLICK"
 	return ""
 
@@ -370,6 +369,9 @@ func punch_mod(target: Enemy, type: String, counter: bool, airborne: bool, set_u
 	var facing := target.facing(player.global_position)
 	if facing < 0.3:
 		bonus += fx("cheap_shot")
+	# Ghost Step: your bonus move speed becomes damage (half of it, all of it at II).
+	if fx("ghost_step") > 0.0:
+		bonus += maxf(0.0, player.move_speed_bonus()) * 0.5 * fx("ghost_step")
 	if airborne:
 		bonus += fx("hang_time")
 	if airborne or player.global_position.y > target.global_position.y + 0.5:
@@ -393,9 +395,6 @@ func punch_mod(target: Enemy, type: String, counter: bool, airborne: bool, set_u
 	if first and facing < 0.5 and fx("blindside") > 0.0:
 		result.mult *= fx("blindside")
 		captions.append("BLINDSIDE!")
-	if target == _vault_target:
-		_vault_target = null
-		result.mult *= 2.0
 	if _free_running and not forced:
 		_free_running = false
 		result.mult *= 3.0
@@ -578,18 +577,9 @@ func dash_contact(enemy: Enemy) -> void:
 	if _dash_hits.has(enemy) or enemy.is_dead():
 		return
 	_dash_hits[enemy] = true
-	var forward := player._flat_forward()
-	if fx("vault") > 0.0 and not enemy.is_dead():
-		var spot := player.teleport_spot(enemy, enemy.global_position + forward * 1.3)
-		if spot == Vector3.INF:
-			return  # Its back's to a wall: nowhere to land.
-		player._dash = Vector3.ZERO
-		player.global_position = Vector3(spot.x, player.global_position.y, spot.z)
-		player.rotation.y = atan2(forward.x, forward.z)
-		HitFx.burst(player.get_parent(), enemy.global_position + Vector3(0, 2.2, 0), Vector3.UP, Color(0.35, 0.95, 0.5), 18, 3.0, true, 0.05)
-		Sfx.play("whoosh", -2.0, 1.4)
-		if fx("vault") >= 2.0:
-			_vault_target = enemy
+	# Vault: ran into a monster that's attacking, so go over it.
+	if enemy.incoming_attack() != "":
+		player.vault_over(enemy)
 
 
 # --- The Catalyst's powers -------------------------------------------------------------------

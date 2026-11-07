@@ -27,7 +27,8 @@ const CONTROL_GRACE := 2.0
 ## monster's grace (2026-10-29: 3.0 before).
 const BOSS_POISE := 4.5
 const KNOCKBACK_DECAY := 12.0
-const TURN_SPEED := 8.0
+## How fast a monster turns to face you (it was 8: they locked on and swung at once).
+const TURN_SPEED := 5.5
 const RECOIL_DISTANCE := 0.18
 const RECOIL_RECOVERY := 1.2
 const SPARK_COLOR := Color(1.0, 0.7, 0.3)

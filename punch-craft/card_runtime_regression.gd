@@ -37,7 +37,8 @@ func _run() -> void:
 		for ultimate in Abilities.ultimates(fighter):
 			await _exercise_ultimate(fighter, ultimate.id)
 	await _test_teleport_walls()
-	await _test_head_stomp()
+	await _test_stray_revamp()
+	await _test_reel_shot()
 	await _test_dash_punch_cooldowns()
 	await _test_combo_setups()
 	await _test_shift_rolls()
@@ -441,27 +442,99 @@ func _test_teleport_walls() -> void:
 	print("Card runtime: teleports stay inside walls OK")
 
 
-## Head Stomp: the Stray's jump reaches a monster's head, and coming down by
-## it stomps it (a bounce, a stun, damage).
-func _test_head_stomp() -> void:
+## The Stray's revamp (2026-11-07): Vault (the old Head Stomp slot), Spring Shoes,
+## Pivot, Ghost Step, Slick, Parkour, jump gravity, slower monster turning and the
+## Highlight Reel's third-person shot.
+func _test_stray_revamp() -> void:
 	var rig := await _make_rig("free_runner")
 	var holder: Node3D = rig[0]
 	var player: Player = rig[1]
 	var dummies: Array[Enemy] = rig[2]
-	GameState.loadouts.free_runner.passive = "head_stomp"
 	var target := dummies[0]
-	var gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
-	var peak := pow(Player.JUMP_VELOCITY * player._stomp_jump(), 2.0) / (2.0 * gravity)
-	_check(peak >= target.top_height() + Player.STOMP_BAND.x + 0.2,
-			"The Stray's jump (%.2fm) reaches a head (%.2fm)" % [peak, target.top_height()])
+	player.active = true
+	GameState.loadouts.free_runner.passive = "head_stomp"
+	player.cards._forget()
+	# Jumps fall faster but still get about as high.
+	var normal: float = ProjectSettings.get_setting("physics/3d/default_gravity")
+	var peak := pow(Player.JUMP_VELOCITY, 2.0) / (2.0 * player._gravity)
+	_check(player._gravity > normal * 1.4 and peak > 0.9 and peak < 1.4, "Jumps: more gravity (%.1f vs %.1f), peak %.2fm" % [player._gravity, normal, peak])
+	_check(Enemy.TURN_SPEED < 8.0, "Monsters turn slower than they did (%.1f)" % Enemy.TURN_SPEED)
+	# Vault: dashing at an attacking monster vaults over it, with a counter either way.
+	player.global_position = Vector3.ZERO
+	player.rotation.y = 0.0
+	target.global_position = Vector3(0, 0, -1.6)
+	_check(not player.vault_ready(), "Vault needs a dash")
+	player.dash_time = 0.2
+	_check(player.vault_ready(), "Vault is ready on a dash")
+	var result := player.receive_attack(20.0, target.global_position, "jab", target)
+	_check(result == "dodged", "The attack is dodged by the vault (%s)" % result)
+	_check(player.global_position.z < target.global_position.z, "Vaulted to the monster's back (%.1f vs %.1f)" % [player.global_position.z, target.global_position.z])
+	_check(player.is_counter_ready() and player._counter_side == "any", "A counter from either hand")
+	_check(is_equal_approx(player._vault_cooldown, maxf(2.0, 6.0 - 0.2 * player._pp())), "Spring Shoes: a 6s cooldown (%.1f)" % player._vault_cooldown)
+	_check(player._vault_counter, "Spring Shoes: the counter hits harder")
+	player.dash_time = 0.2
+	_check(not player.vault_ready(), "No second vault until the cooldown")
+	# Without Spring Shoes: 8s and a plain counter.
+	player._vault_cooldown = 0.0
+	GameState._classes.free_runner.cards.erase("bounce_house")
+	player.cards._forget()
+	player.global_position = Vector3.ZERO
+	target.global_position = Vector3(0, 0, -1.6)
+	player.dash_time = 0.2
+	player.vault_over(target)
+	_check(is_equal_approx(player._vault_cooldown, maxf(2.0, 8.0 - 0.2 * player._pp())) and not player._vault_counter, "Plain Vault: 8s and a plain counter (%.1f)" % player._vault_cooldown)
+	GameState._classes.free_runner.cards["bounce_house"] = 1
+	player.cards._forget()
+	# Pivot (the Vault card): with a counter ready, a slip springs you away, untouchable.
+	player._vault_cooldown = 0.0
+	player.global_position = Vector3.ZERO
+	target.global_position = Vector3(0, 0, -1.5)
+	player._ready_counter("any")
+	var before := player.global_position
+	player._try_defense("slip_left")
+	_check(player._pivot_time > 0.0 and player._dash.length() > 5.0, "Pivot: a slip with a counter ready springs you away")
+	_check(player.receive_attack(25.0, target.global_position, "jab", target) == "dodged", "Pivot: untouchable while it lasts")
+	player._pivot_time = 0.0
+	# Ghost Step: bonus move speed adds damage.
+	_check(player.cards.fx("ghost_step") > 0.0 and player.move_speed_bonus() > 0.2, "Ghost Step: the Stray's speed bonus (%.2f) counts" % player.move_speed_bonus())
+	_check(is_equal_approx(CardPlay.SLICK_CHANCE, 0.2), "Slick: a one in five chance")
+	# Parkour still bounces off heads.
 	player.global_position = target.global_position + Vector3(0.3, target.top_height() + 0.1, 0)
 	player.velocity = Vector3(0, -2.0, 0)
 	player._stomp_cooldown = 0.0
 	player._check_head_stomp()
-	# (The training dummy never loses HP: the stun and the bounce show it.)
-	_check(target.is_staggered() and player.velocity.y > 0.0, "Coming down by a head stomps it")
+	_check(target.is_staggered() and player.velocity.y > 0.0, "Parkour: coming down on a head bounces off it")
 	await _free_rig(holder)
-	print("Card runtime: head stomp OK")
+	print("Card runtime: stray revamp OK")
+
+
+## The Highlight Reel's shot: third person, every hit lands, then first person again.
+func _test_reel_shot() -> void:
+	var rig := await _make_rig("free_runner", "highlight_reel")
+	var holder: Node3D = rig[0]
+	var player: Player = rig[1]
+	var dummies: Array[Enemy] = rig[2]
+	player.active = true
+	player.global_position = Vector3.ZERO
+	player.rotation.y = 0.0
+	var spots := [Vector3(0, 0, -4), Vector3(2.5, 0, -7), Vector3(-2.5, 0, -9), Vector3(-9, 0, 12)]
+	for i in dummies.size():
+		dummies[i].global_position = spots[i] if i < spots.size() else Vector3(9, 0, 12)
+		dummies[i].set_physics_process(false)
+		dummies[i]._last_damage = 0.0
+	player.ult.meter = Ult.MAX_METER
+	player.ult._start_reel()
+	await get_tree().create_timer(0.3, false, false, true).timeout
+	_check(player.cinematic and player.ult.mode == "reel", "Highlight Reel is a third-person shot")
+	await get_tree().create_timer(5.0, false, false, true).timeout
+	_check(player.ult.mode == "" and not player.cinematic, "The shot ends back in first person")
+	var hit := 0
+	for i in 3:
+		if dummies[i]._last_damage > 0.0:
+			hit += 1
+	_check(hit >= 3, "Every monster in view got hit (%d of 3)" % hit)
+	await _free_rig(holder)
+	print("Card runtime: highlight reel shot OK")
 
 
 ## The Stray's dash punches: a Spear Jab and a Haymaker each have a cooldown

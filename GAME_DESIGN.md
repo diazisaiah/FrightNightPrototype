@@ -2015,6 +2015,18 @@ From the user's notes on the audit page ("every ability of his needs work"). Ids
 - **New order (the user, 2026-11-07: Reboot shouldn't be the starter):** Ultraviolet is the level-1 passive (and the default), Killswitch level 5, Reboot level 15. Saves with Reboot equipped below level 15 fall back to Ultraviolet by the existing locked-pick rule; Reboot II (the epic) is now drawn from level 15.
 - **Tests:** `_test_blur_revamp` (Reboot's heal, the Killswitch threshold and light dash, Ultraviolet's fist, Limit Break's soft cap, Instinct, Retaliation) and the Cash Out checks in `_exercise_ultimate`.
 
+### Stray passives, ultimates and cards (built 2026-11-07, Lab and dev site only: no itch release until the user says)
+From the user's notes. Ids are kept (`head_stomp` is now the Vault passive, `vault` the Pivot card, `bounce_house` Spring Shoes).
+- **Head Stomp becomes Vault (passive, level 5):** dashing at a monster that is attacking vaults you over it (a dash into an attacking monster, or its attack landing mid-dash; ranged attacks don't count). It's a dodge with a counter from either hand, a green burst and afterimage, and it interrupts the monster and holds it (0.8s, "VAULTED") so it has to turn round before its next attack. 8s cooldown, less 0.2s per passive power point; the passive chip shows READY or the seconds. The old stomp bounce is gone (monsters could hit you from above, and fixing that would have made bouncing endless).
+- **Bounce House becomes Spring Shoes (epic):** Vault's cooldown is 6s and the counter after a vault deals 50% more.
+- **Parkour (legendary) still bounces off heads** (a 0.5s stun, jump punches give the dash back); it is now the only thing that does.
+- **Vault card becomes Pivot (rare):** with a counter ready, a slip or roll spends the counter to spring away from the nearest monster (16 m/s, untouchable 0.4s). Pivot II keeps the counter. It uses the counter to escape instead of counter-punching.
+- **Ghost Step (rare):** no more dash dodge. Your bonus move speed (gear, cards, the Stray's perk, Hype Train) adds damage: half of it to every punch, all of it at rank II.
+- **Slick (rare):** hits while sprinting still only graze; rank II gives a 20% chance of a full dodge instead of one every 3s.
+- **Monsters turn slower** (`Enemy.TURN_SPEED` 8 to 5.5; a slight global nerf: they locked on and attacked instantly). **Jumps fall faster:** gravity x1.5 for the player, jump speed 4.8 to 5.8, so the height is about the same (peak ~1.1m) and the float is gone. Hang Time, High Ground and Dive Kick work as before with less air time.
+- **Highlight Reel is a third-person shot:** he crouches into a sprinting stance, his feet glow green (the Stray's aura now has glowing feet), and he launches at each monster with a neon green trail (two ribbons, feet and waist) and a body clip for each haymaker. Every hit is a haymaker (the finisher a bigger one with the leap and the knockdown). The camera sits behind and follows a beat late so the dashes streak; the dash is slower in the shot (distance over 40 m/s, 0.09-0.22s) and a chain longer than 5 speeds up so the shot stays short. With the setting off it plays in first person with green lightning. Hype Train has no shot (not yet: the green feet only show in third person).
+- **Tests:** `_test_stray_revamp` (gravity, turn speed, Vault with and without Spring Shoes, Pivot, Ghost Step, Slick, Parkour) and `_test_reel_shot`.
+
 ### The original plan
 
 The user tests away from the computer, so the playground gets a phone version on a restricted itch page. Much simpler than the desktop playground: only the key features, with big buttons.

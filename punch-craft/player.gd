@@ -40,7 +40,16 @@ signal class_event(text: String)
 
 const WALK_SPEED := 5.0
 const SPRINT_SPEED := 8.0
-const JUMP_VELOCITY := 4.8
+const JUMP_VELOCITY := 5.8
+## Jumps fall faster (2026-11-07, the Stray notes: they floated too long): more
+## gravity, a little more push so the height is about the same.
+const JUMP_GRAVITY := 1.5
+## Vault (the Stray's passive): its cooldown, and its Spring Shoes cooldown.
+const VAULT_COOLDOWN := 8.0
+const VAULT_COOLDOWN_II := 6.0
+const VAULT_STUN := 0.8
+const PIVOT_TIME := 0.4
+const PIVOT_SPEED := 16.0
 ## Head Stomp (and the Parkour card) jump this much higher: a plain jump
 ## peaks around 1.2m, short of a monster's head (about 1.8m).
 const STOMP_JUMP := 1.3
@@ -306,7 +315,7 @@ var max_knuckles := 0.0
 var knuckles := 0.0
 var combo := 0
 
-var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
+var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity") * JUMP_GRAVITY
 var _last_hand := ""
 ## Hand of the last punch thrown; hook/uppercut buttons use the other one.
 var _last_punch_hand := "right"
@@ -374,6 +383,11 @@ const ULTRAVIOLENT_FOV := 8.0
 var _grudge_hits := 0
 ## Bounce House: bounces since you last touched the floor.
 var _stomp_chain := 0
+## Vault: its cooldown, whether the counter you got from it is Spring Shoes' stronger one,
+## and the Pivot card's untouchable window.
+var _vault_cooldown := 0.0
+var _vault_counter := false
+var _pivot_time := 0.0
 ## Fuggedaboudit II's second wave-off.
 var _fugget_spare := false
 ## The attack being dodged (for the cards that care what it was).
@@ -864,6 +878,8 @@ func _resolve_attack(amount: float, from: Vector3, attack: String, attacker: Nod
 		return "dodged"
 	# A third-person ultimate and the half second after it: nothing touches you.
 	if is_cinematic_immune() and ult._riposte <= 0.0:
+		return "dodged"
+	if _pivot_time > 0.0:
 		return "dodged"
 	# Get Up: back on your feet, untouchable for a moment.
 	if cards.untouchable > 0.0:
@@ -1531,6 +1547,8 @@ func _assisted_move(attack: String, side: String) -> String:
 func _try_defense(move: String) -> void:
 	if _defense_cooldown > 0.0:
 		return
+	if (move.begins_with("slip") or move.begins_with("roll")) and _try_pivot():
+		return
 	var defense: Dictionary = DEFENSES[move]
 	var window: float = defense.window * GameState.get_dodge_window_multiplier()
 	_defense = move
@@ -1625,6 +1643,7 @@ func _ready_counter(side: String) -> void:
 
 func _clear_counter() -> void:
 	_clean_counter = false
+	_vault_counter = false
 	if _counter_side == "":
 		return
 	_counter_timer = 0.0
@@ -1816,6 +1835,7 @@ func _land_punch(type: String, hand: String, _dashing := false, airborne := fals
 	# A counter only counts with the hand on the side you dodged to.
 	var counter := is_counter_ready() and (_counter_side == "any" or _counter_side == hand)
 	var clean := counter and _clean_counter
+	var vault_counter := counter and _vault_counter
 	# Mid-Roll Counter (Grandmaster's Wraps): a punch thrown mid-roll counts
 	# as a counter without using up the counter window.
 	if not counter and _defense.begins_with("roll") and GameState.has_effect("mid_roll"):
@@ -1876,6 +1896,9 @@ func _land_punch(type: String, hand: String, _dashing := false, airborne := fals
 		raw_damage *= GameState.get_heavy_multiplier()
 	if counter:
 		raw_damage *= GameState.get_counter_multiplier(COUNTER_MULTIPLIER)
+		# Spring Shoes: the counter after a Vault hits 50% harder.
+		if vault_counter:
+			raw_damage *= 1.5
 	if target_was_low:
 		raw_damage *= 1.0 + GameState.get_effect("finisher_bonus")
 	if target.is_boss:
@@ -2597,6 +2620,8 @@ func _update_passive_timers(delta: float) -> void:
 		_grudge_mark.position.y = _grudge.top_height() + 0.55 + 0.06 * sin(Time.get_ticks_msec() * 0.005) if is_instance_valid(_grudge) else _grudge_mark.position.y
 	_update_speed_lines()
 	_stomp_cooldown = maxf(0.0, _stomp_cooldown - delta)
+	_vault_cooldown = maxf(0.0, _vault_cooldown - delta)
+	_pivot_time = maxf(0.0, _pivot_time - delta)
 	if unbroken_time > 0.0:
 		unbroken_time -= delta
 		_combo_timer = maxf(_combo_timer, 0.5)
@@ -2697,7 +2722,7 @@ func _check_head_stomp() -> void:
 
 
 func _can_stomp() -> bool:
-	return GameState.has_passive("head_stomp") or GameState.has_effect("parkour")
+	return GameState.has_effect("parkour")
 
 
 func _stomp_jump() -> float:
@@ -2707,27 +2732,100 @@ func _stomp_jump() -> float:
 func _stomp(enemy: Enemy) -> void:
 	_stomp_cooldown = 0.35
 	velocity.y = JUMP_VELOCITY * 1.15 * _stomp_jump()
-	var head := enemy.global_position + Vector3(0, enemy.top_height(), 0)
-	if not GameState.has_passive("head_stomp"):
-		enemy.stun(0.5)
-		Sfx.play("heavy", -4.0, 1.4)
-		return
-	enemy.stun(STOMP_STUN + 0.1 * _pp())
-	enemy.squash()
-	# Bounce House: each bounce in a chain hits harder; three give the dash back.
-	var bounce := 1.0
-	if GameState.has_effect("bounce_house"):
-		bounce = pow(1.5, _stomp_chain)
-		_stomp_chain += 1
-		if _stomp_chain == 3:
-			_forward_dash_cooldown = 0.0
-			class_event.emit("BOUNCE HOUSE!")
-	enemy.take_hit(GameState.get_damage() * STOMP_DAMAGE * bounce * get_combo_multiplier(), head,
-			Vector3.ZERO, true, "STOMP!")
-	_set_combo(combo + 1)
-	_combo_timer = GameState.get_combo_window()
-	Sfx.play("heavy", -2.0, 1.3)
-	HitFx.burst(get_parent(), head, Vector3.UP, Color(0.4, 1.0, 0.5), 16, 4.0, true, 0.05)
+	# Parkour: a bounce off any head, with a short stun.
+	enemy.stun(0.5)
+	Sfx.play("heavy", -4.0, 1.4)
+
+
+## Vault (the Stray's passive, 2026-11-07; it was Head Stomp): dashing at a monster
+## that's attacking vaults you over it, to its back. It counts as a dodge (a counter with
+## either hand), interrupts the monster and holds its next attack until it has turned
+## round. Spring Shoes shortens the cooldown and makes the counter hit harder.
+## How much faster than usual you move (0.25 is 25%): gear, cards, perk and Hype Train.
+func move_speed_bonus() -> float:
+	var mult := GameState.get_move_speed_multiplier() * cards.move_mult()
+	if ult.hype > 0.0:
+		mult *= Ult.HYPE_SPEED
+	return mult - 1.0
+
+
+func vault_ready() -> bool:
+	return GameState.has_passive("head_stomp") and _vault_cooldown <= 0.0 and dash_time > 0.0
+
+
+func vault_cooldown_time() -> float:
+	var spring := GameState.has_effect("bounce_house")
+	return maxf(2.0, (VAULT_COOLDOWN_II if spring else VAULT_COOLDOWN) - 0.2 * _pp())
+
+
+## Vault over enemy; true if it did. hooks: run the dodge's follow-ups too (the
+## caller doing it for an attack that already landed passes false).
+func vault_over(enemy: Enemy, hooks := true) -> bool:
+	if not vault_ready() or enemy == null or enemy.is_dead():
+		return false
+	var forward := _flat_forward()
+	var spot := teleport_spot(enemy, enemy.global_position + forward * 1.3)
+	if spot == Vector3.INF:
+		return false  # Its back's to a wall: nowhere to land.
+	_vault_cooldown = vault_cooldown_time()
+	_vault_counter = GameState.has_effect("bounce_house")
+	var was := global_position
+	_dash = Vector3.ZERO
+	dash_time = 0.0
+	global_position = Vector3(spot.x, global_position.y, spot.z)
+	rotation.y = atan2(forward.x, forward.z)
+	var green := Color(0.35, 1.0, 0.5)
+	HitFx.burst(get_parent(), enemy.global_position + Vector3(0, 2.2, 0), Vector3.UP, green, 22, 3.5, true, 0.05)
+	HitFx.ring(get_parent(), enemy.global_position + Vector3(0, 0.1, 0), green, 1.6)
+	MoveFx.afterimage(get_parent(), was, green)
+	MoveFx.streak(get_parent(), was + Vector3.UP, global_position + Vector3.UP, green, 0.1, 0.4)
+	_kick_fov(6.0)
+	Sfx.play("whoosh", -2.0, 1.4)
+	# The monster: its attack is cancelled and it has to turn round.
+	enemy._on_staggered()
+	enemy.delay(VAULT_STUN, "VAULTED")
+	TimeFx.slowmo(0.7, 0.15)
+	_ready_counter("any")
+	class_event.emit("VAULT")
+	if hooks:
+		dodged.emit("vault")
+		ult.on_dodge(false)
+		powers.on_dodge(false)
+		cards.on_dodge(false, "vault", enemy)
+	return true
+
+
+## Pivot (the Stray's Vault card, now): with a counter ready, a slip or roll spends it to
+## spring away from the nearest monster, untouchable for a moment. Pivot II keeps the counter.
+func _try_pivot() -> bool:
+	if cards.fx("vault") <= 0.0 or not is_counter_ready() or _pivot_time > 0.0:
+		return false
+	var nearest: Enemy = null
+	var best := 8.0
+	for node in get_tree().get_nodes_in_group("enemies"):
+		var enemy := node as Enemy
+		if enemy == null or enemy.is_dead():
+			continue
+		var d := enemy.global_position.distance_to(global_position)
+		if d < best:
+			best = d
+			nearest = enemy
+	if nearest == null:
+		return false
+	var away := global_position - nearest.global_position
+	away.y = 0.0
+	if away.length() < 0.1:
+		away = -_flat_forward()
+	_dash = away.normalized() * PIVOT_SPEED
+	_pivot_time = PIVOT_TIME
+	if cards.fx("vault") < 2.0:
+		_clear_counter()
+	var green := Color(0.35, 1.0, 0.5)
+	MoveFx.afterimage(get_parent(), global_position, green)
+	HitFx.burst(get_parent(), global_position + Vector3.UP, Vector3.UP, green, 14, 3.0, true, 0.05)
+	Sfx.play("whoosh", -3.0, 1.2)
+	class_event.emit("PIVOT")
+	return true
 
 
 ## The Blur: from 10 hits in a combo, faster the longer it runs. The Stray:

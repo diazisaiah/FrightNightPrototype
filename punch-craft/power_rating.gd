@@ -78,7 +78,7 @@ const CARDS := {
 	"flurry": [0.06, 0.0], "perpetual_motion": [0.06, 0.0], "blur": [0.03, 0.08], "fifty": [0.04, 0.04],
 	# The Stray.
 	"dash_reach": [0.0, 0.1], "cheap_shot": [0.25, 0.0], "hang_time": [0.15, 0.0], "opportunist": [0.3, 0.0],
-	"vault": [0.03, 0.02], "blindside": [0.03, 0.0], "ghost_step": [0.0, 0.04], "slick": [0.0, 0.05],
+	"vault": [0.03, 0.02], "blindside": [0.03, 0.0], "ghost_step": [0.05, 0.0], "slick": [0.0, 0.05],
 	"spear_line": [0.08, 0.0], "bounce_house": [0.06, 0.0], "full_tilt": [0.1, 0.0], "directors_cut": [0.05, 0.0],
 	"express": [0.04, 0.0], "high_ground": [0.15, 0.0], "parkour": [0.03, 0.04], "never_where": [0.0, 0.08],
 	"free_running": [0.08, 0.0],

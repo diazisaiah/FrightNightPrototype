@@ -373,6 +373,9 @@ func _process(delta: float) -> void:
 			else:
 				_riposte_shot = false
 				player.end_cinematic()
+	# Highlight Reel's shot: the camera follows him a beat behind, so the dashes streak.
+	if mode == "reel" and player.cinematic:
+		player.cine_focus = player.cine_focus.lerp(player.global_position + Vector3.UP * 1.0, 1.0 - exp(-9.0 * real_delta))
 	if _farm > 0.0:
 		_farm -= real_delta
 		_set_status("AURA FARM  %.0fs" % maxf(_farm, 0.0) if _farm > 0.0 else "")
@@ -2030,19 +2033,33 @@ func _start_reel() -> void:
 	mode = "reel"
 	player.class_event.emit("HIGHLIGHT REEL!")
 	Sfx.play("tell", 0.0, 1.4)
+	# The user's idea (2026-11-07): a third-person shot. He crouches into a sprinting
+	# stance, his feet glow green, and he launches at each monster in turn with a neon
+	# trail behind him, every hit a haymaker.
+	var shot := player.cinematic_enabled()
+	if shot:
+		await _reel_intro()
+		if not is_instance_valid(player):
+			return
+	# A long chain speeds up so the shot stays short.
+	var pace := 1.0 / (1.0 + 0.12 * maxf(0.0, targets.size() - 5.0))
 	for i in targets.size():
 		var target := targets[i]
 		if not is_instance_valid(target) or target.is_dead() or not player.active:
 			continue
 		var last := i == targets.size() - 1
-		await _dash_to(target, last)
+		await _dash_to(target, last, shot, pace)
 		if not is_instance_valid(target) or target.is_dead():
 			continue
 		var hand := "left" if i % 2 == 0 else "right"
-		var type := "hook" if last else ("jab" if hand == "left" else "cross")
-		player._fists.play_punch(type, hand, 0.06, 0.25)
-		player._animate_head(type, hand, 0.06, 0.25)
-		await _wait(0.06)
+		# Every punch is a haymaker (the finisher a hook, as it was).
+		var type := "hook"
+		if shot:
+			player._body.play_clip(Emotes.parse(_reel_swing(hand, last)))
+		else:
+			player._fists.play_punch(type, hand, 0.06, 0.25)
+			player._animate_head(type, hand, 0.06, 0.25)
+		await _wait((0.12 if shot else 0.06) * pace)
 		if not is_instance_valid(target) or target.is_dead():
 			continue
 		player._free_punch = true
@@ -2058,14 +2075,81 @@ func _start_reel() -> void:
 		if _card("directors_cut") and is_instance_valid(target) and not target.is_dead():
 			target.stun(1.0, true)
 		if is_instance_valid(target):
-			HitFx.burst(player.get_parent(), target.global_position + Vector3(0, 1.3, 0), Vector3.UP, LIGHTNING_COLOR, 24, 6.0, true, 0.05)
-		await _wait(REEL_PAUSE)
+			HitFx.burst(player.get_parent(), target.global_position + Vector3(0, 1.3, 0), Vector3.UP, REEL_COLOR, 24, 6.0, true, 0.05)
+			if shot:
+				HitFx.ring(player.get_parent(), target.global_position + Vector3(0, 0.9, 0), REEL_COLOR, 1.8)
+		await _wait(REEL_PAUSE * pace)
+		# Back into the run for the next one.
+		if shot and not last and is_instance_valid(player):
+			player._body.play_clip(Emotes.parse(REEL_RUN_CLIP))
+	if shot and is_instance_valid(player):
+		await _wait(0.45)
+		if is_instance_valid(player):
+			player.end_cinematic()
 	mode = ""
+
+
+const REEL_COLOR := Color(0.35, 1.0, 0.55)
+## The sprinting stance: low, leaning into it, arms swept back. Feet glow (the aura).
+const REEL_POSE_CROUCH := {"torso": [-30, 0, 0], "head": [22, 0, 0], "ls": [-48, 0, -8], "le": [70, 0, 0], "rs": [-48, 0, 8], "re": [70, 0, 0],
+	"lh": [42, 0, 0], "lk": [-76, 0, 0], "rh": [-20, 0, 0], "rk": [-34, 0, 0], "pos": [0, -16, 0]}
+const REEL_CROUCH_CLIP := {"name": "Reel crouch", "length": 3.0, "loop": false, "plant": false, "keys": [
+	{"t": 0.0, "pose": {"torso": [3, 0, 0], "head": [0, 0, 0], "ls": [18, 0, -6], "le": [28, 0, 0], "rs": [18, 0, 6], "re": [28, 0, 0],
+		"lh": [2, 0, 0], "lk": [-4, 0, 0], "rh": [2, 0, 0], "rk": [-4, 0, 0], "pos": [0, -1, 0]}},
+	{"t": 0.35, "ease": "ease", "pose": REEL_POSE_CROUCH},
+	{"t": 3.0, "pose": REEL_POSE_CROUCH},
+]}
+## Running flat out: the legs trade places fast.
+const REEL_RUN_POSE_A := {"torso": [-32, 0, 0], "head": [24, 0, 0], "ls": [-55, 0, -8], "le": [75, 0, 0], "rs": [-55, 0, 8], "re": [75, 0, 0],
+	"lh": [58, 0, 0], "lk": [-82, 0, 0], "rh": [-38, 0, 0], "rk": [-52, 0, 0], "pos": [0, -12, 0]}
+const REEL_RUN_POSE_B := {"torso": [-32, 0, 0], "head": [24, 0, 0], "ls": [-55, 0, -8], "le": [75, 0, 0], "rs": [-55, 0, 8], "re": [75, 0, 0],
+	"lh": [-38, 0, 0], "lk": [-52, 0, 0], "rh": [58, 0, 0], "rk": [-82, 0, 0], "pos": [0, -12, 0]}
+const REEL_RUN_CLIP := {"name": "Reel run", "length": 0.3, "loop": true, "plant": false, "keys": [
+	{"t": 0.0, "pose": REEL_RUN_POSE_A},
+	{"t": 0.15, "pose": REEL_RUN_POSE_B},
+]}
+
+
+## A haymaker: the body winds up away from the punching hand and swings the arm round
+## wide (the finisher puts more of him into it).
+func _reel_swing(hand: String, last: bool) -> Dictionary:
+	var side := 1.0 if hand == "right" else -1.0
+	var wind := {"torso": [-18, -34.0 * side, 0], "head": [10, 20.0 * side, 0], "pos": [0, -14, 0]}
+	var swing := {"torso": [-20, (44.0 if last else 36.0) * side, 0], "head": [8, -16.0 * side, 0], "pos": [0, -14, 0]}
+	if hand == "right":
+		wind.merge({"rs": [70, 0, -110], "re": [60, 0, 0]})
+		swing.merge({"rs": [92, 0, -54], "re": [98, 0, 0]})
+	else:
+		wind.merge({"ls": [70, 0, 110], "le": [60, 0, 0]})
+		swing.merge({"ls": [92, 0, 54], "le": [98, 0, 0]})
+	return {"name": "Reel haymaker", "length": 1.0, "loop": false, "plant": false, "keys": [
+		{"t": 0.0, "pose": REEL_RUN_POSE_A},
+		{"t": 0.07, "ease": "ease", "pose": REEL_POSE_CROUCH.merged(wind, true)},
+		{"t": 0.14, "ease": "snap", "pose": REEL_POSE_CROUCH.merged(swing, true)},
+		{"t": 1.0, "pose": REEL_POSE_CROUCH.merged(swing, true)},
+	]}
+
+
+## The shot opens: a crouch into the sprinting stance, the feet blazing, the camera
+## behind and low.
+func _reel_intro() -> void:
+	var yaw := player.rotation.y
+	player.start_cinematic(Emotes.parse(REEL_CROUCH_CLIP), player.global_position + Vector3.UP * 1.0, Vector2(yaw, 0.1), 3.6)
+	player.cine_world = true
+	player._aura.flare(1.8)
+	HitFx.ring(player.get_parent(), player.global_position + Vector3.UP * 0.1, Color(REEL_COLOR, 0.8), 2.4)
+	Sfx.play("whoosh", -2.0, 0.7)
+	var pull := player.create_tween()
+	pull.tween_property(player, "cine_distance", 3.0, 0.5).set_trans(Tween.TRANS_SINE)
+	await _wait(0.55)
+	if is_instance_valid(player):
+		player._body.play_clip(Emotes.parse(REEL_RUN_CLIP))
+		player._aura.flare(2.2)
 
 
 ## Streaks to just in front of the target, leaving lightning behind. The
 ## finisher leaps in.
-func _dash_to(target: Enemy, leap: bool) -> void:
+func _dash_to(target: Enemy, leap: bool, shot := false, pace := 1.0) -> void:
 	var from := player.global_position
 	var to := target.global_position - from
 	to.y = 0.0
@@ -2075,24 +2159,59 @@ func _dash_to(target: Enemy, leap: bool) -> void:
 	Sfx.play("whoosh", 0.0, 1.5)
 	# Waist height, so it streaks past below the camera rather than through it.
 	var ahead := (dest - from).normalized() * 0.5
-	_lightning(from + ahead + Vector3(0, 0.8, 0), dest + Vector3(0, 0.8, 0))
+	if not shot:
+		_lightning(from + ahead + Vector3(0, 0.8, 0), dest + Vector3(0, 0.8, 0))
+	_neon_trail(from, dest)
+	# In the shot the dash is slower, so the streak can be seen.
+	var time := REEL_DASH_TIME
+	if shot:
+		time = clampf(from.distance_to(dest) / 40.0, REEL_DASH_TIME, 0.22) * pace
 	var tween := player.create_tween()
 	tween.set_ignore_time_scale(true)
 	if leap:
 		var top := (from + dest) / 2.0 + Vector3(0, 1.2, 0)
-		tween.tween_property(player, "global_position", top, REEL_DASH_TIME * 1.5).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
-		tween.tween_property(player, "global_position", dest, REEL_DASH_TIME * 1.5).set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD)
+		tween.tween_property(player, "global_position", top, time * 1.5).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
+		tween.tween_property(player, "global_position", dest, time * 1.5).set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD)
 	else:
-		tween.tween_property(player, "global_position", dest, REEL_DASH_TIME)
+		tween.tween_property(player, "global_position", dest, time)
 	await tween.finished
+
+
+## The neon trail the Stray leaves behind (two glowing ribbons, one at his feet, one at
+## his waist) that fades away.
+func _neon_trail(from: Vector3, to: Vector3) -> void:
+	for height: float in [0.1, 0.85]:
+		var a := from + Vector3(0, height, 0)
+		var b := to + Vector3(0, height, 0)
+		var length := a.distance_to(b)
+		if length < 0.2:
+			continue
+		var material := StandardMaterial3D.new()
+		material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		material.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+		material.albedo_color = Color(REEL_COLOR.lightened(0.15), 0.9 if height < 0.5 else 0.55)
+		var box := BoxMesh.new()
+		box.size = Vector3(0.34 if height < 0.5 else 0.1, 0.06, length)
+		box.material = material
+		var mesh := MeshInstance3D.new()
+		mesh.mesh = box
+		mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		player.get_parent().add_child(mesh)
+		mesh.global_position = (a + b) / 2.0
+		mesh.look_at(b, Vector3.UP if absf((b - a).normalized().y) < 0.99 else Vector3.RIGHT)
+		var tween := mesh.create_tween()
+		tween.set_ignore_time_scale(true)
+		tween.tween_property(material, "albedo_color:a", 0.0, 0.8).set_trans(Tween.TRANS_SINE)
+		tween.tween_callback(mesh.queue_free)
 
 
 ## A jagged glowing bolt between two points that flickers and fades.
 func _lightning(from: Vector3, to: Vector3) -> void:
 	var bolt := Node3D.new()
 	player.get_parent().add_child(bolt)
-	var material := Enemy._glow_material(LIGHTNING_COLOR)
-	var core := Enemy._glow_material(Color(0.9, 0.97, 1.0))
+	var material := Enemy._glow_material(REEL_COLOR)
+	var core := Enemy._glow_material(Color(0.92, 1.0, 0.94))
 	var segments := maxi(4, int(from.distance_to(to) / 0.6))
 	var side := (to - from).cross(Vector3.UP).normalized()
 	var points: Array[Vector3] = [from]
@@ -2115,12 +2234,12 @@ func _lightning(from: Vector3, to: Vector3) -> void:
 			if not a.is_equal_approx(b):
 				mesh.look_at(b, Vector3.UP if absf((b - a).normalized().y) < 0.99 else Vector3.RIGHT)
 	var light := OmniLight3D.new()
-	light.light_color = LIGHTNING_COLOR
+	light.light_color = REEL_COLOR
 	light.light_energy = 4.0
 	light.omni_range = 5.0
 	bolt.add_child(light)
 	light.global_position = (from + to) / 2.0
-	HitFx.burst(player.get_parent(), from, Vector3.UP, LIGHTNING_COLOR, 14, 3.0, true, 0.04)
+	HitFx.burst(player.get_parent(), from, Vector3.UP, REEL_COLOR, 14, 3.0, true, 0.04)
 	var tween := bolt.create_tween()
 	tween.set_ignore_time_scale(true)
 	tween.tween_property(bolt, "scale", Vector3(1, 1, 1), 0.12)

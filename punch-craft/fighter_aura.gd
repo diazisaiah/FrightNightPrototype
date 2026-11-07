@@ -23,6 +23,8 @@ const FADE_SPEED := 3.0
 const FLARE_DECAY := 1.4
 ## Where the glove is on the elbow pivot (down the forearm).
 const GLOVE := Vector3(0, -0.36, 0)
+## And the foot, down the shin.
+const FOOT := Vector3(0, -0.4, 0)
 
 var fighter := ""
 var _body: PlayerBody
@@ -75,6 +77,10 @@ func setup(body: PlayerBody, id: String) -> void:
 		"free_runner":
 			_swirl(0.45, Color(0.3, 1.0, 0.5), 3.0)
 			_swirl(0.62, Color(0.55, 1.0, 0.7), -2.2)
+			# Glowing feet, a neon trail off each heel.
+			for key in ["lk", "rk"]:
+				if body._joints.has(key):
+					_trail(body._joints[key], Color(0.3, 1.0, 0.5), FOOT, 44)
 		"wise_guy":
 			_glints(Color(1.0, 0.82, 0.3))
 		"elementalist":
@@ -227,8 +233,8 @@ func _swirl(radius: float, color: Color, spin: float) -> void:
 
 
 ## A fading trail off a glove.
-func _trail(parent: Node3D, color: Color) -> void:
-	var p := _particles(parent, GLOVE, 24, 0.5, 0.05, [Color(color.lightened(0.4), 0.0), Color(color.lightened(0.2), 0.9), Color(color, 0.0)])
+func _trail(parent: Node3D, color: Color, at := GLOVE, amount := 24) -> void:
+	var p := _particles(parent, at, amount, 0.5, 0.05, [Color(color.lightened(0.4), 0.0), Color(color.lightened(0.2), 0.9), Color(color, 0.0)])
 	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
 	p.emission_sphere_radius = 0.1
 	p.initial_velocity_min = 0.0
