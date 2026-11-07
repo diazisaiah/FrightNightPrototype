@@ -46,6 +46,19 @@ var _fade := 1.0
 var _ending := false
 
 
+## A short green flash of the field round the player (Reboot's heal): the ring,
+## motes and screen glow come up and fade in about a second. scale (0-1) is how big.
+static func burst(player: Player, scale := 1.0) -> void:
+	var field := AuraField.new()
+	player.add_child(field)
+	field.setup(player)
+	field.set_strength(clampf(scale, 0.35, 1.0))
+	field.pulse()
+	player.get_tree().create_timer(0.5, false).timeout.connect(func() -> void:
+		if is_instance_valid(field):
+			field.finish())
+
+
 func setup(player: Player) -> void:
 	_player = player
 	var parent := player.get_parent()

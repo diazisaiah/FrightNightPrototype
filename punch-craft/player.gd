@@ -2279,8 +2279,10 @@ func _reboot(multiplier: float) -> void:
 	if healed <= 0.0:
 		return
 	heal(healed)
-	DamagePopup.spawn(get_parent(), "REBOOT +%d" % roundi(healed), Color(0.55, 0.9, 1.0), 40, global_position + _flat_forward() + Vector3(0, 1.8, 0))
-	HitFx.burst(get_parent(), global_position + Vector3.UP, Vector3.UP, Color(0.55, 0.9, 1.0), 12, 3.0, true, 0.04)
+	# A green aura flash round you, bigger for a bigger heal (1-4% of your HP).
+	AuraField.burst(self, healed / maxf(max_knuckles, 1.0) * 25.0)
+	DamagePopup.spawn(get_parent(), "REBOOT +%d" % roundi(healed), AuraField.COLOR, 40, global_position + _flat_forward() + Vector3(0, 1.8, 0))
+	HitFx.burst(get_parent(), global_position + Vector3.UP, Vector3.UP, AuraField.COLOR, 14, 3.0, true, 0.04)
 
 
 ## Killswitch: the combo length that makes you ultraviolent (15 hits, 10 with
