@@ -177,6 +177,8 @@ var _farm := 0.0
 ## Cash Out: the shield left (knuckle HP) and its seconds.
 var _cash := 0.0
 var _cash_time := 0.0
+var _cash_max := 1.0
+var _field: AuraField
 var _riposte_shot := false
 ## Which stance clip the body is in (-1 none, 0 still, 1 walking) and when a reaction clip ends.
 var _stance_state := -1
@@ -377,6 +379,8 @@ func _process(delta: float) -> void:
 			_cash = 0.0
 			_cash_time = 0.0
 			_set_status("")
+			if is_instance_valid(_field):
+				_field.finish()
 		else:
 			_set_status("CASH OUT  shield %d  %.0fs" % [roundi(_cash), maxf(_cash_time, 0.0)])
 	_update_slabs(real_delta)
@@ -783,13 +787,27 @@ func _start_time_stop() -> void:
 		_set_status("No enemies near", 1.2)
 		return
 	_spend()
+	# The shot (the user's idea, 2026-11-06): from above and the side, his hand
+	# goes up like a stop sign and a sphere that starts inside it drains the
+	# colour out of the world as it grows and freezes the monsters; then first
+	# person, and the clock starts.
+	var shot := player.cinematic_enabled()
+	if shot:
+		mode = "time_stop_intro"
+		await _time_stop_intro()
+		if not is_instance_valid(player):
+			return
 	mode = "time_stop"
 	TimeFx.clear()
+	targets = _alive_enemies().filter(func(e: Enemy) -> bool:
+		return e.global_position.distance_to(player.global_position) <= TIME_STOP_RANGE)
 	targets.sort_custom(func(a: Enemy, b: Enemy) -> bool:
 		return a.global_position.distance_to(player.global_position) < b.global_position.distance_to(player.global_position))
 	_struck.assign(targets)
 	_target_index = 0
-	_freeze(true)
+	if not shot:
+		_freeze(true)
+		_grade_spread(Vector2(0.5, 0.55), 0.45)
 	_stop_repeats = _stop_repeats + 1 if _stop_fatigue > 0.0 else 0
 	var repeat := maxf(pow(TIME_STOP_REPEAT, _stop_repeats), TIME_STOP_REPEAT_MIN)
 	_time_full = (TIME_STOP_START + 1.5 * _power()) * (1.3 if _card("temporal_break_ii") else 1.0) * repeat
@@ -800,12 +818,99 @@ func _start_time_stop() -> void:
 	_stop_hand = ""
 	_punch_wait = 0.0
 	_spark_count = 0
-	_time_wave(true)
-	Sfx.play("tell", 0.0, 0.5)
-	Sfx.play("counter", -2.0, 0.45)
-	player._kick_fov(-10.0)
-	player.shake(0.08)
+	if not shot:
+		_time_wave(true)
+		Sfx.play("tell", 0.0, 0.5)
+		Sfx.play("counter", -2.0, 0.45)
+		player._kick_fov(-10.0)
+		player.shake(0.08)
 	player.class_event.emit("TEMPORAL BREAK!" if repeat >= 1.0 else "TEMPORAL BREAK  -%d%%" % roundi((1.0 - repeat) * 100.0))
+
+
+## The Blur's hand goes up like a stop sign.
+const TIME_HAND_CLIP := {"name": "Time stop", "length": 3.0, "loop": false, "plant": false, "keys": [
+	{"t": 0.0, "pose": {"torso": [0, 0, 0], "head": [0, 0, 0], "ls": [18, 0, -6], "le": [28, 0, 0], "rs": [18, 0, 6], "re": [28, 0, 0],
+		"lh": [2, 0, 0], "lk": [-4, 0, 0], "rh": [2, 0, 0], "rk": [-4, 0, 0], "pos": [0, 0, 0]}},
+	{"t": 0.45, "ease": "ease", "pose": {"torso": [6, 0, 0], "head": [-8, 0, 0], "ls": [26, 0, -12], "le": [30, 0, 0], "rs": [112, 0, 6], "re": [14, 0, 0],
+		"lh": [8, 0, 0], "lk": [-14, 0, 0], "rh": [-4, 0, 0], "rk": [-10, 0, 0], "pos": [0, -2, 0]}},
+	{"t": 3.0, "pose": {"torso": [6, 0, 0], "head": [-8, 0, 0], "ls": [26, 0, -12], "le": [30, 0, 0], "rs": [112, 0, 6], "re": [14, 0, 0],
+		"lh": [8, 0, 0], "lk": [-14, 0, 0], "rh": [-4, 0, 0], "rk": [-10, 0, 0], "pos": [0, -2, 0]}},
+]}
+## How long the grey sphere takes to cover the screen.
+const TIME_SPREAD := 0.9
+var _grade: TimeGrade
+
+
+func _grade_node() -> TimeGrade:
+	if _grade == null or not is_instance_valid(_grade):
+		_grade = TimeGrade.new()
+		player.add_child(_grade)
+	return _grade
+
+
+## Where his raised hand is on the screen right now (screen UV).
+func _hand_uv() -> Vector2:
+	var camera := get_viewport().get_camera_3d()
+	var joint: Node3D = player._body._joints.get("re")
+	if camera == null or joint == null:
+		return Vector2(0.5, 0.45)
+	var hand := joint.global_transform * FighterAura.GLOVE
+	return camera.unproject_position(hand) / get_viewport().get_visible_rect().size
+
+
+## One step of the sphere (t 0-1): the circle grows out of the hand.
+func _grade_step(t: float, from_hand: bool, center: Vector2) -> void:
+	var eased := 1.0 - pow(1.0 - t, 2.2)
+	_grade_node().set_circle(_hand_uv() if from_hand else center, eased * TimeGrade.FULL)
+
+
+## The colour drains out from a point, over time (the circle grows to cover everything).
+func _grade_spread(center: Vector2, seconds: float) -> void:
+	var tween := player.create_tween()
+	tween.tween_method(_grade_step.bind(false, center), 0.0, 1.0, seconds)
+
+
+## Time resumes: the grey world shrinks back to the middle of the screen and goes.
+func _grade_release() -> void:
+	if _grade == null or not is_instance_valid(_grade):
+		return
+	var tween := player.create_tween()
+	tween.tween_method(func(t: float) -> void:
+		if is_instance_valid(_grade):
+			_grade.set_circle(Vector2(0.5, 0.55), (1.0 - t) * TimeGrade.FULL), 0.0, 1.0, 0.3)
+	tween.tween_callback(func() -> void:
+		if is_instance_valid(_grade):
+			_grade.set_circle(Vector2(0.5, 0.5), 0.0))
+
+
+## The shot: the camera high and to the side looking down, the hand up, the
+## sphere growing out of it, the monsters freezing as it passes, a beat on the
+## grey frozen world, then back to first person.
+func _time_stop_intro() -> void:
+	TimeFx.clear()
+	player.start_cinematic(Emotes.parse(TIME_HAND_CLIP), player.global_position + Vector3.UP * 1.2, Vector2(PI * 0.5, 0.8), 3.9)
+	player._aura.flare(1.0)
+	Sfx.play("tell", 0.0, 0.5)
+	var look := player.create_tween().set_parallel()
+	look.tween_property(player, "cine_distance", 3.2, 2.1).set_trans(Tween.TRANS_SINE)
+	look.tween_property(player, "cine_orbit", Vector2(PI * 0.66, 0.72), 2.1).set_trans(Tween.TRANS_SINE)
+	await _wait(0.55)
+	if not is_instance_valid(player):
+		return
+	# The sphere, out of the palm.
+	Sfx.play("counter", 0.0, 0.45)
+	Sfx.play("heavy", -4.0, 0.5)
+	player._shake = maxf(player._shake, 0.1)
+	HitFx.ring(player.get_parent(), player.global_position + Vector3(0, 1.6, 0) + player._flat_forward() * 0.5, Color(TIME_COLOR, 0.9), 2.0)
+	var spread := player.create_tween()
+	spread.tween_method(_grade_step.bind(true, Vector2.ZERO), 0.0, 1.0, TIME_SPREAD)
+	await _wait(TIME_SPREAD * 0.4)
+	if not is_instance_valid(player):
+		return
+	_freeze(true)
+	await _wait(TIME_SPREAD * 0.6 + 0.4)
+	if is_instance_valid(player):
+		player.end_cinematic()
 
 
 ## Freezes every enemy and everything they've thrown (bolts, arrows, fireballs).
@@ -949,6 +1054,7 @@ func _end_time_stop() -> void:
 	time_stop_changed.emit(false, 0.0, "", "", _hits)
 	player._fists.set_next_hand("")
 	_time_wave(false)
+	_grade_release()
 	# Time snaps back: every held punch lands at once.
 	var world := player.get_parent()
 	for enemy in _held:
@@ -1563,11 +1669,19 @@ func _start_unbroken() -> void:
 	player._set_combo(0)
 	player._skip_reboot = false
 	_cash = player.max_knuckles * 0.01 * hits * (1.5 if _card("unbroken_ii") else 1.0)
+	_cash_max = _cash
 	_cash_time = CASH_TIME + _power()
 	Sfx.play("unlock", 0.0, 1.2)
+	# No third-person shot for this one (the user): a pop-up and a green aura field.
 	player.class_event.emit("CASH OUT  -  shield %d" % roundi(_cash))
-	HitFx.burst(player.get_parent(), player.global_position + Vector3.UP, Vector3.UP, Color(1.0, 0.82, 0.3), 30, 5.0, true, 0.05)
-	HitFx.ring(player.get_parent(), player.global_position + Vector3.UP * 0.2, Color(1.0, 0.82, 0.3, 0.8), 2.5)
+	DamagePopup.spawn(player.get_parent(), "CASH OUT  +%d" % roundi(_cash), AuraField.COLOR, 56, player.global_position + player._flat_forward() * 1.4 + Vector3(0, 1.9, 0))
+	HitFx.burst(player.get_parent(), player.global_position + Vector3.UP, Vector3.UP, AuraField.COLOR, 30, 5.0, true, 0.05)
+	HitFx.ring(player.get_parent(), player.global_position + Vector3.UP * 0.2, Color(AuraField.COLOR, 0.8), 2.5)
+	if is_instance_valid(_field):
+		_field.queue_free()
+	_field = AuraField.new()
+	player.add_child(_field)
+	_field.setup(player)
 
 
 ## Cash Out's shield is up.
@@ -1581,6 +1695,9 @@ func soak_cash(loss: float) -> float:
 		return loss
 	var soaked := minf(_cash, loss)
 	_cash -= soaked
+	if is_instance_valid(_field):
+		_field.set_strength(_cash / maxf(_cash_max, 0.01))
+		_field.pulse()
 	Sfx.play("block", -4.0, 1.3)
 	DamagePopup.spawn(player.get_parent(), "-%d" % roundi(soaked), Color(1.0, 0.85, 0.35), 36, player.global_position + player._flat_forward() + Vector3(0, 1.6, 0))
 	HitFx.burst(player.get_parent(), player.global_position + Vector3.UP * 1.2, Vector3.UP, Color(1.0, 0.82, 0.3), 8, 3.0, true, 0.04)
@@ -1588,6 +1705,8 @@ func soak_cash(loss: float) -> float:
 		_cash_time = 0.0
 		_set_status("")
 		player.class_event.emit("SHIELD BROKEN")
+		if is_instance_valid(_field):
+			_field.finish()
 	return loss - soaked
 
 

@@ -30,7 +30,7 @@ const PASSIVES := {
 		{"id": "echo_fists", "name": "Killswitch", "icon": "bolt", "level": 5,
 			"desc": "From a 15-hit combo you go ultraviolent: every knockout light-dashes you to the nearest monster."},
 		{"id": "long_reach", "name": "Ultraviolet", "icon": "star", "level": 15,
-			"desc": "At your top combo multiplier punches only hold the combo, and fire ranged violet fists (0.25x damage) that hold it too."},
+			"desc": "At your top combo multiplier your punches also fire ranged violet fists (0.25x damage) that hold your combo."},
 	],
 	"free_runner": [
 		{"id": "dash_punches", "name": "Dash Punches", "icon": "swoosh", "level": 1,

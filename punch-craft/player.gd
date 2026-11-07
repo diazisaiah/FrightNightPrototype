@@ -364,6 +364,10 @@ var _phantom_cooldown := 0.0
 ## Ghost Walk: Phantom Step on melee attacks, every few seconds.
 ## Speed lines in the view (MoveFx.speed_lines), for the Blur and the Stray.
 var _speed_lines: CPUParticles3D
+## Killswitch's own purple speed lines (while ultraviolent).
+var _ultra_lines: CPUParticles3D
+## Killswitch: how much wider the view gets while you are ultraviolent.
+const ULTRAVIOLENT_FOV := 8.0
 ## Blood Feud: hits the grudge monster has landed since it was marked.
 var _grudge_hits := 0
 ## Bounce House: bounces since you last touched the floor.
@@ -536,6 +540,10 @@ func _ready() -> void:
 	# Speed lines: the Blur's long combos, the Stray's momentum and Hype Train.
 	if GameState.player_class in ["combo_master", "free_runner"]:
 		_speed_lines = MoveFx.speed_lines(_camera, GameState.fighter_color().lightened(0.3))
+		_ultra_lines = MoveFx.speed_lines(_camera, Color(0.68, 0.32, 1.0))
+		_ultra_lines.amount = 48
+		_ultra_lines.initial_velocity_min = 16.0
+		_ultra_lines.initial_velocity_max = 24.0
 	_body = FighterBody.new()
 	_body.visible = false
 	add_child(_body)
@@ -1832,9 +1840,10 @@ func _land_punch(type: String, hand: String, _dashing := false, airborne := fals
 	var same_kind := _last_hand != "" and not new_target and punch_kind(type) == punch_kind(_last_type)
 	_kind_run = _kind_run + 1 if same_kind else 1
 	var move := combo_move(type, hand, _last_type, _last_hand, _jab_run, _kind_run, new_target, dodged, counter)
+	# Ultraviolet: at the top multiplier your punches also fire ranged fists. Your
+	# own punches keep growing the combo (the soft cap and the rest still count);
+	# only the ranged fists merely hold it.
 	var ultraviolet := GameState.has_passive("long_reach") and at_combo_cap()
-	if ultraviolet and move == "grow":
-		move = "hold"  # Ultraviolet: at the top a punch only holds the combo.
 	if unbroken_time > 0.0:
 		move = "grow"  # (Unbroken's old rule; nothing sets unbroken_time any more.)
 	elif move == "lose":
@@ -2321,8 +2330,8 @@ func _light_dash(from: Enemy) -> void:
 		DamagePopup.spawn(get_parent(), "INTERRUPTED", Color(0.8, 0.6, 1.0), 36, best.global_position + Vector3(0, 2.0, 0))
 
 
-## Ultraviolet: at your top combo multiplier (not the soft cap of Limit Break) punches
-## stop growing the combo.
+## Ultraviolet: your top combo multiplier is reached (the hard cap; Limit Break's soft
+## cap goes on past it).
 func at_combo_cap() -> bool:
 	return _base_combo_multiplier() + _rhythm >= _combo_cap() - 0.001
 
@@ -2730,6 +2739,13 @@ func _update_speed_lines() -> void:
 			rush = 0.5 + _momentum
 	_speed_lines.emitting = rush > 0.0 and active
 	_speed_lines.speed_scale = maxf(rush, 0.5)
+	# Killswitch: ultraviolent has its own, faster, deeper purple lines.
+	if _ultra_lines:
+		_ultra_lines.emitting = _ultraviolent and active and emote == "" and not cinematic
+	# And a slightly wider view, eased in and out (a kick in flight keeps it for a moment).
+	var goal := Settings.fov() + (ULTRAVIOLENT_FOV if _ultraviolent else 0.0)
+	if _fov_tween == null or not _fov_tween.is_running():
+		_camera.fov = lerpf(_camera.fov, goal, 1.0 - exp(-6.0 * get_process_delta_time()))
 
 
 ## "2s", or "OK" once it's back.
@@ -2864,9 +2880,10 @@ func _play_impact(punch: Dictionary, kind: String, killed: bool) -> void:
 func _kick_fov(amount: float) -> void:
 	if _fov_tween:
 		_fov_tween.kill()
-	_camera.fov = Settings.fov() - amount
+	var goal := Settings.fov() + (ULTRAVIOLENT_FOV if _ultraviolent else 0.0)
+	_camera.fov = goal - amount
 	_fov_tween = create_tween()
-	_fov_tween.tween_property(_camera, "fov", Settings.fov(), 0.25).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	_fov_tween.tween_property(_camera, "fov", goal, 0.25).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 
 
 func _set_combo(value: int) -> void:

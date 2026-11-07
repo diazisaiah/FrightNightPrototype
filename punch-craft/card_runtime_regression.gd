@@ -53,6 +53,7 @@ func _run() -> void:
 	await _test_brimstone_slabs()
 	await _test_answer_revamp()
 	await _test_blur_revamp()
+	await _test_blur_looks()
 	await _test_endless_powers()
 	TimeFx.clear()
 	GameState._reset_fields()
@@ -305,7 +306,7 @@ func _exercise_ultimate(fighter: String, ultimate: String) -> void:
 	# Inferno II performs two leap tweens and Highlight Reel visits every live
 	# target. Freeing their Player mid-await strands the coroutine, so those two
 	# get time to finish; the other ultimates start synchronously.
-	var settle := 4.0 if ultimate in ["inferno", "highlight_reel", "bulwark", "flow_state"] else (0.8 if ultimate == "flame_burst" else 0.25)
+	var settle := 4.0 if ultimate in ["inferno", "highlight_reel", "bulwark", "flow_state", "temporal_break"] else (0.8 if ultimate == "flame_burst" else 0.25)
 	await get_tree().create_timer(settle, false, false, true).timeout
 	_check(player.ult.meter < Ult.MAX_METER,
 			"%s's %s activates and spends meter" % [fighter, ultimate])
@@ -401,7 +402,10 @@ func _check_time_stop(player: Player) -> void:
 	ult._update_time_stop(0.0)
 	_check(ult.mode == "" and float(target.get("_last_damage")) > 0.0, "Temporal Break: the held damage lands when time resumes")
 	ult.fill()
+	var shots: bool = Settings.values.cinematic_ults
+	Settings.values.cinematic_ults = false  # (the intro shot is a coroutine: this checks the clock)
 	ult._start_time_stop()
+	Settings.values.cinematic_ults = shots
 	_check(ult.mode == "time_stop" and ult._time_full < full * 0.8, "Temporal Break: one right after the last is shorter (%.1fs, was %.1fs)" % [ult._time_full, full])
 	ult._time_left = 0.0
 	ult._update_time_stop(0.0)
@@ -1177,6 +1181,54 @@ func _test_blur_revamp() -> void:
 	_check(target._last_damage > 0.0, "Retaliation: the attacker takes damage (%.2f)" % target._last_damage)
 	await _free_rig(holder)
 	print("Card runtime: Blur revamp OK")
+
+
+## Temporal Break's intro, Cash Out's field and Killswitch's wider view (2026-11-07).
+func _test_blur_looks() -> void:
+	var rig := await _make_rig("combo_master", "temporal_break")
+	var holder: Node3D = rig[0]
+	var player: Player = rig[1]
+	player.active = true
+	player.ult.fill()
+	player.ult.activate()
+	_check(player.ult.mode == "time_stop_intro" and player.cinematic, "Temporal Break opens with its third-person intro")
+	await get_tree().create_timer(3.4, false, false, true).timeout
+	_check(player.ult.mode == "time_stop" and not player.cinematic and player.ult._grade != null and player.ult._grade.visible,
+			"Temporal Break: first person again, the world grey and the clock running (%s)" % player.ult.mode)
+	player.ult._time_left = 0.0
+	player.ult._update_time_stop(0.0)
+	await get_tree().create_timer(0.5, false, false, true).timeout
+	_check(not player.ult._grade.visible, "Temporal Break: the colour comes back when time resumes")
+	await _free_rig(holder)
+	rig = await _make_rig("combo_master", "unbroken")
+	holder = rig[0]
+	player = rig[1]
+	player.active = true
+	player._set_combo(9)
+	player.ult.fill()
+	player.ult.activate()
+	_check(player.ult.cash_up() and is_instance_valid(player.ult._field), "Cash Out: a green aura field stands round you")
+	player.ult._cash = 0.0
+	player.ult.soak_cash(1.0)
+	await _free_rig(holder)
+	# Killswitch: ultraviolent widens the view a little.
+	rig = await _make_rig("combo_master")
+	holder = rig[0]
+	player = rig[1]
+	player.active = true
+	GameState.loadouts.combo_master.passive = "echo_fists"
+	player.cards._forget()
+	var base: float = Settings.fov()
+	player._combo_timer = 5.0
+	player._set_combo(player.killswitch_hits())
+	for i in 40:
+		player._combo_timer = 5.0
+		player._update_speed_lines()
+		await get_tree().process_frame
+	_check(player._ultraviolent and player._camera.fov > base + 4.0, "Killswitch: a wider view while ultraviolent (%.1f over %.1f)" % [player._camera.fov, base])
+	_check(player._ultra_lines != null and player._ultra_lines.emitting, "Killswitch: the purple speed lines")
+	await _free_rig(holder)
+	print("Card runtime: Blur looks OK")
 
 
 ## The fighter picker (2026-10-29): hovering a card and leaving puts it back
